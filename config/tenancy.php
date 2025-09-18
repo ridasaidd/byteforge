@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 use Stancl\Tenancy\Database\Models\Domain;
-use Stancl\Tenancy\Database\Models\Tenant;
+use App\Models\Tenant;
 
 return [
     'tenant_model' => Tenant::class,
-    'id_generator' => null, // Use default (auto-incrementing IDs).
-    // 'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
+    // 'id_generator' => null, // Use default (auto-incrementing IDs).
+    'id_generator' => Stancl\Tenancy\UUIDGenerator::class,
 
     'domain_model' => Domain::class,
 
@@ -20,6 +20,7 @@ return [
     'central_domains' => [
         '127.0.0.1',
         'localhost',
+        'byteforge.se',
     ],
 
     /**
@@ -29,7 +30,7 @@ return [
      * To configure their behavior, see the config keys below.
      */
     'bootstrappers' => [
-        Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class,
+        // Stancl\Tenancy\Bootstrappers\DatabaseTenancyBootstrapper::class, // Disabled for single-database tenancy
         Stancl\Tenancy\Bootstrappers\CacheTenancyBootstrapper::class,
         Stancl\Tenancy\Bootstrappers\FilesystemTenancyBootstrapper::class,
         Stancl\Tenancy\Bootstrappers\QueueTenancyBootstrapper::class,
