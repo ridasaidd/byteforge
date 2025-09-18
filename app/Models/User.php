@@ -2,17 +2,34 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Membership;
+use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\HasApiTokens;
 use Laravel\Passport\Contracts\OAuthenticatable;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements OAuthenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens;
+    use HasFactory, Notifiable, HasApiTokens, HasRoles;
+    /**
+     * Get the memberships for the user.
+     */
+    public function memberships()
+    {
+        return $this->hasMany(Membership::class);
+    }
+
+    /**
+     * Get the tenants the user belongs to.
+     */
+    public function tenants()
+    {
+        return $this->belongsToMany(Tenant::class, 'memberships');
+    }
 
     /**
      * The attributes that are mass assignable.
