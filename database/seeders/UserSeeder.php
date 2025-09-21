@@ -10,7 +10,9 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Superadmins
-        User::factory()->count(2)->create(['type' => 'superadmin']);
+        User::factory()->count(2)->create(['type' => 'superadmin'])->each(function ($user) {
+            $user->assignRole('superadmin');
+        });
         // Tenant users
         User::factory()->count(10)->create(['type' => 'tenant_user']);
         // Customers

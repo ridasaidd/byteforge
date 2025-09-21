@@ -134,9 +134,14 @@ return [
     'teams' => true,
 
     /*
+     * Testing mode for sqlite compatibility
+     */
+    'testing' => false,
+
+    /*
      * The class to use to resolve the permissions team id
      */
-    'team_resolver' => \Spatie\Permission\DefaultTeamResolver::class,
+    'team_resolver' => \App\Resolvers\TenancyTeamResolver::class,
 
     /*
      * Passport Client Credentials Grant

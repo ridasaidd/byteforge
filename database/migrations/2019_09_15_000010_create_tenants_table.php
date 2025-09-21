@@ -16,6 +16,7 @@ class CreateTenantsTable extends Migration
     public function up(): void
     {
         Schema::create('tenants', function (Blueprint $table) {
+            // Primary key is a string to support UUIDs
             $table->string('id')->primary();
             $table->string('name');
             $table->string('slug')->unique();
