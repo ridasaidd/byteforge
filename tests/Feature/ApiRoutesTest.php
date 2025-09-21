@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
+use PHPUnit\Framework\Attributes\Test;
 
 class ApiRoutesTest extends TestCase
 {
@@ -20,7 +21,7 @@ class ApiRoutesTest extends TestCase
         $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
     }
 
-    /** @test */
+    #[Test]
     public function central_api_login_works()
     {
         $user = User::factory()->create([
@@ -38,7 +39,7 @@ class ApiRoutesTest extends TestCase
                  ->assertJson(['message' => 'Route auth.login works']);
     }
 
-    /** @test */
+    #[Test]
     public function central_api_register_works()
     {
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
@@ -53,7 +54,7 @@ class ApiRoutesTest extends TestCase
                  ->assertJson(['message' => 'Route auth.register works']);
     }
 
-    /** @test */
+    #[Test]
     public function central_api_logout_works()
     {
         $user = User::factory()->create();
@@ -66,7 +67,7 @@ class ApiRoutesTest extends TestCase
                  ->assertJson(['message' => 'Route auth.logout works']);
     }
 
-    /** @test */
+    #[Test]
     public function central_api_user_endpoint_requires_authentication()
     {
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
@@ -75,7 +76,7 @@ class ApiRoutesTest extends TestCase
         $response->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function central_api_user_endpoint_returns_authenticated_user()
     {
         $user = User::factory()->create();
@@ -88,7 +89,7 @@ class ApiRoutesTest extends TestCase
                  ->assertJson(['message' => 'Route auth.user works']);
     }
 
-    /** @test */
+    #[Test]
     public function tenant_api_info_endpoint_works()
     {
         $tenant = Tenant::factory()->create(['domain' => 'test.localhost']);
@@ -103,7 +104,7 @@ class ApiRoutesTest extends TestCase
                  ->assertJson(['message' => 'Route tenant.info works']);
     }
 
-    /** @test */
+    #[Test]
     public function tenant_api_dashboard_requires_authentication()
     {
         $tenant = Tenant::factory()->create(['domain' => 'test.localhost']);
@@ -117,7 +118,7 @@ class ApiRoutesTest extends TestCase
         $response->assertStatus(401);
     }
 
-    /** @test */
+    #[Test]
     public function tenant_api_dashboard_returns_data_for_authenticated_user()
     {
         $tenant = Tenant::factory()->create(['domain' => 'test.localhost']);
@@ -133,7 +134,7 @@ class ApiRoutesTest extends TestCase
         $response->assertStatus(401); // Since no auth, should be 401
     }
 
-    /** @test */
+    #[Test]
     public function tenant_api_pages_crud_operations()
     {
         $tenant = Tenant::factory()->create(['domain' => 'test.localhost']);
@@ -149,7 +150,7 @@ class ApiRoutesTest extends TestCase
         $response->assertStatus(401); // No auth
     }
 
-    /** @test */
+    #[Test]
     public function tenant_api_users_endpoints()
     {
         $tenant = Tenant::factory()->create(['domain' => 'test.localhost']);
