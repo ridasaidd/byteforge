@@ -3,14 +3,9 @@
 namespace App\Models;
 
 use Spatie\Activitylog\Models\Activity as SpatieActivity;
-use Stancl\Tenancy\Facades\Tenancy;
 
 class TenantActivity extends SpatieActivity
 {
-    // Optionally: add guarded/fillable etc if needed
-    // protected $guarded = [];
-
-    // If you want to cast properties etc
     protected $casts = [
         'properties' => 'collection',
     ];
@@ -19,8 +14,10 @@ class TenantActivity extends SpatieActivity
     protected static function booted()
     {
         static::creating(function ($activity) {
-            // set tenant_id (or whatever your tenant key is), or null if none
-            $activity->tenant_id = Tenancy::getTenant()?->getTenantKey();
+            // set tenant_id from tenancy helper
+            if (tenancy()->initialized) {
+                $activity->tenant_id = tenancy()->tenant->getTenantKey();
+            }
         });
     }
 
@@ -29,7 +26,9 @@ class TenantActivity extends SpatieActivity
      */
     public function scopeForTenant($query, $tenantId = null)
     {
-        $tenantId = $tenantId ?? Tenancy::getTenant()?->getTenantKey();
+        if ($tenantId === null && tenancy()->initialized) {
+            $tenantId = tenancy()->tenant->getTenantKey();
+        }
         return $query->where('tenant_id', $tenantId);
     }
 }

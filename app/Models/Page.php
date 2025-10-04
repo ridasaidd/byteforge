@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Page extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -21,6 +23,14 @@ class Page extends Model
         'sort_order',
         'created_by',
         'published_at',
+    ];
+
+    protected $casts = [
+        'puck_data' => 'array',
+        'meta_data' => 'array',
+        'is_homepage' => 'boolean',
+        'sort_order' => 'integer',
+        'published_at' => 'datetime',
     ];
 
     /**
@@ -37,5 +47,18 @@ class Page extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Configure activity logging.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'slug', 'page_type', 'status', 'is_homepage', 'published_at'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('pages')
+            ->setDescriptionForEvent(fn(string $eventName) => "Page {$eventName}");
     }
 }

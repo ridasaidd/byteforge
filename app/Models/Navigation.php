@@ -4,10 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Navigation extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -17,6 +19,11 @@ class Navigation extends Model
         'status',
         'sort_order',
         'created_by',
+    ];
+
+    protected $casts = [
+        'structure' => 'array',
+        'sort_order' => 'integer',
     ];
 
     /**
@@ -33,5 +40,18 @@ class Navigation extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Configure activity logging.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'slug', 'status', 'sort_order'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs()
+            ->useLogName('navigations')
+            ->setDescriptionForEvent(fn(string $eventName) => "Navigation {$eventName}");
     }
 }
