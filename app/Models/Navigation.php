@@ -19,6 +19,11 @@ class Navigation extends Model
         'created_by',
     ];
 
+    protected $casts = [
+        'structure' => 'array',
+        'sort_order' => 'integer',
+    ];
+
     /**
      * Get the tenant that owns the navigation.
      */

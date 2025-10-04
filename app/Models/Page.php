@@ -23,6 +23,14 @@ class Page extends Model
         'published_at',
     ];
 
+    protected $casts = [
+        'puck_data' => 'array',
+        'meta_data' => 'array',
+        'is_homepage' => 'boolean',
+        'sort_order' => 'integer',
+        'published_at' => 'datetime',
+    ];
+
     /**
      * Get the tenant that owns the page.
      */

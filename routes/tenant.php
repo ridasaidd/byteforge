@@ -7,6 +7,7 @@ use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\PageController;
+use App\Http\Controllers\Api\NavigationController;
 use App\Http\Controllers\Api\UserController;
 
 /*
@@ -46,6 +47,7 @@ Route::middleware([
     Route::middleware('auth:api')->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
         Route::apiResource('pages', PageController::class);
+        Route::apiResource('navigations', NavigationController::class);
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy']);
         Route::post('users/{user}/roles', [UserController::class, 'assignRole']);
         Route::delete('users/{user}/roles/{role}', [UserController::class, 'removeRole']);
