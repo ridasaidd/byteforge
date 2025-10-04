@@ -13,9 +13,9 @@ class UserSeeder extends Seeder
         User::factory()->count(2)->create(['type' => 'superadmin'])->each(function ($user) {
             $user->assignRole('superadmin');
         });
-        // Tenant users
-        User::factory()->count(10)->create(['type' => 'tenant_user']);
+        // Tenant users (we already have 2 fixed tenant users)
+        User::factory()->count(5)->create(['type' => 'tenant_user']);
         // Customers
-        User::factory()->count(20)->create(['type' => 'customer']);
+        User::factory()->count(10)->create(['type' => 'customer']);
     }
 }
