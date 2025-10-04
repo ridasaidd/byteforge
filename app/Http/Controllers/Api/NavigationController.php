@@ -21,7 +21,7 @@ class NavigationController extends Controller
     {
         $filters = $request->only(['status']);
         $result = app(ListNavigationsAction::class)->execute($filters);
-        
+
         return response()->json($result);
     }
 
