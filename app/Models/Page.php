@@ -32,10 +32,17 @@ class Page extends Model
     }
 
     /**
-     * Get the user who created the page.
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
      */
-    public function creator()
+    protected function casts(): array
     {
-        return $this->belongsTo(User::class, 'created_by');
+        return [
+            'puck_data' => 'array',
+            'meta_data' => 'array',
+            'is_homepage' => 'boolean',
+            'published_at' => 'datetime',
+        ];
     }
 }

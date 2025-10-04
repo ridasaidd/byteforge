@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Actions\Api\Tenant\TenantInfoAction;
 use App\Models\Page;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -16,7 +17,10 @@ class TenantController extends Controller
      */
     public function info(): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.info works']);
+        $action = new TenantInfoAction();
+        $result = $action->execute();
+
+        return response()->json($result);
     }
 
     /**
@@ -24,6 +28,21 @@ class TenantController extends Controller
      */
     public function dashboard(): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.dashboard works']);
+        $action = new TenantInfoAction();
+        $tenantInfo = $action->execute();
+
+        // Add additional dashboard data
+        $dashboard = [
+            'tenant' => $tenantInfo,
+            'stats' => [
+                'total_pages' => Page::where('tenant_id', tenancy()->tenant->id)->count(),
+                'published_pages' => Page::where('tenant_id', tenancy()->tenant->id)->where('status', 'published')->count(),
+                'total_users' => User::whereHas('memberships', function ($query) {
+                    $query->where('tenant_id', tenancy()->tenant->id);
+                })->count(),
+            ],
+        ];
+
+        return response()->json($dashboard);
     }
 }

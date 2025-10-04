@@ -30,8 +30,10 @@ class RolePermissionSeeder extends Seeder
             'view content',
         ];
 
+        // Create permissions for both web and api guards
         foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
+            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'api']);
         }
 
         // Define roles and assign granular permissions
@@ -52,9 +54,15 @@ class RolePermissionSeeder extends Seeder
             ],
         ];
 
+        // Create roles for both web and api guards
         foreach ($roles as $role => $perms) {
-            $roleObj = Role::firstOrCreate(['name' => $role]);
-            $roleObj->syncPermissions($perms);
+            // Web guard roles
+            $roleObjWeb = Role::firstOrCreate(['name' => $role, 'guard_name' => 'web']);
+            $roleObjWeb->syncPermissions($perms);
+
+            // API guard roles
+            $roleObjApi = Role::firstOrCreate(['name' => $role, 'guard_name' => 'api']);
+            $roleObjApi->syncPermissions($perms);
         }
     }
 }

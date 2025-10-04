@@ -17,7 +17,24 @@ class TenantFactory extends Factory
             'id' => (string) Str::uuid(),
             'name' => $name,
             'slug' => Str::slug($name),
-            'data' => [],
+            'data' => [
+                'email' => fake()->companyEmail(),
+                'phone' => fake()->phoneNumber(),
+                'status' => 'active',
+            ],
         ];
+    }
+
+    /**
+     * Configure the factory after creation
+     */
+    public function configure()
+    {
+        return $this->afterCreating(function (Tenant $tenant) {
+            // Create a domain for the tenant
+            $tenant->domains()->create([
+                'domain' => Str::slug($tenant->name) . '.example.com',
+            ]);
+        });
     }
 }

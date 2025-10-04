@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Actions\Api\Tenant\ListPagesAction;
+use App\Actions\Api\Tenant\CreatePageAction;
 use App\Models\Page;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class PageController extends Controller
 {
@@ -14,7 +17,10 @@ class PageController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.pages.index works']);
+        $action = new ListPagesAction();
+        $pages = $action->execute($request->only(['status', 'page_type']));
+
+        return response()->json($pages);
     }
 
     /**
@@ -22,7 +28,10 @@ class PageController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.pages.store works']);
+        $action = new CreatePageAction();
+        $page = $action->execute($request->all(), Auth::user());
+
+        return response()->json($page, 201);
     }
 
     /**
@@ -30,7 +39,12 @@ class PageController extends Controller
      */
     public function show(Page $page): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.pages.show works']);
+        // Ensure page belongs to current tenant
+        if ($page->tenant_id !== tenancy()->tenant->id) {
+            abort(404);
+        }
+
+        return response()->json($page);
     }
 
     /**
@@ -38,7 +52,15 @@ class PageController extends Controller
      */
     public function update(Request $request, Page $page): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.pages.update works']);
+        // Ensure page belongs to current tenant
+        if ($page->tenant_id !== tenancy()->tenant->id) {
+            abort(404);
+        }
+
+        // TODO: Create UpdatePageAction
+        $page->update($request->validated());
+
+        return response()->json($page);
     }
 
     /**
@@ -46,6 +68,13 @@ class PageController extends Controller
      */
     public function destroy(Page $page): JsonResponse
     {
-        return response()->json(['message' => 'Route tenant.pages.destroy works']);
+        // Ensure page belongs to current tenant
+        if ($page->tenant_id !== tenancy()->tenant->id) {
+            abort(404);
+        }
+
+        $page->delete();
+
+        return response()->json(['message' => 'Page deleted successfully']);
     }
 }

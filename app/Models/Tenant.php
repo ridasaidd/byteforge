@@ -33,6 +33,10 @@ class Tenant extends BaseTenant
         'data',
     ];
 
+    protected $casts = [
+        'data' => 'array',
+    ];
+
     /**
      * Get the memberships for the tenant.
      */
