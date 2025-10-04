@@ -11,8 +11,11 @@ class MembershipSeeder extends Seeder
 {
     public function run(): void
     {
-        $tenants = Tenant::all();
-        $tenantUsers = User::where('type', 'tenant_user')->get();
+        // Get only non-fixed tenants and users for random membership creation
+        $tenants = Tenant::whereNotIn('id', ['tenant_one', 'tenant_two', 'tenant_three'])->get();
+        $tenantUsers = User::where('type', 'tenant_user')
+            ->whereNotIn('email', ['user.multiple@byteforge.test', 'user.single@byteforge.test'])
+            ->get();
         $customers = User::where('type', 'customer')->get();
 
         // Assign tenant users as owners or staff
