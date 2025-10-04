@@ -7,17 +7,18 @@ use App\Models\User;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
 use Tests\CreatesPassportClient;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 
 class ApiRoutesTest extends TestCase
 {
-    use CreatesPassportClient; // Removed RefreshDatabase
+    use RefreshDatabase, CreatesPassportClient;
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->setUpPassportClient();
-        // Keep seeder for roles/permissions safety
+        // Seed roles/permissions
         $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
     }
 

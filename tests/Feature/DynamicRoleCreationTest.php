@@ -5,13 +5,14 @@ namespace Tests\Feature;
 use App\Models\User;
 use Tests\TestCase;
 use Tests\CreatesPassportClient;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 class DynamicRoleCreationTest extends TestCase
 {
-    use CreatesPassportClient;
+    use RefreshDatabase, CreatesPassportClient;
 
     protected function setUp(): void
     {

@@ -6,13 +6,14 @@ use App\Models\User;
 use App\Models\Tenant;
 use Tests\TestCase;
 use Tests\CreatesPassportClient;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 class AuthorizationTest extends TestCase
 {
-    use CreatesPassportClient;
+    use RefreshDatabase, CreatesPassportClient;
 
     protected function setUp(): void
     {
