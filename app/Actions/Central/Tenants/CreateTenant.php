@@ -24,7 +24,7 @@ class CreateTenant
         $tenant->id = $data['id'];
         $tenant->name = $data['name'];
         $tenant->slug = $data['slug'] ?? Str::slug($data['name']);
-        
+
         if (isset($data['email'])) {
             $tenant->email = $data['email'];
         }

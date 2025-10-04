@@ -15,7 +15,7 @@ class UpdateTenant
         // Use VirtualColumn pattern: set attributes directly on the model
         // Custom columns (id, name, slug) are stored as-is
         // Non-custom columns (email, phone, status) are automatically serialized into the data JSON column
-        
+
         if (isset($data['name'])) {
             $tenant->name = $data['name'];
             $tenant->slug = Str::slug($data['name']);
