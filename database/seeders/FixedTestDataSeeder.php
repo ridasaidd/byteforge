@@ -13,7 +13,7 @@ class FixedTestDataSeeder extends Seeder
 {
     /**
      * Seed fixed test data for development and testing.
-     * 
+     *
      * This creates:
      * - 3 fixed tenants (tenant_one, tenant_two, tenant_three)
      * - 2 fixed users (user_with_multiple_tenants, user_with_one_tenant)

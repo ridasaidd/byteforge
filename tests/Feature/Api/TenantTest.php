@@ -17,7 +17,7 @@ class TenantTest extends TestCase
     {
         parent::setUp();
         $this->setUpPassportClient();
-        
+
         // Note: These tests require full middleware stack for tenant route resolution
         // They verify tenant domain identification and routing work correctly
     }

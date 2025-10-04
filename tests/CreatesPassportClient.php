@@ -8,7 +8,7 @@ trait CreatesPassportClient
 {
     /**
      * Setup Passport OAuth client for testing
-     * 
+     *
      * Note: This trait should be used alongside RefreshDatabase trait
      * RefreshDatabase handles migrations automatically
      */
