@@ -17,24 +17,25 @@ class CreateTenant
             $data['id'] = Str::slug($data['name']);
         }
 
-        // Create tenant with data column for extra attributes
-        $tenantData = [];
+        // Use VirtualColumn pattern: set attributes directly
+        // Custom columns: id, name, slug
+        // Non-custom (email, phone, status) go into data JSON automatically
+        $tenant = new Tenant();
+        $tenant->id = $data['id'];
+        $tenant->name = $data['name'];
+        $tenant->slug = $data['slug'] ?? Str::slug($data['name']);
+        
         if (isset($data['email'])) {
-            $tenantData['email'] = $data['email'];
+            $tenant->email = $data['email'];
         }
         if (isset($data['phone'])) {
-            $tenantData['phone'] = $data['phone'];
+            $tenant->phone = $data['phone'];
         }
         if (isset($data['status'])) {
-            $tenantData['status'] = $data['status'];
+            $tenant->status = $data['status'];
         }
 
-        $tenant = Tenant::create([
-            'id' => $data['id'],
-            'name' => $data['name'],
-            'slug' => $data['slug'] ?? Str::slug($data['name']),
-            'data' => $tenantData,
-        ]);
+        $tenant->save();
 
         // Create domain for tenant
         $tenant->domains()->create([

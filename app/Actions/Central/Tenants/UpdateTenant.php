@@ -12,33 +12,28 @@ class UpdateTenant
 
     public function handle(Tenant $tenant, array $data): Tenant
     {
-        // Update basic tenant info
-        $updateData = [];
+        // Use VirtualColumn pattern: set attributes directly on the model
+        // Custom columns (id, name, slug) are stored as-is
+        // Non-custom columns (email, phone, status) are automatically serialized into the data JSON column
+        
         if (isset($data['name'])) {
-            $updateData['name'] = $data['name'];
-            $updateData['slug'] = Str::slug($data['name']);
+            $tenant->name = $data['name'];
+            $tenant->slug = Str::slug($data['name']);
         }
 
-        // Update data column with extra attributes (preserve existing data)
-        $tenantData = is_array($tenant->data) ? $tenant->data : [];
         if (isset($data['email'])) {
-            $tenantData['email'] = $data['email'];
+            $tenant->email = $data['email'];
         }
+
         if (isset($data['phone'])) {
-            $tenantData['phone'] = $data['phone'];
+            $tenant->phone = $data['phone'];
         }
+
         if (isset($data['status'])) {
-            $tenantData['status'] = $data['status'];
+            $tenant->status = $data['status'];
         }
 
-        // Only update data if we have changes
-        if (!empty($tenantData)) {
-            $updateData['data'] = $tenantData;
-        }
-
-        if (!empty($updateData)) {
-            $tenant->update($updateData);
-        }
+        $tenant->save();
 
         // Update domain if provided
         if (isset($data['domain'])) {

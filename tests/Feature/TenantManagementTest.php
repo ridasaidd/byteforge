@@ -74,9 +74,15 @@ class TenantManagementTest extends TestCase
                     'domain' => 'newtenant.example.com',
                 ],
             ]);
-
+        $tenantId = $response->json('data.id');
+        // Tenant top-level columns
         $this->assertDatabaseHas('tenants', [
+            'id' => $tenantId,
             'name' => 'New Tenant',
+        ]);
+        // Domain is stored in domains table
+        $this->assertDatabaseHas('domains', [
+            'tenant_id' => $tenantId,
             'domain' => 'newtenant.example.com',
         ]);
     }
@@ -111,17 +117,14 @@ class TenantManagementTest extends TestCase
         $response->assertStatus(200)
             ->assertJson([
                 'message' => 'Tenant updated successfully',
-                'data' => [
-                    'name' => 'New Name',
-                    'status' => 'suspended',
-                ],
-            ]);
-
+            ])
+            ->assertJsonPath('data.name', 'New Name');
+        // Verify DB updated: top-level name and VirtualColumn status attribute
         $this->assertDatabaseHas('tenants', [
             'id' => $tenant->id,
             'name' => 'New Name',
-            'status' => 'suspended',
         ]);
+        $this->assertEquals('suspended', Tenant::find($tenant->id)->status);
     }
 
     public function test_superadmin_can_delete_tenant()

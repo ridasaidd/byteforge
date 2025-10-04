@@ -17,11 +17,10 @@ class TenantFactory extends Factory
             'id' => (string) Str::uuid(),
             'name' => $name,
             'slug' => Str::slug($name),
-            'data' => [
-                'email' => fake()->companyEmail(),
-                'phone' => fake()->phoneNumber(),
-                'status' => 'active',
-            ],
+            // VirtualColumn pattern: set non-custom attributes directly
+            'email' => fake()->companyEmail(),
+            'phone' => fake()->phoneNumber(),
+            'status' => 'active',
         ];
     }
 

@@ -28,6 +28,9 @@ class PageTest extends TestCase
         $tokenResult = $user->createToken('test-token');
 
         tenancy()->initialize($tenant);
+        // Create tenant domain and use it when calling routes
+        $domain = 'tenant-pages-test.example.com';
+        $tenant->domains()->create(['domain' => $domain]);
 
         // Create some pages for this tenant
         Page::create([
@@ -54,7 +57,7 @@ class PageTest extends TestCase
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $tokenResult->accessToken,
-        ])->getJson('/api/pages');
+        ])->getJson("https://{$domain}/api/pages");
 
         $response->assertStatus(200)
                 ->assertJsonCount(2);
@@ -68,6 +71,8 @@ class PageTest extends TestCase
         $tokenResult = $user->createToken('test-token');
 
         tenancy()->initialize($tenant);
+        $domain = 'tenant-pages-test2.example.com';
+        $tenant->domains()->create(['domain' => $domain]);
 
         Page::create([
             'tenant_id' => $tenant->id,
@@ -93,7 +98,7 @@ class PageTest extends TestCase
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $tokenResult->accessToken,
-        ])->getJson('/api/pages?status=published');
+        ])->getJson("https://{$domain}/api/pages?status=published");
 
         $response->assertStatus(200)
                 ->assertJsonCount(1)
@@ -108,6 +113,8 @@ class PageTest extends TestCase
         $tokenResult = $user->createToken('test-token');
 
         tenancy()->initialize($tenant);
+        $domain = 'tenant-pages-test3.example.com';
+        $tenant->domains()->create(['domain' => $domain]);
 
         $pageData = [
             'title' => 'New Test Page',
@@ -120,7 +127,7 @@ class PageTest extends TestCase
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $tokenResult->accessToken,
-        ])->postJson('/api/pages', $pageData);
+        ])->postJson("https://{$domain}/api/pages", $pageData);
 
         $response->assertStatus(201)
                 ->assertJsonFragment([
@@ -144,6 +151,8 @@ class PageTest extends TestCase
         $tokenResult = $user->createToken('test-token');
 
         tenancy()->initialize($tenant);
+        $domain = 'tenant-pages-test4.example.com';
+        $tenant->domains()->create(['domain' => $domain]);
 
         $page = Page::create([
             'tenant_id' => $tenant->id,
@@ -158,7 +167,7 @@ class PageTest extends TestCase
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $tokenResult->accessToken,
-        ])->getJson("/api/pages/{$page->id}");
+        ])->getJson("https://{$domain}/api/pages/{$page->id}");
 
         $response->assertStatus(200)
                 ->assertJsonFragment(['title' => 'Test Page']);
@@ -173,6 +182,8 @@ class PageTest extends TestCase
         $tokenResult = $user->createToken('test-token');
 
         tenancy()->initialize($tenant1);
+        $domain = 'tenant-pages-test5.example.com';
+        $tenant1->domains()->create(['domain' => $domain]);
 
         $page = Page::create([
             'tenant_id' => $tenant2->id, // Different tenant
@@ -187,7 +198,7 @@ class PageTest extends TestCase
 
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $tokenResult->accessToken,
-        ])->getJson("/api/pages/{$page->id}");
+        ])->getJson("https://{$domain}/api/pages/{$page->id}");
 
         $response->assertStatus(404);
     }
@@ -195,7 +206,13 @@ class PageTest extends TestCase
     #[Test]
     public function unauthenticated_user_cannot_access_page_endpoints()
     {
-        $response = $this->getJson('/api/pages');
+        // Tenant routes require tenant domain
+        $tenant = Tenant::factory()->create();
+        $domain = 'tenant-pages-test6.example.com';
+        $tenant->domains()->create(['domain' => $domain]);
+        tenancy()->initialize($tenant);
+
+        $response = $this->getJson("https://{$domain}/api/pages");
 
         $response->assertStatus(401);
     }

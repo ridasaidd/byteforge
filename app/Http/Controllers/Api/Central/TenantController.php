@@ -27,15 +27,14 @@ class TenantController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($tenant) {
-                $data = $tenant->data ?? [];
                 return [
                     'id' => $tenant->id,
                     'name' => $tenant->name,
                     'slug' => $tenant->slug,
                     'domain' => $tenant->domains->first()?->domain,
-                    'email' => $data['email'] ?? null,
-                    'phone' => $data['phone'] ?? null,
-                    'status' => $data['status'] ?? 'active',
+                    'email' => $tenant->email ?? null,
+                    'phone' => $tenant->phone ?? null,
+                    'status' => $tenant->status ?? 'active',
                     'memberships_count' => $tenant->memberships_count,
                     'created_at' => $tenant->created_at,
                     'updated_at' => $tenant->updated_at,
@@ -60,15 +59,14 @@ class TenantController extends Controller
             }
         ]);
 
-        $data = $tenant->data ?? [];
         $tenantData = [
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
             'domain' => $tenant->domains->first()?->domain,
-            'email' => $data['email'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'email' => $tenant->email ?? null,
+            'phone' => $tenant->phone ?? null,
+            'status' => $tenant->status ?? 'active',
             'memberships' => $tenant->memberships,
             'created_at' => $tenant->created_at,
             'updated_at' => $tenant->updated_at,
@@ -86,15 +84,14 @@ class TenantController extends Controller
     {
         $tenant = CreateTenant::run($request->validated());
 
-        $data = $tenant->data ?? [];
         $tenantData = [
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
             'domain' => $tenant->domains->first()?->domain,
-            'email' => $data['email'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'email' => $tenant->email ?? null,
+            'phone' => $tenant->phone ?? null,
+            'status' => $tenant->status ?? 'active',
             'created_at' => $tenant->created_at,
             'updated_at' => $tenant->updated_at,
         ];
@@ -112,15 +109,14 @@ class TenantController extends Controller
     {
         $tenant = UpdateTenant::run($tenant, $request->validated());
 
-        $data = $tenant->data ?? [];
         $tenantData = [
             'id' => $tenant->id,
             'name' => $tenant->name,
             'slug' => $tenant->slug,
             'domain' => $tenant->domains->first()?->domain,
-            'email' => $data['email'] ?? null,
-            'phone' => $data['phone'] ?? null,
-            'status' => $data['status'] ?? 'active',
+            'email' => $tenant->email ?? null,
+            'phone' => $tenant->phone ?? null,
+            'status' => $tenant->status ?? 'active',
             'created_at' => $tenant->created_at,
             'updated_at' => $tenant->updated_at,
         ];
