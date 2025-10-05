@@ -65,7 +65,7 @@ class MediaController extends Controller
                     'collection_name' => $media->collection_name,
                     'url' => $media->getUrl(),
                     'custom_properties' => $media->custom_properties,
-                    'created_at' => $media->created_at->toISOString(),
+                    'created_at' => $media->created_at?->toISOString(),
                 ]
             ], 201);
         } catch (\Exception $e) {
@@ -79,8 +79,11 @@ class MediaController extends Controller
     /**
      * Show a specific media file.
      */
-    public function show(Media $media): JsonResponse
+    public function show(int $media): JsonResponse
     {
+        $media = Media::where('tenant_id', tenant('id'))
+            ->findOrFail($media);
+            
         $data = [
             'id' => $media->id,
             'uuid' => $media->uuid,
@@ -93,8 +96,8 @@ class MediaController extends Controller
             'custom_properties' => $media->custom_properties,
             'model_type' => $media->model_type,
             'model_id' => $media->model_id,
-            'created_at' => $media->created_at->toISOString(),
-            'updated_at' => $media->updated_at->toISOString(),
+            'created_at' => $media->created_at?->toISOString(),
+            'updated_at' => $media->updated_at?->toISOString(),
         ];
 
         // Only include URL if disk is set (to avoid errors in tests with fake storage)
@@ -109,9 +112,12 @@ class MediaController extends Controller
     /**
      * Delete a media file.
      */
-    public function destroy(Media $media, DeleteMediaAction $action): JsonResponse
+    public function destroy(int $media, DeleteMediaAction $action): JsonResponse
     {
         try {
+            $media = Media::where('tenant_id', tenant('id'))
+                ->findOrFail($media);
+                
             $action->handle($media);
 
             return response()->json([
