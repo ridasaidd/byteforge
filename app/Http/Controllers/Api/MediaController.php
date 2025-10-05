@@ -83,7 +83,7 @@ class MediaController extends Controller
     {
         $media = Media::where('tenant_id', tenant('id'))
             ->findOrFail($media);
-            
+
         $data = [
             'id' => $media->id,
             'uuid' => $media->uuid,
@@ -117,7 +117,7 @@ class MediaController extends Controller
         try {
             $media = Media::where('tenant_id', tenant('id'))
                 ->findOrFail($media);
-                
+
             $action->handle($media);
 
             return response()->json([

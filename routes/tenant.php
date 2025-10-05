@@ -55,12 +55,12 @@ Route::middleware([
         Route::apiResource('pages', PageController::class);
         Route::apiResource('navigations', NavigationController::class);
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy']);
-        
+
         // Media management
         Route::apiResource('media', MediaController::class)->except(['update']);
         Route::apiResource('media-folders', MediaFolderController::class);
         Route::get('media-folders-tree', [MediaFolderController::class, 'tree']);
-        
+
         // User role management
         Route::post('users/{user}/roles', [UserController::class, 'assignRole']);
         Route::delete('users/{user}/roles/{role}', [UserController::class, 'removeRole']);        // Settings management

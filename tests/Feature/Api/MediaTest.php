@@ -21,7 +21,7 @@ class MediaTest extends TestCase
     {
         parent::setUp();
         $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
-        
+
         // Fake storage for testing
         Storage::fake('public');
     }
@@ -140,7 +140,7 @@ class MediaTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/media?collection=gallery");
 
         $response->assertStatus(200);
-        
+
         $data = $response->json('data');
         $this->assertCount(2, $data);
         $this->assertEquals('gallery', $data[0]['collection_name']);
@@ -150,7 +150,7 @@ class MediaTest extends TestCase
     public function authenticated_user_can_view_single_media()
     {
         Storage::fake('public');
-        
+
         $tenant = Tenant::factory()->create();
         $user = User::factory()->create();
         Passport::actingAs($user);
@@ -193,7 +193,7 @@ class MediaTest extends TestCase
     public function authenticated_user_can_delete_media()
     {
         Storage::fake('public');
-        
+
         $tenant = Tenant::factory()->create();
         $user = User::factory()->create();
         Passport::actingAs($user);
@@ -232,7 +232,7 @@ class MediaTest extends TestCase
     public function user_cannot_view_media_from_different_tenant()
     {
         Storage::fake('public');
-        
+
         $tenant1 = Tenant::factory()->create();
         $tenant2 = Tenant::factory()->create();
         $user = User::factory()->create();
@@ -287,7 +287,7 @@ class MediaTest extends TestCase
     public function page_can_have_media_collections()
     {
         Storage::fake('public');
-        
+
         $tenant = Tenant::factory()->create();
         $user = User::factory()->create();
         tenancy()->initialize($tenant);
@@ -306,7 +306,7 @@ class MediaTest extends TestCase
         // Test featured-image collection (single file)
         $page->addMedia(UploadedFile::fake()->image('featured.jpg'))
             ->toMediaCollection('featured-image');
-        
+
         $this->assertCount(1, $page->getMedia('featured-image'));
 
         // Test gallery collection (multiple files)
@@ -314,13 +314,13 @@ class MediaTest extends TestCase
             ->toMediaCollection('gallery');
         $page->addMedia(UploadedFile::fake()->image('gallery2.jpg'))
             ->toMediaCollection('gallery');
-        
+
         $this->assertCount(2, $page->getMedia('gallery'));
 
         // Test attachments collection
         $page->addMedia(UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'))
             ->toMediaCollection('attachments');
-        
+
         $this->assertCount(1, $page->getMedia('attachments'));
     }
 }

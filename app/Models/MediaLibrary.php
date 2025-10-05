@@ -54,7 +54,7 @@ class MediaLibrary extends Model implements HasMedia
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('default');
-        
+
         // Images collection with strict validation and conversions
         $this->addMediaCollection('images')
             ->acceptsMimeTypes([
@@ -101,7 +101,7 @@ class MediaLibrary extends Model implements HasMedia
                     ->format('webp')
                     ->nonQueued();
             });
-        
+
         // Documents collection
         $this->addMediaCollection('documents')
             ->acceptsMimeTypes([
@@ -112,7 +112,7 @@ class MediaLibrary extends Model implements HasMedia
                 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'text/plain',
             ]);
-        
+
         // Videos collection
         $this->addMediaCollection('videos')
             ->acceptsMimeTypes([

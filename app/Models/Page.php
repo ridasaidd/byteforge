@@ -73,10 +73,10 @@ class Page extends Model implements HasMedia
         $this->addMediaCollection('featured-image')
             ->singleFile()
             ->useDisk('public');
-        
+
         $this->addMediaCollection('gallery')
             ->useDisk('public');
-        
+
         $this->addMediaCollection('attachments')
             ->useDisk('public');
     }
