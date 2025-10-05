@@ -16,7 +16,7 @@ class SettingsController extends Controller
     {
         try {
             $settings = app(TenantSettings::class);
-            
+
             return response()->json([
                 'data' => [
                     'site_title' => $settings->site_title,
@@ -60,7 +60,7 @@ class SettingsController extends Controller
 
         try {
             $settings = app(TenantSettings::class);
-            
+
             if ($request->has('site_title')) {
                 $settings->site_title = $request->site_title;
             }

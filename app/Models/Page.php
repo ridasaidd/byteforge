@@ -6,10 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
+use Spatie\MediaLibrary\MediaCollections\Models\Media as MediaModel;
 
-class Page extends Model
+class Page extends Model implements HasMedia
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, InteractsWithMedia;
 
     protected $fillable = [
         'tenant_id',
@@ -61,4 +64,21 @@ class Page extends Model
             ->useLogName('pages')
             ->setDescriptionForEvent(fn(string $eventName) => "Page {$eventName}");
     }
+
+    /**
+     * Register media collections.
+     */
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('featured-image')
+            ->singleFile()
+            ->useDisk('public');
+        
+        $this->addMediaCollection('gallery')
+            ->useDisk('public');
+        
+        $this->addMediaCollection('attachments')
+            ->useDisk('public');
+    }
 }
+
