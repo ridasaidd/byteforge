@@ -30,13 +30,12 @@ class ApiRoutesTest extends TestCase
         ]);
 
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
-                         ->postJson('/api/auth/login', [
+        ->postJson('/api/auth/login', [
             'email' => 'test@example.com',
             'password' => 'password',
         ]);
 
-        $response->assertStatus(200)
-                 ->assertJson(['message' => 'Route auth.login works']);
+        $response->assertStatus(200)->assertJson(['message' => 'Route auth.login works']);
     }
 
     #[Test]

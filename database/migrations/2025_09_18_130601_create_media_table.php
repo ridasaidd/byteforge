@@ -10,6 +10,10 @@ return new class extends Migration
     {
         Schema::create('media', function (Blueprint $table) {
             $table->id();
+            
+            // Tenant isolation
+            $table->string('tenant_id')->nullable()->index();
+            $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
 
             $table->morphs('model');
             $table->uuid()->nullable()->unique();

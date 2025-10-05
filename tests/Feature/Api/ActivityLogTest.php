@@ -145,7 +145,7 @@ class ActivityLogTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/activity-logs?subject_type=pages");
 
         $response->assertStatus(200);
-        
+
         $data = $response->json('data');
         foreach ($data as $activity) {
             $this->assertEquals('Page', $activity['subject_type']);

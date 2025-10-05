@@ -26,7 +26,7 @@ class ActivityLogController extends Controller
                 'navigations' => \App\Models\Navigation::class,
                 'users' => \App\Models\User::class,
             ];
-            
+
             if (isset($typeMap[$subjectType])) {
                 $query->where('subject_type', $typeMap[$subjectType]);
             }
