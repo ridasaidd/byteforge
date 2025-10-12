@@ -9,8 +9,9 @@ export default defineConfig({
         laravel({
             input: [
                 'resources/css/app.css',
-                'resources/js/app.tsx',
-                'resources/js/central-app.tsx'
+                'resources/js/superadmin.tsx',  // Central admin app
+                'resources/js/tenant.tsx',      // Tenant CMS app
+                'resources/js/public.tsx',      // Public page renderer
             ],
             refresh: true,
         }),
@@ -20,6 +21,14 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': resolve(__dirname, 'resources/js'),
+        },
+    },
+    server: {
+        host: '0.0.0.0',  // Listen on all network interfaces
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            host: 'byteforge.se',  // Your actual domain for HMR
         },
     },
 });

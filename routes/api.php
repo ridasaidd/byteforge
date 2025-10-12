@@ -20,8 +20,21 @@ foreach (config('tenancy.central_domains') as $domain) {
 
         // Superadmin routes - require superadmin role
         Route::middleware(['auth:api', 'role:superadmin'])->prefix('superadmin')->group(function () {
-            Route::apiResource('tenants', SuperadminController::class);
-            Route::apiResource('users', SuperadminController::class);
+            // Tenants management
+            Route::get('tenants', [SuperadminController::class, 'indexTenants']);
+            Route::post('tenants', [SuperadminController::class, 'storeTenant']);
+            Route::get('tenants/{tenant}', [SuperadminController::class, 'showTenant']);
+            Route::put('tenants/{tenant}', [SuperadminController::class, 'updateTenant']);
+            Route::delete('tenants/{tenant}', [SuperadminController::class, 'destroyTenant']);
+
+            // Users management
+            Route::get('users', [SuperadminController::class, 'indexUsers']);
+            Route::post('users', [SuperadminController::class, 'storeUser']);
+            Route::get('users/{user}', [SuperadminController::class, 'showUser']);
+            Route::put('users/{user}', [SuperadminController::class, 'updateUser']);
+            Route::delete('users/{user}', [SuperadminController::class, 'destroyUser']);
+
+            // Tenant-User relationships
             Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant']);
             Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant']);
         });
