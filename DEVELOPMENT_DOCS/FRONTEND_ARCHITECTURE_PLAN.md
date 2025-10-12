@@ -96,12 +96,23 @@ resources/js/
 └── public.tsx                 # Entry: Public pages
 ```
 
-## Component Strategy: Data-Agnostic UI
+## Shared Components Architecture
 
-### Shared UI Components (shadcn/ui)
-All apps use the same components from `shared/components/ui/`:
-- Button, Input, Card, Table, Dialog, Form, Badge, Avatar, etc.
-- Import: `import { Button } from '@/shared/components/ui/button'`
+### Component Hierarchy (Atomic Design + shadcn/ui)
+
+```
+shadcn/ui (Base Layer - Pre-built)
+    ↓
+Atoms (Custom brand elements)
+    ↓
+Molecules (Compositions of shadcn components)
+    ↓
+Organisms (Complex dashboard patterns)
+    ↓
+Templates (Page layouts)
+    ↓
+Pages (App-specific implementations)
+```
 
 ### Data-Agnostic Pattern
 Components don't know about APIs - they only handle presentation:
@@ -135,6 +146,600 @@ function TenantMembersPage() {
   return <UserTable users={data} onEdit={handleEdit} />
 }
 ```
+
+---
+
+## Shared Components Specification
+
+### Templates (Layouts)
+
+#### 1. **DashboardLayout** 🔴 CRITICAL
+**Purpose:** Main application shell for Central and Tenant apps (based on shadcn dashboard example)  
+**Layout:**
+```
+┌─────────────────────────────────────────────────┐
+│ TopBar: [Logo] [Name] [Search] [Avatar Menu]   │
+├──────────┬──────────────────────────────────────┤
+│          │                                      │
+│  Drawer  │   Main Content Area                  │
+│ (Sidebar)│   {children}                         │
+│          │                                      │
+│          │                                      │
+└──────────┴──────────────────────────────────────┘
+```
+
+**Features:**
+- TopBar (header) with logo, site name, search, avatar dropdown
+- Drawer (sidebar) with navigation menu
+- Collapsible sidebar (mobile overlay, desktop persistent)
+- Main content area with proper spacing and scrolling
+- Responsive behavior:
+  - Desktop: Sidebar visible, TopBar full width
+  - Tablet: Sidebar collapsible
+  - Mobile: Sidebar as overlay, hamburger menu in TopBar
+- Context-aware navigation (different menus for Central vs Tenant)
+
+**Props:**
+```typescript
+interface DashboardLayoutProps {
+  children: React.ReactNode
+  title?: string
+  showSidebar?: boolean
+  siteName: string
+  user: User
+}
+```
+
+**Used By:** Central app, Tenant app  
+**Test:** ✅ Yes (rendering, responsive behavior, sidebar toggle)
+
+---
+
+#### 2. **AuthLayout**
+**Purpose:** Wrapper for login/register pages  
+**Features:**
+- Centered card design
+- Logo at top
+- Form container
+- Background pattern/gradient
+- Responsive
+
+**Props:**
+```typescript
+interface AuthLayoutProps {
+  children: React.ReactNode
+  title?: string
+  subtitle?: string
+}
+```
+
+**Used By:** Login, Register, Forgot Password pages  
+**Test:** ⚠️ Optional (simple wrapper)
+
+---
+
+#### 3. **PublicLayout**
+**Purpose:** Layout for tenant's public pages  
+**Features:**
+- Public header (tenant logo, navigation)
+- Footer (copyright, links)
+- SEO meta tags
+- Theme support (tenant-specific styling)
+
+**Props:**
+```typescript
+interface PublicLayoutProps {
+  children: React.ReactNode
+  page: PageData
+  tenant: TenantData
+}
+```
+
+**Used By:** Public app (Puck-rendered pages)  
+**Test:** ⚠️ Optional (simple wrapper)
+
+---
+
+### Organisms (Complex Components)
+
+#### 4. **TopBar** 🔴 CRITICAL
+**Purpose:** Application header/navbar (inspired by shadcn dashboard example)  
+**Layout:** `[Logo] [Site Name] [Spacer] [SearchBar] [Avatar Dropdown]`
+
+**Features:**
+- Logo (brand icon/image)
+- Site name (e.g., "ByteForge", tenant name)
+- Global search bar (centered/right-aligned)
+- Avatar with dropdown menu (user profile, settings, logout)
+- Responsive:
+  - Desktop: Full layout as shown above
+  - Mobile: Hamburger menu icon, collapsed search, avatar
+
+**Props:**
+```typescript
+interface TopBarProps {
+  logo?: React.ReactNode
+  siteName: string
+  user: User
+  onSearch?: (query: string) => void
+  onMenuToggle?: () => void // For mobile sidebar toggle
+  searchPlaceholder?: string
+}
+```
+
+**Avatar Dropdown Menu Items:**
+- Profile
+- Settings
+- Divider
+- Logout
+
+**Used By:** DashboardLayout  
+**Test:** ✅ Yes (search, dropdown menu, mobile toggle)
+
+---
+
+#### 5. **Drawer** (Sidebar) 🔴 CRITICAL
+**Purpose:** Navigation sidebar  
+**Features:**
+- Navigation menu items (with icons)
+- Active route highlighting
+- Collapsible groups
+- Collapse/expand functionality
+- Different menus for Central vs Tenant
+- Responsive (overlay on mobile, persistent on desktop)
+
+**Props:**
+```typescript
+interface DrawerProps {
+  isOpen: boolean
+  onClose: () => void
+  menuItems: MenuItem[]
+  activeRoute: string
+}
+```
+
+**Menu Items (Central App):**
+- Dashboard
+- Tenants
+- Users
+- Settings
+- Activity Log
+
+**Menu Items (Tenant App):**
+- Dashboard
+- Pages
+- Media
+- Navigation
+- Settings
+- Team Members
+
+**Used By:** DashboardLayout  
+**Test:** ✅ Yes (navigation, active states, collapse)
+
+---
+
+#### 6. **UserMenu** 🟡 HIGH
+**Purpose:** User profile dropdown in TopBar (Avatar component)  
+**Trigger:** Avatar with user photo/initials
+
+**Features:**
+- Dropdown trigger: Avatar (circular image or initials)
+- Menu items:
+  - User name + email (header, non-clickable)
+  - Profile link
+  - Settings link
+  - Divider
+  - Logout button
+- Dropdown animation (slide down/fade in)
+- Click outside to close
+
+**Props:**
+```typescript
+interface UserMenuProps {
+  user: User // { name, email, avatar? }
+  onLogout: () => void
+}
+```
+
+**Menu Structure:**
+```
+┌─────────────────────┐
+│ John Doe            │ ← Name
+│ john@example.com    │ ← Email (muted)
+├─────────────────────┤
+│ 👤 Profile          │
+│ ⚙️  Settings        │
+├─────────────────────┤
+│ 🚪 Logout           │
+└─────────────────────┘
+```
+
+**Used By:** TopBar (right side)  
+**Test:** ✅ Yes (logout action, navigation, dropdown open/close)
+
+---
+
+#### 7. **Footer**
+**Purpose:** Application footer  
+**Features:**
+- Copyright text
+- Links (Privacy, Terms, Support)
+- Version info
+
+**Props:**
+```typescript
+interface FooterProps {
+  links?: FooterLink[]
+  showVersion?: boolean
+}
+```
+
+**Used By:** DashboardLayout (optional), PublicLayout  
+**Test:** ⚠️ Optional (static content)
+
+---
+
+### Molecules (Component Compositions)
+
+#### 8. **Card** 🟡 HIGH
+**Purpose:** Enhanced shadcn Card with common patterns  
+**Features:**
+- Header with title + actions
+- Content area
+- Footer (optional)
+- Loading state (skeleton)
+- Empty state
+- Error state
+
+**Props:**
+```typescript
+interface CardProps {
+  title?: string
+  actions?: React.ReactNode
+  footer?: React.ReactNode
+  loading?: boolean
+  empty?: boolean
+  error?: string
+  children: React.ReactNode
+}
+```
+
+**Used By:** Dashboard widgets, forms, content containers  
+**Test:** ✅ Yes (loading, empty, error states)
+
+---
+
+#### 9. **ListView** 🔴 CRITICAL
+**Purpose:** Table/list view for data display  
+**Features:**
+- Built on shadcn Table
+- Column sorting
+- Row selection (checkboxes)
+- Actions per row (edit, delete icons)
+- Hover states
+- Responsive (stack on mobile)
+
+**Props:**
+```typescript
+interface ListViewProps<T> {
+  data: T[]
+  columns: Column<T>[]
+  onRowClick?: (item: T) => void
+  onEdit?: (item: T) => void
+  onDelete?: (item: T) => void
+  selectable?: boolean
+}
+```
+
+**Used By:** Tenants list, Users list, Pages list, Media list  
+**Test:** ✅ Yes (sorting, selection, actions)
+
+---
+
+#### 10. **GridView** 🟡 HIGH
+**Purpose:** Grid layout for cards (media, pages)  
+**Features:**
+- Responsive CSS Grid
+- Card hover effects
+- Actions overlay
+- Selection mode
+- Empty state
+
+**Props:**
+```typescript
+interface GridViewProps<T> {
+  items: T[]
+  renderCard: (item: T) => React.ReactNode
+  onSelect?: (item: T) => void
+  columns?: { sm: number, md: number, lg: number }
+}
+```
+
+**Used By:** Media gallery, Page thumbnails, Dashboard widgets  
+**Test:** ✅ Yes (rendering, selection)
+
+---
+
+#### 11. **FormField** 🔴 CRITICAL
+**Purpose:** Form input wrapper with validation  
+**Features:**
+- Label
+- Input/Select/Textarea (shadcn)
+- Error message display
+- Helper text
+- Required indicator
+- Integrates with React Hook Form
+
+**Props:**
+```typescript
+interface FormFieldProps {
+  label: string
+  name: string
+  type?: 'text' | 'email' | 'password' | 'select' | 'textarea'
+  placeholder?: string
+  error?: string
+  helperText?: string
+  required?: boolean
+}
+```
+
+**Used By:** All forms (Create tenant, Edit user, Page settings)  
+**Test:** ✅ Yes (validation, error display)
+
+---
+
+#### 12. **SearchBox** 🔴 CRITICAL
+**Purpose:** Global search input in TopBar (inspired by shadcn dashboard)  
+**Features:**
+- Search icon (magnifying glass)
+- Input field with placeholder
+- Clear button (X icon when text exists)
+- Debounce (300ms) to avoid excessive API calls
+- Loading indicator (spinner when searching)
+- Keyboard shortcuts:
+  - `Cmd/Ctrl + K` to focus
+  - `Escape` to clear/blur
+- Dropdown results (optional - can show recent searches or suggestions)
+
+**Props:**
+```typescript
+interface SearchBoxProps {
+  onSearch: (query: string) => void
+  placeholder?: string // e.g., "Search tenants, pages, media..."
+  debounceMs?: number // default 300
+  loading?: boolean
+  shortcuts?: boolean // Show "⌘K" hint
+}
+```
+
+**Visual Design:**
+```
+┌───────────────────────────────────┐
+│ 🔍  Search...              [⌘K]  │
+└───────────────────────────────────┘
+```
+
+**Used By:** TopBar (center/right), ListView filters, Media library  
+**Test:** ✅ Yes (debounce, clear button, keyboard shortcuts)
+
+---
+
+#### 13. **Pagination** 🔴 CRITICAL
+**Purpose:** Navigate paginated results  
+**Features:**
+- Page numbers
+- Previous/Next buttons
+- Jump to page
+- Items per page selector
+- Total count display
+
+**Props:**
+```typescript
+interface PaginationProps {
+  currentPage: number
+  totalPages: number
+  onPageChange: (page: number) => void
+  itemsPerPage?: number
+  onItemsPerPageChange?: (count: number) => void
+}
+```
+
+**Used By:** ListView (with API pagination)  
+**Test:** ✅ Yes (navigation logic)
+
+---
+
+#### 14. **EmptyState** 🟡 HIGH
+**Purpose:** Display when no data exists  
+**Features:**
+- Icon (customizable)
+- Title + description
+- Action button (e.g., "Create first tenant")
+- Illustration (optional)
+
+**Props:**
+```typescript
+interface EmptyStateProps {
+  icon?: React.ReactNode
+  title: string
+  description: string
+  action?: {
+    label: string
+    onClick: () => void
+  }
+}
+```
+
+**Used By:** ListView/GridView when empty, Error states  
+**Test:** ✅ Yes (action button)
+
+---
+
+#### 15. **LoadingState** 🟢 MEDIUM
+**Purpose:** Skeleton loaders for better UX  
+**Features:**
+- Skeleton shapes (rectangle, circle, text)
+- Animated pulse
+- Matches content layout
+
+**Props:**
+```typescript
+interface LoadingStateProps {
+  type: 'card' | 'list' | 'table' | 'custom'
+  count?: number
+}
+```
+
+**Used By:** During data fetching  
+**Test:** ⚠️ Optional (visual component)
+
+---
+
+#### 16. **PageHeader** 🟡 HIGH
+**Purpose:** Page title with actions  
+**Features:**
+- Page title
+- Description (optional)
+- Action buttons (e.g., "+ New Tenant")
+- Breadcrumbs integration
+
+**Props:**
+```typescript
+interface PageHeaderProps {
+  title: string
+  description?: string
+  actions?: React.ReactNode
+}
+```
+
+**Used By:** Every page (Tenants, Pages, Media, etc.)  
+**Test:** ✅ Yes (rendering)
+
+---
+
+#### 17. **Modal** 🟡 HIGH
+**Purpose:** Dialog/modal wrapper with common patterns  
+**Features:**
+- Extends shadcn Dialog
+- Confirm dialog pattern
+- Form dialog pattern
+- Loading state
+- Footer with actions
+
+**Props:**
+```typescript
+interface ModalProps {
+  open: boolean
+  onClose: () => void
+  title: string
+  description?: string
+  children: React.ReactNode
+  footer?: React.ReactNode
+  loading?: boolean
+}
+```
+
+**Used By:** Delete confirmations, Create/Edit forms  
+**Test:** ✅ Yes (open/close, actions)
+
+---
+
+#### 18. **Breadcrumbs** 🟢 MEDIUM
+**Purpose:** Show navigation trail  
+**Features:**
+- Clickable path segments
+- Current page (not clickable)
+- Separator icon
+- Truncation for long paths
+
+**Props:**
+```typescript
+interface BreadcrumbsProps {
+  items: BreadcrumbItem[]
+  maxItems?: number
+}
+```
+
+**Used By:** TopBar or below TopBar  
+**Test:** ⚠️ Optional (navigation component)
+
+---
+
+### Atoms (Custom Brand Elements)
+
+#### 19. **Logo**
+**Purpose:** Application logo  
+**Features:**
+- SVG logo
+- Light/dark variants
+- Different sizes
+
+**Props:**
+```typescript
+interface LogoProps {
+  size?: 'sm' | 'md' | 'lg'
+  variant?: 'light' | 'dark'
+}
+```
+
+**Used By:** TopBar, AuthLayout  
+**Test:** ❌ No (static SVG)
+
+---
+
+## Implementation Priority
+
+### 🔴 Phase 1: Core Layout (Week 1 - Days 1-3) - CRITICAL
+```
+1. DashboardLayout (Template) - Everything depends on this
+2. TopBar (Organism) - Header with user menu
+3. Drawer (Organism) - Sidebar navigation
+4. UserMenu (Organism) - Dropdown in TopBar
+```
+
+### 🟡 Phase 2: Data Display (Week 1 - Days 4-5) - HIGH
+```
+5. Card (Molecule) - Content containers
+6. ListView (Molecule) - Table/list for CRUD
+7. PageHeader (Molecule) - Page titles
+8. EmptyState (Molecule) - No data states
+```
+
+### 🟡 Phase 3: Forms & Interaction (Week 2 - Days 1-2) - HIGH
+```
+9. FormField (Molecule) - Form inputs
+10. SearchBox (Molecule) - Search/filter
+11. Modal (Molecule) - Dialogs
+12. Pagination (Molecule) - List navigation
+```
+
+### 🟢 Phase 4: Enhancements (Week 2 - Days 3-5) - MEDIUM
+```
+13. GridView (Molecule) - Grid layouts
+14. LoadingState (Molecule) - Skeletons
+15. Breadcrumbs (Molecule) - Navigation trail
+16. AuthLayout (Template) - Login pages
+17. PublicLayout (Template) - Public pages
+18. Footer (Organism) - Page footer
+```
+
+---
+
+## Component Testing Strategy
+
+### ✅ MUST Test (Business Logic & Interactions)
+- DashboardLayout, TopBar, Drawer, UserMenu
+- ListView, FormField, SearchBox, Pagination, Modal
+- Card (loading/empty/error states)
+- EmptyState (action buttons)
+
+### ⚠️ OPTIONAL Tests (Simple Wrappers)
+- AuthLayout, PublicLayout, Footer
+- Breadcrumbs, LoadingState
+
+### ❌ SKIP Tests
+- shadcn/ui components (pre-tested)
+- Logo (static SVG)
 
 ## State Management
 

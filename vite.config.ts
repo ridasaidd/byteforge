@@ -8,9 +8,10 @@ export default defineConfig({
     plugins: [
         laravel({
             input: [
-                'resources/css/app.css', 
-                'resources/js/app.tsx',
-                'resources/js/central-app.tsx'
+                'resources/css/app.css',
+                'resources/js/superadmin.tsx',  // Central admin app
+                'resources/js/tenant.tsx',      // Tenant CMS app
+                'resources/js/public.tsx',      // Public page renderer
             ],
             refresh: true,
         }),

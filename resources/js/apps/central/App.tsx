@@ -1,13 +1,30 @@
-import { FC } from 'react'
-import { BrowserRouter } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
+import { DashboardPage } from './components/pages/DashboardPage';
+import { centralMenuItems } from './config/menu';
 
-export const CentralApp: FC = () => {
-    return (
-        <BrowserRouter>
-            <div className="min-h-screen bg-gray-50">
-                <h1 className="text-2xl font-bold p-8">Central Admin App</h1>
-                <p className="px-8 text-gray-600">Superadmin interface for managing tenants, users, and system-wide settings</p>
-            </div>
-        </BrowserRouter>
-    )
-};
+export function CentralApp() {
+  const handleSearch = (query: string) => {
+    console.log('Search query:', query);
+    // TODO: Implement search functionality
+  };
+
+  return (
+    <BrowserRouter basename="/">
+      <DashboardLayout
+        siteName="ByteForge Central"
+        menuItems={centralMenuItems}
+        onSearch={handleSearch}
+      >
+        <Routes>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/dashboard/tenants" element={<div>Tenants Page (Coming Soon)</div>} />
+          <Route path="/dashboard/users" element={<div>Users Page (Coming Soon)</div>} />
+          <Route path="/dashboard/activity" element={<div>Activity Log (Coming Soon)</div>} />
+          <Route path="/dashboard/settings" element={<div>Settings (Coming Soon)</div>} />
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </DashboardLayout>
+    </BrowserRouter>
+  );
+}
