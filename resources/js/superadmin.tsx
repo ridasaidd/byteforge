@@ -1,13 +1,22 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { AuthProvider } from '@/shared/context/AuthContext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
+import { AuthProvider } from '@/shared/context/AuthContext.tsx';
 import { CentralApp } from '@/apps/central/App';
-import type { User } from '@/shared/types';
 import './bootstrap';
 import '../css/app.css';
 
-// Get initial user data from Blade template (if provided)
-const initialUserData = (window as Window & { __INITIAL_USER__?: User }).__INITIAL_USER__ || null;
+// Create a client
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: false,
+            retry: 1,
+            staleTime: 5 * 60 * 1000, // 5 minutes
+        },
+    },
+});
 
 const rootElement = document.getElementById('superadmin-app');
 
@@ -17,8 +26,11 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
     <StrictMode>
-        <AuthProvider initialUser={initialUserData}>
-            <CentralApp />
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+                <CentralApp />
+                <Toaster position="top-right" richColors />
+            </AuthProvider>
+        </QueryClientProvider>
     </StrictMode>
 );

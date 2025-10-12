@@ -2,65 +2,116 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\Superadmin\CreateTenantAction;
+use App\Actions\Api\Superadmin\CreateUserAction;
+use App\Actions\Api\Superadmin\DeleteTenantAction;
+use App\Actions\Api\Superadmin\DeleteUserAction;
+use App\Actions\Api\Superadmin\ListTenantsAction;
+use App\Actions\Api\Superadmin\ListUsersAction;
+use App\Actions\Api\Superadmin\UpdateTenantAction;
+use App\Actions\Api\Superadmin\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Models\Membership;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 
 class SuperadminController extends Controller
 {
     // Tenant management
-    public function indexTenants()
+    public function indexTenants(Request $request)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.index works']);
+        $result = ListTenantsAction::run([
+            'search' => $request->input('search'),
+            'per_page' => $request->input('per_page', 15),
+        ]);
+
+        return response()->json($result);
     }
 
     public function storeTenant(Request $request)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.store works']);
+        $tenant = CreateTenantAction::run($request->all());
+
+        return response()->json(['data' => $tenant], 201);
     }
 
     public function showTenant(Tenant $tenant)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.show works']);
+        $tenant->load('domains');
+
+        $data = [
+            'id' => $tenant->id,
+            'name' => $tenant->name,
+            'slug' => $tenant->slug,
+            'domain' => $tenant->domains->first()->domain ?? null,
+            'created_at' => $tenant->created_at->toISOString(),
+            'updated_at' => $tenant->updated_at->toISOString(),
+        ];
+
+        return response()->json(['data' => $data]);
     }
 
     public function updateTenant(Request $request, Tenant $tenant)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.update works']);
+        $updated = UpdateTenantAction::run($tenant, $request->all());
+
+        return response()->json(['data' => $updated]);
     }
 
     public function destroyTenant(Tenant $tenant)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.destroy works']);
+        DeleteTenantAction::run($tenant);
+
+        return response()->json(['message' => 'Tenant deleted successfully']);
     }
 
     // User management
-    public function indexUsers()
+    public function indexUsers(Request $request)
     {
-        return response()->json(['message' => 'Route superadmin.users.index works']);
+        $result = ListUsersAction::run([
+            'search' => $request->input('search'),
+            'per_page' => $request->input('per_page', 15),
+        ]);
+
+        return response()->json($result);
     }
 
     public function storeUser(Request $request)
     {
-        return response()->json(['message' => 'Route superadmin.users.store works']);
+        $user = CreateUserAction::run($request->all());
+
+        return response()->json(['data' => $user], 201);
     }
 
     public function showUser(User $user)
     {
-        return response()->json(['message' => 'Route superadmin.users.show works']);
+        $user->load('roles', 'permissions');
+
+        $data = [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->roles->pluck('name')->toArray(),
+            'permissions' => $user->permissions->pluck('name')->toArray(),
+            'created_at' => $user->created_at->toISOString(),
+            'updated_at' => $user->updated_at->toISOString(),
+        ];
+
+        return response()->json(['data' => $data]);
     }
 
     public function updateUser(Request $request, User $user)
     {
-        return response()->json(['message' => 'Route superadmin.users.update works']);
+        $updated = UpdateUserAction::run($user, $request->all());
+
+        return response()->json(['data' => $updated]);
     }
 
     public function destroyUser(User $user)
     {
-        return response()->json(['message' => 'Route superadmin.users.destroy works']);
+        DeleteUserAction::run($user);
+
+        return response()->json(['message' => 'User deleted successfully']);
     }
 
     // Add user to tenant

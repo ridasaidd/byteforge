@@ -23,4 +23,12 @@ export default defineConfig({
             '@': resolve(__dirname, 'resources/js'),
         },
     },
+    server: {
+        host: '0.0.0.0',  // Listen on all network interfaces
+        port: 5173,
+        strictPort: true,
+        hmr: {
+            host: 'byteforge.se',  // Your actual domain for HMR
+        },
+    },
 });

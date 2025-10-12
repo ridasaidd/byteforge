@@ -1,32 +1,13 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, useCallback, ReactNode } from 'react';
 import { authService } from '../services/auth.service';
-import type { User, AuthState } from '../types';
+import type { User } from '../types';
+import { AuthContext } from './AuthContext';
 
-interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
-  refetchUser: () => Promise<void>;
-}
-
-export const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-interface AuthProviderProps {
-  children: ReactNode;
-  initialUser?: User | null;
-}
-
-export function AuthProvider({ children, initialUser = null }: AuthProviderProps) {
+export function AuthProvider({ children, initialUser = null }: { children: ReactNode; initialUser?: User | null }) {
   const [user, setUser] = useState<User | null>(initialUser);
   const [isLoading, setIsLoading] = useState(!initialUser);
 
-  useEffect(() => {
-    // If no initial user provided, fetch from API
-    if (!initialUser && authService.isAuthenticated()) {
-      fetchUser();
-    }
-  }, [initialUser]);
-
-  const fetchUser = async () => {
+  const fetchUser = useCallback(async () => {
     try {
       setIsLoading(true);
       const userData = await authService.getUser();
@@ -37,19 +18,26 @@ export function AuthProvider({ children, initialUser = null }: AuthProviderProps
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     const { user: userData } = await authService.login({ email, password });
     setUser(userData);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await authService.logout();
     setUser(null);
-  };
+  }, []);
 
-  const value: AuthContextType = {
+  useEffect(() => {
+    // If no initial user provided, fetch from API
+    if (!initialUser && authService.isAuthenticated()) {
+      fetchUser();
+    }
+  }, [initialUser, fetchUser]);
+
+  const value = {
     user,
     isAuthenticated: !!user,
     isLoading,

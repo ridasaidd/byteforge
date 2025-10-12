@@ -58,6 +58,27 @@ class HttpService {
     const response: AxiosResponse<T> = await this.client.delete(url, config);
     return response.data;
   }
+
+  // CRUD helper methods
+  async getAll<T>(endpoint: string, params?: Record<string, string | number | boolean>): Promise<T> {
+    return this.get<T>(endpoint, { params });
+  }
+
+  async getOne<T>(endpoint: string, id: string | number): Promise<T> {
+    return this.get<T>(`${endpoint}/${id}`);
+  }
+
+  async create<T>(endpoint: string, data: unknown): Promise<T> {
+    return this.post<T>(endpoint, data);
+  }
+
+  async update<T>(endpoint: string, id: string | number, data: unknown): Promise<T> {
+    return this.put<T>(`${endpoint}/${id}`, data);
+  }
+
+  async remove<T>(endpoint: string, id: string | number): Promise<T> {
+    return this.delete<T>(`${endpoint}/${id}`);
+  }
 }
 
 export const http = new HttpService();

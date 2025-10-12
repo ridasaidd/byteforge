@@ -1,19 +1,9 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { http } from '../services/http';
-import type { Tenant, TenantState } from '../types';
+import type { Tenant } from '../types';
+import { TenantContext } from './TenantContext';
 
-interface TenantContextType extends TenantState {
-  refetchTenant: () => Promise<void>;
-}
-
-export const TenantContext = createContext<TenantContextType | undefined>(undefined);
-
-interface TenantProviderProps {
-  children: ReactNode;
-  initialTenant?: Tenant | null;
-}
-
-export function TenantProvider({ children, initialTenant = null }: TenantProviderProps) {
+export function TenantProvider({ children, initialTenant = null }: { children: ReactNode; initialTenant?: Tenant | null }) {
   const [tenant, setTenant] = useState<Tenant | null>(initialTenant);
   const [isLoading, setIsLoading] = useState(!initialTenant);
 
@@ -37,7 +27,7 @@ export function TenantProvider({ children, initialTenant = null }: TenantProvide
     }
   };
 
-  const value: TenantContextType = {
+  const value = {
     tenant,
     isLoading,
     refetchTenant: fetchTenant,

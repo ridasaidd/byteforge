@@ -2,6 +2,22 @@
 
 This file contains fixed test data that is seeded with every `php artisan migrate:fresh --seed` command.
 
+---
+
+## Central Admin (Superadmin)
+
+### Super Admin
+- **Name:** Super Admin
+- **Email:** `admin@byteforge.se`
+- **Password:** `password`
+- **Type:** `superadmin`
+- **Role:** `superadmin`
+- **Access:** ByteForge Central Admin Dashboard
+
+**Login URL:** `http://byteforge.se/login` or `http://localhost:8000/login`
+
+---
+
 ## Fixed Test Tenants
 
 These tenants have predictable IDs and domains, making them perfect for testing and development:

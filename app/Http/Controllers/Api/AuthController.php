@@ -11,28 +11,99 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    /**
+     * Login user and return token
+     */
     public function login(Request $request)
     {
-        return response()->json(['message' => 'Route auth.login works']);
+        $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+
+        // Attempt authentication
+        if (!Auth::attempt($request->only('email', 'password'))) {
+            throw ValidationException::withMessages([
+                'email' => ['The provided credentials are incorrect.'],
+            ]);
+        }
+
+        $user = Auth::user();
+
+        // Create access token
+        $token = $user->createToken('web-token')->accessToken;
+
+        return response()->json([
+            'user' => $user->load('roles', 'permissions'),
+            'token' => $token,
+        ]);
     }
 
+    /**
+     * Register a new user (optional - for public registration)
+     */
     public function register(Request $request)
     {
-        return response()->json(['message' => 'Route auth.register works']);
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+        ]);
+
+        // Assign default role if needed
+        // $user->assignRole('user');
+
+        $token = $user->createToken('web-token')->accessToken;
+
+        return response()->json([
+            'user' => $user->load('roles', 'permissions'),
+            'token' => $token,
+        ], 201);
     }
 
+    /**
+     * Logout user (revoke token)
+     */
     public function logout(Request $request)
     {
-        return response()->json(['message' => 'Route auth.logout works']);
+        $request->user()->token()->revoke();
+
+        return response()->json([
+            'message' => 'Successfully logged out',
+        ]);
     }
 
+    /**
+     * Refresh access token
+     */
     public function refresh(Request $request)
     {
-        return response()->json(['message' => 'Route auth.refresh works']);
+        $user = $request->user();
+
+        // Revoke old token
+        $user->token()->revoke();
+
+        // Create new token
+        $token = $user->createToken('web-token')->accessToken;
+
+        return response()->json([
+            'token' => $token,
+        ]);
     }
 
+    /**
+     * Get authenticated user with roles and permissions
+     */
     public function user(Request $request)
     {
-        return response()->json(['message' => 'Route auth.user works']);
+        return response()->json(
+            $request->user()->load('roles.permissions', 'permissions')
+        );
     }
 }

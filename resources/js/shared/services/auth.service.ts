@@ -14,10 +14,10 @@ interface LoginResponse {
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await http.post<LoginResponse>('/auth/login', credentials);
-    
+
     // Store token in localStorage
     localStorage.setItem('auth_token', response.token);
-    
+
     return response;
   },
 

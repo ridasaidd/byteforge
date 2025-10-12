@@ -38,7 +38,7 @@ export function Card({
           </div>
         </CardHeader>
       )}
-      
+
       <CardContent>
         {loading ? (
           <div className="space-y-2">
