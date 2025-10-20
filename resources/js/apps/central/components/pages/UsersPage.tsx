@@ -160,6 +160,7 @@ export function UsersPage() {
   const users = useCrud<User, CreateUserData, UpdateUserData>({
     resource: 'users',
     apiService: api.users,
+    invalidateRelated: ['activity'], // Refresh activity log when users change
   });
 
   // ============================================================================

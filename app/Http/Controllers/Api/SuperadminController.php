@@ -12,9 +12,9 @@ use App\Actions\Api\Superadmin\UpdateTenantAction;
 use App\Actions\Api\Superadmin\UpdateUserAction;
 use App\Http\Controllers\Controller;
 use App\Models\Tenant;
+use App\Models\TenantActivity;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Spatie\Activitylog\Models\Activity;
 
 class SuperadminController extends Controller
 {
@@ -118,7 +118,10 @@ class SuperadminController extends Controller
     // Central Activity Log
     public function indexActivity(Request $request)
     {
-        $query = Activity::query()->with(['subject', 'causer'])->orderBy('created_at', 'desc');
+        $query = TenantActivity::query()
+            ->where('log_name', 'central')
+            ->with(['subject', 'causer'])
+            ->orderBy('created_at', 'desc');
 
         // Optional filters
         if ($request->filled('subject_type')) {

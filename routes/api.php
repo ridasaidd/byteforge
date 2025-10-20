@@ -1,9 +1,8 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperadminController;
+use Illuminate\Support\Facades\Route;
 
 // Central API routes - available on central domains
 foreach (config('tenancy.central_domains') as $domain) {

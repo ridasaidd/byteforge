@@ -34,6 +34,21 @@ class CreateUserAction
         // Assign the selected role (uses 'api' guard from User model)
         $user->assignRole($validated['role']);
 
+        // Log activity in central log
+        $causer = auth('api')->user();
+        activity('central')
+            ->performedOn($user)
+            ->causedBy($causer)
+            ->event('created')
+            ->withProperties([
+                'attributes' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $validated['role'],
+                ],
+            ])
+            ->log('User created');
+
         // Load relationships
         $user->load('roles', 'permissions');
 

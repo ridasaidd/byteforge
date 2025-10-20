@@ -20,11 +20,12 @@ class UpdateUserAction
     {
         $validated = Validator::make($data, [
             'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'sometimes|required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'sometimes|required|string|min:8|confirmed',
             'role' => 'sometimes|required|string|in:admin,support,viewer',
         ])->validate();
 
+        $original = $user->getOriginal();
         $updateData = [];
 
         if (isset($validated['name'])) {
@@ -39,7 +40,7 @@ class UpdateUserAction
             $updateData['password'] = Hash::make($validated['password']);
         }
 
-        if (!empty($updateData)) {
+        if (! empty($updateData)) {
             $user->update($updateData);
         }
 
@@ -50,6 +51,25 @@ class UpdateUserAction
 
         // Load relationships
         $user->refresh()->load('roles', 'permissions');
+
+        // Log activity for update
+        $causer = auth('api')->user();
+        activity('central')
+            ->performedOn($user)
+            ->causedBy($causer)
+            ->event('updated')
+            ->withProperties([
+                'attributes' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'roles' => $user->roles->pluck('name')->toArray(),
+                ],
+                'old' => [
+                    'name' => $original['name'] ?? null,
+                    'email' => $original['email'] ?? null,
+                ],
+            ])
+            ->log('User updated');
 
         return [
             'id' => $user->id,

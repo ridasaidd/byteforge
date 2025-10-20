@@ -11,6 +11,10 @@ export function ActivityLogPage() {
     // Minimal ApiService wrapper for list only
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     apiService: { list: (params: any) => api.activity.list(params) } as any,
+    queryOptions: {
+      refetchOnMount: 'always', // Always fetch fresh data when navigating to this page
+      staleTime: 0, // Consider data stale immediately for real-time updates
+    },
   });
 
   const columns: Column<ActivityLog>[] = useMemo(() => [

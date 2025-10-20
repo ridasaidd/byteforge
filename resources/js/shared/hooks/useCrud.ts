@@ -53,6 +53,11 @@ export interface UseCrudOptions<T, CreateData = Partial<T>, UpdateData = Partial
   resource: string;
   apiService: ApiService<T, CreateData, UpdateData>;
   queryOptions?: Omit<UseQueryOptions<PaginatedResponse<T>>, 'queryKey' | 'queryFn'>;
+  /**
+   * Additional query keys to invalidate after mutations
+   * Example: ['activity'] will invalidate activity logs after user CRUD operations
+   */
+  invalidateRelated?: string[];
 }
 
 export interface UseCrudReturn<T, CreateData = Partial<T>, UpdateData = Partial<T>> {
@@ -96,6 +101,7 @@ export function useCrud<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
   resource,
   apiService,
   queryOptions,
+  invalidateRelated = [],
 }: UseCrudOptions<T, CreateData, UpdateData>): UseCrudReturn<T, CreateData, UpdateData> {
   const queryClient = useQueryClient();
 
@@ -115,29 +121,31 @@ export function useCrud<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
     ...queryOptions,
   });
 
+  // Helper to invalidate resource and related queries
+  const invalidateQueries = () => {
+    queryClient.invalidateQueries({ queryKey: [resource] });
+    invalidateRelated.forEach((relatedResource) => {
+      queryClient.invalidateQueries({ queryKey: [relatedResource] });
+    });
+  };
+
   // Create mutation
   const createMutation = useMutation({
     mutationFn: (data: CreateData) => apiService.create(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [resource] });
-    },
+    onSuccess: invalidateQueries,
   });
 
   // Update mutation
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string | number; data: UpdateData }) =>
       apiService.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [resource] });
-    },
+    onSuccess: invalidateQueries,
   });
 
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: string | number) => apiService.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [resource] });
-    },
+    onSuccess: invalidateQueries,
   });
 
   return {
