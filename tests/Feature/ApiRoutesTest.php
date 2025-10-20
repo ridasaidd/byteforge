@@ -6,8 +6,8 @@ use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
-use Tests\TestCase;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\TestCase;
 
 class ApiRoutesTest extends TestCase
 {
@@ -30,10 +30,10 @@ class ApiRoutesTest extends TestCase
         ]);
 
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
-        ->postJson('/api/auth/login', [
-            'email' => 'test@example.com',
-            'password' => 'password',
-        ]);
+            ->postJson('/api/auth/login', [
+                'email' => 'test@example.com',
+                'password' => 'password',
+            ]);
 
         $response->assertStatus(200)->assertJson(['message' => 'Route auth.login works']);
     }
@@ -42,15 +42,15 @@ class ApiRoutesTest extends TestCase
     public function central_api_register_works()
     {
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
-                         ->postJson('/api/auth/register', [
-            'name' => 'Test User',
-            'email' => 'newuser@example.com',
-            'password' => 'password',
-            'password_confirmation' => 'password',
-        ]);
+            ->postJson('/api/auth/register', [
+                'name' => 'Test User',
+                'email' => 'newuser@example.com',
+                'password' => 'password',
+                'password_confirmation' => 'password',
+            ]);
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Route auth.register works']);
+            ->assertJson(['message' => 'Route auth.register works']);
     }
 
     #[Test]
@@ -60,17 +60,17 @@ class ApiRoutesTest extends TestCase
         Passport::actingAs($user);
 
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
-                         ->postJson('/api/auth/logout');
+            ->postJson('/api/auth/logout');
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Route auth.logout works']);
+            ->assertJson(['message' => 'Route auth.logout works']);
     }
 
     #[Test]
     public function central_api_user_endpoint_requires_authentication()
     {
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
-                         ->getJson('/api/auth/user');
+            ->getJson('/api/auth/user');
 
         $response->assertStatus(401);
     }
@@ -82,10 +82,10 @@ class ApiRoutesTest extends TestCase
         Passport::actingAs($user);
 
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
-                         ->getJson('/api/auth/user');
+            ->getJson('/api/auth/user');
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Route auth.user works']);
+            ->assertJson(['message' => 'Route auth.user works']);
     }
 
     #[Test]
@@ -100,7 +100,7 @@ class ApiRoutesTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/info");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Route tenant.info works']);
+            ->assertJson(['message' => 'Route tenant.info works']);
     }
 
     #[Test]

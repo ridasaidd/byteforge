@@ -28,8 +28,8 @@ class ListPagesAction
         }
 
         $pages = $query->orderBy('sort_order')
-                      ->orderBy('created_at', 'desc')
-                      ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return $pages->map(function ($page) {
             return [

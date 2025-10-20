@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
 use Spatie\Permission\PermissionRegistrar;
-use Database\Seeders\RolePermissionSeeder;
+use Tests\TestCase;
 
 class PassportAuthenticationTest extends TestCase
 {
@@ -22,7 +22,7 @@ class PassportAuthenticationTest extends TestCase
         $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // Run the role permission seeder
-        $seeder = new RolePermissionSeeder();
+        $seeder = new RolePermissionSeeder;
         $seeder->run();
     }
 

@@ -11,9 +11,6 @@ class DeleteMediaAction
 
     /**
      * Delete media file and its conversions.
-     *
-     * @param Media $media
-     * @return bool
      */
     public function handle(Media $media): bool
     {

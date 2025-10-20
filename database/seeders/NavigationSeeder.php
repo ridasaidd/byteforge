@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Navigation;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class NavigationSeeder extends Seeder
 {

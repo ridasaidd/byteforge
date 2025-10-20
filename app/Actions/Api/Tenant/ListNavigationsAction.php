@@ -35,7 +35,7 @@ class ListNavigationsAction
                     'created_at' => $navigation->created_at,
                     'updated_at' => $navigation->updated_at,
                 ];
-            })
+            }),
         ];
     }
 }

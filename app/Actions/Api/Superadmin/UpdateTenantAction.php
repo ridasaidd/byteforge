@@ -22,7 +22,7 @@ class UpdateTenantAction
 
         $validated = Validator::make($data, [
             'name' => 'sometimes|required|string|max:255',
-            'domain' => 'sometimes|required|string|max:255|unique:domains,domain,' . $domainId,
+            'domain' => 'sometimes|required|string|max:255|unique:domains,domain,'.$domainId,
         ])->validate();
 
         // Update tenant

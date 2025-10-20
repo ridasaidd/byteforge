@@ -26,7 +26,7 @@ class Media extends BaseMedia
     {
         // Automatically set tenant_id when creating media
         static::creating(function (Media $media) {
-            if (tenancy()->initialized && !$media->tenant_id) {
+            if (tenancy()->initialized && ! $media->tenant_id) {
                 $media->tenant_id = tenancy()->tenant->id;
             }
         });

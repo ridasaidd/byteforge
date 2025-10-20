@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
 class MediaFolder extends Model
@@ -39,9 +39,9 @@ class MediaFolder extends Model
             // Auto-generate path based on parent
             if ($folder->parent_id) {
                 $parent = static::find($folder->parent_id);
-                $folder->path = $parent->path . '/' . $folder->slug;
+                $folder->path = $parent->path.'/'.$folder->slug;
             } else {
-                $folder->path = '/' . $folder->slug;
+                $folder->path = '/'.$folder->slug;
             }
         });
 
@@ -52,9 +52,9 @@ class MediaFolder extends Model
 
                 if ($folder->parent_id) {
                     $parent = static::find($folder->parent_id);
-                    $folder->path = $parent->path . '/' . $folder->slug;
+                    $folder->path = $parent->path.'/'.$folder->slug;
                 } else {
-                    $folder->path = '/' . $folder->slug;
+                    $folder->path = '/'.$folder->slug;
                 }
 
                 // Update all child paths
@@ -102,7 +102,7 @@ class MediaFolder extends Model
     protected function updateChildrenPaths()
     {
         foreach ($this->children as $child) {
-            $child->path = $this->path . '/' . $child->slug;
+            $child->path = $this->path.'/'.$child->slug;
             $child->saveQuietly(); // Prevent infinite loop
             $child->updateChildrenPaths();
         }

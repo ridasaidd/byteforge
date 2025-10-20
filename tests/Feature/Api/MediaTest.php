@@ -103,7 +103,7 @@ class MediaTest extends TestCase
                         'mime_type',
                         'size',
                         'collection_name',
-                    ]
+                    ],
                 ],
                 'links',
                 'meta',
@@ -324,4 +324,3 @@ class MediaTest extends TestCase
         $this->assertCount(1, $page->getMedia('attachments'));
     }
 }
-

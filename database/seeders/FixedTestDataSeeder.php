@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
-use App\Models\User;
-use App\Models\Tenant;
 use App\Models\Membership;
+use App\Models\Tenant;
+use App\Models\User;
+use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Stancl\Tenancy\Database\Models\Domain;
 
@@ -13,7 +13,7 @@ class FixedTestDataSeeder extends Seeder
 {
     /**
      * Seed fixed test data for development and testing.
-     * 
+     *
      * This creates:
      * - 3 fixed tenants (tenant_one, tenant_two, tenant_three)
      * - 2 fixed users (user_with_multiple_tenants, user_with_one_tenant)

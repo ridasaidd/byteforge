@@ -16,7 +16,7 @@ class PassportTestSeeder extends Seeder
         // Check if personal access client already exists
         $exists = Client::where('grant_types', 'like', '%personal_access%')->exists();
 
-        if (!$exists) {
+        if (! $exists) {
             // Create personal access client
             // The Client model will automatically handle JSON encoding for grant_types and redirect_uris
             Client::create([

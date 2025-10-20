@@ -3,7 +3,6 @@
 namespace App\Actions\Api\Tenant;
 
 use App\Models\Navigation;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Lorisleiva\Actions\Concerns\AsAction;
 
@@ -20,7 +19,7 @@ class CreateNavigationAction
 
         if ($existingNavigation) {
             throw ValidationException::withMessages([
-                'slug' => ['The slug has already been taken for this tenant.']
+                'slug' => ['The slug has already been taken for this tenant.'],
             ]);
         }
 

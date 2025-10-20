@@ -66,12 +66,12 @@ class MediaController extends Controller
                     'url' => $media->getUrl(),
                     'custom_properties' => $media->custom_properties,
                     'created_at' => $media->created_at?->toISOString(),
-                ]
+                ],
             ], 201);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to upload media',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -121,12 +121,12 @@ class MediaController extends Controller
             $action->handle($media);
 
             return response()->json([
-                'message' => 'Media deleted successfully'
+                'message' => 'Media deleted successfully',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to delete media',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

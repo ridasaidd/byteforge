@@ -13,10 +13,11 @@ class PageFactory extends Factory
     public function definition(): array
     {
         $title = $this->faker->sentence(3);
+
         return [
             'tenant_id' => (string) Str::uuid(), // Should be set explicitly in seeder for real tenancy
             'title' => $title,
-            'slug' => Str::slug($title) . '-' . Str::random(5),
+            'slug' => Str::slug($title).'-'.Str::random(5),
             'page_type' => $this->faker->randomElement(['general', 'home', 'about', 'contact']),
             'meta_data' => null,
             'status' => $this->faker->randomElement(['draft', 'published', 'archived']),

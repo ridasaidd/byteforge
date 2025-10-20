@@ -23,10 +23,10 @@ class ListTenantsAction
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('slug', 'like', "%{$search}%")
-                  ->orWhereHas('domains', function ($dq) use ($search) {
-                      $dq->where('domain', 'like', "%{$search}%");
-                  });
+                    ->orWhere('slug', 'like', "%{$search}%")
+                    ->orWhereHas('domains', function ($dq) use ($search) {
+                        $dq->where('domain', 'like', "%{$search}%");
+                    });
             });
         }
 

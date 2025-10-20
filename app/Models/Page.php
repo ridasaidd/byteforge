@@ -2,17 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
-use Spatie\MediaLibrary\MediaCollections\Models\Media as MediaModel;
 
 class Page extends Model implements HasMedia
 {
-    use HasFactory, LogsActivity, InteractsWithMedia;
+    use HasFactory, InteractsWithMedia, LogsActivity;
 
     protected $fillable = [
         'tenant_id',
@@ -62,7 +61,7 @@ class Page extends Model implements HasMedia
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('pages')
-            ->setDescriptionForEvent(fn(string $eventName) => "Page {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "Page {$eventName}");
     }
 
     /**
@@ -81,4 +80,3 @@ class Page extends Model implements HasMedia
             ->useDisk('public');
     }
 }
-

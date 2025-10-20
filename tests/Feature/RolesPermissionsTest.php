@@ -2,13 +2,13 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
-use App\Models\User;
-use Spatie\Permission\Models\Role;
 use App\Models\Tenant;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Spatie\Permission\PermissionRegistrar;
+use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
+use Tests\TestCase;
 
 class RolesPermissionsTest extends TestCase
 {
@@ -22,7 +22,7 @@ class RolesPermissionsTest extends TestCase
         $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
 
         // Run the role permission seeder
-        $seeder = new RolePermissionSeeder();
+        $seeder = new RolePermissionSeeder;
         $seeder->run();
     }
 

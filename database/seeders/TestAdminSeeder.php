@@ -18,7 +18,7 @@ class TestAdminSeeder extends Seeder
         // Check if test admin already exists
         $testAdmin = User::where('email', 'testadmin@byteforge.se')->first();
 
-        if (!$testAdmin) {
+        if (! $testAdmin) {
             $testAdmin = User::create([
                 'name' => 'Test Admin',
                 'email' => 'testadmin@byteforge.se',

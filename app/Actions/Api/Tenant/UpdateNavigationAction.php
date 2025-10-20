@@ -21,7 +21,7 @@ class UpdateNavigationAction
 
             if ($existingNavigation) {
                 throw ValidationException::withMessages([
-                    'slug' => ['The slug has already been taken for this tenant.']
+                    'slug' => ['The slug has already been taken for this tenant.'],
                 ]);
             }
         }

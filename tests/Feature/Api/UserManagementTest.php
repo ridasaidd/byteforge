@@ -36,9 +36,9 @@ class UserManagementTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'name', 'email', 'roles', 'permissions', 'created_at', 'updated_at']
+                    '*' => ['id', 'name', 'email', 'roles', 'permissions', 'created_at', 'updated_at'],
                 ],
-                'meta' => ['current_page', 'last_page', 'per_page', 'total']
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
             ]);
     }
 
@@ -57,13 +57,13 @@ class UserManagementTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
-                'data' => ['id', 'name', 'email', 'roles', 'permissions', 'created_at', 'updated_at']
+                'data' => ['id', 'name', 'email', 'roles', 'permissions', 'created_at', 'updated_at'],
             ])
             ->assertJson([
                 'data' => [
                     'name' => 'New User',
                     'email' => 'newuser@example.com',
-                ]
+                ],
             ]);
 
         $this->assertDatabaseHas('users', ['email' => 'newuser@example.com']);
@@ -143,7 +143,7 @@ class UserManagementTest extends TestCase
                     'id' => $user->id,
                     'name' => 'Test User',
                     'email' => $user->email,
-                ]
+                ],
             ]);
     }
 
@@ -161,7 +161,7 @@ class UserManagementTest extends TestCase
             ->assertJson([
                 'data' => [
                     'name' => 'New Name',
-                ]
+                ],
             ]);
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'New Name']);

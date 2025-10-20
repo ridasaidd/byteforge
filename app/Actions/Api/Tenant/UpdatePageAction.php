@@ -17,7 +17,7 @@ class UpdatePageAction
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('pages')->where(function ($query) use ($page) {
+                Rule::unique('pages')->where(function ($query) {
                     return $query->where('tenant_id', tenancy()->tenant->id);
                 })->ignore($page->id),
             ],

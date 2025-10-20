@@ -69,7 +69,7 @@ class ActivityLogController extends Controller
                 'last_page' => $activities->lastPage(),
                 'per_page' => $activities->perPage(),
                 'total' => $activities->total(),
-            ]
+            ],
         ]);
     }
 
@@ -99,7 +99,7 @@ class ActivityLogController extends Controller
                 'properties' => $activity->properties,
                 'created_at' => $activity->created_at,
                 'updated_at' => $activity->updated_at,
-            ]
+            ],
         ]);
     }
 }

@@ -33,7 +33,7 @@ class MediaFolderController extends Controller
         $folders = $query->orderBy('name')->get();
 
         return response()->json([
-            'data' => $folders
+            'data' => $folders,
         ]);
     }
 
@@ -71,7 +71,7 @@ class MediaFolderController extends Controller
             ->findOrFail($id);
 
         return response()->json([
-            'data' => $folder
+            'data' => $folder,
         ]);
     }
 
@@ -146,7 +146,7 @@ class MediaFolderController extends Controller
             ->get();
 
         return response()->json([
-            'data' => $folders
+            'data' => $folders,
         ]);
     }
 }

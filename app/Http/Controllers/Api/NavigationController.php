@@ -37,7 +37,7 @@ class NavigationController extends Controller
 
         return response()->json([
             'message' => 'Navigation created successfully',
-            'data' => $navigation
+            'data' => $navigation,
         ], 201);
     }
 
@@ -50,7 +50,7 @@ class NavigationController extends Controller
             ->findOrFail($id);
 
         return response()->json([
-            'data' => $navigation
+            'data' => $navigation,
         ]);
     }
 
@@ -69,7 +69,7 @@ class NavigationController extends Controller
 
         return response()->json([
             'message' => 'Navigation updated successfully',
-            'data' => $updatedNavigation
+            'data' => $updatedNavigation,
         ]);
     }
 
@@ -84,7 +84,7 @@ class NavigationController extends Controller
         app(DeleteNavigationAction::class)->execute($navigation);
 
         return response()->json([
-            'message' => 'Navigation deleted successfully'
+            'message' => 'Navigation deleted successfully',
         ]);
     }
 }

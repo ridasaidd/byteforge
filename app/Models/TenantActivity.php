@@ -29,6 +29,7 @@ class TenantActivity extends SpatieActivity
         if ($tenantId === null && tenancy()->initialized) {
             $tenantId = tenancy()->tenant->getTenantKey();
         }
+
         return $query->where('tenant_id', $tenantId);
     }
 }

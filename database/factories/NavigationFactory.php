@@ -12,11 +12,12 @@ class NavigationFactory extends Factory
 
     public function definition(): array
     {
-        $name = $this->faker->word() . ' Menu';
+        $name = $this->faker->word().' Menu';
+
         return [
             'tenant_id' => (string) Str::uuid(), // Should be set explicitly in seeder for real tenancy
             'name' => $name,
-            'slug' => Str::slug($name) . '-' . Str::random(5),
+            'slug' => Str::slug($name).'-'.Str::random(5),
             'structure' => null, // Empty for now
             'status' => $this->faker->randomElement(['active', 'draft', 'archived']),
             'sort_order' => $this->faker->numberBetween(0, 10),

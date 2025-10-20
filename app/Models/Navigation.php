@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Spatie\Activitylog\Traits\LogsActivity;
+use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 class Navigation extends Model
 {
@@ -52,6 +52,6 @@ class Navigation extends Model
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
             ->useLogName('navigations')
-            ->setDescriptionForEvent(fn(string $eventName) => "Navigation {$eventName}");
+            ->setDescriptionForEvent(fn (string $eventName) => "Navigation {$eventName}");
     }
 }

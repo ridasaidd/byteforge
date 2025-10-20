@@ -13,6 +13,7 @@ class TenantFactory extends Factory
     public function definition(): array
     {
         $name = fake()->company();
+
         return [
             'id' => (string) Str::uuid(),
             'name' => $name,

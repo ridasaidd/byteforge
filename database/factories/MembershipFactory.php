@@ -3,8 +3,8 @@
 namespace Database\Factories;
 
 use App\Models\Membership;
-use App\Models\User;
 use App\Models\Tenant;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class MembershipFactory extends Factory

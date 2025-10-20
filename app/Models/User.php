@@ -2,25 +2,23 @@
 
 namespace App\Models;
 
-use App\Models\Membership;
-use App\Models\Tenant;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Passport\HasApiTokens;
 use Laravel\Passport\Contracts\OAuthenticatable;
+use Laravel\Passport\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable implements OAuthenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasApiTokens, HasRoles;
-    
+    use HasApiTokens, HasFactory, HasRoles, Notifiable;
+
     /**
      * The guard name for Spatie Permission
      */
     protected $guard_name = 'api';
-    
+
     /**
      * Get the memberships for the user.
      */

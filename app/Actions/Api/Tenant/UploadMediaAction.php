@@ -16,11 +16,9 @@ class UploadMediaAction
      * Upload media file to WordPress-style media library.
      * Creates a MediaLibrary entry (container) and attaches the file to it.
      *
-     * @param UploadedFile $file
-     * @param string|null $collection Collection name (images, documents, videos)
-     * @param array $customProperties Additional metadata (alt_text, caption, etc.)
-     * @param int|null $folderId Optional folder ID for organization
-     * @return Media
+     * @param  string|null  $collection  Collection name (images, documents, videos)
+     * @param  array  $customProperties  Additional metadata (alt_text, caption, etc.)
+     * @param  int|null  $folderId  Optional folder ID for organization
      */
     public function handle(
         UploadedFile $file,

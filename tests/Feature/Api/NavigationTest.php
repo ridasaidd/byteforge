@@ -56,8 +56,8 @@ class NavigationTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'name', 'slug', 'structure', 'status']
-                ]
+                    '*' => ['id', 'name', 'slug', 'structure', 'status'],
+                ],
             ])
             ->assertJsonCount(2, 'data');
     }
@@ -126,7 +126,7 @@ class NavigationTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonFragment([
-                'message' => 'Navigation created successfully'
+                'message' => 'Navigation created successfully',
             ]);
 
         $this->assertDatabaseHas('navigations', [
@@ -193,7 +193,7 @@ class NavigationTest extends TestCase
 
         $response->assertStatus(200)
             ->assertJsonFragment([
-                'message' => 'Navigation updated successfully'
+                'message' => 'Navigation updated successfully',
             ]);
 
         $this->assertDatabaseHas('navigations', [

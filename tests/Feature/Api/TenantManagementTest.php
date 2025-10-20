@@ -43,9 +43,9 @@ class TenantManagementTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'name', 'slug', 'domain', 'created_at', 'updated_at']
+                    '*' => ['id', 'name', 'slug', 'domain', 'created_at', 'updated_at'],
                 ],
-                'meta' => ['current_page', 'last_page', 'per_page', 'total']
+                'meta' => ['current_page', 'last_page', 'per_page', 'total'],
             ]);
     }
 
@@ -62,13 +62,13 @@ class TenantManagementTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJsonStructure([
-                'data' => ['id', 'name', 'slug', 'domain', 'created_at', 'updated_at']
+                'data' => ['id', 'name', 'slug', 'domain', 'created_at', 'updated_at'],
             ])
             ->assertJson([
                 'data' => [
                     'name' => 'New Test Tenant',
                     'domain' => 'newtest.example.com',
-                ]
+                ],
             ]);
 
         $this->assertDatabaseHas('tenants', ['name' => 'New Test Tenant']);
@@ -130,7 +130,7 @@ class TenantManagementTest extends TestCase
                     'id' => $tenant->id,
                     'name' => 'Test Tenant',
                     'domain' => 'test.example.com',
-                ]
+                ],
             ]);
     }
 
@@ -151,7 +151,7 @@ class TenantManagementTest extends TestCase
                 'data' => [
                     'name' => 'New Name',
                     'domain' => 'new.test',
-                ]
+                ],
             ]);
 
         $this->assertDatabaseHas('tenants', ['id' => $tenant->id, 'name' => 'New Name']);

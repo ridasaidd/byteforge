@@ -56,7 +56,7 @@ class PageTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/pages");
 
         $response->assertStatus(200)
-                ->assertJsonCount(2);
+            ->assertJsonCount(2);
     }
 
     #[Test]
@@ -95,8 +95,8 @@ class PageTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/pages?status=published");
 
         $response->assertStatus(200)
-                ->assertJsonCount(1)
-                ->assertJsonFragment(['title' => 'Published Page']);
+            ->assertJsonCount(1)
+            ->assertJsonFragment(['title' => 'Published Page']);
     }
 
     #[Test]
@@ -122,11 +122,11 @@ class PageTest extends TestCase
         $response = $this->postJson("https://{$domain}/api/pages", $pageData);
 
         $response->assertStatus(201)
-                ->assertJsonFragment([
-                    'title' => 'New Test Page',
-                    'slug' => 'new-test-page',
-                    'status' => 'published',
-                ]);
+            ->assertJsonFragment([
+                'title' => 'New Test Page',
+                'slug' => 'new-test-page',
+                'status' => 'published',
+            ]);
 
         $this->assertDatabaseHas('pages', [
             'tenant_id' => $tenant->id,
@@ -160,7 +160,7 @@ class PageTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/pages/{$page->id}");
 
         $response->assertStatus(200)
-                ->assertJsonFragment(['title' => 'Test Page']);
+            ->assertJsonFragment(['title' => 'Test Page']);
     }
 
     #[Test]
@@ -193,11 +193,11 @@ class PageTest extends TestCase
         $response = $this->putJson("https://{$domain}/api/pages/{$page->id}", $updatedData);
 
         $response->assertStatus(200)
-                ->assertJsonFragment([
-                    'title' => 'Updated Title',
-                    'status' => 'published',
-                    'slug' => 'original-slug',
-                ]);
+            ->assertJsonFragment([
+                'title' => 'Updated Title',
+                'status' => 'published',
+                'slug' => 'original-slug',
+            ]);
 
         $this->assertDatabaseHas('pages', [
             'id' => $page->id,
@@ -231,7 +231,7 @@ class PageTest extends TestCase
         $response = $this->deleteJson("https://{$domain}/api/pages/{$page->id}");
 
         $response->assertStatus(200)
-                ->assertJsonFragment(['message' => 'Page deleted successfully']);
+            ->assertJsonFragment(['message' => 'Page deleted successfully']);
 
         $this->assertDatabaseMissing('pages', [
             'id' => $page->id,

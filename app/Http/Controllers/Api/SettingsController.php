@@ -26,12 +26,12 @@ class SettingsController extends Controller
                     'maintenance_mode' => $settings->maintenance_mode,
                     'social_links' => $settings->social_links,
                     'seo_meta' => $settings->seo_meta,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Settings not found for this tenant',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 404);
         }
     }
@@ -54,7 +54,7 @@ class SettingsController extends Controller
         if ($validator->fails()) {
             return response()->json([
                 'message' => 'Validation failed',
-                'errors' => $validator->errors()
+                'errors' => $validator->errors(),
             ], 422);
         }
 
@@ -95,12 +95,12 @@ class SettingsController extends Controller
                     'maintenance_mode' => $settings->maintenance_mode,
                     'social_links' => $settings->social_links,
                     'seo_meta' => $settings->seo_meta,
-                ]
+                ],
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to update settings',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

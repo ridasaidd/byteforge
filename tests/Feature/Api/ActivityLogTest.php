@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\Page;
 use App\Models\Tenant;
-use App\Models\TenantActivity;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
@@ -113,9 +112,9 @@ class ActivityLogTest extends TestCase
         $response->assertStatus(200)
             ->assertJsonStructure([
                 'data' => [
-                    '*' => ['id', 'description', 'event', 'subject_type', 'created_at']
+                    '*' => ['id', 'description', 'event', 'subject_type', 'created_at'],
                 ],
-                'meta'
+                'meta',
             ]);
     }
 

@@ -2,10 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Seeder;
 use App\Models\Page;
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Database\Seeder;
 
 class PageSeeder extends Seeder
 {
