@@ -20,7 +20,7 @@ describe('Authorization & Permissions Integration', () => {
 
     // Login as superadmin - use this token throughout tests
     const superadminLogin = await client.post('/api/auth/login', {
-      email: 'lullrich@example.org',
+      email: 'testadmin@byteforge.se',
       password: 'password',
     });
     superadminToken = superadminLogin.data.token;

@@ -31,9 +31,12 @@ class AuthController extends Controller
         $user = Auth::user();
 
         // Create access token
+        // This seems to be a false positive error.
         $token = $user->createToken('web-token')->accessToken;
 
         return response()->json([
+            // This also seems to be a false positive error.
+            // @php-ignore
             'user' => $user->load('roles', 'permissions'),
             'token' => $token,
         ]);

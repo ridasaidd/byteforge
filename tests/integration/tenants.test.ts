@@ -19,7 +19,7 @@ describe('Tenants API Integration', () => {
 
     // Login once and reuse token (like a real user would)
     const loginResponse = await client.post('/api/auth/login', {
-      email: 'lullrich@example.org',
+      email: 'testadmin@byteforge.se',
       password: 'password',
     });
     authToken = loginResponse.data.token;

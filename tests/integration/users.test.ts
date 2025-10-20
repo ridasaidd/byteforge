@@ -19,7 +19,7 @@ describe('Users API Integration', () => {
 
     // Login as superadmin
     const loginResponse = await client.post('/api/auth/login', {
-      email: 'lullrich@example.org',
+      email: 'testadmin@byteforge.se',
       password: 'password',
     });
 

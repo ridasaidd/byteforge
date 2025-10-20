@@ -7,7 +7,7 @@ describe('Authentication API Integration', () => {
   const BASE_URL = 'http://byteforge.se';
 
   const testUser = {
-    email: 'lullrich@example.org',
+    email: 'testadmin@byteforge.se',
     password: 'password',
   };
 

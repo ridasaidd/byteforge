@@ -4,8 +4,12 @@ class HttpService {
   private client: AxiosInstance;
 
   constructor() {
+    // Use full URL for tests (set via global), relative path for production
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const baseURL = (globalThis as any).__API_BASE_URL__ || '/api';
+
     this.client = axios.create({
-      baseURL: '/api',
+      baseURL,
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',

@@ -61,7 +61,7 @@ export interface LoginResponse {
 // Tenant Types
 // ============================================================================
 
-export interface Tenant {
+export interface Tenant extends Record<string, unknown> {
   id: string;
   name: string;
   slug: string;

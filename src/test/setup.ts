@@ -2,6 +2,10 @@ import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
+// Configure API base URL for integration tests
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(globalThis as any).__API_BASE_URL__ = 'http://byteforge.se/api';
+
 // Cleanup after each test
 afterEach(() => {
   cleanup();
