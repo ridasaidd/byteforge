@@ -43,10 +43,10 @@ export interface ListParams {
 
 export interface ApiService<T, CreateData = Partial<T>, UpdateData = Partial<T>> {
   list: (params: ListParams) => Promise<PaginatedResponse<T>>;
-  get: (id: string) => Promise<T | { data: T }>;
+  get: (id: string | number) => Promise<T | { data: T }>;
   create: (data: CreateData) => Promise<{ data: T }>;
-  update: (id: string, data: UpdateData) => Promise<{ data: T }>;
-  delete: (id: string) => Promise<void | { message: string }>;
+  update: (id: string | number, data: UpdateData) => Promise<{ data: T }>;
+  delete: (id: string | number) => Promise<void | { message: string }>;
 }
 
 export interface UseCrudOptions<T, CreateData = Partial<T>, UpdateData = Partial<T>> {
@@ -80,13 +80,13 @@ export interface UseCrudReturn<T, CreateData = Partial<T>, UpdateData = Partial<
   };
 
   update: {
-    mutate: (params: { id: string; data: UpdateData }) => void;
+    mutate: (params: { id: string | number; data: UpdateData }) => void;
     isPending: boolean;
     error: Error | null;
   };
 
   delete: {
-    mutate: (id: string) => void;
+    mutate: (id: string | number) => void;
     isPending: boolean;
     error: Error | null;
   };
@@ -125,7 +125,7 @@ export function useCrud<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
 
   // Update mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: UpdateData }) =>
+    mutationFn: ({ id, data }: { id: string | number; data: UpdateData }) =>
       apiService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [resource] });
@@ -134,7 +134,7 @@ export function useCrud<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
 
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiService.delete(id),
+    mutationFn: (id: string | number) => apiService.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [resource] });
     },

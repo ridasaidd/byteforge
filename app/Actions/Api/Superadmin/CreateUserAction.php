@@ -22,6 +22,7 @@ class CreateUserAction
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
+            'role' => 'required|string|in:admin,support,viewer',
         ])->validate();
 
         $user = User::create([
@@ -29,6 +30,9 @@ class CreateUserAction
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
         ]);
+
+        // Assign the selected role (uses 'api' guard from User model)
+        $user->assignRole($validated['role']);
 
         // Load relationships
         $user->load('roles', 'permissions');

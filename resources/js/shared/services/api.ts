@@ -27,16 +27,17 @@ export interface ErrorResponse {
 // Auth Types
 // ============================================================================
 
-export interface User {
+export interface User extends Record<string, unknown> {
   id: number;
   name: string;
   email: string;
-  roles: Role[];
-  permissions: Permission[];
+  roles: string[]; // backend returns array of role names
+  permissions: string[]; // backend returns array of permission names
   created_at: string;
   updated_at: string;
 }
 
+// Keeping types for potential future expansion/use
 export interface Role {
   id: number;
   name: string;
@@ -187,7 +188,7 @@ export const api = {
     /**
      * Get single user by ID
      */
-    get: (id: number) =>
+    get: (id: string | number) =>
       http.getOne<ApiResponse<User>>('/superadmin/users', id),
 
     /**
@@ -199,13 +200,13 @@ export const api = {
     /**
      * Update existing user
      */
-    update: (id: number, data: UpdateUserData) =>
+    update: (id: string | number, data: UpdateUserData) =>
       http.update<ApiResponse<User>>('/superadmin/users', id, data),
 
     /**
      * Delete user
      */
-    delete: (id: number) =>
+    delete: (id: string | number) =>
       http.remove<{ message: string }>('/superadmin/users', id),
   },
 
