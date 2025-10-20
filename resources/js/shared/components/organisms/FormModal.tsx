@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -65,10 +66,19 @@ export function FormModal<T extends z.ZodType>({
     formState: { errors },
     reset,
     setValue,
+    watch,
   } = useForm<z.infer<T>>({
     resolver: zodResolver(schema),
     defaultValues: defaultValues as z.infer<T>,
   });
+
+  // Keep form values in sync when opening or when defaultValues change (e.g., editing)
+  useEffect(() => {
+    if (open) {
+      reset((defaultValues || {}) as z.infer<T>);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, defaultValues]);
 
   const handleClose = () => {
     reset();
@@ -114,21 +124,26 @@ export function FormModal<T extends z.ZodType>({
               {field.label}
               {field.required && <span className="text-destructive ml-1">*</span>}
             </Label>
-            <Select
-              onValueChange={(value) => setValue(field.name as never, value as never)}
-              defaultValue={defaultValues?.[field.name] as string}
-            >
-              <SelectTrigger className={errorMessage ? 'border-destructive' : ''}>
-                <SelectValue placeholder={field.placeholder || `Select ${field.label}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {field.options?.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {(() => {
+              const currentValue = watch(field.name as never) as unknown as string | undefined;
+              return (
+                <Select
+                  onValueChange={(value) => setValue(field.name as never, value as never)}
+                  value={currentValue}
+                >
+                  <SelectTrigger className={errorMessage ? 'border-destructive' : ''}>
+                    <SelectValue placeholder={field.placeholder || `Select ${field.label}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {field.options?.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              );
+            })()}
             {field.description && (
               <p className="text-sm text-muted-foreground">{field.description}</p>
             )}

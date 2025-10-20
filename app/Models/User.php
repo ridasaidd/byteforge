@@ -15,6 +15,12 @@ class User extends Authenticatable implements OAuthenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable, HasApiTokens, HasRoles;
+    
+    /**
+     * The guard name for Spatie Permission
+     */
+    protected $guard_name = 'api';
+    
     /**
      * Get the memberships for the user.
      */
