@@ -36,6 +36,10 @@ foreach (config('tenancy.central_domains') as $domain) {
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity']);
 
+            // Settings management
+            Route::get('settings', [SuperadminController::class, 'getSettings']);
+            Route::put('settings', [SuperadminController::class, 'updateSettings']);
+
             // Tenant-User relationships
             Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant']);
             Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant']);

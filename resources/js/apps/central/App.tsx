@@ -5,6 +5,7 @@ import { LoginPage } from './components/pages/LoginPage';
 import { TenantsPage } from './components/pages/TenantsPage';
 import { UsersPage } from './components/pages/UsersPage';
 import { ActivityLogPage } from './components/pages/ActivityLogPage';
+import { SettingsPage } from './components/pages/SettingsPage';
 import { centralMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 
@@ -39,7 +40,7 @@ function ProtectedRoutes() {
         <Route path="/dashboard/tenants" element={<TenantsPage />} />
         <Route path="/dashboard/users" element={<UsersPage />} />
   <Route path="/dashboard/activity" element={<ActivityLogPage />} />
-        <Route path="/dashboard/settings" element={<div>Settings (Coming Soon)</div>} />
+        <Route path="/dashboard/settings" element={<SettingsPage />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </DashboardLayout>

@@ -14,7 +14,9 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\TenantActivity;
 use App\Models\User;
+use App\Settings\GeneralSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class SuperadminController extends Controller
 {
@@ -189,5 +191,100 @@ class SuperadminController extends Controller
     public function removeUserFromTenant(Tenant $tenant, User $user)
     {
         return response()->json(['message' => 'Route superadmin.tenants.removeUser works']);
+    }
+
+    // Settings management
+    public function getSettings()
+    {
+        try {
+            $settings = app(GeneralSettings::class);
+
+            return response()->json([
+                'data' => [
+                    'site_name' => $settings->site_name,
+                    'site_active' => $settings->site_active,
+                    'support_email' => $settings->support_email,
+                    'company_name' => $settings->company_name,
+                    'max_tenants_per_user' => $settings->max_tenants_per_user,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to load settings',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function updateSettings(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'site_name' => 'sometimes|required|string|max:255',
+            'site_active' => 'sometimes|required|boolean',
+            'support_email' => 'nullable|email|max:255',
+            'company_name' => 'nullable|string|max:255',
+            'max_tenants_per_user' => 'sometimes|required|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $settings = app(GeneralSettings::class);
+
+            if ($request->has('site_name')) {
+                $settings->site_name = $request->site_name;
+            }
+            if ($request->has('site_active')) {
+                $settings->site_active = $request->site_active;
+            }
+            if ($request->has('support_email')) {
+                $settings->support_email = $request->support_email;
+            }
+            if ($request->has('company_name')) {
+                $settings->company_name = $request->company_name;
+            }
+            if ($request->has('max_tenants_per_user')) {
+                $settings->max_tenants_per_user = $request->max_tenants_per_user;
+            }
+
+            $settings->save();
+
+            // Log activity
+            $causer = auth('api')->user();
+            activity('central')
+                ->causedBy($causer)
+                ->event('updated')
+                ->withProperties([
+                    'attributes' => $request->only([
+                        'site_name',
+                        'site_active',
+                        'support_email',
+                        'company_name',
+                        'max_tenants_per_user',
+                    ]),
+                ])
+                ->log('General settings updated');
+
+            return response()->json([
+                'message' => 'Settings updated successfully',
+                'data' => [
+                    'site_name' => $settings->site_name,
+                    'site_active' => $settings->site_active,
+                    'support_email' => $settings->support_email,
+                    'company_name' => $settings->company_name,
+                    'max_tenants_per_user' => $settings->max_tenants_per_user,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'Failed to update settings',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 }

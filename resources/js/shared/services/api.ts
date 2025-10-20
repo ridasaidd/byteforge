@@ -116,6 +116,26 @@ export interface UpdateUserData {
 }
 
 // ============================================================================
+// Settings Types
+// ============================================================================
+
+export interface GeneralSettings extends Record<string, unknown> {
+  site_name: string;
+  site_active: boolean;
+  support_email: string | null;
+  company_name: string | null;
+  max_tenants_per_user: number;
+}
+
+export interface UpdateSettingsData {
+  site_name?: string;
+  site_active?: boolean;
+  support_email?: string | null;
+  company_name?: string | null;
+  max_tenants_per_user?: number;
+}
+
+// ============================================================================
 // API Service
 // ============================================================================
 
@@ -232,6 +252,23 @@ export const api = {
   activity: {
     list: (params?: { page?: number; per_page?: number; search?: string; subject_type?: string; event?: string; causer_id?: number }) =>
       http.getAll<PaginatedResponse<ActivityLog>>('/superadmin/activity-logs', params),
+  },
+
+  // ==========================================================================
+  // Settings (Central)
+  // ==========================================================================
+  settings: {
+    /**
+     * Get general platform settings
+     */
+    get: () =>
+      http.get<ApiResponse<GeneralSettings>>('/superadmin/settings'),
+
+    /**
+     * Update general platform settings
+     */
+    update: (data: UpdateSettingsData) =>
+      http.put<ApiResponse<GeneralSettings>>('/superadmin/settings', data),
   },
 
   // ==========================================================================
