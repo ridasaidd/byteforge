@@ -14,6 +14,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Spatie\Activitylog\Models\Activity;
 
 class SuperadminController extends Controller
 {
@@ -112,6 +113,67 @@ class SuperadminController extends Controller
         DeleteUserAction::run($user);
 
         return response()->json(['message' => 'User deleted successfully']);
+    }
+
+    // Central Activity Log
+    public function indexActivity(Request $request)
+    {
+        $query = Activity::query()->with(['subject', 'causer'])->orderBy('created_at', 'desc');
+
+        // Optional filters
+        if ($request->filled('subject_type')) {
+            $subjectType = $request->input('subject_type');
+            // Map friendly names to classes where possible
+            $typeMap = [
+                'Page' => \App\Models\Page::class,
+                'Navigation' => \App\Models\Navigation::class,
+                'User' => \App\Models\User::class,
+                'Tenant' => \App\Models\Tenant::class,
+            ];
+            if (isset($typeMap[$subjectType])) {
+                $query->where('subject_type', $typeMap[$subjectType]);
+            } else {
+                // fallback: allow direct class name filter
+                $query->where('subject_type', $subjectType);
+            }
+        }
+
+        if ($request->filled('event')) {
+            $query->where('event', $request->input('event'));
+        }
+
+        if ($request->filled('causer_id')) {
+            $query->where('causer_id', $request->input('causer_id'));
+        }
+
+        $perPage = (int) $request->input('per_page', 15);
+        $activities = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $activities->map(function ($activity) {
+                return [
+                    'id' => $activity->id,
+                    'log_name' => $activity->log_name,
+                    'description' => $activity->description,
+                    'event' => $activity->event,
+                    'subject_type' => class_basename($activity->subject_type),
+                    'subject_id' => $activity->subject_id,
+                    'causer' => $activity->causer ? [
+                        'id' => $activity->causer->id,
+                        'name' => $activity->causer->name,
+                        'email' => $activity->causer->email,
+                    ] : null,
+                    'properties' => $activity->properties,
+                    'created_at' => $activity->created_at,
+                ];
+            }),
+            'meta' => [
+                'current_page' => $activities->currentPage(),
+                'last_page' => $activities->lastPage(),
+                'per_page' => $activities->perPage(),
+                'total' => $activities->total(),
+            ],
+        ]);
     }
 
     // Add user to tenant

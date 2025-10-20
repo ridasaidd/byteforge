@@ -48,6 +48,22 @@ export interface Permission {
   name: string;
 }
 
+// ============================================================================
+// Activity Log Types
+// ============================================================================
+
+export interface ActivityLog extends Record<string, unknown> {
+  id: number | string;
+  log_name: string | null;
+  description: string | null;
+  event: 'created' | 'updated' | 'deleted' | string | null;
+  subject_type: string | null;
+  subject_id: number | string | null;
+  causer: { id: number; name: string; email: string } | null;
+  properties: Record<string, unknown>;
+  created_at: string;
+}
+
 export interface LoginCredentials {
   email: string;
   password: string;
@@ -208,6 +224,14 @@ export const api = {
      */
     delete: (id: string | number) =>
       http.remove<{ message: string }>('/superadmin/users', id),
+  },
+
+  // ========================================================================== 
+  // Activity (Central) 
+  // ========================================================================== 
+  activity: {
+    list: (params?: { page?: number; per_page?: number; search?: string; subject_type?: string; event?: string; causer_id?: number }) =>
+      http.getAll<PaginatedResponse<ActivityLog>>('/superadmin/activity-logs', params),
   },
 
   // ==========================================================================

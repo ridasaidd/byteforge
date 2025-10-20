@@ -34,6 +34,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::put('users/{user}', [SuperadminController::class, 'updateUser']);
             Route::delete('users/{user}', [SuperadminController::class, 'destroyUser']);
 
+            // Activity logs (central)
+            Route::get('activity-logs', [SuperadminController::class, 'indexActivity']);
+
             // Tenant-User relationships
             Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant']);
             Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant']);
