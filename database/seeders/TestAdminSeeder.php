@@ -26,19 +26,15 @@ class TestAdminSeeder extends Seeder
                 'email_verified_at' => now(),
                 'type' => 'superadmin',
             ]);
-
-            // Assign superadmin role if it exists
-            $superadminRole = Role::where('name', 'superadmin')
-                ->where('guard_name', 'web')
-                ->first();
-
-            if ($superadminRole) {
-                $testAdmin->assignRole($superadminRole);
-            }
-
             $this->command->info('✓ Created test admin: testadmin@byteforge.se (password: password)');
         } else {
             $this->command->info('✓ Test admin already exists: testadmin@byteforge.se');
         }
+
+    // Ensure superadmin role exists for api guard
+    $superadminApi = Role::firstOrCreate(['name' => 'superadmin', 'guard_name' => 'api']);
+
+    // Assign only the api role to the test admin (guard must match)
+    $testAdmin->assignRole($superadminApi);
     }
 }

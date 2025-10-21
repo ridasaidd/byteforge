@@ -21,9 +21,10 @@ export function AuthProvider({ children, initialUser = null }: { children: React
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { user: userData } = await authService.login({ email, password });
-    setUser(userData);
-  }, []);
+    await authService.login({ email, password });
+    // Fetch full user data with roles and permissions
+    await fetchUser();
+  }, [fetchUser]);
 
   const logout = useCallback(async () => {
     await authService.logout();

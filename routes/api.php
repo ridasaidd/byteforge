@@ -20,31 +20,47 @@ foreach (config('tenancy.central_domains') as $domain) {
         });
 
         // Superadmin routes - require superadmin role
-        Route::middleware(['auth:api', 'role:superadmin'])->prefix('superadmin')->group(function () {
+        Route::prefix('superadmin')->middleware(['auth:api'])->group(function () {
             // Tenants management
-            Route::get('tenants', [SuperadminController::class, 'indexTenants']);
-            Route::post('tenants', [SuperadminController::class, 'storeTenant']);
-            Route::get('tenants/{tenant}', [SuperadminController::class, 'showTenant']);
-            Route::put('tenants/{tenant}', [SuperadminController::class, 'updateTenant']);
-            Route::delete('tenants/{tenant}', [SuperadminController::class, 'destroyTenant']);
+            Route::get('tenants', [SuperadminController::class, 'indexTenants'])->middleware('permission:view tenants');
+            Route::post('tenants', [SuperadminController::class, 'storeTenant'])->middleware('permission:manage tenants');
+            Route::get('tenants/{tenant}', [SuperadminController::class, 'showTenant'])->middleware('permission:view tenants');
+            Route::put('tenants/{tenant}', [SuperadminController::class, 'updateTenant'])->middleware('permission:manage tenants');
+            Route::delete('tenants/{tenant}', [SuperadminController::class, 'destroyTenant'])->middleware('permission:manage tenants');
 
             // Users management
-            Route::get('users', [SuperadminController::class, 'indexUsers']);
-            Route::post('users', [SuperadminController::class, 'storeUser']);
-            Route::get('users/{user}', [SuperadminController::class, 'showUser']);
-            Route::put('users/{user}', [SuperadminController::class, 'updateUser']);
-            Route::delete('users/{user}', [SuperadminController::class, 'destroyUser']);
+            Route::get('users', [SuperadminController::class, 'indexUsers'])->middleware('permission:view users');
+            Route::post('users', [SuperadminController::class, 'storeUser'])->middleware('permission:manage users');
+            Route::get('users/{user}', [SuperadminController::class, 'showUser'])->middleware('permission:view users');
+            Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:manage users');
+            Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:manage users');
 
             // Activity logs (central)
-            Route::get('activity-logs', [SuperadminController::class, 'indexActivity']);
+            Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
 
             // Settings management
-            Route::get('settings', [SuperadminController::class, 'getSettings']);
-            Route::put('settings', [SuperadminController::class, 'updateSettings']);
+            Route::get('settings', [SuperadminController::class, 'getSettings'])->middleware('permission:view settings');
+            Route::put('settings', [SuperadminController::class, 'updateSettings'])->middleware('permission:manage settings');
 
             // Tenant-User relationships
-            Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant']);
-            Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant']);
+            Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant'])->middleware('permission:manage tenants');
+            Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant'])->middleware('permission:manage tenants');
+
+            // Roles management
+            Route::get('roles', [\App\Http\Controllers\Api\RoleController::class, 'index'])->middleware('permission:view users|manage users|manage roles');
+            Route::post('roles', [\App\Http\Controllers\Api\RoleController::class, 'store'])->middleware('permission:manage roles');
+            Route::get('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'show'])->middleware('permission:manage roles');
+            Route::put('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'update'])->middleware('permission:manage roles');
+            Route::delete('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'destroy'])->middleware('permission:manage roles');
+
+            // Permissions management
+            Route::apiResource('permissions', \App\Http\Controllers\Api\PermissionController::class)->middleware('permission:manage roles');
+
+            // Assign permissions to a role
+            Route::post('roles/{role}/permissions', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignPermissions'])->middleware('permission:manage roles');
+
+            // Assign roles to a user
+            Route::post('users/{user}/roles', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignRoles'])->middleware('permission:manage users');
         });
 
         // Public routes

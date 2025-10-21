@@ -2,11 +2,18 @@ import { Link, useLocation } from 'react-router-dom';
 import { X, LucideIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 
 export interface MenuItem {
   label: string;
   path: string;
   icon: LucideIcon;
+  /** Permission required to view this menu item (optional) */
+  permission?: string | string[];
+  /** Role required to view this menu item (optional) */
+  role?: string | string[];
+  /** If true, user must have ALL permissions/roles. If false, ANY will suffice */
+  requireAll?: boolean;
 }
 
 interface DrawerProps {
@@ -17,8 +24,36 @@ interface DrawerProps {
 
 export function Drawer({ isOpen, onClose, menuItems }: DrawerProps) {
   const location = useLocation();
+  const { hasAnyPermission, hasAllPermissions, hasAnyRole, hasAllRoles } = usePermissions();
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+
+  /**
+   * Check if user has access to a menu item based on its permission/role requirements
+   */
+  const hasAccess = (item: MenuItem): boolean => {
+    // No restrictions means everyone has access
+    if (!item.permission && !item.role) {
+      return true;
+    }
+
+    // Check permissions
+    if (item.permission) {
+      const permissions = Array.isArray(item.permission) ? item.permission : [item.permission];
+      return item.requireAll ? hasAllPermissions(permissions) : hasAnyPermission(permissions);
+    }
+
+    // Check roles
+    if (item.role) {
+      const roles = Array.isArray(item.role) ? item.role : [item.role];
+      return item.requireAll ? hasAllRoles(roles) : hasAnyRole(roles);
+    }
+
+    return false;
+  };
+
+  // Filter menu items based on user permissions
+  const accessibleMenuItems = menuItems.filter(hasAccess);
 
   return (
     <>
@@ -47,7 +82,7 @@ export function Drawer({ isOpen, onClose, menuItems }: DrawerProps) {
 
         {/* Navigation */}
         <nav className="flex flex-col gap-1 p-4">
-          {menuItems.map((item) => {
+          {accessibleMenuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
 

@@ -1,11 +1,25 @@
 // Shared TypeScript types across all apps
 
+export interface Permission {
+  id: number;
+  name: string;
+  guard_name: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  guard_name: string;
+  permissions?: Permission[];
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   avatar?: string;
-  roles?: string[];
+  roles?: Role[];
+  permissions?: Permission[];
 }
 
 export interface Tenant {

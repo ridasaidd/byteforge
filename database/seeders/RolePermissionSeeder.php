@@ -15,22 +15,31 @@ class RolePermissionSeeder extends Seeder
 
         // Define granular permissions for pages and navigation
         $permissions = [
-            // Pages
+            // Pages (for tenants to manage their website content)
             'pages.create',
             'pages.edit',
             'pages.delete',
             'pages.view',
-            // Navigation
+            // Navigation (for tenants to manage their website navigation)
             'navigation.create',
             'navigation.edit',
             'navigation.delete',
             'navigation.view',
-            // Other
-            'view analytics',
+            // User Management (central admin)
+            'view users',
             'manage users',
+            // Tenant Management (central admin)
+            'view tenants',
             'manage tenants',
-            'access billing',
-            'view content',
+            // Role & Permission Management (central admin)
+            'manage roles',
+            // Activity Logs (central admin)
+            'view activity logs',
+            // Settings (central admin)
+            'view settings',
+            'manage settings',
+            // Analytics (central admin and tenants)
+            'view analytics',
         ];
 
         // Create permissions for both web and api guards
@@ -40,27 +49,28 @@ class RolePermissionSeeder extends Seeder
         }
 
         // Define roles and assign granular permissions
+        // NOTE: Only central admin roles are defined here.
+        // Tenants should create their own custom roles through the UI as needed.
         $roles = [
             // Central Admin Roles (for managing the platform)
             'superadmin' => $permissions, // Full access to everything
-            'admin' => ['manage users', 'manage tenants', 'view analytics', 'view content'], // Full central admin access
-            'support' => ['view content', 'view analytics'], // Read-only access to help tenants
-            'viewer' => ['view content'], // Read-only observer
-
-            // Tenant Roles (for tenant users)
-            'owner' => [
-                'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
-                'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
-                'view analytics', 'manage users', 'manage tenants', 'access billing', 'view content',
-            ],
-            'staff' => [
-                'pages.create', 'pages.edit', 'pages.view',
-                'navigation.create', 'navigation.edit', 'navigation.view',
-                'view analytics', 'view content',
-            ],
-            'customer' => [
-                'pages.view', 'navigation.view', 'view content',
-            ],
+            'admin' => [
+                'manage users', 'view users',
+                'manage tenants', 'view tenants',
+                'manage roles',
+                'view analytics',
+                'view activity logs',
+                'view settings', 'manage settings',
+            ], // Full central admin access (can do everything except assign superadmin powers)
+            'support' => [
+                'view users', 'view tenants',
+                'view analytics',
+                'view activity logs',
+            ], // Read-only access to help tenants and view system stats
+            'viewer' => [
+                'view users', 'view tenants',
+                'view analytics',
+            ], // Read-only observer (can see users, tenants, and analytics but not activity logs)
         ];
 
         // Create roles for both web and api guards
@@ -74,6 +84,15 @@ class RolePermissionSeeder extends Seeder
             $apiRole = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'api']);
             $apiPermissions = Permission::whereIn('name', $perms)->where('guard_name', 'api')->get();
             $apiRole->syncPermissions($apiPermissions);
+        }
+
+        // Ensure superadmin always has all permissions (even if new permissions are added later)
+        foreach (['web', 'api'] as $guard) {
+            $superadminRole = Role::where('name', 'superadmin')->where('guard_name', $guard)->first();
+            if ($superadminRole) {
+                $allPerms = Permission::where('guard_name', $guard)->get();
+                $superadminRole->syncPermissions($allPerms);
+            }
         }
     }
 }

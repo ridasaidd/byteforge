@@ -17,9 +17,10 @@ class ListUsersAction
     public function execute(array $filters = []): array
     {
         $query = User::with('roles', 'permissions')
-            // Only get users with central admin roles (superadmin, admin, support, viewer)
+            // Only get users with central admin roles (roles with 'api' guard and no team_id)
             ->whereHas('roles', function ($q) {
-                $q->whereIn('name', ['superadmin', 'admin', 'support', 'viewer']);
+                $q->where('guard_name', 'api')
+                  ->whereNull('roles.team_id');
             });
 
         // Search

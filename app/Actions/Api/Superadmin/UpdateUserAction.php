@@ -22,7 +22,7 @@ class UpdateUserAction
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'sometimes|required|string|min:8|confirmed',
-            'role' => 'sometimes|required|string|in:admin,support,viewer',
+            'role' => 'sometimes|required|string|exists:roles,name',
         ])->validate();
 
         $original = $user->getOriginal();

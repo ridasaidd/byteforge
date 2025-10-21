@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
 import { api, type User, type CreateUserData, type UpdateUserData } from '@/shared/services/api';
+import { rolesApi } from '@/shared/services/rolesPermissionsApi';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
-import { FormModal, type FormField } from '@/shared/components/organisms/FormModal';
+import { FormModal } from '@/shared/components/organisms/FormModal';
 import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
@@ -11,111 +13,8 @@ import { Badge } from '@/shared/components/ui/badge';
 import { useToast, useCrud } from '@/shared/hooks';
 
 // ============================================================================
-// Form Schemas
+// Schemas and Fields (will be built dynamically inside component with roleNames)
 // ============================================================================
-
-const createUserSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
-  email: z.string().email('Invalid email address').max(255, 'Email is too long'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  password_confirmation: z.string().min(8, 'Password confirmation is required'),
-  role: z.enum(['admin', 'support', 'viewer'], {
-    errorMap: () => ({ message: 'Please select a role' }),
-  }),
-}).refine((data) => data.password === data.password_confirmation, {
-  message: "Passwords don't match",
-  path: ['password_confirmation'],
-});
-
-const updateUserSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
-  email: z.string().email('Invalid email address').max(255, 'Email is too long'),
-  role: z.enum(['admin', 'support', 'viewer'], {
-    errorMap: () => ({ message: 'Please select a role' }),
-  }),
-});
-
-// ============================================================================
-// Form Fields
-// ============================================================================
-
-const createFormFields: FormField[] = [
-  {
-    name: 'name',
-    label: 'Full Name',
-    type: 'text',
-    placeholder: 'John Doe',
-    required: true,
-    description: 'The full name of the user',
-  },
-  {
-    name: 'email',
-    label: 'Email Address',
-    type: 'email',
-    placeholder: 'john@example.com',
-    required: true,
-    description: 'User email for login and notifications',
-  },
-  {
-    name: 'role',
-    label: 'Role',
-    type: 'select',
-    required: true,
-    description: 'User access level',
-    options: [
-      { value: 'admin', label: 'Admin - Full system access' },
-      { value: 'support', label: 'Support - View and assist tenants' },
-      { value: 'viewer', label: 'Viewer - Read-only access' },
-    ],
-  },
-  {
-    name: 'password',
-    label: 'Password',
-    type: 'password',
-    placeholder: '••••••••',
-    required: true,
-    description: 'Minimum 8 characters',
-  },
-  {
-    name: 'password_confirmation',
-    label: 'Confirm Password',
-    type: 'password',
-    placeholder: '••••••••',
-    required: true,
-    description: 'Must match password',
-  },
-];
-
-const updateFormFields: FormField[] = [
-  {
-    name: 'name',
-    label: 'Full Name',
-    type: 'text',
-    placeholder: 'John Doe',
-    required: true,
-    description: 'The full name of the user',
-  },
-  {
-    name: 'email',
-    label: 'Email Address',
-    type: 'email',
-    placeholder: 'john@example.com',
-    required: true,
-    description: 'User email for login and notifications',
-  },
-  {
-    name: 'role',
-    label: 'Role',
-    type: 'select',
-    required: true,
-    description: 'User access level',
-    options: [
-      { value: 'admin', label: 'Admin - Full system access' },
-      { value: 'support', label: 'Support - View and assist tenants' },
-      { value: 'viewer', label: 'Viewer - Read-only access' },
-    ],
-  },
-];
 
 // ============================================================================
 // Helper Functions
@@ -152,6 +51,119 @@ export function UsersPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+
+  // Fetch dynamic roles
+  const rolesQuery = useQuery({
+    queryKey: ['roles'],
+    queryFn: () => rolesApi.list(),
+  });
+
+  // Transform roles to select options
+  const roleOptions = useMemo(() => {
+    if (!rolesQuery.data) return [];
+    return rolesQuery.data.map((role) => ({
+      value: role.name,
+      label: `${role.name.charAt(0).toUpperCase()}${role.name.slice(1)}`,
+    }));
+  }, [rolesQuery.data]);
+
+  // Dynamic role names for validation
+  const roleNames = useMemo(() => rolesQuery.data?.map(r => r.name) ?? [], [rolesQuery.data]);
+
+  // Dynamic schemas
+  const createUserSchema = useMemo(() => {
+    const roleEnum = roleNames.length > 0 ? roleNames : ['admin', 'support', 'viewer'];
+    return z.object({
+      name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
+      email: z.string().email('Invalid email address').max(255, 'Email is too long'),
+      password: z.string().min(8, 'Password must be at least 8 characters'),
+      password_confirmation: z.string().min(8, 'Password confirmation is required'),
+      role: z.enum(roleEnum as [string, ...string[]], { errorMap: () => ({ message: 'Please select a role' }) }),
+    }).refine((data) => data.password === data.password_confirmation, {
+      message: "Passwords don't match",
+      path: ['password_confirmation'],
+    });
+  }, [roleNames]);
+
+  const updateUserSchema = useMemo(() => {
+    const roleEnum = roleNames.length > 0 ? roleNames : ['admin', 'support', 'viewer'];
+    return z.object({
+      name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
+      email: z.string().email('Invalid email address').max(255, 'Email is too long'),
+      role: z.enum(roleEnum as [string, ...string[]], { errorMap: () => ({ message: 'Please select a role' }) }),
+    });
+  }, [roleNames]);
+
+  // Dynamic form fields
+  const createFormFields = useMemo(() => [
+    {
+      name: 'name',
+      label: 'Full Name',
+      type: 'text' as const,
+      placeholder: 'John Doe',
+      required: true,
+      description: 'The full name of the user',
+    },
+    {
+      name: 'email',
+      label: 'Email Address',
+      type: 'email' as const,
+      placeholder: 'john@example.com',
+      required: true,
+      description: 'User email for login and notifications',
+    },
+    {
+      name: 'role',
+      label: 'Role',
+      type: 'select' as const,
+      required: true,
+      description: 'User access level',
+      options: roleOptions,
+    },
+    {
+      name: 'password',
+      label: 'Password',
+      type: 'password' as const,
+      placeholder: '••••••••',
+      required: true,
+      description: 'Minimum 8 characters',
+    },
+    {
+      name: 'password_confirmation',
+      label: 'Confirm Password',
+      type: 'password' as const,
+      placeholder: '••••••••',
+      required: true,
+      description: 'Must match password',
+    },
+  ], [roleOptions]);
+
+  const updateFormFields = useMemo(() => [
+    {
+      name: 'name',
+      label: 'Full Name',
+      type: 'text' as const,
+      placeholder: 'John Doe',
+      required: true,
+      description: 'The full name of the user',
+    },
+    {
+      name: 'email',
+      label: 'Email Address',
+      type: 'email' as const,
+      placeholder: 'john@example.com',
+      required: true,
+      description: 'User email for login and notifications',
+    },
+    {
+      name: 'role',
+      label: 'Role',
+      type: 'select' as const,
+      required: true,
+      description: 'User access level',
+      options: roleOptions,
+    },
+  ], [roleOptions]);
 
   // ============================================================================
   // CRUD Hook
