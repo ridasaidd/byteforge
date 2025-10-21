@@ -105,9 +105,12 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        return response()->json(
-            $request->user()->load('roles.permissions', 'permissions')
-        );
+        $user = $request->user()->load('roles.permissions', 'permissions');
+
+        // Add avatar URL to response
+        $user->avatar = $user->avatar_url;
+
+        return response()->json($user);
     }
 
     /**
@@ -176,6 +179,70 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Password updated successfully',
+        ]);
+    }
+
+    /**
+     * Upload user avatar
+     */
+    public function uploadAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048', // Max 2MB
+        ]);
+
+        // Delete old avatar if exists
+        $user->clearMediaCollection('avatar');
+
+        // Add new avatar with custom filename
+        $media = $user->addMediaFromRequest('avatar')
+            ->usingFileName('avatar-' . $user->id . '-' . time() . '.' . $request->file('avatar')->getClientOriginalExtension())
+            ->usingName('Avatar')
+            ->toMediaCollection('avatar');
+
+        // Log activity
+        activity('central')
+            ->performedOn($user)
+            ->causedBy($user)
+            ->event('updated')
+            ->withProperties(['attributes' => ['avatar' => $media->file_name]])
+            ->log('Avatar uploaded');
+
+        $user->load('roles.permissions', 'permissions');
+        $user->avatar = $user->avatar_url;
+
+        return response()->json([
+            'message' => 'Avatar uploaded successfully',
+            'user' => $user,
+            'avatar_url' => $user->avatar_url,
+        ]);
+    }
+
+    /**
+     * Delete user avatar
+     */
+    public function deleteAvatar(Request $request)
+    {
+        $user = $request->user();
+
+        // Delete avatar
+        $user->clearMediaCollection('avatar');
+
+        // Log activity
+        activity('central')
+            ->performedOn($user)
+            ->causedBy($user)
+            ->event('updated')
+            ->log('Avatar deleted');
+
+        $user->load('roles.permissions', 'permissions');
+        $user->avatar = null;
+
+        return response()->json([
+            'message' => 'Avatar deleted successfully',
+            'user' => $user,
         ]);
     }
 }

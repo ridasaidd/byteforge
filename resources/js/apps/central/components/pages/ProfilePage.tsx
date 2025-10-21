@@ -1,11 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Save } from 'lucide-react';
-import { api, type UpdateProfileData } from '@/shared/services/api';
+import { api, type UpdateProfileData, type User } from '@/shared/services/api';
+import { useAuth } from '@/shared/hooks/useAuth';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
+import { AvatarUpload } from '@/shared/components/molecules/AvatarUpload';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -28,9 +30,9 @@ type ProfileFormData = z.infer<typeof profileSchema>;
 // Helper Functions
 // ============================================================================
 
-const getRoleName = (role: string | { name: string }): string => {
-  if (typeof role === 'string') return role;
-  return role.name;
+const formatRoleName = (role: string | { name: string }): string => {
+  const roleName = typeof role === 'string' ? role : role.name;
+  return roleName.charAt(0).toUpperCase() + roleName.slice(1);
 };
 
 // ============================================================================
@@ -40,12 +42,13 @@ const getRoleName = (role: string | { name: string }): string => {
 export function ProfilePage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { refetchUser } = useAuth();
 
   // ============================================================================
   // Query to fetch user profile
   // ============================================================================
 
-  const { data: user, isLoading } = useQuery({
+  const { data: user, isLoading } = useQuery<User>({
     queryKey: ['profile'],
     queryFn: async () => {
       const response = await api.auth.user();
@@ -79,6 +82,69 @@ export function ProfilePage() {
       });
     },
   });
+
+  // ============================================================================
+  // Avatar Mutations
+  // ============================================================================
+
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
+
+  const uploadAvatarMutation = useMutation<{ user: User; avatar_url: string }, unknown, File>({
+    mutationFn: (file: File) => api.auth.uploadAvatar(file),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.setQueryData(['profile'], response.user);
+      refetchUser(); // Refresh auth context to update navbar avatar
+      setIsUploadingAvatar(false);
+      toast({
+        title: 'Avatar updated',
+        description: 'Your avatar has been uploaded successfully.',
+      });
+    },
+    onError: (error: unknown) => {
+      setIsUploadingAvatar(false);
+      const apiError = error as { response?: { data?: { message?: string } } };
+      toast({
+        title: 'Error',
+        description: apiError.response?.data?.message || 'Failed to upload avatar',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const deleteAvatarMutation = useMutation<{ user: User }, unknown, void>({
+    mutationFn: () => api.auth.deleteAvatar(),
+    onSuccess: (response) => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.setQueryData(['profile'], response.user);
+      refetchUser(); // Refresh auth context to update navbar avatar
+      setIsDeletingAvatar(false);
+      toast({
+        title: 'Avatar deleted',
+        description: 'Your avatar has been removed successfully.',
+      });
+    },
+    onError: (error: unknown) => {
+      setIsDeletingAvatar(false);
+      const apiError = error as { response?: { data?: { message?: string } } };
+      toast({
+        title: 'Error',
+        description: apiError.response?.data?.message || 'Failed to delete avatar',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleAvatarUpload = async (file: File) => {
+    setIsUploadingAvatar(true);
+    uploadAvatarMutation.mutate(file);
+  };
+
+  const handleAvatarDelete = async () => {
+    setIsDeletingAvatar(true);
+    deleteAvatarMutation.mutate();
+  };
 
   // ============================================================================
   // Form Setup
@@ -147,17 +213,15 @@ export function ProfilePage() {
             <CardDescription>Your account details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-center">
-              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-primary text-3xl font-bold text-primary-foreground">
-                {user?.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .toUpperCase()
-                  .slice(0, 2)}
-              </div>
-            </div>
-            
+            <AvatarUpload
+              currentAvatar={user?.avatar ?? null}
+              onUpload={handleAvatarUpload}
+              onDelete={handleAvatarDelete}
+              isUploading={isUploadingAvatar}
+              isDeleting={isDeletingAvatar}
+              size="lg"
+            />
+
             <div className="space-y-2 text-center">
               <h3 className="font-semibold text-lg">{user?.name}</h3>
               <p className="text-sm text-muted-foreground">{user?.email}</p>
@@ -167,14 +231,11 @@ export function ProfilePage() {
               <div className="space-y-2">
                 <Label>Roles</Label>
                 <div className="flex flex-wrap gap-2">
-                  {user.roles.map((role, index) => {
-                    const roleName = getRoleName(role);
-                    return (
-                      <Badge key={index} variant="secondary">
-                        {roleName.charAt(0).toUpperCase() + roleName.slice(1)}
-                      </Badge>
-                    );
-                  })}
+                  {user.roles.map((role, index) => (
+                    <Badge key={index} variant="secondary">
+                      {formatRoleName(role)}
+                    </Badge>
+                  ))}
                 </div>
               </div>
             )}

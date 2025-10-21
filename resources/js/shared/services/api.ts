@@ -31,7 +31,8 @@ export interface User extends Record<string, unknown> {
   id: number;
   name: string;
   email: string;
-  roles: string[]; // backend returns array of role names
+  avatar?: string; // Avatar URL
+  roles: (string | { name: string })[]; // backend can return array of role names or role objects
   permissions: string[]; // backend returns array of permission names
   created_at: string;
   updated_at: string;
@@ -201,6 +202,25 @@ export const api = {
      */
     updatePassword: (data: UpdatePasswordData) =>
       http.put<{ message: string }>('/auth/password', data),
+
+    /**
+     * Upload avatar for current user
+     */
+    uploadAvatar: (file: File) => {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      return http.post<{ user: User; avatar_url: string }>('/auth/avatar', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+    },
+
+    /**
+     * Delete avatar for current user
+     */
+    deleteAvatar: () =>
+      http.delete<{ user: User }>('/auth/avatar'),
   },
 
   // ==========================================================================

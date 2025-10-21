@@ -35,6 +35,21 @@ export const authService = {
     return http.get<User>('/auth/user');
   },
 
+  async uploadAvatar(file: File): Promise<{ user: User; avatar_url: string }> {
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    return http.post<{ user: User; avatar_url: string }>('/auth/avatar', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  async deleteAvatar(): Promise<{ user: User }> {
+    return http.delete<{ user: User }>('/auth/avatar');
+  },
+
   getToken(): string | null {
     return localStorage.getItem('auth_token');
   },
