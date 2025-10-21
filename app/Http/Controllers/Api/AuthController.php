@@ -109,4 +109,73 @@ class AuthController extends Controller
             $request->user()->load('roles.permissions', 'permissions')
         );
     }
+
+    /**
+     * Update authenticated user's profile
+     */
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|max:255|unique:users,email,'.$user->id,
+        ]);
+
+        $user->update($validated);
+
+        // Log activity
+        $causer = auth('api')->user();
+        activity('central')
+            ->performedOn($user)
+            ->causedBy($causer)
+            ->event('updated')
+            ->withProperties([
+                'attributes' => [
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+            ])
+            ->log('Profile updated');
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user->load('roles', 'permissions'),
+        ]);
+    }
+
+    /**
+     * Update authenticated user's password
+     */
+    public function updatePassword(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|string|min:8|confirmed',
+        ]);
+
+        // Verify current password
+        if (! Hash::check($validated['current_password'], $user->password)) {
+            throw ValidationException::withMessages([
+                'current_password' => ['The current password is incorrect.'],
+            ]);
+        }
+
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        // Log activity
+        $causer = auth('api')->user();
+        activity('central')
+            ->causedBy($causer)
+            ->event('updated')
+            ->log('Password changed');
+
+        return response()->json([
+            'message' => 'Password updated successfully',
+        ]);
+    }
 }

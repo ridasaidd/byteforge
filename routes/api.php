@@ -15,6 +15,8 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
             Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
             Route::get('user', [AuthController::class, 'user'])->middleware('auth:api');
+            Route::put('user', [AuthController::class, 'updateProfile'])->middleware('auth:api');
+            Route::put('password', [AuthController::class, 'updatePassword'])->middleware('auth:api');
         });
 
         // Superadmin routes - require superadmin role

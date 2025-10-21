@@ -116,6 +116,21 @@ export interface UpdateUserData {
 }
 
 // ============================================================================
+// Profile Types
+// ============================================================================
+
+export interface UpdateProfileData {
+  name: string;
+  email: string;
+}
+
+export interface UpdatePasswordData {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+}
+
+// ============================================================================
 // Settings Types
 // ============================================================================
 
@@ -174,6 +189,18 @@ export const api = {
      */
     register: (data: CreateUserData) =>
       http.post<LoginResponse>('/auth/register', data),
+
+    /**
+     * Update current user's profile
+     */
+    updateProfile: (data: UpdateProfileData) =>
+      http.put<{ message: string; user: User }>('/auth/user', data),
+
+    /**
+     * Update current user's password
+     */
+    updatePassword: (data: UpdatePasswordData) =>
+      http.put<{ message: string }>('/auth/password', data),
   },
 
   // ==========================================================================

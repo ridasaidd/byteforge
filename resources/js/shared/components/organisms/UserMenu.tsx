@@ -1,4 +1,5 @@
 import { LogOut, Settings, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import { useAuth } from '@/shared/hooks/useAuth';
 
 export function UserMenu() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   if (!user) return null;
 
@@ -24,6 +26,14 @@ export function UserMenu() {
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleProfile = () => {
+    navigate('/dashboard/profile');
+  };
+
+  const handleSettings = () => {
+    navigate('/dashboard/account');
   };
 
   return (
@@ -44,11 +54,11 @@ export function UserMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={handleProfile}>
           <User className="mr-2 h-4 w-4" />
           <span>Profile</span>
         </DropdownMenuItem>
-        <DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSettings}>
           <Settings className="mr-2 h-4 w-4" />
           <span>Settings</span>
         </DropdownMenuItem>

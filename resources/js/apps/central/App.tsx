@@ -6,6 +6,8 @@ import { TenantsPage } from './components/pages/TenantsPage';
 import { UsersPage } from './components/pages/UsersPage';
 import { ActivityLogPage } from './components/pages/ActivityLogPage';
 import { SettingsPage } from './components/pages/SettingsPage';
+import { ProfilePage } from './components/pages/ProfilePage';
+import { AccountSettingsPage } from './components/pages/AccountSettingsPage';
 import { centralMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 
@@ -41,6 +43,8 @@ function ProtectedRoutes() {
         <Route path="/dashboard/users" element={<UsersPage />} />
   <Route path="/dashboard/activity" element={<ActivityLogPage />} />
         <Route path="/dashboard/settings" element={<SettingsPage />} />
+        <Route path="/dashboard/profile" element={<ProfilePage />} />
+        <Route path="/dashboard/account" element={<AccountSettingsPage />} />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </DashboardLayout>
