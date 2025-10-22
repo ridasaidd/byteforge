@@ -14,10 +14,10 @@ return new class extends Migration
         Schema::table('media_libraries', function (Blueprint $table) {
             // Drop foreign key first
             $table->dropForeign(['tenant_id']);
-            
+
             // Make tenant_id nullable to support central context
             $table->string('tenant_id')->nullable()->change();
-            
+
             // Re-add foreign key with nullable support
             $table->foreign('tenant_id')
                 ->references('id')
@@ -34,10 +34,10 @@ return new class extends Migration
         Schema::table('media_libraries', function (Blueprint $table) {
             // Drop foreign key
             $table->dropForeign(['tenant_id']);
-            
+
             // Make tenant_id NOT NULL again
             $table->string('tenant_id')->nullable(false)->change();
-            
+
             // Re-add foreign key
             $table->foreign('tenant_id')
                 ->references('id')

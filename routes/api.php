@@ -71,7 +71,7 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::post('media', [\App\Http\Controllers\Api\MediaController::class, 'store']);
             Route::get('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'show']);
             Route::delete('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'destroy']);
-            
+
             Route::apiResource('media-folders', \App\Http\Controllers\Api\Tenant\MediaFolderController::class);
             Route::get('media-folders-tree', [\App\Http\Controllers\Api\Tenant\MediaFolderController::class, 'tree']);
         });

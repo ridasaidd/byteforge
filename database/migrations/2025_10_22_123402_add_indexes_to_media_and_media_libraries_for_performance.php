@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::table('media', function (Blueprint $table) {
             // Index for filtering media by model type and collection (used in media library queries)
             $table->index(['model_type', 'model_id', 'collection_name'], 'media_model_collection_index');
-            
+
             // Index for tenant + collection filtering
             $table->index(['tenant_id', 'collection_name'], 'media_tenant_collection_index');
         });
