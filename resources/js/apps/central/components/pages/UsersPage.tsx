@@ -33,11 +33,11 @@ const getRoleColor = (role: string): 'default' | 'secondary' | 'destructive' | '
   }
 };
 
-const getRoleName = (roles: string[] | { name: string }[] | undefined): string => {
+const getRoleName = (roles: (string | { name: string })[] | undefined): string => {
   if (!roles || roles.length === 0) return 'viewer';
-  const first = roles[0] as unknown;
-  if (typeof first === 'string') return (first as string) || 'viewer';
-  return (first as { name: string })?.name || 'viewer';
+  const first = roles[0];
+  if (typeof first === 'string') return first || 'viewer';
+  return first?.name || 'viewer';
 };
 
 // ============================================================================

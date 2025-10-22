@@ -9,6 +9,7 @@ import { SettingsPage } from './components/pages/SettingsPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AccountSettingsPage } from './components/pages/AccountSettingsPage';
 import RolesPermissionsPage from './components/pages/RolesPermissionsPage';
+import MediaLibraryPage from './components/pages/MediaLibraryPage';
 import { centralMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 
@@ -42,7 +43,8 @@ function ProtectedRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/tenants" element={<TenantsPage />} />
         <Route path="/dashboard/users" element={<UsersPage />} />
-  <Route path="/dashboard/roles-permissions" element={<RolesPermissionsPage />} />
+        <Route path="/dashboard/media" element={<MediaLibraryPage />} />
+        <Route path="/dashboard/roles-permissions" element={<RolesPermissionsPage />} />
         <Route path="/dashboard/activity" element={<ActivityLogPage />} />
         <Route path="/dashboard/settings" element={<SettingsPage />} />
         <Route path="/dashboard/profile" element={<ProfilePage />} />

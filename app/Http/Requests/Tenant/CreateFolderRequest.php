@@ -13,8 +13,23 @@ class CreateFolderRequest extends FormRequest
 
     public function rules(): array
     {
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
+        
         return [
-            'name' => ['required', 'string', 'max:255'],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($tenantId) {
+                    $query = \App\Models\MediaFolder::where('tenant_id', $tenantId)
+                        ->where('name', $value)
+                        ->where('parent_id', $this->input('parent_id'));
+                    
+                    if ($query->exists()) {
+                        $fail('A folder with this name already exists in this location.');
+                    }
+                },
+            ],
             'parent_id' => ['nullable', 'integer', 'exists:media_folders,id'],
             'description' => ['nullable', 'string', 'max:1000'],
             'metadata' => ['nullable', 'array'],

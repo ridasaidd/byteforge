@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Building2, Settings, Activity, Shield } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 
 export const centralMenuItems: MenuItem[] = [
@@ -19,6 +19,12 @@ export const centralMenuItems: MenuItem[] = [
     path: '/dashboard/users',
     icon: Users,
     permission: 'view users',
+  },
+  {
+    label: 'Media Library',
+    path: '/dashboard/media',
+    icon: Image,
+    // Media library accessible to all authenticated users
   },
   {
     label: 'Manage Roles & Permissions',

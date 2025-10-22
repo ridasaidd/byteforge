@@ -152,6 +152,54 @@ export interface UpdateSettingsData {
 }
 
 // ============================================================================
+// Media Types
+// ============================================================================
+
+export interface Media extends Record<string, unknown> {
+  id: number;
+  uuid: string;
+  name: string;
+  file_name: string;
+  mime_type: string;
+  size: number;
+  human_readable_size: string;
+  collection_name: string;
+  custom_properties: Record<string, unknown>;
+  model_type: string | null;
+  model_id: number | null;
+  url: string;
+  thumbnail_url?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MediaFolder extends Record<string, unknown> {
+  id: number;
+  name: string;
+  parent_id: number | null;
+  tenant_id: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UploadMediaData {
+  file: File;
+  collection?: string;
+  custom_properties?: Record<string, unknown>;
+  folder_id?: number | null;
+}
+
+export interface MediaFilters {
+  collection?: string;
+  mime_type?: string;
+  search?: string;
+  model_type?: string;
+  per_page?: number;
+  page?: number;
+  folder_id?: number | null | string;
+}
+
+// ============================================================================
 // API Service
 // ============================================================================
 
@@ -344,19 +392,77 @@ export const api = {
   // },
 
   // ==========================================================================
-  // Media (Tenant-scoped) - TODO: Add when building media library
+  // Media Library (works for both Central and Tenant)
   // ==========================================================================
-  // media: {
-  //   list: (params?: { page?: number; per_page?: number; search?: string }) =>
-  //     http.getAll<PaginatedResponse<Media>>('/media', params),
-  //   upload: (file: File) => {
-  //     const formData = new FormData();
-  //     formData.append('file', file);
-  //     return http.post<ApiResponse<Media>>('/media', formData, {
-  //       headers: { 'Content-Type': 'multipart/form-data' },
-  //     });
-  //   },
-  //   delete: (id: number) =>
-  //     http.remove<{ message: string }>('/media', id),
-  // },
+  media: {
+    /**
+     * List media files with optional filters
+     */
+    list: (params?: MediaFilters) =>
+      http.getAll<PaginatedResponse<Media>>('/superadmin/media', params as Record<string, string | number | boolean>),
+
+    /**
+     * Get single media file details
+     */
+    get: (id: number) =>
+      http.getOne<ApiResponse<Media>>('/superadmin/media', id),
+
+    /**
+     * Upload a new media file
+     */
+    upload: (data: UploadMediaData) => {
+      const formData = new FormData();
+      formData.append('file', data.file);
+      if (data.collection) formData.append('collection', data.collection);
+      if (data.folder_id) formData.append('folder_id', data.folder_id.toString());
+      if (data.custom_properties) {
+        formData.append('custom_properties', JSON.stringify(data.custom_properties));
+      }
+
+      return http.post<ApiResponse<Media>>('/superadmin/media', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+
+    /**
+     * Delete media file
+     */
+    delete: (id: number) =>
+      http.remove<{ message: string }>('/superadmin/media', id),
+  },
+
+  // ==========================================================================
+  // Media Folders
+  // ==========================================================================
+  mediaFolders: {
+    /**
+     * List all folders
+     */
+    list: () =>
+      http.get<ApiResponse<MediaFolder[]>>('/superadmin/media-folders'),
+
+    /**
+     * Get folder tree structure
+     */
+    tree: () =>
+      http.get<ApiResponse<MediaFolder[]>>('/superadmin/media-folders-tree'),
+
+    /**
+     * Create new folder
+     */
+    create: (data: { name: string; parent_id?: number | null }) =>
+      http.post<ApiResponse<MediaFolder>>('/superadmin/media-folders', data),
+
+    /**
+     * Update folder
+     */
+    update: (id: number, data: { name: string; parent_id?: number | null }) =>
+      http.put<ApiResponse<MediaFolder>>(`/superadmin/media-folders/${id}`, data),
+
+    /**
+     * Delete folder
+     */
+    delete: (id: number) =>
+      http.delete<{ message: string }>(`/superadmin/media-folders/${id}`),
+  },
 };

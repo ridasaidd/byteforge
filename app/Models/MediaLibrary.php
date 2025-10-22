@@ -53,7 +53,9 @@ class MediaLibrary extends Model implements HasMedia
      */
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('default');
+        // Default collection with strict MIME type whitelist from config (security)
+        $this->addMediaCollection('default')
+            ->acceptsMimeTypes(config('media-upload.allowed_mime_types'));
 
         // Images collection with strict validation and conversions
         $this->addMediaCollection('images')

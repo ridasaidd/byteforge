@@ -18,11 +18,32 @@ class MediaController extends Controller
      */
     public function index(Request $request, ListMediaAction $action): JsonResponse
     {
-        $filters = $request->only(['collection', 'mime_type', 'search', 'model_type', 'per_page']);
+        $filters = $request->only(['collection', 'mime_type', 'search', 'model_type', 'per_page', 'folder_id']);
         $paginated = $action->handle($filters);
 
+        // Transform media items to include URLs
+        $items = $paginated->getCollection()->map(function ($media) {
+            return [
+                'id' => $media->id,
+                'uuid' => $media->uuid,
+                'name' => $media->name,
+                'file_name' => $media->file_name,
+                'mime_type' => $media->mime_type,
+                'size' => $media->size,
+                'human_readable_size' => $media->human_readable_size,
+                'collection_name' => $media->collection_name,
+                'custom_properties' => $media->custom_properties,
+                'model_type' => $media->model_type,
+                'model_id' => $media->model_id,
+                'url' => $media->getUrl(),
+                'thumbnail_url' => $media->hasGeneratedConversion('thumb') ? $media->getUrl('thumb') : null,
+                'created_at' => $media->created_at?->toISOString(),
+                'updated_at' => $media->updated_at?->toISOString(),
+            ];
+        });
+
         return response()->json([
-            'data' => $paginated->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $paginated->currentPage(),
                 'from' => $paginated->firstItem(),
@@ -115,8 +136,14 @@ class MediaController extends Controller
     public function destroy(int $media, DeleteMediaAction $action): JsonResponse
     {
         try {
-            $media = Media::where('tenant_id', tenant('id'))
-                ->findOrFail($media);
+            // Support both tenant and central context
+            if (tenancy()->initialized) {
+                $media = Media::where('tenant_id', tenancy()->tenant->id)
+                    ->findOrFail($media);
+            } else {
+                $media = Media::whereNull('tenant_id')
+                    ->findOrFail($media);
+            }
 
             $action->handle($media);
 

@@ -65,6 +65,17 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::post('users/{user}/roles', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignRoles'])->middleware('permission:manage users');
         });
 
+        // Media Management (Central) - using central storage, not tenant-scoped
+        Route::middleware(['auth:api'])->prefix('superadmin')->group(function () {
+            Route::get('media', [\App\Http\Controllers\Api\MediaController::class, 'index']);
+            Route::post('media', [\App\Http\Controllers\Api\MediaController::class, 'store']);
+            Route::get('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'show']);
+            Route::delete('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'destroy']);
+            
+            Route::apiResource('media-folders', \App\Http\Controllers\Api\Tenant\MediaFolderController::class);
+            Route::get('media-folders-tree', [\App\Http\Controllers\Api\Tenant\MediaFolderController::class, 'tree']);
+        });
+
         // Public routes
         Route::get('health', function () {
             return response()->json(['status' => 'ok']);

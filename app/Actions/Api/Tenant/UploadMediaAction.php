@@ -26,9 +26,12 @@ class UploadMediaAction
         array $customProperties = [],
         ?int $folderId = null
     ): Media {
+        // Get tenant ID (null for central context)
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
+
         // Create MediaLibrary container entry for this upload
         $mediaLibrary = MediaLibrary::create([
-            'tenant_id' => tenancy()->tenant->id,
+            'tenant_id' => $tenantId,
             'folder_id' => $folderId,
             'name' => $file->getClientOriginalName(),
             'description' => $customProperties['description'] ?? null,

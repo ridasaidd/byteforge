@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Tenant;
 
+use App\Actions\Api\Tenant\DeleteFolderAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\CreateFolderRequest;
 use App\Models\MediaFolder;
@@ -11,13 +12,15 @@ use Illuminate\Http\Request;
 class MediaFolderController extends Controller
 {
     /**
-     * List all folders for the current tenant.
+     * List all folders for the current tenant or central.
      */
     public function index(Request $request): JsonResponse
     {
-        $tenant = tenancy()->tenant;
+        // Handle both tenant and central context
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
 
-        $query = MediaFolder::forTenant($tenant->id)
+        $query = MediaFolder::query()
+            ->where('tenant_id', $tenantId)
             ->with(['parent', 'children'])
             ->withCount('mediaLibraries');
 
@@ -42,10 +45,10 @@ class MediaFolderController extends Controller
      */
     public function store(CreateFolderRequest $request): JsonResponse
     {
-        $tenant = tenancy()->tenant;
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
 
         $folder = MediaFolder::create([
-            'tenant_id' => $tenant->id,
+            'tenant_id' => $tenantId,
             'name' => $request->name,
             'parent_id' => $request->parent_id,
             'description' => $request->description,
@@ -63,9 +66,9 @@ class MediaFolderController extends Controller
      */
     public function show(int $id): JsonResponse
     {
-        $tenant = tenancy()->tenant;
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
 
-        $folder = MediaFolder::forTenant($tenant->id)
+        $folder = MediaFolder::where('tenant_id', $tenantId)
             ->with(['parent', 'children', 'mediaLibraries'])
             ->withCount('mediaLibraries')
             ->findOrFail($id);
@@ -80,9 +83,33 @@ class MediaFolderController extends Controller
      */
     public function update(Request $request, int $id): JsonResponse
     {
-        $tenant = tenancy()->tenant;
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
 
-        $folder = MediaFolder::forTenant($tenant->id)->findOrFail($id);
+        $folder = MediaFolder::where('tenant_id', $tenantId)->findOrFail($id);
+
+        // Validate the update
+        $request->validate([
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                function ($attribute, $value, $fail) use ($tenantId, $folder) {
+                    // Check if another folder with the same name exists in the same parent
+                    $query = MediaFolder::where('tenant_id', $tenantId)
+                        ->where('name', $value)
+                        ->where('parent_id', $folder->parent_id)
+                        ->where('id', '!=', $folder->id);
+                    
+                    if ($query->exists()) {
+                        $fail('A folder with this name already exists in this location.');
+                    }
+                },
+            ],
+            'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:media_folders,id'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'metadata' => ['sometimes', 'nullable', 'array'],
+        ]);
 
         $folder->update($request->only([
             'name',
@@ -98,34 +125,20 @@ class MediaFolderController extends Controller
     }
 
     /**
-     * Delete a folder.
+     * Delete a folder and all its contents (cascade).
      */
-    public function destroy(int $id): JsonResponse
+    public function destroy(int $id, DeleteFolderAction $action): JsonResponse
     {
-        $tenant = tenancy()->tenant;
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
 
-        $folder = MediaFolder::forTenant($tenant->id)
-            ->withCount('mediaLibraries')
-            ->findOrFail($id);
+        $folder = MediaFolder::where('tenant_id', $tenantId)->findOrFail($id);
 
-        // Check if folder has media
-        if ($folder->media_libraries_count > 0) {
-            return response()->json([
-                'message' => 'Cannot delete folder that contains media files.',
-            ], 422);
-        }
-
-        // Check if folder has children
-        if ($folder->children()->count() > 0) {
-            return response()->json([
-                'message' => 'Cannot delete folder that contains subfolders.',
-            ], 422);
-        }
-
-        $folder->delete();
+        // Use the action to cascade delete
+        $stats = $action->handle($folder);
 
         return response()->json([
-            'message' => 'Folder deleted successfully.',
+            'message' => 'Folder and all contents deleted successfully.',
+            'stats' => $stats,
         ]);
     }
 
@@ -134,9 +147,9 @@ class MediaFolderController extends Controller
      */
     public function tree(): JsonResponse
     {
-        $tenant = tenancy()->tenant;
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
 
-        $folders = MediaFolder::forTenant($tenant->id)
+        $folders = MediaFolder::where('tenant_id', $tenantId)
             ->roots()
             ->with(['children' => function ($query) {
                 $query->with('children')->withCount('mediaLibraries');

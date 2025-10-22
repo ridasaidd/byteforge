@@ -28,6 +28,9 @@ class Media extends BaseMedia
         static::creating(function (Media $media) {
             if (tenancy()->initialized && ! $media->tenant_id) {
                 $media->tenant_id = tenancy()->tenant->id;
+            } elseif (! tenancy()->initialized && ! $media->tenant_id) {
+                // For central app, use a special identifier (null or 'central')
+                $media->tenant_id = null;
             }
         });
 
@@ -35,6 +38,9 @@ class Media extends BaseMedia
         static::addGlobalScope('tenant', function (Builder $builder) {
             if (tenancy()->initialized) {
                 $builder->where('tenant_id', tenancy()->tenant->id);
+            } else {
+                // In central context, only show media without tenant_id
+                $builder->whereNull('tenant_id');
             }
         });
     }
@@ -53,5 +59,20 @@ class Media extends BaseMedia
     public function scopeForTenant(Builder $query, string $tenantId): Builder
     {
         return $query->withoutGlobalScope('tenant')->where('tenant_id', $tenantId);
+    }
+
+    /**
+     * Get human-readable file size.
+     */
+    public function getHumanReadableSizeAttribute(): string
+    {
+        $bytes = $this->size;
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+
+        for ($i = 0; $bytes > 1024; $i++) {
+            $bytes /= 1024;
+        }
+
+        return round($bytes, 2).' '.$units[$i];
     }
 }
