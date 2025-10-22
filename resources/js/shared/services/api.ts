@@ -200,6 +200,49 @@ export interface MediaFilters {
 }
 
 // ============================================================================
+// Page Types (Tenant-scoped)
+// ============================================================================
+
+export interface Page extends Record<string, unknown> {
+  id: number;
+  tenant_id: string;
+  title: string;
+  slug: string;
+  page_type: 'general' | 'home' | 'about' | 'contact' | 'blog' | 'service' | 'product' | 'custom';
+  puck_data: Record<string, unknown> | null;
+  meta_data: Record<string, unknown> | null;
+  status: 'draft' | 'published' | 'archived';
+  is_homepage: boolean;
+  sort_order: number;
+  created_by: number;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePageData {
+  title: string;
+  slug?: string;
+  page_type: 'general' | 'home' | 'about' | 'contact' | 'blog' | 'service' | 'product' | 'custom';
+  puck_data?: Record<string, unknown> | null;
+  meta_data?: Record<string, unknown> | null;
+  status: 'draft' | 'published' | 'archived';
+  is_homepage?: boolean;
+  sort_order?: number;
+}
+
+export interface UpdatePageData {
+  title?: string;
+  slug?: string;
+  page_type?: 'general' | 'home' | 'about' | 'contact' | 'blog' | 'service' | 'product' | 'custom';
+  puck_data?: Record<string, unknown> | null;
+  meta_data?: Record<string, unknown> | null;
+  status?: 'draft' | 'published' | 'archived';
+  is_homepage?: boolean;
+  sort_order?: number;
+}
+
+// ============================================================================
 // API Service
 // ============================================================================
 
@@ -367,20 +410,39 @@ export const api = {
   },
 
   // ==========================================================================
-  // Pages (Tenant-scoped) - TODO: Add when building page management
+  // Pages (Central public site pages)
   // ==========================================================================
-  // pages: {
-  //   list: (params?: { page?: number; per_page?: number; search?: string }) =>
-  //     http.getAll<PaginatedResponse<Page>>('/pages', params),
-  //   get: (id: number) =>
-  //     http.getOne<ApiResponse<Page>>('/pages', id),
-  //   create: (data: CreatePageData) =>
-  //     http.create<ApiResponse<Page>>('/pages', data),
-  //   update: (id: number, data: UpdatePageData) =>
-  //     http.update<ApiResponse<Page>>('/pages', id, data),
-  //   delete: (id: number) =>
-  //     http.remove<{ message: string }>('/pages', id),
-  // },
+  pages: {
+    /**
+     * List pages with optional pagination, search, and filters
+     */
+    list: (params?: { page?: number; per_page?: number; search?: string; status?: string; page_type?: string }) =>
+      http.getAll<PaginatedResponse<Page>>('/superadmin/pages', params),
+
+    /**
+     * Get single page by ID
+     */
+    get: (id: number | string) =>
+      http.getOne<ApiResponse<Page>>('/superadmin/pages', id),
+
+    /**
+     * Create new page
+     */
+    create: (data: CreatePageData) =>
+      http.create<ApiResponse<Page>>('/superadmin/pages', data),
+
+    /**
+     * Update existing page
+     */
+    update: (id: number | string, data: UpdatePageData) =>
+      http.update<ApiResponse<Page>>('/superadmin/pages', id, data),
+
+    /**
+     * Delete page
+     */
+    delete: (id: number | string) =>
+      http.remove<{ message: string }>('/superadmin/pages', id),
+  },
 
   // ==========================================================================
   // Navigation (Tenant-scoped) - TODO: Add when building navigation management

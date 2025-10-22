@@ -37,6 +37,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:manage users');
             Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:manage users');
 
+            // Pages management (for central public site)
+            Route::apiResource('pages', \App\Http\Controllers\Api\PageController::class);
+
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
 

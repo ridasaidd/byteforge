@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { DashboardPage } from './components/pages/DashboardPage';
 import { LoginPage } from './components/pages/LoginPage';
+import { PagesPage } from './components/pages/PagesPage';
 import { TenantsPage } from './components/pages/TenantsPage';
 import { UsersPage } from './components/pages/UsersPage';
 import { ActivityLogPage } from './components/pages/ActivityLogPage';
@@ -41,6 +42,7 @@ function ProtectedRoutes() {
     >
       <Routes>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard/pages" element={<PagesPage />} />
         <Route path="/dashboard/tenants" element={<TenantsPage />} />
         <Route path="/dashboard/users" element={<UsersPage />} />
         <Route path="/dashboard/media" element={<MediaLibraryPage />} />

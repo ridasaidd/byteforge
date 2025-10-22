@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image, FileText } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 
 export const centralMenuItems: MenuItem[] = [
@@ -7,6 +7,12 @@ export const centralMenuItems: MenuItem[] = [
     path: '/dashboard',
     icon: LayoutDashboard,
     // Dashboard is accessible to everyone
+  },
+  {
+    label: 'Pages',
+    path: '/dashboard/pages',
+    icon: FileText,
+    // Pages accessible to all authenticated users for now
   },
   {
     label: 'Tenants',
