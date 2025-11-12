@@ -15,6 +15,18 @@ use Illuminate\Http\Request;
 class NavigationController extends Controller
 {
     /**
+     * Get the current tenant ID or null for central context.
+     */
+    private function getTenantId(): ?string
+    {
+        if (tenancy()->initialized) {
+            return tenancy()->tenant->id;
+        }
+
+        return null;
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
@@ -46,8 +58,11 @@ class NavigationController extends Controller
      */
     public function show(string $id)
     {
-        $navigation = Navigation::where('tenant_id', tenancy()->tenant->id)
-            ->findOrFail($id);
+        $tenantId = $this->getTenantId();
+
+        $navigation = $tenantId === null
+            ? Navigation::whereNull('tenant_id')->findOrFail($id)
+            : Navigation::where('tenant_id', $tenantId)->findOrFail($id);
 
         return response()->json([
             'data' => $navigation,
@@ -59,8 +74,11 @@ class NavigationController extends Controller
      */
     public function update(UpdateNavigationRequest $request, string $id)
     {
-        $navigation = Navigation::where('tenant_id', tenancy()->tenant->id)
-            ->findOrFail($id);
+        $tenantId = $this->getTenantId();
+
+        $navigation = $tenantId === null
+            ? Navigation::whereNull('tenant_id')->findOrFail($id)
+            : Navigation::where('tenant_id', $tenantId)->findOrFail($id);
 
         $updatedNavigation = app(UpdateNavigationAction::class)->execute(
             $navigation,
@@ -78,8 +96,11 @@ class NavigationController extends Controller
      */
     public function destroy(string $id)
     {
-        $navigation = Navigation::where('tenant_id', tenancy()->tenant->id)
-            ->findOrFail($id);
+        $tenantId = $this->getTenantId();
+
+        $navigation = $tenantId === null
+            ? Navigation::whereNull('tenant_id')->findOrFail($id)
+            : Navigation::where('tenant_id', $tenantId)->findOrFail($id);
 
         app(DeleteNavigationAction::class)->execute($navigation);
 

@@ -15,7 +15,7 @@ class PageFactory extends Factory
         $title = $this->faker->sentence(3);
 
         return [
-            'tenant_id' => (string) Str::uuid(), // Should be set explicitly in seeder for real tenancy
+            'tenant_id' => null, // Set explicitly for tests
             'title' => $title,
             'slug' => Str::slug($title).'-'.Str::random(5),
             'page_type' => $this->faker->randomElement(['general', 'home', 'about', 'contact']),

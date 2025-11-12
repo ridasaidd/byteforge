@@ -50,10 +50,10 @@ export function AccountSettingsPage() {
     },
     onError: (error: unknown) => {
       const apiError = error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
-      const errorMessage = apiError.response?.data?.errors?.current_password?.[0] 
-        || apiError.response?.data?.message 
+      const errorMessage = apiError.response?.data?.errors?.current_password?.[0]
+        || apiError.response?.data?.message
         || 'Failed to update password';
-      
+
       toast({
         title: 'Error',
         description: errorMessage,
@@ -187,7 +187,7 @@ export function AccountSettingsPage() {
                   Use a strong password with at least 8 characters, including uppercase, lowercase, numbers, and symbols.
                 </p>
               </div>
-              
+
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   2
@@ -196,7 +196,7 @@ export function AccountSettingsPage() {
                   Never share your password with anyone, including support staff.
                 </p>
               </div>
-              
+
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   3
@@ -205,7 +205,7 @@ export function AccountSettingsPage() {
                   Change your password regularly and avoid reusing old passwords.
                 </p>
               </div>
-              
+
               <div className="flex gap-3">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                   4

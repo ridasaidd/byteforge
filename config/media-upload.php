@@ -19,7 +19,7 @@ return [
         'image/gif',
         'image/webp',
         'image/svg+xml',
-        
+
         // Documents
         'application/pdf',
         'application/msword', // .doc
@@ -27,7 +27,7 @@ return [
         'application/vnd.ms-excel', // .xls
         'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
         'text/plain', // .txt
-        
+
         // Videos
         'video/mp4',
         'video/mpeg',
@@ -39,10 +39,10 @@ return [
     'allowed_extensions' => [
         // Images
         'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg',
-        
+
         // Documents
         'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt',
-        
+
         // Videos
         'mp4', 'mpeg', 'mov', 'avi', 'webm',
     ],
@@ -53,7 +53,7 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'max_file_size' => 10240, // 10MB in kilobytes
+    'max_file_size' => 20480, // 20MB in kilobytes
 
     /*
     |--------------------------------------------------------------------------

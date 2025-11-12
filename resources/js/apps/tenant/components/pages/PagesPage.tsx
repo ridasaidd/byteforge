@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { z } from 'zod';
-import { api, type Page, type CreatePageData, type UpdatePageData } from '@/shared/services/api';
+import { pages } from '@/shared/services/api/pages';
+import type { Page, CreatePageData, UpdatePageData } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { FormModal, type FormField } from '@/shared/components/organisms/FormModal';
 import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
@@ -112,9 +113,9 @@ export function PagesPage() {
   // CRUD Hook
   // ============================================================================
 
-  const pages = useCrud<Page, CreatePageData, UpdatePageData>({
+  const pagesData = useCrud<Page, CreatePageData, UpdatePageData>({
     resource: 'pages',
-    apiService: api.pages,
+    apiService: pages,
   });
 
   // ============================================================================
@@ -123,7 +124,7 @@ export function PagesPage() {
 
   const handleCreate = async (data: z.infer<typeof pageSchema>) => {
     try {
-      pages.create.mutate(data);
+  pagesData.create.mutate(data);
       toast({
         title: 'Page created',
         description: 'The page has been created successfully.',
@@ -142,7 +143,7 @@ export function PagesPage() {
     if (!editingPage) return;
 
     try {
-      pages.update.mutate({ id: editingPage.id, data });
+  pagesData.update.mutate({ id: editingPage.id, data });
       toast({
         title: 'Page updated',
         description: 'The page has been updated successfully.',
@@ -161,7 +162,7 @@ export function PagesPage() {
     if (!deletingPage) return;
 
     try {
-      pages.delete.mutate(deletingPage.id);
+  pagesData.delete.mutate(deletingPage.id);
       toast({
         title: 'Page deleted',
         description: 'The page has been deleted successfully.',
@@ -310,15 +311,15 @@ export function PagesPage() {
       />
 
       <DataTable<Page>
-        data={pages.list.data?.data || []}
-        columns={columns}
-        isLoading={pages.list.isLoading}
-        emptyMessage="No pages found"
-        emptyDescription="Create your first page to get started"
-        actions={actions}
-        currentPage={pages.list.data?.meta.current_page}
-        totalPages={pages.list.data?.meta.last_page}
-        onPageChange={pages.pagination.setPage}
+  data={pagesData.list.data?.data || []}
+  columns={columns}
+  isLoading={pagesData.list.isLoading}
+  emptyMessage="No pages found"
+  emptyDescription="Create your first page to get started"
+  actions={actions}
+  currentPage={pagesData.list.data?.meta.current_page}
+  totalPages={pagesData.list.data?.meta.last_page}
+  onPageChange={pagesData.pagination.setPage}
       />
 
       {/* Create Modal */}
@@ -330,7 +331,7 @@ export function PagesPage() {
         description="Add a new page to your website"
         fields={formFields}
         schema={pageSchema}
-        isLoading={pages.create.isPending}
+  isLoading={pagesData.create.isPending}
         submitText="Create"
         defaultValues={{
           status: 'draft',
@@ -356,7 +357,7 @@ export function PagesPage() {
           is_homepage: editingPage.is_homepage,
           meta_data: editingPage.meta_data as { meta_title?: string; meta_description?: string; meta_keywords?: string } | undefined,
         } : undefined}
-        isLoading={pages.update.isPending}
+  isLoading={pagesData.update.isPending}
         submitText="Save Changes"
       />
 
@@ -374,7 +375,7 @@ export function PagesPage() {
         }
         confirmText="Delete"
         variant="destructive"
-        isLoading={pages.delete.isPending}
+  isLoading={pagesData.delete.isPending}
       />
     </div>
   );

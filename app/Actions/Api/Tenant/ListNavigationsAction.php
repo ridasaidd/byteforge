@@ -11,7 +11,12 @@ class ListNavigationsAction
 
     public function execute(array $filters = [])
     {
-        $query = Navigation::where('tenant_id', tenancy()->tenant->id);
+        // Determine tenant ID (null for central context)
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
+
+        $query = $tenantId === null
+            ? Navigation::whereNull('tenant_id')
+            : Navigation::where('tenant_id', $tenantId);
 
         if (isset($filters['status'])) {
             $query->where('status', $filters['status']);

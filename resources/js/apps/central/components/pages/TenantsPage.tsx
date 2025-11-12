@@ -1,7 +1,16 @@
+// Local ApiService type definition to satisfy useCrud generic
+type ApiService<T, CreateData, UpdateData> = {
+  list: (params?: { page?: number; per_page?: number; search?: string }) => Promise<{ data: T[]; meta: { current_page: number; last_page: number; per_page: number; total: number } }>;
+  get: (id: string | number) => Promise<{ data: T }>;
+  create: (data: CreateData) => Promise<{ data: T }>;
+  update: (id: string | number, data: UpdateData) => Promise<{ data: T }>;
+  delete: (id: string | number) => Promise<void>;
+};
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { z } from 'zod';
-import { api, type Tenant, type CreateTenantData, type UpdateTenantData } from '@/shared/services/api';
+import { tenants as tenantsApi } from '@/shared/services/api/tenants';
+import type { Tenant, CreateTenantData, UpdateTenantData } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { FormModal, type FormField } from '@/shared/components/organisms/FormModal';
 import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
@@ -57,9 +66,9 @@ export function TenantsPage() {
   // CRUD Hook
   // ============================================================================
 
-  const tenants = useCrud<Tenant, CreateTenantData, UpdateTenantData>({
+  const tenantsData = useCrud<Tenant, CreateTenantData, UpdateTenantData>({
     resource: 'tenants',
-    apiService: api.tenants,
+    apiService: tenantsApi as unknown as ApiService<Tenant, CreateTenantData, UpdateTenantData>,
   });
 
   // ============================================================================
@@ -68,7 +77,7 @@ export function TenantsPage() {
 
   const handleCreate = async (data: z.infer<typeof tenantSchema>) => {
     try {
-      tenants.create.mutate(data);
+  tenantsData.create.mutate(data);
       toast({
         title: 'Tenant created',
         description: 'The tenant has been created successfully.',
@@ -87,7 +96,7 @@ export function TenantsPage() {
     if (!editingTenant) return;
 
     try {
-      tenants.update.mutate({ id: editingTenant.id, data });
+  tenantsData.update.mutate({ id: editingTenant.id, data });
       toast({
         title: 'Tenant updated',
         description: 'The tenant has been updated successfully.',
@@ -106,7 +115,7 @@ export function TenantsPage() {
     if (!deletingTenant) return;
 
     try {
-      tenants.delete.mutate(deletingTenant.id);
+  tenantsData.delete.mutate(deletingTenant.id);
       toast({
         title: 'Tenant deleted',
         description: 'The tenant has been deleted successfully.',
@@ -210,15 +219,15 @@ export function TenantsPage() {
       />
 
       <DataTable<Tenant>
-        data={tenants.list.data?.data || []}
+  data={tenantsData.list.data?.data || []}
         columns={columns}
-        isLoading={tenants.list.isLoading}
-        emptyMessage="No tenants found"
+  isLoading={tenantsData.list.isLoading}
+  emptyMessage="No tenants found"
         emptyDescription="Create your first tenant to get started"
         actions={actions}
-        currentPage={tenants.list.data?.meta.current_page}
-        totalPages={tenants.list.data?.meta.last_page}
-        onPageChange={tenants.pagination.setPage}
+  currentPage={tenantsData.list.data?.meta.current_page}
+  totalPages={tenantsData.list.data?.meta.last_page}
+  onPageChange={tenantsData.pagination.setPage}
       />
 
       {/* Create Modal */}
@@ -230,7 +239,7 @@ export function TenantsPage() {
         description="Add a new tenant organization"
         fields={formFields}
         schema={tenantSchema}
-        isLoading={tenants.create.isPending}
+  isLoading={tenantsData.create.isPending}
         submitText="Create"
       />
 
@@ -244,7 +253,7 @@ export function TenantsPage() {
         fields={formFields}
         schema={tenantSchema}
         defaultValues={editingTenant || undefined}
-        isLoading={tenants.update.isPending}
+  isLoading={tenantsData.update.isPending}
         submitText="Save Changes"
       />
 
@@ -262,7 +271,7 @@ export function TenantsPage() {
         }
         confirmText="Delete"
         variant="destructive"
-        isLoading={tenants.delete.isPending}
+  isLoading={tenantsData.delete.isPending}
       />
     </div>
   );

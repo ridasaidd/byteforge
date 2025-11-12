@@ -15,7 +15,7 @@ class NavigationFactory extends Factory
         $name = $this->faker->word().' Menu';
 
         return [
-            'tenant_id' => (string) Str::uuid(), // Should be set explicitly in seeder for real tenancy
+            'tenant_id' => null, // Set explicitly for tests
             'name' => $name,
             'slug' => Str::slug($name).'-'.Str::random(5),
             'structure' => null, // Empty for now

@@ -3,6 +3,7 @@
 namespace App\Actions\Api\Tenant;
 
 use App\Models\Page;
+use App\Services\PuckCompilerService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Lorisleiva\Actions\Concerns\AsAction;
@@ -32,6 +33,9 @@ class CreatePageAction
             'puck_data' => 'nullable|array',
             'meta_data' => 'nullable|array',
             'status' => 'required|string|in:draft,published,archived',
+            'layout_id' => 'nullable|exists:layouts,id',
+            'header_id' => 'nullable|exists:theme_parts,id',
+            'footer_id' => 'nullable|exists:theme_parts,id',
             'is_homepage' => 'boolean',
             'sort_order' => 'integer',
             'published_at' => 'nullable|date',
@@ -44,7 +48,7 @@ class CreatePageAction
                 ->update(['is_homepage' => false]);
         }
 
-        return Page::create([
+        $page = Page::create([
             'tenant_id' => tenancy()->tenant->id,
             'title' => $validated['title'],
             'slug' => $validated['slug'],
@@ -56,6 +60,18 @@ class CreatePageAction
             'sort_order' => $validated['sort_order'] ?? 0,
             'created_by' => $user?->id,
             'published_at' => $validated['published_at'] ?? null,
+            'layout_id' => $validated['layout_id'] ?? null,
+            'header_id' => $validated['header_id'] ?? null,
+            'footer_id' => $validated['footer_id'] ?? null,
         ]);
+
+        // Compile Puck data if status is published
+        if ($page->status === 'published') {
+            $compiler = app(PuckCompilerService::class);
+            $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->save();
+        }
+
+        return $page;
     }
 }

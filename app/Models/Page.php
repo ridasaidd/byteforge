@@ -19,6 +19,10 @@ class Page extends Model implements HasMedia
         'slug',
         'page_type',
         'puck_data',
+        'puck_data_compiled',
+        'layout_id',
+        'header_id',
+        'footer_id',
         'meta_data',
         'status',
         'is_homepage',
@@ -29,6 +33,7 @@ class Page extends Model implements HasMedia
 
     protected $casts = [
         'puck_data' => 'array',
+        'puck_data_compiled' => 'array',
         'meta_data' => 'array',
         'is_homepage' => 'boolean',
         'sort_order' => 'integer',
@@ -49,6 +54,30 @@ class Page extends Model implements HasMedia
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the layout for this page.
+     */
+    public function layout()
+    {
+        return $this->belongsTo(Layout::class, 'layout_id');
+    }
+
+    /**
+     * Get the header override for this page.
+     */
+    public function header()
+    {
+        return $this->belongsTo(ThemePart::class, 'header_id');
+    }
+
+    /**
+     * Get the footer override for this page.
+     */
+    public function footer()
+    {
+        return $this->belongsTo(ThemePart::class, 'footer_id');
     }
 
     /**

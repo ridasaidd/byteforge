@@ -3,6 +3,7 @@
 namespace App\Actions\Api\Tenant;
 
 use App\Models\Page;
+use App\Services\PuckCompilerService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -25,6 +26,9 @@ class UpdatePageAction
             'puck_data' => 'nullable|array',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
+            'layout_id' => 'nullable|exists:layouts,id',
+            'header_id' => 'nullable|exists:theme_parts,id',
+            'footer_id' => 'nullable|exists:theme_parts,id',
             'is_homepage' => 'boolean',
             'sort_order' => 'integer',
             'published_at' => 'nullable|date',
@@ -38,7 +42,29 @@ class UpdatePageAction
                 ->update(['is_homepage' => false]);
         }
 
+        $oldStatus = $page->status;
         $page->update($validated);
+
+        // Recompile if:
+        // - Status changed to published, OR
+        // - Already published and puck_data changed, OR
+        // - Already published and layout/header/footer changed
+        $shouldCompile = (
+            ($validated['status'] ?? $page->status) === 'published' &&
+            (
+                $oldStatus !== 'published' ||
+                isset($validated['puck_data']) ||
+                isset($validated['layout_id']) ||
+                isset($validated['header_id']) ||
+                isset($validated['footer_id'])
+            )
+        );
+
+        if ($shouldCompile) {
+            $compiler = app(PuckCompilerService::class);
+            $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->save();
+        }
 
         return $page->fresh();
     }

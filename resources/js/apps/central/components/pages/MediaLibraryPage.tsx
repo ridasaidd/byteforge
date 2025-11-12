@@ -43,9 +43,9 @@ export default function MediaLibraryPage() {
 
   // Mutations
   const uploadMutation = useMutation({
-    mutationFn: (data: { file: File; folder_id?: number | null }) => 
-      api.media.upload({ 
-        file: data.file, 
+    mutationFn: (data: { file: File; folder_id?: number | null }) =>
+      api.media.upload({
+        file: data.file,
         folder_id: data.folder_id,
       }),
     onSuccess: () => {
@@ -104,7 +104,7 @@ export default function MediaLibraryPage() {
   });
 
   const updateFolderMutation = useMutation({
-    mutationFn: (data: { id: number; name: string }) => 
+    mutationFn: (data: { id: number; name: string }) =>
       api.mediaFolders.update(data.id, { name: data.name }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media-folders'] });
@@ -186,8 +186,8 @@ export default function MediaLibraryPage() {
   };
 
   const handleCreateFolder = (name: string, parentId?: string) => {
-    createFolderMutation.mutate({ 
-      name, 
+    createFolderMutation.mutate({
+      name,
       parent_id: parentId ? parseInt(parentId, 10) : null,
     });
   };
@@ -198,7 +198,7 @@ export default function MediaLibraryPage() {
 
   const media = mediaData?.data || [];
   const folders = foldersData?.data || [];
-  
+
   // Get child folders of current folder
   const childFolders = currentFolder
     ? folders.filter((f) => f.parent_id === currentFolder.id)
@@ -268,7 +268,7 @@ export default function MediaLibraryPage() {
           </DialogHeader>
           <MediaUploader
             onUpload={handleUpload}
-            maxSize={10}
+            maxSize={20}
             accept="image/*,video/*,audio/*,application/pdf,.doc,.docx"
           />
           <div className="flex justify-end">

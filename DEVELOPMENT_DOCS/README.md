@@ -1,126 +1,51 @@
-# ByteForge Development Documentation
+# ByteForge Documentation Index
 
-This folder contains all active development documentation for the ByteForge project.
+This folder holds a slim, up‑to‑date set of docs for contributors and reviewers. It replaces earlier phase-by-phase notes with a concise overview of what matters now.
 
----
+—
 
-## 📋 Quick Navigation
+## Quick navigation
 
-### Start Here
-- **[CURRENT_STATUS.md](CURRENT_STATUS.md)** - Current project status, what's done, what's next
-- **[FRONTEND_ARCHITECTURE_PLAN.md](FRONTEND_ARCHITECTURE_PLAN.md)** - Complete frontend architecture guide
+- Current status: see CURRENT_STATUS.md
+- Architecture (frontend/backend/high-level): see FRONTEND_ARCHITECTURE_PLAN.md
+- API overview: see API_DOCUMENTATION.md
+- Roadmap and next targets: see ROADMAP.md
+- Principles and ways of working: see DEVELOPMENT_PRINCIPLES.md and AI_COLLABORATION_GUIDE.md
+- Test accounts: see TESTING_CREDENTIALS.md
 
-### Reference Documents
-- **[API_DOCUMENTATION.md](API_DOCUMENTATION.md)** - Backend API endpoint reference
-- **[TESTING_CREDENTIALS.md](TESTING_CREDENTIALS.md)** - Test accounts and credentials
-- **[DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md)** - Coding principles and standards
-- **[AI_COLLABORATION_GUIDE.md](AI_COLLABORATION_GUIDE.md)** - AI pair programming protocol
+—
 
-### Development Phases
-See `/PHASES/` folder:
-- **[PHASES_1-4_BACKEND_COMPLETED.md](PHASES/PHASES_1-4_BACKEND_COMPLETED.md)** - Backend completion summary
-- **[PHASE_5_FRONTEND_IMPLEMENTATION.md](PHASES/PHASE_5_FRONTEND_IMPLEMENTATION.md)** - Current phase (frontend)
+## What’s implemented (high level)
 
-### Archive
-Old/outdated documentation moved to `/ARCHIVE/` - kept for historical reference.
+- Multi-tenant backend with Passport auth, RBAC, activity logging
+- Full media library with folders, conversions, and React UI
+- Puck-based Page Builder with themed components and advanced controls
+- Theme system with disk sync, active theme, and theme editor endpoints
+- Public page rendering using Puck data and active theme
+- Central admin app with pages, themes, users, tenants, activity, settings
 
----
+Key code entry points (examples):
+- Page Builder config and components: resources/js/apps/central/components/pages/puck-components/
+- Theme provider/hook: resources/js/shared/contexts/ThemeContext.tsx and shared/hooks/useTheme.ts
+- API services and types: resources/js/shared/services/api/
+- Public render: resources/js/apps/central/components/pages/PublicPage.tsx
 
-## 🎯 Current Focus
+—
 
-**Phase 5: Frontend Implementation** (In Progress)
-- Setting up React + TypeScript infrastructure
-- Configuring shadcn/ui components
-- Building three separate apps (Central, Tenant, Public)
+## How to use these docs
 
-**See:** [PHASE_5_FRONTEND_IMPLEMENTATION.md](PHASES/PHASE_5_FRONTEND_IMPLEMENTATION.md) for current tasks.
+1) Scan CURRENT_STATUS.md for an at-a-glance view (what’s done, what’s next).  
+2) Use FRONTEND_ARCHITECTURE_PLAN.md for app structure and composition.  
+3) Use API_DOCUMENTATION.md for endpoint shapes; cross-check types in resources/js/shared/services/api/types.ts.  
+4) See ROADMAP.md to understand short-term focus and upcoming work.  
 
----
+—
 
-## 📊 Project Status at a Glance
+## Pruning and consolidation
 
-- **Backend:** ✅ 100% Complete (all APIs operational)
-- **Frontend:** 🚧 20% Complete (infrastructure setup)
-- **Overall:** ~25% Complete
+We’ve drafted a removal/archive proposal in DOCS_PRUNE_PROPOSAL.md covering older “COMPLETE” and “IMPLEMENTATION_PLAN” files that are superseded by the code and this index. After review, we’ll archive or remove the listed files.
 
-**Next Immediate Step:** Configure shadcn/ui and create shared components.
+—
 
----
-
-## 🏗️ Architecture Overview
-
-### Three React Applications
-1. **Central App** (`superadmin.tsx`) - Manage tenants, users, system settings
-2. **Tenant App** (`tenant.tsx`) - CMS for pages, media, navigation
-3. **Public App** (`public.tsx`) - Render Puck-built pages for visitors
-
-### Shared UI Components
-- All apps use same shadcn/ui design system
-- Data-agnostic components (reusable across contexts)
-- Single source of truth for styling and interactions
-
-### Backend APIs
-- **Central Domain:** `/api/central/*` (tenant/user management)
-- **Tenant Domain:** `/api/tenant/*` (pages, media, navigation)
-- **Public:** `/api/public/*` (page rendering)
-
----
-
-## 📁 File Organization
-
-```
-DEVELOPMENT_DOCS/
-├── CURRENT_STATUS.md              # Start here: Current state
-├── FRONTEND_ARCHITECTURE_PLAN.md  # Frontend implementation guide
-├── API_DOCUMENTATION.md           # Backend API reference
-├── TESTING_CREDENTIALS.md         # Test accounts
-├── DEVELOPMENT_PRINCIPLES.md      # Coding standards
-├── AI_COLLABORATION_GUIDE.md      # AI pairing protocol
-│
-├── PHASES/                        # Development phases
-│   ├── PHASES_1-4_BACKEND_COMPLETED.md
-│   └── PHASE_5_FRONTEND_IMPLEMENTATION.md
-│
-└── ARCHIVE/                       # Historical docs (outdated)
-```
-
----
-
-## 🚀 Getting Started (New Developers)
-
-1. Read **CURRENT_STATUS.md** - Understand where we are
-2. Read **FRONTEND_ARCHITECTURE_PLAN.md** - Understand the architecture
-3. Check **PHASE_5_FRONTEND_IMPLEMENTATION.md** - See current tasks
-4. Review **API_DOCUMENTATION.md** - Know the backend APIs
-5. Start coding! Follow **DEVELOPMENT_PRINCIPLES.md**
-
----
-
-## 🤝 Working with AI
-
-If collaborating with AI (GitHub Copilot, etc.), share:
-1. **AI_COLLABORATION_GUIDE.md** - Protocol for structured collaboration
-2. **DEVELOPMENT_PRINCIPLES.md** - Coding standards to follow
-3. **Current phase doc** - What we're working on
-
-This ensures AI assistance stays aligned with project goals.
-
----
-
-## 📝 Keeping Documentation Updated
-
-When completing work:
-- ✅ Update **CURRENT_STATUS.md** with new progress
-- ✅ Check off completed items in current **PHASE_X** document
-- ✅ Update **FRONTEND_ARCHITECTURE_PLAN.md** if architecture changes
-- ✅ Add new API endpoints to **API_DOCUMENTATION.md**
-
-When starting new phase:
-- Create new **PHASE_X_NAME.md** in `/PHASES/`
-- Move completed phase to `/ARCHIVE/` if no longer relevant
-- Update **CURRENT_STATUS.md** with new focus
-
----
-
-**Last Updated:** October 12, 2025  
-**Current Branch:** `feature/frontend-stack-setup`
+Last updated: November 3, 2025  
+Current branch: feature/page-builder

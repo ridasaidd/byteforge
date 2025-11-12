@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('navigations', function (Blueprint $table) {
             $table->id();
-            $table->string('tenant_id');
+            $table->string('tenant_id')->nullable();
             $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
             $table->string('name');
             $table->string('slug');
@@ -23,7 +23,7 @@ return new class extends Migration
             $table->foreignId('created_by')->constrained('users')->onDelete('cascade');
             $table->timestamps();
 
-            $table->unique(['tenant_id', 'slug']); // Unique per tenant
+            $table->index(['tenant_id', 'slug']); // Index for lookups
             $table->index(['status']);
             $table->index(['sort_order']);
         });

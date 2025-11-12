@@ -22,7 +22,7 @@ interface MediaUploaderProps {
 export function MediaUploader({
   onUpload,
   accept = 'image/*,video/*,audio/*,application/pdf,.doc,.docx,.xls,.xlsx',
-  maxSize = 10, // 10MB default
+  maxSize = 20, // 20MB default
   multiple = true,
   className,
 }: MediaUploaderProps) {

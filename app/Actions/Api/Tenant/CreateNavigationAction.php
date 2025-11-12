@@ -12,20 +12,23 @@ class CreateNavigationAction
 
     public function execute(array $data, $user)
     {
-        // Validate slug uniqueness for this tenant
-        $existingNavigation = Navigation::where('tenant_id', tenancy()->tenant->id)
-            ->where('slug', $data['slug'])
-            ->first();
+        // Determine tenant ID (null for central context)
+        $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
+
+        // Validate slug uniqueness for this tenant/central
+        $existingNavigation = $tenantId === null
+            ? Navigation::whereNull('tenant_id')->where('slug', $data['slug'])->first()
+            : Navigation::where('tenant_id', $tenantId)->where('slug', $data['slug'])->first();
 
         if ($existingNavigation) {
             throw ValidationException::withMessages([
-                'slug' => ['The slug has already been taken for this tenant.'],
+                'slug' => ['The slug has already been taken.'],
             ]);
         }
 
         // Create navigation
         $navigation = Navigation::create([
-            'tenant_id' => tenancy()->tenant->id,
+            'tenant_id' => $tenantId,
             'name' => $data['name'],
             'slug' => $data['slug'],
             'structure' => $data['structure'] ?? [],

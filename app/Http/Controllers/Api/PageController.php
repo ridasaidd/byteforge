@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Page;
 use App\Http\Controllers\Controller;
+use App\Services\PuckCompilerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,7 +21,7 @@ class PageController extends Controller
         if (tenancy()->initialized) {
             return tenancy()->tenant->id;
         }
-        
+
         // Central context - use null for central pages
         return null;
     }
@@ -31,7 +32,7 @@ class PageController extends Controller
     public function index(Request $request): JsonResponse
     {
         $tenantId = $this->getTenantId();
-        $query = $tenantId === null 
+        $query = $tenantId === null
             ? Page::whereNull('tenant_id')
             : Page::where('tenant_id', $tenantId);
 
@@ -66,8 +67,12 @@ class PageController extends Controller
                 'slug' => $page->slug,
                 'page_type' => $page->page_type,
                 'puck_data' => $page->puck_data,
+                'puck_data_compiled' => $page->puck_data_compiled,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
+                'layout_id' => $page->layout_id,
+                'header_id' => $page->header_id,
+                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -93,7 +98,7 @@ class PageController extends Controller
     public function store(Request $request): JsonResponse
     {
         $tenantId = $this->getTenantId();
-        
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'slug' => [
@@ -112,6 +117,9 @@ class PageController extends Controller
             'puck_data' => 'nullable|array',
             'meta_data' => 'nullable|array',
             'status' => 'required|string|in:draft,published,archived',
+            'layout_id' => 'nullable|exists:layouts,id',
+            'header_id' => 'nullable|exists:theme_parts,id',
+            'footer_id' => 'nullable|exists:theme_parts,id',
             'is_homepage' => 'boolean',
             'sort_order' => 'nullable|integer',
         ]);
@@ -119,14 +127,14 @@ class PageController extends Controller
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
             $validated['slug'] = Str::slug($validated['title']);
-            
+
             // Ensure uniqueness
             $count = 1;
             $originalSlug = $validated['slug'];
-            $baseQuery = $tenantId === null 
+            $baseQuery = $tenantId === null
                 ? Page::whereNull('tenant_id')
                 : Page::where('tenant_id', $tenantId);
-                
+
             while ((clone $baseQuery)->where('slug', $validated['slug'])->exists()) {
                 $validated['slug'] = $originalSlug . '-' . $count;
                 $count++;
@@ -136,12 +144,12 @@ class PageController extends Controller
         // Auto-set as homepage if page_type is 'home'
         if ($validated['page_type'] === 'home') {
             $validated['is_homepage'] = true;
-            
+
             // Unset any existing homepage
-            $query = $tenantId === null 
+            $query = $tenantId === null
                 ? Page::whereNull('tenant_id')
                 : Page::where('tenant_id', $tenantId);
-            
+
             $query->where('is_homepage', true)
                 ->update(['is_homepage' => false]);
         }
@@ -157,6 +165,13 @@ class PageController extends Controller
 
         $page = Page::create($validated);
 
+        // Compile if status is published and puck_data exists
+        if ($page->status === 'published' && !empty($page->puck_data)) {
+            $compiler = app(PuckCompilerService::class);
+            $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->save();
+        }
+
         return response()->json([
             'data' => [
                 'id' => $page->id,
@@ -164,8 +179,12 @@ class PageController extends Controller
                 'slug' => $page->slug,
                 'page_type' => $page->page_type,
                 'puck_data' => $page->puck_data,
+                'puck_data_compiled' => $page->puck_data_compiled,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
+                'layout_id' => $page->layout_id,
+                'header_id' => $page->header_id,
+                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -181,10 +200,10 @@ class PageController extends Controller
     public function show(Request $request, $id): JsonResponse
     {
         $tenantId = $this->getTenantId();
-        $query = $tenantId === null 
+        $query = $tenantId === null
             ? Page::whereNull('tenant_id')
             : Page::where('tenant_id', $tenantId);
-            
+
         $page = $query->findOrFail($id);
 
         return response()->json([
@@ -194,8 +213,12 @@ class PageController extends Controller
                 'slug' => $page->slug,
                 'page_type' => $page->page_type,
                 'puck_data' => $page->puck_data,
+                'puck_data_compiled' => $page->puck_data_compiled,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
+                'layout_id' => $page->layout_id,
+                'header_id' => $page->header_id,
+                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -211,10 +234,10 @@ class PageController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $tenantId = $this->getTenantId();
-        $query = $tenantId === null 
+        $query = $tenantId === null
             ? Page::whereNull('tenant_id')
             : Page::where('tenant_id', $tenantId);
-            
+
         $page = $query->findOrFail($id);
 
         $validated = $request->validate([
@@ -236,6 +259,9 @@ class PageController extends Controller
             'puck_data' => 'nullable|array',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
+            'layout_id' => 'nullable|exists:layouts,id',
+            'header_id' => 'nullable|exists:theme_parts,id',
+            'footer_id' => 'nullable|exists:theme_parts,id',
             'is_homepage' => 'boolean',
             'sort_order' => 'nullable|integer',
         ]);
@@ -248,18 +274,37 @@ class PageController extends Controller
         // Auto-set as homepage if page_type is 'home'
         if (isset($validated['page_type']) && $validated['page_type'] === 'home') {
             $validated['is_homepage'] = true;
-            
+
             // Unset any existing homepage
-            $query = $tenantId === null 
+            $query = $tenantId === null
                 ? Page::whereNull('tenant_id')
                 : Page::where('tenant_id', $tenantId);
-                
+
             $query->where('id', '!=', $id)
                 ->where('is_homepage', true)
                 ->update(['is_homepage' => false]);
         }
 
+        $oldStatus = $page->status;
         $page->update($validated);
+
+        // Recompile if:
+        // - Status changed to published, OR
+        // - Already published and puck_data changed
+        // Note: header/footer changes don't require recompilation (runtime merging)
+        $shouldCompile = (
+            ($validated['status'] ?? $page->status) === 'published' &&
+            (
+                $oldStatus !== 'published' ||
+                isset($validated['puck_data'])
+            )
+        );
+
+        if ($shouldCompile) {
+            $compiler = app(PuckCompilerService::class);
+            $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->save();
+        }
 
         return response()->json([
             'data' => [
@@ -268,8 +313,12 @@ class PageController extends Controller
                 'slug' => $page->slug,
                 'page_type' => $page->page_type,
                 'puck_data' => $page->puck_data,
+                'puck_data_compiled' => $page->puck_data_compiled,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
+                'layout_id' => $page->layout_id,
+                'header_id' => $page->header_id,
+                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -285,14 +334,125 @@ class PageController extends Controller
     public function destroy(Request $request, $id): JsonResponse
     {
         $tenantId = $this->getTenantId();
-        $query = $tenantId === null 
+        $query = $tenantId === null
             ? Page::whereNull('tenant_id')
             : Page::where('tenant_id', $tenantId);
-            
+
         $page = $query->findOrFail($id);
 
         $page->delete();
 
         return response()->json(['message' => 'Page deleted successfully'], 200);
+    }
+
+    /**
+     * Get a published page by slug (public route)
+     */
+    public function getBySlug(Request $request, string $slug): JsonResponse
+    {
+        $tenantId = $this->getTenantId();
+        $query = $tenantId === null
+            ? Page::whereNull('tenant_id')
+            : Page::where('tenant_id', $tenantId);
+
+        $page = $query->where('slug', $slug)
+            ->where('status', 'published')
+            ->with(['header', 'footer', 'layout.header', 'layout.footer'])
+            ->firstOrFail();
+
+        return response()->json([
+            'data' => [
+                'id' => $page->id,
+                'title' => $page->title,
+                'slug' => $page->slug,
+                'page_type' => $page->page_type,
+                'puck_data' => $page->puck_data,
+                'puck_data_compiled' => $page->puck_data_compiled,
+                'meta_data' => $page->meta_data,
+                'status' => $page->status,
+                'is_homepage' => $page->is_homepage,
+                'published_at' => $page->published_at?->toISOString(),
+                'created_at' => $page->created_at->toISOString(),
+                'updated_at' => $page->updated_at->toISOString(),
+                // Include header/footer for runtime merging
+                'header' => $page->header ? [
+                    'id' => $page->header->id,
+                    'name' => $page->header->name,
+                    'puck_data_compiled' => $page->header->puck_data_compiled,
+                ] : ($page->layout && $page->layout->header ? [
+                    'id' => $page->layout->header->id,
+                    'name' => $page->layout->header->name,
+                    'puck_data_compiled' => $page->layout->header->puck_data_compiled,
+                ] : null),
+                'footer' => $page->footer ? [
+                    'id' => $page->footer->id,
+                    'name' => $page->footer->name,
+                    'puck_data_compiled' => $page->footer->puck_data_compiled,
+                ] : ($page->layout && $page->layout->footer ? [
+                    'id' => $page->layout->footer->id,
+                    'name' => $page->layout->footer->name,
+                    'puck_data_compiled' => $page->layout->footer->puck_data_compiled,
+                ] : null),
+            ]
+        ]);
+    }
+
+    /**
+     * Get the homepage (public route)
+     */
+    public function getHomepage(Request $request): JsonResponse
+    {
+        $tenantId = $this->getTenantId();
+        $query = $tenantId === null
+            ? Page::whereNull('tenant_id')
+            : Page::where('tenant_id', $tenantId);
+
+        $page = $query->where('is_homepage', true)
+            ->where('status', 'published')
+            ->with(['header', 'footer', 'layout.header', 'layout.footer'])
+            ->first();
+
+        if (!$page) {
+            return response()->json([
+                'error' => 'Homepage not found',
+                'message' => 'No homepage has been set yet.'
+            ], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'id' => $page->id,
+                'title' => $page->title,
+                'slug' => $page->slug,
+                'page_type' => $page->page_type,
+                'puck_data' => $page->puck_data,
+                'puck_data_compiled' => $page->puck_data_compiled,
+                'meta_data' => $page->meta_data,
+                'status' => $page->status,
+                'is_homepage' => $page->is_homepage,
+                'published_at' => $page->published_at?->toISOString(),
+                'created_at' => $page->created_at->toISOString(),
+                'updated_at' => $page->updated_at->toISOString(),
+                // Include header/footer for runtime merging
+                'header' => $page->header ? [
+                    'id' => $page->header->id,
+                    'name' => $page->header->name,
+                    'puck_data_compiled' => $page->header->puck_data_compiled,
+                ] : ($page->layout && $page->layout->header ? [
+                    'id' => $page->layout->header->id,
+                    'name' => $page->layout->header->name,
+                    'puck_data_compiled' => $page->layout->header->puck_data_compiled,
+                ] : null),
+                'footer' => $page->footer ? [
+                    'id' => $page->footer->id,
+                    'name' => $page->footer->name,
+                    'puck_data_compiled' => $page->footer->puck_data_compiled,
+                ] : ($page->layout && $page->layout->footer ? [
+                    'id' => $page->layout->footer->id,
+                    'name' => $page->layout->footer->name,
+                    'puck_data_compiled' => $page->layout->footer->puck_data_compiled,
+                ] : null),
+            ]
+        ]);
     }
 }

@@ -1,0 +1,161 @@
+{
+  "name": "Minimal Theme",
+  "version": "1.0.0",
+  "author": "ByteForge",
+  "description": "A clean, minimal theme with simple placeholder pages.",
+  "colors": {
+    "primary": { "500": "#222222" },
+    "secondary": { "500": "#666666" },
+    "accent": { "500": "#e0e0e0" },
+    "neutral": { "white": "#ffffff", "black": "#000000" },
+    "semantic": { "success": "#10b981", "warning": "#f59e0b", "error": "#ef4444", "info": "#3b82f6" }
+  },
+  "typography": {
+    "fontFamily": { "sans": ["Inter", "system-ui", "sans-serif"] },
+    "fontSize": { "base": "1rem", "lg": "1.125rem", "xl": "1.25rem" },
+    "fontWeight": { "normal": "400", "bold": "700" },
+    "lineHeight": { "normal": "1.5", "relaxed": "1.625" }
+  },
+  "spacing": { "0": "0", "4": "1rem", "8": "2rem", "16": "4rem" },
+  "borderRadius": { "base": "0.25rem", "full": "9999px" },
+  "shadows": { "none": "none" },
+  "breakpoints": { "sm": "640px", "md": "768px", "lg": "1024px" },
+  "components": {
+    "button": {
+      "variants": {
+        "primary": { "backgroundColor": "colors.primary.500", "color": "colors.neutral.white" },
+        "secondary": { "backgroundColor": "colors.secondary.500", "color": "colors.neutral.white" }
+      },
+      "sizes": {
+        "md": { "paddingX": "spacing.4", "paddingY": "spacing.4", "fontSize": "typography.fontSize.base", "borderRadius": "borderRadius.base" }
+      }
+    },
+    "heading": {
+      "colors": { "default": "colors.primary.500" }
+    },
+    "text": {
+      "colors": { "default": "colors.secondary.500" }
+    },
+    "section": {
+      "backgrounds": { "white": "colors.neutral.white", "gray": "colors.accent.500" },
+      "paddingY": { "md": "spacing.8" }
+    },
+    "container": {
+      "maxWidths": { "md": "breakpoints.md", "lg": "breakpoints.lg" },
+      "padding": { "md": "spacing.4" }
+    }
+  },
+  "templates": [
+    {
+      "name": "Homepage – Minimal",
+      "slug": "homepage-minimal",
+      "description": "Minimal homepage placeholder",
+      "puckData": {
+        "content": [
+          {
+            "type": "Section",
+            "props": {
+              "id": "Section-1",
+              "backgroundColor": "white",
+              "paddingY": "2rem"
+            }
+          },
+          {
+            "type": "Container",
+            "props": {
+              "id": "Container-1",
+              "maxWidth": "768px",
+              "padding": "1rem"
+            }
+          },
+          {
+            "type": "Heading",
+            "props": {
+              "id": "Heading-1",
+              "level": 1,
+              "text": "Welcome to Our Site",
+              "align": "center",
+              "color": "primary"
+            }
+          },
+          {
+            "type": "Text",
+            "props": {
+              "id": "Text-1",
+              "content": "This is a minimal homepage placeholder. Use this as a starting point.",
+              "size": "lg",
+              "align": "center",
+              "color": "secondary"
+            }
+          },
+          {
+            "type": "Button",
+            "props": {
+              "id": "Button-1",
+              "text": "Get Started",
+              "href": "#",
+              "variant": "primary"
+            }
+          }
+        ],
+        "root": {
+          "props": {
+            "title": "Homepage – Minimal"
+          }
+        },
+        "zones": {}
+      }
+    },
+    {
+      "name": "About – Minimal",
+      "slug": "about-minimal",
+      "description": "Minimal about page placeholder",
+      "puckData": {
+        "content": [
+          {
+            "type": "Section",
+            "props": {
+              "id": "Section-2",
+              "backgroundColor": "white",
+              "paddingY": "2rem"
+            }
+          },
+          {
+            "type": "Container",
+            "props": {
+              "id": "Container-2",
+              "maxWidth": "768px",
+              "padding": "1rem"
+            }
+          },
+          {
+            "type": "Heading",
+            "props": {
+              "id": "Heading-2",
+              "level": 1,
+              "text": "About Us",
+              "align": "center",
+              "color": "primary"
+            }
+          },
+          {
+            "type": "Text",
+            "props": {
+              "id": "Text-2",
+              "content": "This is a minimal about page placeholder. Tell your story here.",
+              "size": "lg",
+              "align": "center",
+              "color": "secondary"
+            }
+          }
+        ],
+        "root": {
+          "props": {
+            "title": "About – Minimal"
+          }
+        },
+        "zones": {}
+      }
+    }
+  ]
+}

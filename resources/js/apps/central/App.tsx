@@ -2,7 +2,9 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { DashboardPage } from './components/pages/DashboardPage';
 import { LoginPage } from './components/pages/LoginPage';
-import { PagesPage } from './components/pages/PagesPage';
+import { PagesPage, PageEditorPage, ThemesPage, ThemePartsPage, ThemePartEditorPage } from './components/pages';
+import { PublicPage } from './components/pages/PublicPage';
+import { NavigationsPage } from './components/pages/NavigationsPage';
 import { TenantsPage } from './components/pages/TenantsPage';
 import { UsersPage } from './components/pages/UsersPage';
 import { ActivityLogPage } from './components/pages/ActivityLogPage';
@@ -13,6 +15,7 @@ import RolesPermissionsPage from './components/pages/RolesPermissionsPage';
 import MediaLibraryPage from './components/pages/MediaLibraryPage';
 import { centralMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -35,25 +38,38 @@ function ProtectedRoutes() {
   };
 
   return (
-    <DashboardLayout
-      siteName="ByteForge Central"
-      menuItems={centralMenuItems}
-      onSearch={handleSearch}
-    >
+    <ThemeProvider>
       <Routes>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/dashboard/pages" element={<PagesPage />} />
-        <Route path="/dashboard/tenants" element={<TenantsPage />} />
-        <Route path="/dashboard/users" element={<UsersPage />} />
-        <Route path="/dashboard/media" element={<MediaLibraryPage />} />
-        <Route path="/dashboard/roles-permissions" element={<RolesPermissionsPage />} />
-        <Route path="/dashboard/activity" element={<ActivityLogPage />} />
-        <Route path="/dashboard/settings" element={<SettingsPage />} />
-        <Route path="/dashboard/profile" element={<ProfilePage />} />
-        <Route path="/dashboard/account" element={<AccountSettingsPage />} />
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        {/* Full Screen Editors - Without Layout */}
+        <Route path="pages/:id/edit" element={<PageEditorPage />} />
+        <Route path="theme-parts/:id/edit" element={<ThemePartEditorPage />} />
+
+        {/* All other routes with Dashboard Layout */}
+        <Route path="/*" element={
+          <DashboardLayout
+            siteName="ByteForge Central"
+            menuItems={centralMenuItems}
+            onSearch={handleSearch}
+          >
+            <Routes>
+              <Route path="/" element={<DashboardPage />} />
+              <Route path="pages" element={<PagesPage />} />
+              <Route path="theme-parts" element={<ThemePartsPage />} />
+              <Route path="navigations" element={<NavigationsPage />} />
+              <Route path="themes" element={<ThemesPage />} />
+              <Route path="tenants" element={<TenantsPage />} />
+              <Route path="users" element={<UsersPage />} />
+              <Route path="media" element={<MediaLibraryPage />} />
+              <Route path="roles-permissions" element={<RolesPermissionsPage />} />
+              <Route path="activity" element={<ActivityLogPage />} />
+              <Route path="settings" element={<SettingsPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="account" element={<AccountSettingsPage />} />
+            </Routes>
+          </DashboardLayout>
+        } />
       </Routes>
-    </DashboardLayout>
+    </ThemeProvider>
   );
 }
 
@@ -67,8 +83,17 @@ export function CentralApp() {
       }}
     >
       <Routes>
+        {/* Public homepage - no auth required */}
+        <Route path="/" element={<PublicPage />} />
+
+        {/* Public page viewing - no auth required */}
+        <Route path="/pages/:slug" element={<PublicPage />} />
+
+        {/* Authentication */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/*" element={<ProtectedRoutes />} />
+
+        {/* Protected routes */}
+        <Route path="/dashboard/*" element={<ProtectedRoutes />} />
       </Routes>
     </BrowserRouter>
   );

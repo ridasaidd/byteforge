@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
-import { api, type Page, type CreatePageData, type UpdatePageData } from '@/shared/services/api';
+import { useQuery } from '@tanstack/react-query';
+import { pages as pagesApi } from '@/shared/services/api/pages';
+import { themes } from '@/shared/services/api/themes';
+import { layouts as layoutsApi } from '@/shared/services/api/layouts';
+import { themeParts as themePartsApi } from '@/shared/services/api/themeParts';
+import type { Page, CreatePageData, UpdatePageData, PageTemplate } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
-import { FormModal, type FormField } from '@/shared/components/organisms/FormModal';
+import { TabbedFormModal, type FormTab } from '@/shared/components/organisms/TabbedFormModal';
+import { PageCreationWizard, type PageCreationData } from '@/shared/components/organisms/PageCreationWizard';
 import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
@@ -20,6 +27,18 @@ const pageSchema = z.object({
   page_type: z.enum(['general', 'home', 'about', 'contact', 'blog', 'service', 'product', 'custom']),
   status: z.enum(['draft', 'published', 'archived']),
   is_homepage: z.boolean().optional(),
+  layout_id: z.union([z.string(), z.number(), z.null()]).optional().transform(val => {
+    if (val === 'none' || val === null || val === undefined) return null;
+    return typeof val === 'string' ? parseInt(val, 10) : val;
+  }),
+  header_id: z.union([z.string(), z.number(), z.null()]).optional().transform(val => {
+    if (val === 'none' || val === null || val === undefined) return null;
+    return typeof val === 'string' ? parseInt(val, 10) : val;
+  }),
+  footer_id: z.union([z.string(), z.number(), z.null()]).optional().transform(val => {
+    if (val === 'none' || val === null || val === undefined) return null;
+    return typeof val === 'string' ? parseInt(val, 10) : val;
+  }),
   meta_data: z.object({
     meta_title: z.string().optional(),
     meta_description: z.string().optional(),
@@ -27,81 +46,13 @@ const pageSchema = z.object({
   }).optional(),
 });
 
-const formFields: FormField[] = [
-  {
-    name: 'title',
-    label: 'Page Title',
-    type: 'text',
-    placeholder: 'About Us',
-    required: true,
-    description: 'The title of the page',
-  },
-  {
-    name: 'slug',
-    label: 'Slug',
-    type: 'text',
-    placeholder: 'about-us (optional - auto-generated from title)',
-    required: false,
-    description: 'URL-friendly version of the title',
-  },
-  {
-    name: 'page_type',
-    label: 'Page Type',
-    type: 'select',
-    required: true,
-    options: [
-      { label: 'General', value: 'general' },
-      { label: 'Home', value: 'home' },
-      { label: 'About', value: 'about' },
-      { label: 'Contact', value: 'contact' },
-      { label: 'Blog', value: 'blog' },
-      { label: 'Service', value: 'service' },
-      { label: 'Product', value: 'product' },
-      { label: 'Custom', value: 'custom' },
-    ],
-    description: 'The type of page content',
-  },
-  {
-    name: 'status',
-    label: 'Status',
-    type: 'select',
-    required: true,
-    options: [
-      { label: 'Draft', value: 'draft' },
-      { label: 'Published', value: 'published' },
-      { label: 'Archived', value: 'archived' },
-    ],
-    description: 'Publication status',
-  },
-  {
-    name: 'meta_data.meta_title',
-    label: 'SEO Title',
-    type: 'text',
-    placeholder: 'Optional - defaults to page title',
-    description: 'SEO meta title (for search engines)',
-  },
-  {
-    name: 'meta_data.meta_description',
-    label: 'SEO Description',
-    type: 'textarea',
-    placeholder: 'A brief description for search engines',
-    description: 'SEO meta description',
-  },
-  {
-    name: 'meta_data.meta_keywords',
-    label: 'SEO Keywords',
-    type: 'text',
-    placeholder: 'keyword1, keyword2, keyword3',
-    description: 'Comma-separated keywords',
-  },
-];
-
 // ============================================================================
 // Component
 // ============================================================================
 
 export function PagesPage() {
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -112,27 +63,199 @@ export function PagesPage() {
   // CRUD Hook
   // ============================================================================
 
-  const pages = useCrud<Page, CreatePageData, UpdatePageData>({
+  const pagesData = useCrud<Page, CreatePageData, UpdatePageData>({
     resource: 'pages',
-    apiService: api.pages,
+    apiService: pagesApi,
   });
+
+  // Fetch available templates from active theme
+  const { data: templatesResponse } = useQuery({
+    queryKey: ['templates', 'active'],
+    queryFn: async () => {
+      return await themes.getActiveTemplates();
+    },
+  });
+
+  const templates: PageTemplate[] = templatesResponse?.data || [];
+
+  // Fetch layouts for selection
+  const { data: layoutsResponse } = useQuery({
+    queryKey: ['layouts', 'published'],
+    queryFn: async () => {
+      return await layoutsApi.list({ status: 'published', per_page: 100 });
+    },
+  });
+
+  const layoutOptions = (layoutsResponse?.data || []).map(layout => ({
+    label: layout.name,
+    value: String(layout.id),
+  }));
+
+  // Fetch theme parts for selection
+  const { data: headersResponse } = useQuery({
+    queryKey: ['theme-parts', 'header', 'published'],
+    queryFn: async () => {
+      return await themePartsApi.list({ type: 'header', status: 'published', per_page: 100 });
+    },
+  });
+
+  const headerOptions = (headersResponse?.data || []).map(part => ({
+    label: part.name,
+    value: String(part.id),
+  }));
+
+  const { data: footersResponse } = useQuery({
+    queryKey: ['theme-parts', 'footer', 'published'],
+    queryFn: async () => {
+      return await themePartsApi.list({ type: 'footer', status: 'published', per_page: 100 });
+    },
+  });
+
+  const footerOptions = (footersResponse?.data || []).map(part => ({
+    label: part.name,
+    value: String(part.id),
+  }));
+
+  // Build form tabs dynamically with fetched options
+  const getFormTabs = (): FormTab[] => [
+    {
+      id: 'general',
+      label: 'General',
+      fields: [
+        {
+          name: 'title',
+          label: 'Page Title',
+          type: 'text',
+          placeholder: 'About Us',
+          required: true,
+          description: 'The title of the page',
+        },
+        {
+          name: 'slug',
+          label: 'Slug',
+          type: 'text',
+          placeholder: 'about-us (optional - auto-generated from title)',
+          required: false,
+          description: 'URL-friendly version of the title',
+        },
+        {
+          name: 'page_type',
+          label: 'Page Type',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'General', value: 'general' },
+            { label: 'Home', value: 'home' },
+            { label: 'About', value: 'about' },
+            { label: 'Contact', value: 'contact' },
+            { label: 'Blog', value: 'blog' },
+            { label: 'Service', value: 'service' },
+            { label: 'Product', value: 'product' },
+            { label: 'Custom', value: 'custom' },
+          ],
+          description: 'The type of page content',
+        },
+        {
+          name: 'status',
+          label: 'Status',
+          type: 'select',
+          required: true,
+          options: [
+            { label: 'Draft', value: 'draft' },
+            { label: 'Published', value: 'published' },
+            { label: 'Archived', value: 'archived' },
+          ],
+          description: 'Publication status',
+        },
+      ],
+    },
+    {
+      id: 'layout',
+      label: 'Layout & Parts',
+      fields: [
+        {
+          name: 'layout_id',
+          label: 'Layout',
+          type: 'select',
+          required: false,
+          options: [
+            { label: 'None (use manual parts)', value: 'none' },
+            ...layoutOptions,
+          ],
+          description: 'Choose a pre-configured layout with header/footer',
+        },
+        {
+          name: 'header_id',
+          label: 'Header Override',
+          type: 'select',
+          required: false,
+          options: [
+            { label: 'None (use layout default)', value: 'none' },
+            ...headerOptions,
+          ],
+          description: 'Override the layout header with a specific one',
+        },
+        {
+          name: 'footer_id',
+          label: 'Footer Override',
+          type: 'select',
+          required: false,
+          options: [
+            { label: 'None (use layout default)', value: 'none' },
+            ...footerOptions,
+          ],
+          description: 'Override the layout footer with a specific one',
+        },
+      ],
+    },
+    {
+      id: 'seo',
+      label: 'SEO',
+      fields: [
+        {
+          name: 'meta_data.meta_title',
+          label: 'SEO Title',
+          type: 'text',
+          placeholder: 'Optional - defaults to page title',
+          description: 'SEO meta title (for search engines)',
+        },
+        {
+          name: 'meta_data.meta_description',
+          label: 'SEO Description',
+          type: 'textarea',
+          placeholder: 'A brief description for search engines',
+          description: 'SEO meta description',
+        },
+        {
+          name: 'meta_data.meta_keywords',
+          label: 'SEO Keywords',
+          type: 'text',
+          placeholder: 'keyword1, keyword2, keyword3',
+          description: 'Comma-separated keywords',
+        },
+      ],
+    },
+  ];
 
   // ============================================================================
   // Handlers
   // ============================================================================
 
-  const handleCreate = async (data: z.infer<typeof pageSchema>) => {
+  const handleCreate = async (data: PageCreationData, creationType: 'scratch' | 'template' | 'import') => {
     try {
-      pages.create.mutate(data);
+      await pagesData.create.mutateAsync(data as CreatePageData);
       toast({
         title: 'Page created',
-        description: 'The page has been created successfully.',
+        description: creationType === 'template'
+          ? 'Page created with template content successfully.'
+          : 'Blank page created successfully.',
       });
       setIsCreateModalOpen(false);
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create page';
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create page',
+        description: message,
         variant: 'destructive',
       });
     }
@@ -142,7 +265,7 @@ export function PagesPage() {
     if (!editingPage) return;
 
     try {
-      pages.update.mutate({ id: editingPage.id, data });
+      pagesData.update.mutate({ id: editingPage.id, data: data as UpdatePageData });
       toast({
         title: 'Page updated',
         description: 'The page has been updated successfully.',
@@ -161,7 +284,7 @@ export function PagesPage() {
     if (!deletingPage) return;
 
     try {
-      pages.delete.mutate(deletingPage.id);
+  pagesData.delete.mutate(deletingPage.id);
       toast({
         title: 'Page deleted',
         description: 'The page has been deleted successfully.',
@@ -200,14 +323,17 @@ export function PagesPage() {
       sortable: true,
       render: (page) => (
         <div className="space-y-1">
-          <div className="font-medium flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/dashboard/pages/${page.id}/edit`)}
+            className="font-medium flex items-center gap-2 hover:text-primary transition-colors text-left"
+          >
             {page.title}
             {page.is_homepage && (
               <Badge variant="default" className="text-xs">
                 Homepage
               </Badge>
             )}
-          </div>
+          </button>
           <div className="text-xs text-muted-foreground">/{page.slug}</div>
         </div>
       ),
@@ -310,43 +436,34 @@ export function PagesPage() {
       />
 
       <DataTable<Page>
-        data={pages.list.data?.data || []}
+  data={pagesData.list.data?.data || []}
         columns={columns}
-        isLoading={pages.list.isLoading}
-        emptyMessage="No pages found"
-        emptyDescription="Create your first page to get started"
-        actions={actions}
-        currentPage={pages.list.data?.meta.current_page}
-        totalPages={pages.list.data?.meta.last_page}
-        onPageChange={pages.pagination.setPage}
+  isLoading={pagesData.list.isLoading}
+  emptyMessage="No pages found"
+  emptyDescription="Create your first page to get started"
+  actions={actions}
+  currentPage={pagesData.list.data?.meta.current_page}
+  totalPages={pagesData.list.data?.meta.last_page}
+  onPageChange={pagesData.pagination.setPage}
       />
 
-      {/* Create Modal */}
-      <FormModal
+      {/* Create Page Wizard */}
+      <PageCreationWizard
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSubmit={handleCreate}
-        title="Create Page"
-        description="Add a new page to your website"
-        fields={formFields}
-        schema={pageSchema}
-        isLoading={pages.create.isPending}
-        submitText="Create"
-        defaultValues={{
-          status: 'draft',
-          page_type: 'general',
-          is_homepage: false,
-        }}
+        templates={templates}
+  isLoading={pagesData.create.isPending}
       />
 
       {/* Edit Modal */}
-      <FormModal
+      <TabbedFormModal
         open={!!editingPage}
-        onOpenChange={(open) => !open && setEditingPage(null)}
+        onOpenChange={(open: boolean) => !open && setEditingPage(null)}
         onSubmit={handleUpdate}
         title="Edit Page"
         description="Update page information"
-        fields={formFields}
+        tabs={getFormTabs()}
         schema={pageSchema}
         defaultValues={editingPage ? {
           title: editingPage.title,
@@ -354,9 +471,12 @@ export function PagesPage() {
           page_type: editingPage.page_type,
           status: editingPage.status,
           is_homepage: editingPage.is_homepage,
+          layout_id: editingPage.layout_id ? String(editingPage.layout_id) : 'none',
+          header_id: editingPage.header_id ? String(editingPage.header_id) : 'none',
+          footer_id: editingPage.footer_id ? String(editingPage.footer_id) : 'none',
           meta_data: editingPage.meta_data as { meta_title?: string; meta_description?: string; meta_keywords?: string } | undefined,
-        } : undefined}
-        isLoading={pages.update.isPending}
+        } as never : undefined}
+        isLoading={pagesData.update.isPending}
         submitText="Save Changes"
       />
 
@@ -374,7 +494,7 @@ export function PagesPage() {
         }
         confirmText="Delete"
         variant="destructive"
-        isLoading={pages.delete.isPending}
+  isLoading={pagesData.delete.isPending}
       />
     </div>
   );

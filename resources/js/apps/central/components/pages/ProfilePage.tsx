@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Save } from 'lucide-react';
-import { api, type UpdateProfileData, type User } from '@/shared/services/api';
+import { auth } from '@/shared/services/api/auth';
+import type { UpdateProfileData, User } from '@/shared/services/api/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { AvatarUpload } from '@/shared/components/molecules/AvatarUpload';
@@ -51,7 +52,7 @@ export function ProfilePage() {
   const { data: user, isLoading } = useQuery<User>({
     queryKey: ['profile'],
     queryFn: async () => {
-      const response = await api.auth.user();
+      const response = await auth.user();
       return response;
     },
     refetchOnMount: 'always',
@@ -62,7 +63,7 @@ export function ProfilePage() {
   // ============================================================================
 
   const updateMutation = useMutation({
-    mutationFn: (data: UpdateProfileData) => api.auth.updateProfile(data),
+  mutationFn: (data: UpdateProfileData) => auth.updateProfile(data),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] }); // Refresh activity log
@@ -91,7 +92,7 @@ export function ProfilePage() {
   const [isDeletingAvatar, setIsDeletingAvatar] = useState(false);
 
   const uploadAvatarMutation = useMutation<{ user: User; avatar_url: string }, unknown, File>({
-    mutationFn: (file: File) => api.auth.uploadAvatar(file),
+  mutationFn: (file: File) => auth.uploadAvatar(file),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.setQueryData(['profile'], response.user);
@@ -114,7 +115,7 @@ export function ProfilePage() {
   });
 
   const deleteAvatarMutation = useMutation<{ user: User }, unknown, void>({
-    mutationFn: () => api.auth.deleteAvatar(),
+  mutationFn: () => auth.deleteAvatar(),
     onSuccess: (response) => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.setQueryData(['profile'], response.user);

@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\Tenant\MediaFolderController;
 use App\Http\Controllers\Api\TenantController;
+use App\Http\Controllers\Api\ThemePartController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
@@ -54,6 +56,8 @@ Route::middleware([
         // Resource routes
         Route::apiResource('pages', PageController::class);
         Route::apiResource('navigations', NavigationController::class);
+        Route::apiResource('theme-parts', ThemePartController::class);
+        Route::apiResource('layouts', LayoutController::class);
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy']);
 
         // Media management

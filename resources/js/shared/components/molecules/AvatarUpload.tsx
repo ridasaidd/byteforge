@@ -44,8 +44,8 @@ export function AvatarUpload({
       return;
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      alert('Image must be less than 2MB');
+    if (file.size > 20 * 1024 * 1024) {
+      alert('Image must be less than 20MB');
       return;
     }
 

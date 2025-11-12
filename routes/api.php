@@ -37,8 +37,30 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:manage users');
             Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:manage users');
 
-            // Pages management (for central public site)
+                        // Pages management (for central public site)
             Route::apiResource('pages', \App\Http\Controllers\Api\PageController::class);
+
+            // Navigation management (for central public site)
+            Route::apiResource('navigations', \App\Http\Controllers\Api\NavigationController::class);
+
+            // Theme parts and layouts management
+            Route::apiResource('theme-parts', \App\Http\Controllers\Api\ThemePartController::class);
+            Route::apiResource('layouts', \App\Http\Controllers\Api\LayoutController::class);
+
+            // Themes management
+            Route::get('themes/available', [\App\Http\Controllers\Api\ThemeController::class, 'available']);
+            Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active']);
+            Route::get('themes/active/templates', [\App\Http\Controllers\Api\ThemeController::class, 'activeTemplates']);
+            Route::get('themes/{slug}/templates', [\App\Http\Controllers\Api\ThemeController::class, 'templates']);
+            Route::post('themes/activate', [\App\Http\Controllers\Api\ThemeController::class, 'activate']);
+            Route::post('themes/{theme}/reset', [\App\Http\Controllers\Api\ThemeController::class, 'reset']);
+            Route::post('themes/{theme}/duplicate', [\App\Http\Controllers\Api\ThemeController::class, 'duplicate']);
+            Route::get('themes/{theme}/export', [\App\Http\Controllers\Api\ThemeController::class, 'export']);
+            // Route for syncing themes from disk (restricted by permission)
+            Route::post('themes/sync', [\App\Http\Controllers\Api\ThemeController::class, 'sync'])->middleware('permission:sync themes');
+            // Route for importing themes (commented out)
+            // Route::post('themes/import', [\App\Http\Controllers\Api\ThemeController::class, 'import']);
+            Route::apiResource('themes', \App\Http\Controllers\Api\ThemeController::class);
 
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
@@ -83,6 +105,13 @@ foreach (config('tenancy.central_domains') as $domain) {
         Route::get('health', function () {
             return response()->json(['status' => 'ok']);
         });
+
+        // Public theme endpoint (no auth required)
+        Route::get('themes/public', [\App\Http\Controllers\Api\ThemeController::class, 'publicTheme']);
+
+        // Public page endpoints (no auth required)
+        Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
+        Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
 
     });
 }

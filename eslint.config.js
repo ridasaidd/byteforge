@@ -25,4 +25,16 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // Prevent shadcn/ui (dashboard-only) from leaking into public-facing Puck components
+    files: ['resources/js/apps/central/components/pages/puck-components/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: ['@/shared/components/ui/*'],
+        },
+      ],
+    },
+  },
 )

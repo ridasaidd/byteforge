@@ -14,14 +14,22 @@ class UpdateNavigationAction
     {
         // Validate slug uniqueness if slug is being changed
         if (isset($data['slug']) && $data['slug'] !== $navigation->slug) {
-            $existingNavigation = Navigation::where('tenant_id', tenancy()->tenant->id)
-                ->where('slug', $data['slug'])
-                ->where('id', '!=', $navigation->id)
-                ->first();
+            // Determine tenant ID (null for central context)
+            $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
+
+            $existingNavigation = $tenantId === null
+                ? Navigation::whereNull('tenant_id')
+                    ->where('slug', $data['slug'])
+                    ->where('id', '!=', $navigation->id)
+                    ->first()
+                : Navigation::where('tenant_id', $tenantId)
+                    ->where('slug', $data['slug'])
+                    ->where('id', '!=', $navigation->id)
+                    ->first();
 
             if ($existingNavigation) {
                 throw ValidationException::withMessages([
-                    'slug' => ['The slug has already been taken for this tenant.'],
+                    'slug' => ['The slug has already been taken.'],
                 ]);
             }
         }

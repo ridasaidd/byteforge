@@ -80,18 +80,21 @@ export interface UseCrudReturn<T, CreateData = Partial<T>, UpdateData = Partial<
   // Mutations
   create: {
     mutate: (data: CreateData) => void;
+    mutateAsync: (data: CreateData) => Promise<unknown>;
     isPending: boolean;
     error: Error | null;
   };
 
   update: {
     mutate: (params: { id: string | number; data: UpdateData }) => void;
+    mutateAsync: (params: { id: string | number; data: UpdateData }) => Promise<unknown>;
     isPending: boolean;
     error: Error | null;
   };
 
   delete: {
     mutate: (id: string | number) => void;
+    mutateAsync: (id: string | number) => Promise<unknown>;
     isPending: boolean;
     error: Error | null;
   };
@@ -163,16 +166,19 @@ export function useCrud<T, CreateData = Partial<T>, UpdateData = Partial<T>>({
     },
     create: {
       mutate: createMutation.mutate,
+      mutateAsync: createMutation.mutateAsync,
       isPending: createMutation.isPending,
       error: createMutation.error as Error | null,
     },
     update: {
       mutate: updateMutation.mutate,
+      mutateAsync: updateMutation.mutateAsync,
       isPending: updateMutation.isPending,
       error: updateMutation.error as Error | null,
     },
     delete: {
       mutate: deleteMutation.mutate,
+      mutateAsync: deleteMutation.mutateAsync,
       isPending: deleteMutation.isPending,
       error: deleteMutation.error as Error | null,
     },
