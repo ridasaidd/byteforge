@@ -8,5 +8,6 @@ export * from './settings';
 export * from './pages';
 export * from './mediaFolders';
 export * from './themeParts';
+export * from './pageTemplates';
 export * from './layouts';
 export * from './types';

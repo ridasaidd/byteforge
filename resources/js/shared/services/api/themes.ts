@@ -1,13 +1,7 @@
 import { http } from '../http';
-import type { Theme, AvailableTheme, ThemeData, ActivateThemeData, UpdateThemeData, DuplicateThemeData, PageTemplate } from './types';
+import type { Theme, AvailableTheme, ThemeData, ActivateThemeData, CreateThemeData, UpdateThemeData, DuplicateThemeData, PageTemplate } from './types';
 
 export const themes = {
-  /** Sync themes from disk to database */
-  sync: () => http.post<{ message: string }>('/superadmin/themes/sync'),
-
-  /** Get available themes from disk */
-  available: () => http.get<{ data: AvailableTheme[] }>('/superadmin/themes/available'),
-
   /** Get active theme */
   active: () => http.get<{ data: Theme }>('/superadmin/themes/active'),
 
@@ -16,6 +10,9 @@ export const themes = {
 
   /** Get specific theme */
   get: (id: number) => http.get<{ data: Theme }>(`/superadmin/themes/${id}`),
+
+  /** Create a new theme */
+  create: (data: CreateThemeData) => http.post<{ data: Theme; message: string }>('/superadmin/themes', data),
 
   /** Activate a theme */
   activate: (data: ActivateThemeData) => http.post<{ data: Theme; message: string }>('/superadmin/themes/activate', data),

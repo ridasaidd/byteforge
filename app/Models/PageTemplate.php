@@ -10,6 +10,8 @@ class PageTemplate extends Model
     use HasFactory;
 
     protected $fillable = [
+        'tenant_id',
+        'theme_id',
         'name',
         'slug',
         'description',
@@ -58,5 +60,13 @@ class PageTemplate extends Model
     public function incrementUsage()
     {
         $this->increment('usage_count');
+    }
+
+    /**
+     * Get the theme this template belongs to.
+     */
+    public function theme()
+    {
+        return $this->belongsTo(Theme::class);
     }
 }

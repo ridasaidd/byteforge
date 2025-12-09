@@ -3,16 +3,21 @@ import { ThemeContext } from './theme-context';
 import { themes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  initialTheme?: Theme | null; // Accept pre-loaded theme from metadata
+}
+
+export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+  const [theme, setTheme] = useState<Theme | null>(initialTheme || null);
+  const [isLoading, setIsLoading] = useState(!initialTheme); // Skip loading if theme provided
   const [error, setError] = useState<Error | null>(null);
 
   const loadActiveTheme = async () => {
     try {
       setIsLoading(true);
       setError(null);
-  const response = await themes.active();
+      const response = await themes.active();
       setTheme(response.data);
     } catch (err) {
       setError(err as Error);
@@ -23,8 +28,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    loadActiveTheme();
-  }, []);
+    // Only fetch theme if not provided via initialTheme (metadata)
+    if (!initialTheme) {
+      loadActiveTheme();
+    }
+  }, [initialTheme]);
 
   /**
    * Resolve a theme value using dot notation.

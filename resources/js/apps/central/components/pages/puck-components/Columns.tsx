@@ -1,19 +1,25 @@
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig, FieldLabel } from '@measured/puck';
+import React, { useState } from 'react';
 import { useTheme } from '@/shared/hooks';
+import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
+import type { Media } from '@/shared/services/api';
 import {
-  SpacingControl, AlignmentControl, BorderControl, ShadowControl,
-  SpacingValue, AlignmentValue, BorderValue, ShadowValue
+  SpacingValue, BorderValue, ShadowValue, WidthValue, ColorValue
 } from './fields';
+import { layoutContainerControls } from './controlPresets';
 
 export interface ColumnsProps {
-  column1?: () => React.ReactElement;
-  column2?: () => React.ReactElement;
-  column3?: () => React.ReactElement;
-  column4?: () => React.ReactElement;
-  columns: 1 | 2 | 3 | 4;
-  gap: 'none' | 'sm' | 'md' | 'lg';
-  distribution: 'equal' | '1-2' | '2-1' | '1-3' | '3-1';
-  alignment?: AlignmentValue;
+  items?: () => React.ReactElement;
+  backgroundColor?: ColorValue;
+  backgroundImage?: string;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  backgroundRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
+  numColumns: number;
+  gap: number;
+  alignItems?: 'start' | 'center' | 'end' | 'stretch';
+  width?: WidthValue;
+  display?: 'grid' | 'inline-grid';
   margin?: SpacingValue;
   padding?: SpacingValue;
   border?: BorderValue;
@@ -21,12 +27,34 @@ export interface ColumnsProps {
   customCss?: string;
 }
 
-function ColumnsComponent({ column1: Column1, column2: Column2, column3: Column3, column4: Column4, columns, gap, distribution, alignment, margin, padding, border, shadow, customCss }: ColumnsProps) {
+function ColumnsComponent({
+  items: Items,
+  backgroundColor,
+  backgroundImage,
+  backgroundSize = 'cover',
+  backgroundPosition = 'center',
+  backgroundRepeat = 'no-repeat',
+  numColumns,
+  gap,
+  alignItems = 'stretch',
+  width,
+  display = 'grid',
+  margin,
+  padding,
+  border,
+  shadow,
+  customCss,
+}: ColumnsProps) {
   const { resolve } = useTheme();
 
-  // Get theme gap value
-  const gapValue = resolve(`components.columns.gap.${gap}`);
-
+  // Resolve background color from theme or use custom (with legacy string support)
+  const resolvedBackgroundColor = typeof backgroundColor === 'string'
+    ? (backgroundColor as string).startsWith('#') ? backgroundColor : resolve(backgroundColor)
+    : backgroundColor?.type === 'theme' && backgroundColor.value
+    ? (typeof backgroundColor.value === 'string' && backgroundColor.value.startsWith('#') ? backgroundColor.value : resolve(backgroundColor.value))
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : 'transparent';
   // Helper functions
   const spacingToCss = (spacing: SpacingValue | undefined) => {
     if (!spacing) return {};
@@ -68,140 +96,163 @@ function ColumnsComponent({ column1: Column1, column2: Column2, column3: Column3
     return { boxShadow: shadows[shadowVal.preset] };
   };
 
-  // Grid template columns based on distribution
-  const getGridTemplate = () => {
-    if (columns === 2) {
-      switch (distribution) {
-        case '1-2': return '1fr 2fr';
-        case '2-1': return '2fr 1fr';
-        case '1-3': return '1fr 3fr';
-        case '3-1': return '3fr 1fr';
-        default: return `repeat(${columns}, 1fr)`;
-      }
-    }
-    return `repeat(${columns}, 1fr)`;
+  // Convert WidthValue to CSS value
+  const widthToCss = (w: WidthValue | undefined) => {
+    if (!w) return '100%';
+    return w.value === 'auto' ? 'auto' : `${w.value}${w.unit}`;
   };
 
   const styles: React.CSSProperties = {
-    display: 'grid',
-    gridTemplateColumns: getGridTemplate(),
-    gap: gapValue,
+    display: display || 'grid',
+    gridTemplateColumns: `repeat(${numColumns}, 1fr)`,
+    gap: `${gap}px`,
+    alignItems: alignItems,
+    width: widthToCss(width),
+    backgroundColor: resolvedBackgroundColor,
+    ...(backgroundImage && {
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize,
+      backgroundPosition,
+      backgroundRepeat,
+    }),
     ...spacingToCss(margin),
     ...paddingToCss(padding),
     ...borderToCss(border),
     ...shadowToCss(shadow),
-    ...(alignment ? {
-      alignItems: alignment.horizontal === 'left' ? 'flex-start' :
-                   alignment.horizontal === 'center' ? 'center' :
-                   alignment.horizontal === 'right' ? 'flex-end' : 'flex-start',
-    } : {}),
   };
 
-  const columnComponents = [Column1, Column2, Column3, Column4].slice(0, columns);
+  // Pass styles directly to the slot component - Puck will render it as a div
+  // with these styles and children will flow into the CSS Grid
+  const SlotComponent = Items as unknown as React.ComponentType<{ style: React.CSSProperties }>;
 
   return (
     <>
-      <div style={styles}>
-        {columnComponents.map((Column, idx) => (
-          <div key={idx}>
-            {Column && <Column />}
-          </div>
-        ))}
-      </div>
+      {Items && <SlotComponent style={styles} />}
       {customCss && <style>{customCss}</style>}
     </>
+  );
+}
+
+// BackgroundImageField component for Columns
+function BackgroundImageField(props: { field: { label?: string }; value?: string; onChange: (value: string) => void }) {
+  const { field, value = '', onChange } = props;
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+
+  const handleMediaSelect = (media: Media) => {
+    onChange(media.url);
+    setIsMediaPickerOpen(false);
+  };
+
+  return (
+    <FieldLabel label={field.label || 'Background Image'}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter image URL or browse media"
+          style={{ flex: 1, padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+        />
+        <button
+          type="button"
+          onClick={() => setIsMediaPickerOpen(true)}
+          style={{ padding: '6px 12px', background: '#0969da', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Browse
+        </button>
+      </div>
+      {value && (
+        <div style={{ marginTop: '8px' }}>
+          <img
+            src={value}
+            alt="Background preview"
+            style={{ maxWidth: '200px', maxHeight: '150px', border: '1px solid #e1e4e8', borderRadius: '4px' }}
+          />
+        </div>
+      )}
+      <MediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => setIsMediaPickerOpen(false)}
+        onSelect={handleMediaSelect}
+      />
+    </FieldLabel>
   );
 }
 
 export const Columns: ComponentConfig<ColumnsProps> = {
   label: 'Columns',
   fields: {
-    columns: {
-      type: 'select',
+    numColumns: {
+      type: 'number',
       label: 'Number of Columns',
-      options: [
-        { label: '1 Column', value: 1 },
-        { label: '2 Columns', value: 2 },
-        { label: '3 Columns', value: 3 },
-        { label: '4 Columns', value: 4 },
-      ],
+      min: 1,
+      max: 12,
     },
     gap: {
-      type: 'select',
-      label: 'Gap Between Columns',
+      label: 'Gap (px)',
+      type: 'number',
+      min: 0,
+      max: 100,
+    },
+    items: {
+      type: 'slot',
+      label: 'Items',
+    },
+    // Spread layout container controls (background, spacing, visual effects)
+    ...layoutContainerControls,
+    // Columns-specific controls
+    backgroundImage: {
+      type: 'custom',
+      label: 'Background Image',
+      render: BackgroundImageField,
+    },
+    backgroundSize: {
+      type: 'radio',
+      label: 'Background Size',
       options: [
-        { label: 'None', value: 'none' },
-        { label: 'Small', value: 'sm' },
-        { label: 'Medium', value: 'md' },
-        { label: 'Large', value: 'lg' },
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Auto', value: 'auto' },
       ],
     },
-    distribution: {
+    backgroundPosition: {
       type: 'select',
-      label: 'Column Distribution',
+      label: 'Background Position',
       options: [
-        { label: 'Equal Width', value: 'equal' },
-        { label: '1/3 - 2/3', value: '1-2' },
-        { label: '2/3 - 1/3', value: '2-1' },
-        { label: '1/4 - 3/4', value: '1-3' },
-        { label: '3/4 - 1/4', value: '3-1' },
+        { label: 'Center', value: 'center' },
+        { label: 'Top', value: 'top' },
+        { label: 'Bottom', value: 'bottom' },
+        { label: 'Left', value: 'left' },
+        { label: 'Right', value: 'right' },
       ],
     },
-    column1: {
-      type: 'slot',
-      label: 'Column 1',
+    backgroundRepeat: {
+      type: 'radio',
+      label: 'Background Repeat',
+      options: [
+        { label: 'No Repeat', value: 'no-repeat' },
+        { label: 'Repeat', value: 'repeat' },
+        { label: 'Repeat X', value: 'repeat-x' },
+        { label: 'Repeat Y', value: 'repeat-y' },
+      ],
     },
-    column2: {
-      type: 'slot',
-      label: 'Column 2',
+    alignItems: {
+      type: 'select',
+      label: 'Align Items',
+      options: [
+        { label: 'Start', value: 'start' },
+        { label: 'Center', value: 'center' },
+        { label: 'End', value: 'end' },
+        { label: 'Stretch', value: 'stretch' },
+      ],
     },
-    column3: {
-      type: 'slot',
-      label: 'Column 3',
-    },
-    column4: {
-      type: 'slot',
-      label: 'Column 4',
-    },
-    alignment: {
-      type: 'custom',
-      label: 'Alignment',
-      render: (props) => {
-        const { value = { horizontal: 'left' }, onChange } = props;
-        return <AlignmentControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    padding: {
-      type: 'custom',
-      label: 'Padding',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} allowNegative={false} />;
-      },
-    },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'none' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
+    display: {
+      type: 'select',
+      label: 'Display',
+      options: [
+        { label: 'Grid', value: 'grid' },
+        { label: 'Inline Grid', value: 'inline-grid' },
+      ],
     },
     customCss: {
       type: 'textarea',
@@ -209,10 +260,14 @@ export const Columns: ComponentConfig<ColumnsProps> = {
     },
   },
   defaultProps: {
-    columns: 2,
-    gap: 'md',
-    distribution: 'equal',
-    alignment: { horizontal: 'left' },
+    numColumns: 2,
+    gap: 16,
+    alignItems: 'stretch',
+    width: { value: '100', unit: '%' },
+    display: 'grid',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
     margin: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     padding: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     border: { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' },

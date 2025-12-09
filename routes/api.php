@@ -45,6 +45,7 @@ foreach (config('tenancy.central_domains') as $domain) {
 
             // Theme parts and layouts management
             Route::apiResource('theme-parts', \App\Http\Controllers\Api\ThemePartController::class);
+            Route::apiResource('page-templates', \App\Http\Controllers\Api\PageTemplateController::class);
             Route::apiResource('layouts', \App\Http\Controllers\Api\LayoutController::class);
 
             // Themes management
@@ -57,7 +58,7 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::post('themes/{theme}/duplicate', [\App\Http\Controllers\Api\ThemeController::class, 'duplicate']);
             Route::get('themes/{theme}/export', [\App\Http\Controllers\Api\ThemeController::class, 'export']);
             // Route for syncing themes from disk (restricted by permission)
-            Route::post('themes/sync', [\App\Http\Controllers\Api\ThemeController::class, 'sync'])->middleware('permission:sync themes');
+
             // Route for importing themes (commented out)
             // Route::post('themes/import', [\App\Http\Controllers\Api\ThemeController::class, 'import']);
             Route::apiResource('themes', \App\Http\Controllers\Api\ThemeController::class);

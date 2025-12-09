@@ -4,13 +4,13 @@ import { useTheme } from '@/shared/hooks';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
 import type { Media } from '@/shared/services/api';
 import {
-  SpacingControl, AlignmentControl, BorderControl, ShadowControl,
-  SpacingValue, AlignmentValue, BorderValue, ShadowValue
+  SpacingValue, AlignmentValue, BorderValue, ShadowValue, ColorValue
 } from './fields';
+import { layoutContainerControls } from './controlPresets';
 
 export interface SectionProps {
   content?: () => React.ReactElement;
-  backgroundColor: 'white' | 'gray' | 'blue' | 'transparent';
+  backgroundColor?: ColorValue;
   backgroundImage?: string;
   backgroundSize?: 'cover' | 'contain' | 'auto';
   backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
@@ -24,11 +24,19 @@ export interface SectionProps {
   customCss?: string;
 }
 
-function SectionComponent({ content: Content, backgroundColor, backgroundImage, backgroundSize = 'cover', backgroundPosition = 'center', backgroundRepeat = 'no-repeat', paddingY, alignment, margin, padding, border, shadow, customCss }: SectionProps) {
+function SectionComponent({ content: Content, backgroundColor, backgroundImage, backgroundSize = 'cover', backgroundPosition = 'center', backgroundRepeat = 'no-repeat', paddingY, alignment, margin, padding, border, shadow, customCss, puck }: SectionProps & { puck?: { dragRef?: any } }) {
   const { resolve } = useTheme();
 
+  // Resolve background color from theme or use custom (with legacy string support)
+  const resolvedBackgroundColor = typeof backgroundColor === 'string'
+    ? ((backgroundColor as string).startsWith('#') ? backgroundColor : resolve(backgroundColor))
+    : backgroundColor?.type === 'theme' && backgroundColor.value
+    ? (typeof backgroundColor.value === 'string' && backgroundColor.value.startsWith('#') ? backgroundColor.value : resolve(backgroundColor.value))
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : 'transparent';
+
   // Get theme values
-  const bgColor = resolve(`components.section.backgrounds.${backgroundColor}`);
   const themePadding = resolve(`components.section.paddingY.${paddingY}`);
 
   // Helper to convert spacing value to CSS
@@ -77,7 +85,7 @@ function SectionComponent({ content: Content, backgroundColor, backgroundImage, 
 
   const styles: React.CSSProperties = {
     width: '100%',
-    backgroundColor: bgColor,
+    backgroundColor: resolvedBackgroundColor,
     ...(backgroundImage && {
       backgroundImage: `url(${backgroundImage})`,
       backgroundSize,
@@ -110,7 +118,7 @@ function SectionComponent({ content: Content, backgroundColor, backgroundImage, 
 
   return (
     <>
-      <section style={styles}>
+      <section ref={puck?.dragRef} style={styles}>
         {Content && <Content />}
       </section>
       {customCss && <style>{customCss}</style>}
@@ -188,21 +196,15 @@ function BackgroundImageField(props: { field: { label?: string }; value?: string
 
 export const Section: ComponentConfig<SectionProps> = {
   label: 'Section',
+  inline: true,
   fields: {
     content: {
       type: 'slot',
       label: 'Content',
     },
-    backgroundColor: {
-      type: 'select',
-      label: 'Background Color',
-      options: [
-        { label: 'White', value: 'white' },
-        { label: 'Gray', value: 'gray' },
-        { label: 'Blue', value: 'blue' },
-        { label: 'Transparent', value: 'transparent' },
-      ],
-    },
+    // Spread layout container controls (background, spacing, visual effects)
+    ...layoutContainerControls,
+    // Section-specific controls
     backgroundImage: {
       type: 'custom',
       label: 'Background Image',
@@ -249,53 +251,13 @@ export const Section: ComponentConfig<SectionProps> = {
         { label: 'Extra Large', value: 'xl' },
       ],
     },
-    alignment: {
-      type: 'custom',
-      label: 'Alignment',
-      render: (props) => {
-        const { value = { horizontal: 'left' }, onChange } = props;
-        return <AlignmentControl {...props} value={value} onChange={onChange} showVertical={true} />;
-      },
-    },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    padding: {
-      type: 'custom',
-      label: 'Padding',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} allowNegative={false} />;
-      },
-    },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'none' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
-    },
     customCss: {
       type: 'textarea',
       label: 'Custom CSS',
     },
   },
   defaultProps: {
-    backgroundColor: 'white',
+    backgroundColor: { type: 'theme', value: 'colors.neutral.white' },
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     backgroundRepeat: 'no-repeat',

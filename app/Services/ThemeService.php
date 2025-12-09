@@ -3,142 +3,22 @@
 namespace App\Services;
 
 use App\Models\Theme;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class ThemeService
 {
     /**
-     * Scan themes folder, sync found themes to database, and flag missing DB themes as unavailable.
-     * Only runs in central app context.
-     */
-    public function syncThemesFromDisk(): void
-    {
-    $themesPath = resource_path('js/shared/themes');
-        if (!File::exists($themesPath)) {
-            // Directory missing: nothing to sync
-            return;
-        }
-
-        $foundSlugs = [];
-        $directories = File::directories($themesPath);
-
-        foreach ($directories as $dir) {
-            $themeSlug = basename($dir);
-            $themeJsonPath = "$dir/theme.json";
-            if (File::exists($themeJsonPath)) {
-                $themeData = json_decode(File::get($themeJsonPath), true);
-                $foundSlugs[] = $themeSlug;
-
-                // Add or update theme in DB (central only: tenant_id = null)
-                $theme = Theme::where('tenant_id', null)
-                    ->where('slug', $themeSlug)
-                    ->first();
-
-                if (!$theme) {
-                    Theme::create([
-                        'tenant_id' => null,
-                        'name' => $themeData['name'] ?? Str::title($themeSlug),
-                        'slug' => $themeSlug,
-                        'base_theme' => $themeSlug,
-                        'theme_data' => $themeData,
-                        'description' => $themeData['description'] ?? null,
-                        'author' => $themeData['author'] ?? null,
-                        'version' => $themeData['version'] ?? '1.0.0',
-                        'is_active' => false,
-                        'unavailable' => false,
-                    ]);
-                } else {
-                    // Update theme fields if changed
-                    $theme->name = $themeData['name'] ?? Str::title($themeSlug);
-                    $theme->description = $themeData['description'] ?? null;
-                    $theme->author = $themeData['author'] ?? null;
-                    $theme->version = $themeData['version'] ?? '1.0.0';
-                    $theme->theme_data = $themeData;
-                    $theme->unavailable = false;
-                    $theme->save();
-                }
-            }
-        }
-
-        // Flag missing DB themes as unavailable and disable 'active'
-        $dbThemes = Theme::where('tenant_id', null)->get();
-        foreach ($dbThemes as $theme) {
-            if (!in_array($theme->slug, $foundSlugs)) {
-                $theme->unavailable = true;
-                $theme->is_active = false;
-                $theme->save();
-            }
-        }
-    }
-    /**
-     * Get all available themes from storage/themes directory.
-     */
-    public function getAvailableThemes(): array
-    {
-    $themesPath = resource_path('js/shared/themes');
-
-        // Directory creation disabled for in-house theme management
-        // if (!File::exists($themesPath)) {
-        //     File::makeDirectory($themesPath, 0755, true);
-        //     return [];
-        // }
-        if (!File::exists($themesPath)) {
-            // Directory missing: return empty, do not create
-            return [];
-        }
-
-        $themes = [];
-        $directories = File::directories($themesPath);
-
-        foreach ($directories as $dir) {
-            $themeName = basename($dir);
-            $themeJsonPath = "{$dir}/theme.json";
-
-            if (File::exists($themeJsonPath)) {
-                $themeData = json_decode(File::get($themeJsonPath), true);
-
-                $themes[] = [
-                    'slug' => $themeName,
-                    'name' => $themeData['name'] ?? Str::title($themeName),
-                    'description' => $themeData['description'] ?? '',
-                    'author' => $themeData['author'] ?? '',
-                    'version' => $themeData['version'] ?? '1.0.0',
-                    'preview' => File::exists("{$dir}/preview.png") ? "shared/themes/{$themeName}/preview.png" : null,
-                    'data' => $themeData,
-                ];
-            }
-        }
-
-        return $themes;
-    }
-
-    /**
-     * Load theme data from disk.
-     */
-    public function loadThemeFromDisk(string $themeSlug): ?array
-    {
-    $themePath = resource_path("js/shared/themes/{$themeSlug}/theme.json");
-
-        if (!File::exists($themePath)) {
-            return null;
-        }
-
-        return json_decode(File::get($themePath), true);
-    }
-
-    /**
      * Activate a theme for a tenant.
-     * If theme doesn't exist in DB, create it from disk first.
+     * If theme doesn't exist in DB, return null.
+     * If activating a system theme, clone theme parts and page templates.
      */
     public function activateTheme(string $themeSlug, ?string $tenantId = null): ?Theme
     {
-        // Load theme data from disk
-        $themeData = $this->loadThemeFromDisk($themeSlug);
-
-        if (!$themeData) {
-            return null;
-        }
+        // Check if this is a system theme (from central app)
+        $systemTheme = Theme::whereNull('tenant_id')
+            ->where('slug', $themeSlug)
+            ->where('is_system_theme', true)
+            ->first();
 
         // Check if theme already exists in database for this tenant
         $theme = Theme::forTenant($tenantId)
@@ -146,22 +26,81 @@ class ThemeService
             ->first();
 
         if (!$theme) {
-            // Create new theme from disk
-            $theme = Theme::create([
-                'tenant_id' => $tenantId,
-                'name' => $themeData['name'] ?? Str::title($themeSlug),
-                'slug' => $themeSlug,
-                'base_theme' => $themeSlug,
-                'theme_data' => $themeData,
-                'description' => $themeData['description'] ?? null,
-                'author' => $themeData['author'] ?? null,
-                'version' => $themeData['version'] ?? '1.0.0',
-                'is_active' => false,
-            ]);
+            if ($systemTheme) {
+                // Clone system theme with its bundle (parts + templates)
+                $theme = $this->cloneSystemTheme($systemTheme, $tenantId);
+            } else {
+                // Theme not found in database
+                return null;
+            }
         }
 
         // Activate the theme
         $theme->activate();
+
+        return $theme;
+    }
+
+    /**
+     * Clone a system theme with its bundle (theme parts + page templates).
+     */
+    private function cloneSystemTheme(Theme $systemTheme, ?string $tenantId): Theme
+    {
+        // Create a copy of the theme for the tenant
+        $theme = Theme::create([
+            'tenant_id' => $tenantId,
+            'name' => $systemTheme->name,
+            'slug' => $systemTheme->slug,
+            'base_theme' => $systemTheme->base_theme,
+            'theme_data' => $systemTheme->theme_data,
+            'description' => $systemTheme->description,
+            'preview_image' => $systemTheme->preview_image,
+            'author' => $systemTheme->author,
+            'version' => $systemTheme->version,
+            'is_active' => false,
+            'is_system_theme' => false, // Tenant copy is not a system theme
+        ]);
+
+        // Clone theme parts (header, footer, etc.)
+        $parts = \App\Models\ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $systemTheme->id)
+            ->get();
+
+        foreach ($parts as $part) {
+            \App\Models\ThemePart::create([
+                'tenant_id' => $tenantId,
+                'theme_id' => $theme->id,
+                'name' => $part->name,
+                'slug' => $part->slug,
+                'type' => $part->type,
+                'puck_data_raw' => $part->puck_data_raw,
+                'puck_data_compiled' => $part->puck_data_compiled,
+                'status' => $part->status,
+                'sort_order' => $part->sort_order,
+                'created_by' => $part->created_by,
+            ]);
+        }
+
+        // Clone page templates
+        $templates = \App\Models\PageTemplate::whereNull('tenant_id')
+            ->where('theme_id', $systemTheme->id)
+            ->get();
+
+        foreach ($templates as $template) {
+            \App\Models\PageTemplate::create([
+                'tenant_id' => $tenantId,
+                'theme_id' => $theme->id,
+                'name' => $template->name,
+                'slug' => $template->slug,
+                'description' => $template->description,
+                'category' => $template->category,
+                'preview_image' => $template->preview_image,
+                'puck_data' => $template->puck_data,
+                'meta' => $template->meta,
+                'is_active' => $template->is_active,
+                'usage_count' => 0, // Reset usage count for tenant copy
+            ]);
+        }
 
         return $theme;
     }
@@ -179,7 +118,7 @@ class ThemeService
     /**
      * Get or create default theme for a tenant.
      */
-    public function getOrCreateDefaultTheme(?string $tenantId = null): Theme
+    public function getOrCreateDefaultTheme(?string $tenantId = null): ?Theme
     {
         $activeTheme = $this->getActiveTheme($tenantId);
 
@@ -187,9 +126,18 @@ class ThemeService
             return $activeTheme;
         }
 
-        // No active theme, activate the default one
-        return $this->activateTheme('default', $tenantId)
-            ?? throw new \Exception('Default theme not found in storage/themes/default');
+        // No active theme, try to activate a default one
+        // First, try to find any system theme to activate
+        $systemTheme = Theme::whereNull('tenant_id')
+            ->where('is_system_theme', true)
+            ->first();
+
+        if ($systemTheme) {
+            return $this->activateTheme($systemTheme->slug, $tenantId);
+        }
+
+        // No system themes available
+        return null;
     }
 
     /**
@@ -306,7 +254,7 @@ class ThemeService
      */
     public function getTemplatesFromTheme(string $themeSlug, ?string $tenantId = null): array
     {
-        // First try to get from installed theme in database
+        // Get from installed theme in database
         $theme = Theme::forTenant($tenantId)
             ->where('slug', $themeSlug)
             ->first();
@@ -315,10 +263,7 @@ class ThemeService
             return $theme->theme_data['templates'];
         }
 
-        // Fallback to theme file on disk
-        $themeData = $this->loadThemeFromDisk($themeSlug);
-
-        return $themeData['templates'] ?? [];
+        return [];
     }
 
     /**

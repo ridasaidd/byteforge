@@ -234,7 +234,9 @@ export interface Theme {
   base_theme: string | null;
   theme_data: ThemeData;
   is_active: boolean;
+  is_system_theme: boolean;
   description: string | null;
+  preview_image: string | null;
   author: string | null;
   version: string;
   created_at: string;
@@ -251,8 +253,20 @@ export interface AvailableTheme {
   data: ThemeData;
 }
 
+export interface CreateThemeData {
+  name: string;
+  description?: string;
+  preview_image?: string;
+  is_system_theme?: boolean;
+  base_theme?: string;
+  theme_data?: Partial<ThemeData>;
+}
+
 export interface UpdateThemeData {
-  theme_data: Partial<ThemeData>;
+  name?: string;
+  description?: string;
+  preview_image?: string;
+  theme_data?: Partial<ThemeData>;
 }
 
 export interface ActivateThemeData {
@@ -264,23 +278,48 @@ export interface DuplicateThemeData {
 }
 
 export interface PageTemplate {
+  id: number;
+  theme_id: number | null;
   name: string;
   slug: string;
-  description: string;
-  category: string;
-  preview?: string;
-  puckData: {
-    content: Array<{
-      type: string;
-      props: Record<string, unknown>;
-    }>;
-    root?: Record<string, unknown>;
-  };
+  description: string | null;
+  category: string | null;
+  preview_image: string | null;
+  puck_data: Record<string, unknown> | null;
+  meta: Record<string, unknown> | null;
+  is_active: boolean;
+  usage_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePageTemplateData {
+  theme_id?: number | null;
+  name: string;
+  slug?: string;
+  description?: string;
+  category?: string;
+  preview_image?: string;
+  puck_data?: Record<string, unknown>;
+  meta?: Record<string, unknown>;
+  is_active?: boolean;
+}
+
+export interface UpdatePageTemplateData {
+  name?: string;
+  slug?: string;
+  description?: string;
+  category?: string;
+  preview_image?: string;
+  puck_data?: Record<string, unknown>;
+  meta?: Record<string, unknown>;
+  is_active?: boolean;
 }
 
 export interface ThemePart extends Record<string, unknown> {
   id: number;
   tenant_id: string | null;
+  theme_id: number | null;
   name: string;
   slug: string;
   type: 'header' | 'footer' | 'sidebar';
@@ -294,12 +333,14 @@ export interface ThemePart extends Record<string, unknown> {
 }
 
 export interface CreateThemePartData {
+  theme_id?: number | null;
   name: string;
   slug?: string;
   type: 'header' | 'footer' | 'sidebar';
   puck_data_raw?: Record<string, unknown> | null;
   status: 'draft' | 'published';
   sort_order?: number;
+  created_by?: number;
 }
 
 export interface UpdateThemePartData {

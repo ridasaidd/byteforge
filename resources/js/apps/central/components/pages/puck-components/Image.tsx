@@ -4,26 +4,26 @@ import { useTheme } from '@/shared/hooks';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
 import type { Media } from '@/shared/services/api';
 import {
-  SpacingControl, BorderControl, ShadowControl,
-  SpacingValue, BorderValue, ShadowValue
+  SpacingValue, BorderValue, ShadowValue, WidthValue, DisplayValue, AlignmentValue
 } from './fields';
+import { mediaControls } from './controlPresets';
 
 export interface ImageProps {
   src: string;
   alt: string;
-  width: 'auto' | 'full' | 'sm' | 'md' | 'lg' | 'xl';
-  height: 'auto' | 'sm' | 'md' | 'lg' | 'xl';
+  width?: WidthValue;
+  height?: WidthValue;
+  display?: DisplayValue;
   objectFit: 'contain' | 'cover' | 'fill' | 'none';
   borderRadius: 'none' | 'sm' | 'md' | 'lg' | 'full';
-  align: 'left' | 'center' | 'right';
+  alignment?: AlignmentValue;
   margin?: SpacingValue;
-  padding?: SpacingValue;
   border?: BorderValue;
   shadow?: ShadowValue;
   customCss?: string;
 }
 
-function ImageComponent({ src, alt, width, height, objectFit, borderRadius, align, margin, padding, border, shadow, customCss }: ImageProps) {
+function ImageComponent({ src, alt, width, height, display = 'inline-block', objectFit, borderRadius, margin, border, shadow, customCss }: ImageProps) {
   const { resolve } = useTheme();
 
   // Helper functions
@@ -34,16 +34,6 @@ function ImageComponent({ src, alt, width, height, objectFit, borderRadius, alig
       marginRight: `${spacing.right}${spacing.unit}`,
       marginBottom: `${spacing.bottom}${spacing.unit}`,
       marginLeft: `${spacing.left}${spacing.unit}`,
-    };
-  };
-
-  const paddingToCss = (spacing: SpacingValue | undefined) => {
-    if (!spacing) return {};
-    return {
-      paddingTop: `${spacing.top}${spacing.unit}`,
-      paddingRight: `${spacing.right}${spacing.unit}`,
-      paddingBottom: `${spacing.bottom}${spacing.unit}`,
-      paddingLeft: `${spacing.left}${spacing.unit}`,
     };
   };
 
@@ -67,23 +57,10 @@ function ImageComponent({ src, alt, width, height, objectFit, borderRadius, alig
     return { boxShadow: shadows[shadowVal.preset] };
   };
 
-  // Width mapping
-  const widthMap = {
-    auto: 'auto',
-    full: '100%',
-    sm: '320px',
-    md: '640px',
-    lg: '1024px',
-    xl: '1280px',
-  };
-
-  // Height mapping
-  const heightMap = {
-    auto: 'auto',
-    sm: '200px',
-    md: '400px',
-    lg: '600px',
-    xl: '800px',
+  // Convert WidthValue to CSS value
+  const widthToCss = (w: WidthValue | undefined) => {
+    if (!w) return undefined;
+    return w.value === 'auto' ? 'auto' : `${w.value}${w.unit}`;
   };
 
   // Border radius from theme
@@ -95,26 +72,12 @@ function ImageComponent({ src, alt, width, height, objectFit, borderRadius, alig
     full: resolve('borderRadius.full'),
   };
 
-  // Alignment
-  const alignMap = {
-    left: 'flex-start',
-    center: 'center',
-    right: 'flex-end',
-  };
-
-  const containerStyles: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: alignMap[align],
-    width: '100%',
-    ...paddingToCss(padding),
-  };
-
-  const imageStyles: React.CSSProperties = {
-    width: widthMap[width],
-    height: heightMap[height],
-    objectFit,
+  const imgStyle: React.CSSProperties = {
+    ...(widthToCss(width) ? { width: widthToCss(width) } : {}),
+    ...(widthToCss(height) ? { height: widthToCss(height) } : {}),
+    objectFit: objectFit,
     borderRadius: borderRadiusMap[borderRadius],
-    display: 'block',
+    display: display || 'inline-block',
     ...spacingToCss(margin),
     ...borderToCss(border),
     ...shadowToCss(shadow),
@@ -122,13 +85,11 @@ function ImageComponent({ src, alt, width, height, objectFit, borderRadius, alig
 
   return (
     <>
-      <div style={containerStyles}>
-        <img
-          src={src || 'https://placehold.co/800x600?text=Add+Image'}
-          alt={alt || 'Image'}
-          style={imageStyles}
-        />
-      </div>
+      <img
+        src={src || 'https://placehold.co/800x600?text=Add+Image'}
+        alt={alt || 'Image'}
+        style={imgStyle}
+      />
       {customCss && <style>{customCss}</style>}
     </>
   );
@@ -213,28 +174,9 @@ export const Image: ComponentConfig<ImageProps> = {
       type: 'text',
       label: 'Alt Text',
     },
-    width: {
-      type: 'select',
-      label: 'Width',
-      options: [
-        { label: 'Auto', value: 'auto' },
-        { label: 'Full Width', value: 'full' },
-        { label: 'Small (320px)', value: 'sm' },
-        { label: 'Medium (640px)', value: 'md' },
-        { label: 'Large (1024px)', value: 'lg' },
-        { label: 'Extra Large (1280px)', value: 'xl' },
-      ],
-    },
     height: {
-      type: 'select',
+      ...mediaControls.width,
       label: 'Height',
-      options: [
-        { label: 'Auto', value: 'auto' },
-        { label: 'Small (200px)', value: 'sm' },
-        { label: 'Medium (400px)', value: 'md' },
-        { label: 'Large (600px)', value: 'lg' },
-        { label: 'Extra Large (800px)', value: 'xl' },
-      ],
     },
     objectFit: {
       type: 'radio',
@@ -257,47 +199,9 @@ export const Image: ComponentConfig<ImageProps> = {
         { label: 'Full (Circle)', value: 'full' },
       ],
     },
-    align: {
-      type: 'radio',
-      label: 'Alignment',
-      options: [
-        { label: 'Left', value: 'left' },
-        { label: 'Center', value: 'center' },
-        { label: 'Right', value: 'right' },
-      ],
-    },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    padding: {
-      type: 'custom',
-      label: 'Padding',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} allowNegative={false} />;
-      },
-    },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'none' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    // Spread media controls (margin, border, shadow, width, display, alignment)
+    // NOTE: Media elements should NOT have padding - they are replaced elements
+    ...mediaControls,
     customCss: {
       type: 'textarea',
       label: 'Custom CSS',
@@ -306,13 +210,11 @@ export const Image: ComponentConfig<ImageProps> = {
   defaultProps: {
     src: '',
     alt: 'Image',
-    width: 'full',
-    height: 'auto',
+    display: 'inline-block',
     objectFit: 'cover',
     borderRadius: 'none',
-    align: 'center',
+    alignment: { horizontal: 'left' },
     margin: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
-    padding: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     border: { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' },
     shadow: { preset: 'none' },
   },

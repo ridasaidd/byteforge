@@ -19,7 +19,9 @@ class Theme extends Model
         'base_theme',
         'theme_data',
         'is_active',
+        'is_system_theme',
         'description',
+        'preview_image',
         'author',
         'version',
     ];
@@ -27,6 +29,7 @@ class Theme extends Model
     protected $casts = [
         'theme_data' => 'array',
         'is_active' => 'boolean',
+        'is_system_theme' => 'boolean',
     ];
 
     public function getActivitylogOptions(): \Spatie\Activitylog\LogOptions
@@ -42,6 +45,22 @@ class Theme extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    /**
+     * Get the theme parts associated with this theme.
+     */
+    public function parts()
+    {
+        return $this->hasMany(ThemePart::class);
+    }
+
+    /**
+     * Get the page templates associated with this theme.
+     */
+    public function pageTemplates()
+    {
+        return $this->hasMany(PageTemplate::class);
     }
 
     /**

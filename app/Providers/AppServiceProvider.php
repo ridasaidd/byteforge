@@ -2,6 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\Navigation;
+use App\Models\ThemePart;
+use App\Observers\NavigationObserver;
+use App\Observers\ThemePartObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register observers
+        Navigation::observe(NavigationObserver::class);
+        ThemePart::observe(ThemePartObserver::class);
     }
 }

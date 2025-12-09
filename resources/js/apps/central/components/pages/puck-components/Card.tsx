@@ -1,9 +1,9 @@
 import type { ComponentConfig } from '@measured/puck';
 import { useTheme } from '@/shared/hooks';
 import {
-  SpacingControl, BorderControl, ShadowControl,
-  type SpacingValue, type BorderValue, type ShadowValue
+  SpacingValue, BorderValue, ShadowValue, WidthValue, DisplayValue, ColorValue
 } from './fields';
+import { compositeControls, textColorControl } from './controlPresets';
 import {
   Feather, Heart, Star, Zap, Shield, CheckCircle,
   Users, TrendingUp, Award, Target, Box, Package,
@@ -31,11 +31,13 @@ export type CardProps = {
   description: string;
   icon?: string;
   mode: 'flat' | 'card';
-  iconColor?: string;
-  titleColor?: string;
-  descriptionColor?: string;
-  backgroundColor?: string;
+  iconColor?: ColorValue;
+  titleColor?: ColorValue;
+  descriptionColor?: ColorValue;
+  backgroundColor?: ColorValue;
   textAlign?: 'left' | 'center' | 'right';
+  width?: WidthValue;
+  display?: DisplayValue;
   padding?: SpacingValue;
   margin?: SpacingValue;
   border?: BorderValue;
@@ -53,6 +55,8 @@ function CardComponent({
   descriptionColor,
   backgroundColor,
   textAlign,
+  width,
+  display = 'block',
   padding,
   margin,
   border,
@@ -103,9 +107,50 @@ function CardComponent({
     return { boxShadow: shadows[shadowVal.preset] };
   };
 
+  // Convert WidthValue to CSS value
+  const widthToCss = (w: WidthValue | undefined) => {
+    if (!w) return undefined;
+    return w.value === 'auto' ? 'auto' : `${w.value}${w.unit}`;
+  };
+
+  // Resolve colors from theme or use custom
+  const resolvedBackgroundColor = typeof backgroundColor === 'string'
+    ? ((backgroundColor as string).startsWith('#') ? backgroundColor : resolve(backgroundColor))
+    : backgroundColor?.type === 'theme' && backgroundColor.value
+    ? resolve(backgroundColor.value)
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : (mode === 'card' ? '#FFFFFF' : 'transparent');
+
+  const resolvedIconColor = typeof iconColor === 'string'
+    ? ((iconColor as string).startsWith('#') ? iconColor : resolve(iconColor))
+    : iconColor?.type === 'theme' && iconColor.value
+    ? resolve(iconColor.value)
+    : iconColor?.type === 'custom'
+    ? iconColor.value
+    : resolve('colors.primary.500', '#3B82F6');
+
+  const resolvedTitleColor = typeof titleColor === 'string'
+    ? ((titleColor as string).startsWith('#') ? titleColor : resolve(titleColor))
+    : titleColor?.type === 'theme' && titleColor.value
+    ? resolve(titleColor.value)
+    : titleColor?.type === 'custom'
+    ? titleColor.value
+    : resolve('colors.foreground', '#111827');
+
+  const resolvedDescriptionColor = typeof descriptionColor === 'string'
+    ? ((descriptionColor as string).startsWith('#') ? descriptionColor : resolve(descriptionColor))
+    : descriptionColor?.type === 'theme' && descriptionColor.value
+    ? resolve(descriptionColor.value)
+    : descriptionColor?.type === 'custom'
+    ? descriptionColor.value
+    : resolve('colors.muted', '#6B7280');
+
   const cardStyle: React.CSSProperties = {
-    backgroundColor: backgroundColor || (mode === 'card' ? '#FFFFFF' : 'transparent'),
+    backgroundColor: resolvedBackgroundColor,
     textAlign: textAlign || 'left',
+    display: display || 'block',
+    ...(widthToCss(width) ? { width: widthToCss(width) } : {}),
     ...paddingToCss(padding),
     ...spacingToCss(margin),
     ...borderToCss(border),
@@ -117,14 +162,14 @@ function CardComponent({
   return (
     <div style={cardStyle} className={customCss}>
       {IconComponent && (
-        <div style={{ marginBottom: '1rem', color: iconColor || resolve('colors.primary.500', '#3B82F6') }}>
+        <div style={{ marginBottom: '1rem', color: resolvedIconColor }}>
           <IconComponent size={40} strokeWidth={1.5} />
         </div>
       )}
-      <h3 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.75rem', color: titleColor || resolve('colors.foreground', '#111827') }}>
+      <h3 style={{ fontSize: '1.5rem', fontWeight: '600', marginBottom: '0.75rem', color: resolvedTitleColor }}>
         {title}
       </h3>
-      <p style={{ fontSize: '1rem', lineHeight: '1.625', color: descriptionColor || resolve('colors.muted', '#6B7280'), margin: 0 }}>
+      <p style={{ fontSize: '1rem', lineHeight: '1.625', color: resolvedDescriptionColor, margin: 0 }}>
         {description}
       </p>
     </div>
@@ -172,42 +217,21 @@ export const Card: ComponentConfig<CardProps> = {
         { label: 'Right', value: 'right' },
       ],
     },
-    iconColor: { type: 'text', label: 'Icon Color' },
-    titleColor: { type: 'text', label: 'Title Color' },
-    descriptionColor: { type: 'text', label: 'Description Color' },
-    backgroundColor: { type: 'text', label: 'Background Color' },
-    padding: {
-      type: 'custom',
-      label: 'Padding',
-      render: (props) => {
-        const { value = { top: '32', right: '24', bottom: '32', left: '24', unit: 'px', linked: false }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
+    // Color controls using ColorPickerControl for theme integration
+    iconColor: {
+      ...textColorControl,
+      label: 'Icon Color',
     },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
+    titleColor: {
+      ...textColorControl,
+      label: 'Title Color',
     },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '1', style: 'solid', color: '#E5E7EB', radius: '8', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
+    descriptionColor: {
+      ...textColorControl,
+      label: 'Description Color',
     },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'md' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    // Spread composite controls (background, spacing, visual effects)
+    ...compositeControls,
     customCss: { type: 'text', label: 'Custom CSS Class' },
   },
   defaultProps: {
@@ -216,6 +240,7 @@ export const Card: ComponentConfig<CardProps> = {
     icon: 'feather',
     mode: 'card',
     textAlign: 'left',
+    display: 'block',
   },
   render: CardComponent,
 };

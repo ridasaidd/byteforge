@@ -11,7 +11,6 @@ import { Flex, FlexProps } from './Flex';
 import { Hero, HeroProps } from './Hero';
 import { Card, CardProps } from './Card';
 import { Navigation, NavigationProps } from './Navigation';
-import { PuckRichText } from '@tohuhono/puck-rich-text/legacy';
 
 // Export all component props types
 export type { ButtonProps, ContainerProps, SectionProps, ColumnsProps, HeadingProps, TextProps, ImageProps, FlexProps, HeroProps, CardProps, NavigationProps };
@@ -48,7 +47,6 @@ export const config: Config = {
     // Content Components
     Heading,
     Text,
-    PuckRichText: PuckRichText as unknown as ComponentConfig,
     Button,
     Image,
   },
@@ -74,7 +72,7 @@ export const config: Config = {
       defaultExpanded: true,
     },
     content: {
-      components: ['Heading', 'Text', 'PuckRichText', 'Button', 'Image'],
+      components: ['Heading', 'Text', 'Button', 'Image'],
       title: 'Content',
       defaultExpanded: true,
     },

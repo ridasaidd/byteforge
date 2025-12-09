@@ -124,49 +124,46 @@ export function PublicPage() {
     );
   }
 
-  return (
-    <ThemeProvider>
-      {(page.puck_data_compiled || page.puck_data) ? (
-        <Render config={config} data={mergePageData(page)} />
-      ) : (
-        <div className="min-h-screen bg-white">
-          <div className="container mx-auto px-4 py-16">
-            <h1 className="text-4xl font-bold mb-4">{page.title}</h1>
-            <p className="text-gray-600">This page is empty. Please edit it in the dashboard.</p>
-          </div>
-        </div>
-      )}
-    </ThemeProvider>
-  );
-}
-
-/**
- * Merge header + page content + footer at render time
- */
-function mergePageData(page: Page): Data {
-  const pageData = (page.puck_data_compiled || page.puck_data) as { content?: unknown[]; root?: unknown };
-  const headerData = page.header?.puck_data_compiled;
-  const footerData = page.footer?.puck_data_compiled;
-
-  const merged: Data = {
-    content: [],
-    root: pageData?.root || {},
+  // Extract metadata from compiled page data
+  const pageData = (page.puck_data_compiled || page.puck_data) as { 
+    content?: unknown[]; 
+    root?: unknown; 
+    metadata?: {
+      navigations?: unknown[];
+      settings?: Record<string, unknown>;
+      theme?: {
+        id: number;
+        name: string;
+        slug: string;
+        data: Record<string, unknown>;
+      };
+    };
   };
 
-  // Add header content
-  if (headerData?.content && Array.isArray(headerData.content)) {
-    merged.content.push(...(headerData.content as never[]));
-  }
+  // Extract theme from metadata (if available)
+  const themeFromMetadata = pageData?.metadata?.theme ? {
+    id: pageData.metadata.theme.id,
+    name: pageData.metadata.theme.name,
+    slug: pageData.metadata.theme.slug,
+    theme_data: pageData.metadata.theme.data,
+  } : null;
 
-  // Add page content
-  if (pageData?.content && Array.isArray(pageData.content)) {
-    merged.content.push(...(pageData.content as never[]));
-  }
-
-  // Add footer content
-  if (footerData?.content && Array.isArray(footerData.content)) {
-    merged.content.push(...(footerData.content as never[]));
-  }
-
-  return merged;
+  return (
+    <ThemeProvider initialTheme={themeFromMetadata}>
+      {pageData && pageData.content ? (
+        <Render 
+          config={config} 
+          data={pageData as Data}
+          metadata={pageData.metadata || {}} // Puck propagates this to all components!
+        />
+        ) : (
+          <div className="min-h-screen bg-white">
+            <div className="container mx-auto px-4 py-16">
+              <h1 className="text-4xl font-bold mb-4">{page.title}</h1>
+              <p className="text-gray-600">This page is empty. Please edit it in the dashboard.</p>
+            </div>
+          </div>
+        )}
+    </ThemeProvider>
+  );
 }

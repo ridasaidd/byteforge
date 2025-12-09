@@ -1,107 +1,1492 @@
 # Puck Page Builder Implementation Plan
-## WordPress-Style Theme System with App-Like Experience
+## Simplified Visual Editor for React
 
-**Status:** Planning Phase  
-**Target:** Full CMS with Page Builder, Navigation, Themes  
+**Status:** IN PROGRESS - Core Features Complete, Theme Bundles Next  
+**Target:** Clean, maintainable Puck integration with visual theme building  
 **Date:** October 22, 2025  
-**Last Updated:** November 4, 2025
+**Last Updated:** November 16, 2025
 
 ---
 
-## 📖 **DOCUMENT NAVIGATION**
+## 🎉 **MAJOR MILESTONES COMPLETED**
 
-This is a comprehensive guide with multiple sections. Here's how to navigate:
+### ✅ **Phase 1: Core Infrastructure** (COMPLETE)
+- ✅ Database schema (pages, themes, theme_parts, navigations)
+- ✅ Page CRUD with Puck integration
+- ✅ Backend compilation service (merges header + content + footer)
+- ✅ Metadata injection (navigations, settings, theme)
+- ✅ Zero-query storefront rendering (2 API calls only!)
 
-### **Quick Start** → Jump to:
-- [Core Concepts & Best Practices](#-puck-core-concepts--best-practices) - Start here if new to Puck
-- [Step-by-Step Implementation](#-step-by-step-implementation-plan) - Ready to build
-- [Advanced Features Guide](#-puck-advanced-features-guide) - Deep dive into Puck features
-- [Development Principles](#-development-principles--patterns) - Patterns and workflows
+### ✅ **Phase 2: Performance Optimization** (COMPLETE)
+- ✅ Metadata propagation via Puck's native `metadata` prop
+- ✅ Navigation instant rendering (no spinner flash)
+- ✅ Automatic recompilation triggers:
+  - ✅ NavigationObserver (navigation changes)
+  - ✅ ThemePartObserver (header/footer changes)
+  - ✅ Page update detection (header_id, footer_id, puck_data)
 
-### **Document Sections**
-
-1. **🎯 Vision & Goals** - What we're building
-2. **📚 Puck Core Concepts** - Essential Puck knowledge (NEW!)
-3. **📋 Implementation Plan** - Phase-by-phase build guide
-4. **📚 Advanced Features** - Deep dive: slots, dynamic props, external data
-5. **🎓 Development Principles** - Patterns, testing, debugging (NEW!)
-6. **💡 Resources** - Links, plugins, community
-
-### **For Different Audiences**
-
-**🆕 New to Puck?** 
-→ Read [Core Concepts](#-puck-core-concepts--best-practices) first
-→ Then follow [Phase 1-3](#phase-1-foundation--setup-days-1-2) of Implementation
-
-**👷 Building Components?**
-→ Check [Component Development Workflow](#component-development-workflow)
-→ Review [Common Patterns](#common-patterns)
-
-**🔧 Debugging Issues?**
-→ See [Debugging Tips](#debugging-tips)
-→ Use [Testing Checklist](#testing-checklist)
-
-**🚀 Ready to Implement?**
-→ Start with [Implementation Plan Phase 1](#phase-1-foundation--setup-days-1-2)
+### ✅ **Phase 3: Theme System** (COMPLETE)
+- ✅ Themes table with settings (colors, fonts, spacing)
+- ✅ Theme parts (header/footer with Puck data)
+- ✅ Theme sync from disk to database
+- ✅ Theme activation, reset, duplicate, export
+- ✅ Theme gallery in Central app
 
 ---
 
-## 🎯 **What We Want to Accomplish**
+## 🚀 **NEXT PHASE: Theme Bundle System**
 
-### Core Vision
-Build a **WordPress-style CMS** with **app-like navigation experience** using Puck Editor that:
-- ✅ Provides visual drag-drop page building
-- ✅ Uses `theme.json` for styling consistency (like WordPress)
-- ✅ Supports multiple themes that tenants can select
-- ✅ Enables app-like navigation between pages (no full page reloads)
-- ✅ Integrates with our existing media library
-- ✅ Allows tenant branding customization
-- ✅ Produces clean, portable JSON data
-- ✅ Renders fast on the public site (with pre-compiled JSON, zero client fetch)
+### **Vision: Themes as Complete Site Bundles**
+Instead of just styling, themes become complete starter sites that admins build visually in Puck.
 
-> Architecture revision (Nov 2025): We will pre-compile Puck JSON at save/publish time, resolve theme tokens, and embed external data (e.g., navigation) so the public renderer displays instantly without additional requests.
+---
 
-### Key Features
-1. **Page Builder (Puck Editor)**
-   - Visual drag-drop component editor
-   - Real-time preview
-   - Mobile/tablet/desktop viewports
-   - Undo/redo functionality
-   - Component library with categories
+## 🎯 **CURRENT ARCHITECTURE** (November 2025)
 
-2. **Theme System**
-   - `theme.json` configuration (WordPress-style)
-   - Design tokens (colors, typography, spacing)
-   - Component-level styling
-   - Theme switcher (multiple pre-built themes)
-   - Tenant theme customization
+### **What We Have Working:**
 
-3. **Navigation Management**
-   - Menu builder with drag-drop ordering
-   - Nested menu support (dropdown)
-   - External/internal links
-   - Active state tracking
-   - Mobile responsive menu
+**Backend Compilation:**
+```php
+// PuckCompilerService.compilePage()
+1. Merges header.content + page.content + footer.content
+2. Resolves theme tokens
+3. Injects metadata (navigations, settings, theme)
+4. Returns compiled JSON for storefront
 
-4. **App-Like Experience**
-   - Client-side routing (React Router)
-   - Page transitions
-   - Persistent navigation state
-   - Smooth page switching
-   - Loading states
+Triggers:
+- Page publish
+- Navigation changes (NavigationObserver)
+- Theme part changes (ThemePartObserver)
+- Header/footer assignment changes
+```
 
-5. **Media Library Integration**
-   - Image picker from existing media library
-   - Drag-drop image uploads
-   - Image blocks with media library
-   - Gallery blocks
+**Frontend Rendering:**
+```tsx
+// PublicPage.tsx
+<Render 
+  config={config}
+  data={pageData}
+  metadata={pageData.metadata} // ← Puck propagates this to ALL components!
+/>
 
-6. **Tenant Features**
-   - Per-tenant page management
-   - Per-tenant navigation
-   - Per-tenant theme selection
-   - Custom branding (logo, colors)
-   - SEO settings per page
+// Navigation.tsx - Instant rendering
+const metadataNav = puck?.metadata?.navigations?.find(...);
+// No API call, no spinner, instant!
+```
+
+**Performance:**
+- ✅ 2 API calls only (page + user auth)
+- ✅ Zero calls for navigation/theme
+- ✅ 50-67% reduction in API calls
+- ✅ HTTP caching (1 hour max-age + ETags)
+
+---
+
+## 📖 **WHAT WE HAVE WORKING**
+
+### ✅ Core Features (Implemented)
+### ✅ Core Features (Implemented)
+
+1. **✅ Page Builder (Puck Integration)**
+   - Page editor with visual drag-drop
+   - Component library (Section, Container, Columns, Flex, Grid, Heading, Text, Button, Card, Image, Hero, Navigation)
+   - Media library integration
+   - Save/publish workflow
+   - Page CRUD (list, create, edit, delete)
+
+2. **✅ Theme System**
+   - Themes table with settings (colors, fonts, spacing)
+   - Theme sync from disk to database
+   - Theme activation, reset, duplicate, export
+   - Theme gallery (Central app)
+   - Active theme API endpoint
+
+3. **✅ Theme Parts (Header/Footer)**
+   - Create/edit header/footer in Puck
+   - Published/draft status
+   - Assigned to pages via header_id/footer_id
+   - Backend compilation merges parts into pages
+
+4. **✅ Navigation System**
+   - Navigation CRUD
+   - Structure stored as JSON
+   - Metadata injection into compiled pages
+   - Zero-query rendering on storefront
+   - NavigationObserver auto-recompiles pages
+
+5. **✅ Backend Compilation Pipeline**
+   - PuckCompilerService.compilePage()
+   - Merges header + content + footer
+   - Injects global metadata (navigations, settings, theme)
+   - Auto-recompilation on data changes
+   - Caches metadata (1 hour)
+
+6. **✅ Storefront Performance**
+   - Pre-compiled JSON served
+   - Metadata propagated via Puck's native prop
+   - 2 API calls only (page + auth)
+   - HTTP caching enabled
+   - Instant navigation rendering
+
+7. **✅ Media Library**
+   - Full CRUD operations
+   - Folder support
+   - Integrated into Image component
+   - External field type support
+
+### ⚠️ What Needs Enhancement
+### ⚠️ What Needs Enhancement
+
+1. **Theme Bundles** - Themes should include starter pages (not just styling)
+2. **Component Library** - More marketing/content blocks needed
+3. **Component Controls** - Better control refinement (responsive, spacing, colors)
+4. **Page Templates** - Standalone templates vs theme bundles
+5. **Theme Customization UI** - Visual editor for tenant color/font overrides
+
+---
+
+## 🏗️ **NEW ARCHITECTURE: Theme Bundles** (In Planning)
+
+### **Concept: Themes as Complete Site Bundles**
+
+Instead of themes being just styling (colors/fonts), they become **complete starter sites** that admins build visually in Puck.
+
+```
+Theme Bundle Structure:
+├── Metadata (name, description, preview, category)
+├── Settings (colors, fonts, spacing) ← Current
+├── Theme Parts (header, footer) ← NEW: Bundled with theme
+└── Page Templates (homepage, about, contact, etc.) ← NEW: Bundled with theme
+```
+
+**When Tenant Activates Theme:**
+1. Creates tenant-specific header/footer (from theme's parts)
+2. Creates pages (from theme's page templates)
+3. Sets header_id/footer_id references
+4. Compiles all pages
+5. Updates tenant's active_theme_id
+
+**Result:** Tenant gets a complete, professional site instantly. They just customize content.
+
+---
+
+## 📋 **IMPLEMENTATION PLAN: Theme Bundle System**
+
+### **PHASE 4: Theme Bundle Foundation** (Estimated: 3 days)
+
+#### Step 4.1: Database Schema Updates (30 min)
+
+**Migration: Link Templates and Parts to Themes**
+
+```sql
+-- Link page_templates to themes
+ALTER TABLE page_templates 
+  ADD COLUMN theme_id BIGINT NULL AFTER id,
+  ADD FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
+  ADD INDEX idx_theme_category (theme_id, category);
+
+-- Link theme_parts to themes (for blueprint storage)
+-- theme_parts can be:
+--   1. Theme blueprints: theme_id set, tenant_id NULL (central)
+--   2. Tenant instances: theme_id NULL, tenant_id set (activated)
+ALTER TABLE theme_parts
+  ADD COLUMN theme_id BIGINT NULL AFTER tenant_id,
+  ADD FOREIGN KEY (theme_id) REFERENCES themes(id) ON DELETE CASCADE,
+  ADD INDEX idx_theme_type (theme_id, type);
+
+-- Add theme category for better organization
+ALTER TABLE themes
+  ADD COLUMN category VARCHAR(100) NULL AFTER description,
+  ADD COLUMN is_system_theme BOOLEAN DEFAULT true AFTER category,
+  ADD INDEX idx_category_status (category, is_active);
+```
+
+**Model Relationships:**
+
+```php
+// Theme.php
+public function parts() {
+    return $this->hasMany(ThemePart::class);
+}
+
+public function pageTemplates() {
+    return $this->hasMany(PageTemplate::class);
+}
+
+// PageTemplate.php
+public function theme() {
+    return $this->belongsTo(Theme::class);
+}
+
+// ThemePart.php  
+public function theme() {
+    return $this->belongsTo(Theme::class);
+}
+```
+
+**Status:**
+- [ ] Create migration
+- [ ] Update models
+- [ ] Test relationships
+
+---
+
+#### Step 4.2: Theme Builder UI (Central App) (2 days)
+
+**Theme Builder Page Structure:**
+
+```
+┌──────────────────────────────────────────┐
+│ Theme: Modern SaaS                        │
+│ Tabs: [Overview] [Parts] [Pages] [Settings] │
+└──────────────────────────────────────────┘
+
+Overview Tab:
+- Theme name, slug, description
+- Category (SaaS, Agency, E-commerce, etc.)
+- Preview image upload
+- Publish status
+
+Parts Tab:
+- Header editor (opens Puck)
+- Footer editor (opens Puck)
+- Preview renderings
+
+Pages Tab:
+- List of page templates
+- [+ Add Page Template] button
+- Each template opens in Puck editor
+
+Settings Tab:
+- Color palette editor
+- Font selection
+- Spacing configuration
+- Export theme button
+```
+
+**Components to Create:**
+
+```tsx
+// Central App
+resources/js/apps/central/components/pages/
+  ├── ThemeBuilderPage.tsx (main page)
+  ├── ThemeBuilderOverview.tsx (metadata form)
+  ├── ThemeBuilderParts.tsx (header/footer management)
+  ├── ThemeBuilderPages.tsx (page templates list)
+  ├── ThemeBuilderSettings.tsx (theme settings editor)
+  └── ThemePartEditorPage.tsx (Puck editor for parts) ← Already exists!
+```
+
+**Status:**
+- [ ] Create ThemeBuilderPage layout
+- [ ] Build Overview tab
+- [ ] Build Parts tab (link to existing editors)
+- [ ] Build Pages tab
+- [ ] Build Settings tab
+- [ ] Add navigation routes
+
+---
+
+#### Step 4.3: Theme Activation Service (1 day)
+
+**Backend Service:**
+
+```php
+// app/Services/ThemeActivationService.php
+class ThemeActivationService
+{
+    public function activateTheme(string $tenantId, int $themeId): array
+    {
+        $theme = Theme::with(['parts', 'pageTemplates'])->findOrFail($themeId);
+        
+        return DB::transaction(function () use ($tenantId, $theme) {
+            // 1. Create header/footer for tenant
+            $header = $this->createTenantThemePart($tenantId, $theme, 'header');
+            $footer = $this->createTenantThemePart($tenantId, $theme, 'footer');
+            
+            // 2. Create pages from templates
+            $pages = [];
+            foreach ($theme->pageTemplates as $template) {
+                $page = $this->createPageFromTemplate(
+                    $tenantId, 
+                    $template, 
+                    $header->id, 
+                    $footer->id
+                );
+                $pages[] = $page;
+            }
+            
+            // 3. Set homepage
+            $this->setHomepage($pages);
+            
+            // 4. Compile all pages
+            $this->compilePages($pages);
+            
+            // 5. Update tenant theme
+            $tenant = Tenant::find($tenantId);
+            $tenant->update([
+                'active_theme_id' => $theme->id,
+                'theme_settings' => $theme->theme_data
+            ]);
+            
+            return [
+                'pages_created' => count($pages),
+                'header_id' => $header->id,
+                'footer_id' => $footer->id
+            ];
+        });
+    }
+    
+    protected function createTenantThemePart($tenantId, $theme, $type) {
+        $themePart = $theme->parts()->where('type', $type)->first();
+        if (!$themePart) return null;
+        
+        return ThemePart::create([
+            'tenant_id' => $tenantId,
+            'theme_id' => null, // Tenant instance, not blueprint
+            'name' => "{$theme->name} {$type}",
+            'slug' => "{$theme->slug}-{$type}",
+            'type' => $type,
+            'puck_data_raw' => $themePart->puck_data_raw,
+            'puck_data_compiled' => $themePart->puck_data_compiled,
+            'status' => 'published',
+            'created_by' => auth()->id()
+        ]);
+    }
+    
+    protected function createPageFromTemplate($tenantId, $template, $headerId, $footerId) {
+        return Page::create([
+            'tenant_id' => $tenantId,
+            'title' => $template->name,
+            'slug' => $template->slug,
+            'page_type' => $template->category,
+            'puck_data' => $template->puck_data,
+            'header_id' => $headerId,
+            'footer_id' => $footerId,
+            'is_homepage' => $template->category === 'home',
+            'status' => 'published',
+            'published_at' => now(),
+            'created_by' => auth()->id()
+        ]);
+    }
+}
+```
+
+**API Endpoint:**
+
+```php
+// ThemeController.php
+public function activateBundle(Request $request) {
+    $validated = $request->validate([
+        'theme_id' => 'required|exists:themes,id'
+    ]);
+    
+    $service = app(ThemeActivationService::class);
+    $result = $service->activateTheme(
+        tenant()->id, 
+        $validated['theme_id']
+    );
+    
+    return response()->json([
+        'message' => 'Theme activated successfully',
+        'data' => $result
+    ]);
+}
+```
+
+**Status:**
+- [ ] Create ThemeActivationService
+- [ ] Add controller method
+- [ ] Add route
+- [ ] Test activation flow
+
+---
+
+#### Step 4.4: Theme Gallery Enhancement (Both Apps) (1 day)
+
+**Central App Gallery:**
+- Show system themes (is_system_theme = true)
+- Preview theme's pages
+- Activate for Central app testing
+- Edit theme button
+
+**Tenant App Gallery:**
+- Show published themes
+- Preview before activation
+- Activation warning/confirmation
+- View included pages
+
+**Preview Modal Component:**
+
+```tsx
+// ThemePreviewModal.tsx
+interface Props {
+  theme: Theme;
+  onActivate: () => void;
+  onClose: () => void;
+}
+
+<Modal>
+  <Tabs>
+    <Tab label="Overview">
+      {theme.description}
+      Includes: {theme.pageTemplates.length} pages
+    </Tab>
+    
+    <Tab label="Pages">
+      {theme.pageTemplates.map(template => (
+        <PagePreview 
+          key={template.id}
+          data={template.puck_data}
+        />
+      ))}
+    </Tab>
+    
+    <Tab label="Settings">
+      Colors, fonts, spacing preview
+    </Tab>
+  </Tabs>
+  
+  <Actions>
+    <Button onClick={onClose}>Cancel</Button>
+    <Button onClick={onActivate}>Activate Theme</Button>
+  </Actions>
+</Modal>
+```
+
+**Status:**
+- [ ] Create preview modal
+- [ ] Update ThemesPage (both apps)
+- [ ] Add activation confirmation
+- [ ] Test preview flow
+
+---
+
+### **PHASE 5: Content & Polish** (Estimated: 2-3 days)
+
+#### Step 5.1: Component Library Expansion (1-2 days)
+
+---
+
+## 🏗️ **SIMPLIFIED ARCHITECTURE**
+
+```
+┌─────────────────────────────────────────────────────┐
+│  SINGLE DATA FORMAT (Puck JSON)                    │
+│  {                                                   │
+│    content: [...components],                        │
+│    root: { header: [...], footer: [...] }          │
+│  }                                                   │
+└─────────────────────────────────────────────────────┘
+                      ↓
+        ┌─────────────┴──────────────┐
+        │                             │
+┌───────▼──────────┐      ┌──────────▼─────────┐
+│  EDITOR (Puck)   │      │  PUBLIC (Render)   │
+│  useTheme()      │      │  useTheme()        │
+│  Components      │      │  Components        │
+│  resolve theme   │      │  resolve theme     │
+└──────────────────┘      └────────────────────┘
+```
+
+### Data Flow
+1. **Editor**: Components use `useTheme()` to get theme values
+2. **Save Draft**: Store raw Puck JSON in `puck_data`
+3. **Publish**: Merge navigation into `puck_data_published`
+4. **Public**: Return pre-compiled JSON with navigation included
+5. **No runtime merging** - Everything ready to render
+
+### Navigation Compilation Strategy
+```php
+// When page is published, merge navigation data
+{
+  "content": [...],           // Puck components
+  "root": {
+    "props": { "title": "..." }
+  },
+  "metadata": {               // ← Navigation merged here!
+    "navigations": {
+      "main-menu": { "items": [...] },
+      "footer-menu": { "items": [...] }
+    }
+  }
+}
+```
+
+**Benefits:**
+- ✅ **Single API call** - Page + navigation in one JSON
+- ✅ **No runtime merging** - Pre-compiled on publish
+- ✅ **Fast public rendering** - JSON ready to use
+- ✅ **Cache friendly** - Static JSON response
+- ✅ **No Blade needed** - Pure React + JSON
+
+**Trigger Recompilation:**
+- When page is published
+- When navigation is updated (webhook/observer)
+- Manual "rebuild" action if needed
+
+### Component Pattern
+```tsx
+export const Button: ComponentConfig<ButtonProps> = {
+  render: ({ text, variant }) => {
+    const theme = useTheme(); // Works in editor AND public
+    
+    return (
+      <button style={{
+        backgroundColor: theme.resolve(`colors.${variant}`),
+        padding: theme.resolve('spacing.4')
+      }}>
+        {text}
+      </button>
+    );
+  }
+};
+```
+
+---
+
+## 📋 **SIMPLIFIED IMPLEMENTATION PLAN**
+
+### PHASE 1: Database & API (2 hours)
+
+#### Step 1.1: Database Schema
+```sql
+-- Simple pages table
+CREATE TABLE pages (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  tenant_id VARCHAR(255) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) NOT NULL,
+  puck_data JSON NOT NULL,              -- Raw Puck JSON (editor data)
+  puck_data_published JSON NULL,        -- Merged with navigation for public
+  status ENUM('draft', 'published') DEFAULT 'draft',
+  published_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY unique_tenant_slug (tenant_id, slug),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id) ON DELETE CASCADE
+);
+```
+
+#### Step 1.2: Laravel Model
+```php
+// app/Models/Page.php
+class Page extends Model
+{
+    protected $fillable = [
+        'tenant_id', 'title', 'slug', 'puck_data', 
+        'puck_data_published', 'status', 'published_at'
+    ];
+    
+    protected $casts = [
+        'puck_data' => 'array',
+        'puck_data_published' => 'array',
+        'published_at' => 'datetime'
+    ];
+    
+    public function tenant() {
+        return $this->belongsTo(Tenant::class);
+    }
+    
+    /**
+     * Compile page with ALL global data for static storefront rendering
+     * Zero database hits needed - everything pre-compiled into JSON
+     */
+    public function compileForPublic(): void
+    {
+        $metadata = [];
+        
+        // 1. NAVIGATIONS (header, footer, sidebar menus)
+        $navigations = Navigation::where('tenant_id', $this->tenant_id)
+            ->where('status', 'published')
+            ->get()
+            ->keyBy('slug')
+            ->map(fn($nav) => $nav->structure);
+        
+        if ($navigations->isNotEmpty()) {
+            $metadata['navigations'] = $navigations->toArray();
+        }
+        
+        // 2. TENANT SETTINGS (branding, contact, SEO)
+        $settings = app(\App\Settings\TenantSettings::class);
+        $metadata['settings'] = [
+            'site_title' => $settings->site_title,
+            'site_description' => $settings->site_description,
+            'logo_url' => $settings->logo_url,
+            'favicon_url' => $settings->favicon_url,
+            'social_links' => $settings->social_links,     // FB, Twitter, Instagram, etc.
+            'seo_meta' => $settings->seo_meta,              // Default OG tags, meta descriptions
+            'maintenance_mode' => $settings->maintenance_mode,
+        ];
+        
+        // 3. THEME DATA (colors, typography, spacing)
+        // If theme is in database (vs file-based)
+        $activeTheme = Theme::where('tenant_id', $this->tenant_id)
+            ->where('is_active', true)
+            ->first();
+        
+        if ($activeTheme) {
+            $metadata['theme'] = $activeTheme->theme_data;
+        }
+        
+        // 4. CONTACT INFORMATION (for footers, contact pages)
+        $metadata['contact'] = [
+            'email' => $settings->social_links['email'] ?? null,
+            'phone' => $settings->social_links['phone'] ?? null,
+            'address' => $settings->social_links['address'] ?? null,
+        ];
+        
+        // 5. LEGAL LINKS (privacy, terms, cookies)
+        // These rarely change, perfect for static inclusion
+        $metadata['legal'] = [
+            'privacy_policy_url' => '/legal/privacy',
+            'terms_of_service_url' => '/legal/terms',
+            'cookie_policy_url' => '/legal/cookies',
+        ];
+        
+        // 6. GLOBAL WIDGETS (newsletter forms, social feeds, etc.)
+        // Future: Store reusable components
+        // $metadata['widgets'] = Widget::active()->forTenant($this->tenant_id)->get();
+        
+        // 7. SITE STRUCTURE (for breadcrumbs, sitemaps)
+        // Could include page hierarchy if needed
+        // $metadata['site_structure'] = Page::published()->select('id', 'title', 'slug', 'parent_id')->get();
+        
+        // Merge everything into published data
+        $this->puck_data_published = array_merge($this->puck_data, [
+            'metadata' => $metadata
+        ]);
+        
+        $this->save();
+    }
+}
+```
+
+#### Step 1.3: API Routes & Controllers
+```php
+// routes/tenant.php
+Route::middleware(['auth:api'])->group(function () {
+    Route::apiResource('pages', PageController::class);
+    Route::post('pages/{page}/publish', [PageController::class, 'publish']);
+});
+
+// Public route (no auth)
+Route::get('/pages/{slug}', [PublicPageController::class, 'show']);
+```
+
+```php
+// app/Http/Controllers/Api/PageController.php
+class PageController extends Controller
+{
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'slug' => 'required|string|max:255|unique:pages,slug',
+            'puck_data' => 'required|array',
+            'status' => 'in:draft,published'
+        ]);
+        
+        $page = Page::create([
+            'tenant_id' => tenant('id'),
+            'title' => $validated['title'],
+            'slug' => $validated['slug'],
+            'puck_data' => $validated['puck_data'],
+            'status' => $validated['status'] ?? 'draft'
+        ]);
+        
+        // Auto-compile on creation if published
+        if ($page->status === 'published') {
+            $page->compileForPublic();
+        }
+        
+        return response()->json(['data' => $page]);
+    }
+    
+    public function update(Request $request, Page $page)
+    {
+        $validated = $request->validate([
+            'title' => 'string|max:255',
+            'slug' => 'string|max:255|unique:pages,slug,' . $page->id,
+            'puck_data' => 'array',
+            'status' => 'in:draft,published'
+        ]);
+        
+        $page->update($validated);
+        
+        // Recompile if published
+        if ($page->status === 'published') {
+            $page->compileForPublic();
+        }
+        
+        return response()->json(['data' => $page]);
+    }
+    
+    public function publish(Page $page)
+    {
+        $page->update([
+            'status' => 'published',
+            'published_at' => now()
+        ]);
+        
+        // Compile navigation into published JSON
+        $page->compileForPublic();
+        
+        return response()->json([
+            'message' => 'Page published successfully',
+            'data' => $page
+        ]);
+    }
+}
+```
+
+```php
+// app/Http/Controllers/Api/PublicPageController.php
+class PublicPageController extends Controller
+{
+    public function show($slug)
+    {
+        $page = Page::where('slug', $slug)
+            ->where('status', 'published')
+            ->firstOrFail();
+        
+        // Return pre-compiled JSON with navigation merged
+        return response()->json([
+            'data' => $page->puck_data_published ?? $page->puck_data
+        ]);
+    }
+}
+```
+
+```php
+// app/Http/Controllers/Api/PublicPageController.php
+class PublicPageController extends Controller
+{
+    public function show($slug)
+    {
+        $page = Page::where('slug', $slug)
+            ->where('status', 'published')
+            ->firstOrFail();
+        
+        // Return pre-compiled JSON with navigation merged
+        return response()->json([
+            'data' => $page->puck_data_published ?? $page->puck_data
+        ]);
+    }
+}
+```
+
+**Verification:**
+- ✅ Pages table has both `puck_data` and `puck_data_published` columns
+- ✅ Publishing triggers navigation merge
+- ✅ Public API returns pre-compiled JSON
+- ✅ No runtime overhead on storefront
+
+**Example Flow:**
+
+1. **Save Draft** (Editor)
+```json
+POST /api/pages
+{
+  "title": "Homepage",
+  "slug": "home",
+  "status": "draft",
+  "puck_data": {
+    "content": [
+      { "type": "Hero", "props": { "title": "Welcome" } }
+    ],
+    "root": { "props": { "title": "Homepage" } }
+  }
+}
+```
+
+2. **Publish Page** (Triggers Compilation)
+```json
+POST /api/pages/1/publish
+→ Fetches navigations from database
+→ Merges into puck_data_published
+```
+
+3. **Public Request** (Storefront)
+```json
+GET /api/pages/home
+Response:
+{
+  "data": {
+    "content": [
+      { "type": "Hero", "props": { "title": "Welcome" } }
+    ],
+    "root": { "props": { "title": "Homepage" } },
+    "metadata": {
+      "navigations": {
+        "main-menu": {
+          "items": [
+            { "label": "Home", "url": "/" },
+            { "label": "Products", "url": "/products" }
+          ]
+        },
+        "footer-menu": {
+          "items": [
+            { "label": "About", "url": "/about" }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+4. **React Rendering** (Everything Available Instantly)
+```tsx
+// ALL global data available in metadata!
+const rootConfig = {
+  render: ({ children, puck }) => {
+    const { navigations, settings, widgets } = puck.metadata;
+    
+    return (
+      <>
+        <Header 
+          items={navigations['main-menu']?.items}
+          logo={settings.logo_url}
+          siteName={settings.site_title}
+        />
+        
+        <main>{children}</main>
+        
+        <Footer 
+          items={navigations['footer-menu']?.items}
+          socialLinks={settings.social_links}
+          newsletter={widgets?.['footer-newsletter']}
+        />
+      </>
+    );
+  }
+};
+
+// Components can also access metadata
+const Hero: ComponentConfig = {
+  render: ({ title, puck }) => {
+    const settings = puck.metadata.settings;
+    
+    return (
+      <section>
+        <h1>{title}</h1>
+        {/* Can use global settings anywhere */}
+        <img src={settings.logo_url} alt={settings.site_title} />
+      </section>
+    );
+  }
+};
+```
+
+**Future: Dynamic Widgets from Database**
+```tsx
+// Sidebar component can render widgets from metadata
+const Sidebar: ComponentConfig = {
+  render: ({ puck }) => {
+    const widgets = puck.metadata.widgets || {};
+    
+    return (
+      <aside>
+        {Object.entries(widgets)
+          .filter(([key]) => key.startsWith('sidebar-'))
+          .map(([key, widget]) => (
+            <Widget key={key} type={widget.type} props={widget.props} />
+          ))
+        }
+      </aside>
+    );
+  }
+};
+```
+
+**Auto-Recompilation on Global Data Changes:**
+```php
+// app/Observers/NavigationObserver.php
+class NavigationObserver
+{
+    public function updated(Navigation $navigation)
+    {
+        // Recompile all published pages when navigation changes
+        $this->recompilePublishedPages($navigation->tenant_id);
+    }
+    
+    public function deleted(Navigation $navigation)
+    {
+        $this->recompilePublishedPages($navigation->tenant_id);
+    }
+    
+    private function recompilePublishedPages(string $tenantId)
+    {
+        Page::where('tenant_id', $tenantId)
+            ->where('status', 'published')
+            ->each(fn($page) => $page->compileForPublic());
+    }
+}
+
+// app/Observers/TenantSettingsObserver.php
+class TenantSettingsObserver
+{
+    public function updated()
+    {
+        // Recompile when logo, site title, or other settings change
+        Page::where('tenant_id', tenant('id'))
+            ->where('status', 'published')
+            ->each(fn($page) => $page->compileForPublic());
+    }
+}
+
+// Register observers in AppServiceProvider
+public function boot()
+{
+    Navigation::observe(NavigationObserver::class);
+    // Settings observer registered via spatie/laravel-settings
+}
+```
+
+**Example Compiled JSON with ALL Global Data:**
+```json
+{
+  "content": [
+    { "type": "Hero", "props": { "title": "Welcome" } }
+  ],
+  "root": { "props": { "title": "Homepage" } },
+  "metadata": {
+    "navigations": {
+      "main-menu": { "items": [...] },
+      "footer-menu": { "items": [...] },
+      "sidebar-menu": { "items": [...] }
+    },
+    "settings": {
+      "site_title": "My Store",
+      "logo_url": "/storage/logo.png",
+      "favicon_url": "/storage/favicon.ico",
+      "social_links": {
+        "facebook": "https://...",
+        "twitter": "https://..."
+      },
+      "seo_meta": {
+        "default_description": "...",
+        "og_image": "/storage/og.jpg"
+      }
+    },
+    "widgets": {
+      "footer-newsletter": {
+        "type": "NewsletterForm",
+        "props": { "endpoint": "/api/subscribe" }
+      },
+      "sidebar-recent-posts": {
+        "type": "RecentPosts",
+        "props": { "limit": 5 }
+      }
+    }
+  }
+}
+```
+
+**📋 Complete Checklist: What Gets Flushed to Static JSON**
+
+For **static storefront pages**, compile these into `puck_data_published`:
+
+✅ **Navigations** - All menus (header, footer, sidebar)  
+✅ **Site Settings** - Title, description, logo, favicon  
+✅ **Social Links** - Facebook, Twitter, Instagram, YouTube  
+✅ **Contact Info** - Email, phone, address  
+✅ **Theme Tokens** - Colors, typography, spacing (if DB-stored)  
+✅ **SEO Defaults** - OG image, meta descriptions  
+✅ **Legal Links** - Privacy, Terms, Cookies URLs  
+✅ **Maintenance Mode** - Flag to show/hide site  
+
+❌ **DON'T Flush (Keep Dynamic via API):**
+- User sessions/auth state
+- Shopping cart contents
+- Product inventory/prices
+- Search results
+- Form CSRF tokens
+- Comments/reviews
+- Real-time analytics
+
+**The Rule:** Flush if global, static, and needed immediately. Keep dynamic if user-specific or changes frequently.
+
+**Result: Storefront = 1 JSON Request, ZERO Database Queries!** 🎯
+
+---
+- [ ] Migration runs
+- [ ] Model works
+- [ ] Can create/read pages via API
+
+---
+
+### PHASE 2: Theme Integration (3 hours)
+
+#### Step 2.1: Update Components to Use Theme
+
+**Pattern for ALL components:**
+```tsx
+import { ComponentConfig } from '@measured/puck';
+import { useTheme } from '@/shared/contexts/ThemeContext';
+
+export const Heading: ComponentConfig<HeadingProps> = {
+  fields: {
+    text: { type: 'textarea' },
+    level: { 
+      type: 'select',
+      options: [
+        { label: 'H1', value: 'h1' },
+        { label: 'H2', value: 'h2' },
+        // ...
+      ]
+    }
+  },
+  defaultProps: {
+    text: 'Heading',
+    level: 'h2'
+  },
+  render: ({ text, level }) => {
+    const theme = useTheme();
+    const Tag = level;
+    
+    const styles = {
+      fontSize: theme.resolve(`typography.sizes.${level}`),
+      color: theme.resolve('colors.foreground'),
+      fontFamily: theme.resolve('typography.fontFamilyHeading'),
+      marginBottom: theme.resolve('spacing.4')
+    };
+    
+    return <Tag style={styles}>{text}</Tag>;
+  }
+};
+```
+
+**Update These Components:**
+1. ✅ Heading - Use theme typography
+2. ✅ Text - Use theme typography + colors
+3. ✅ Button - Use theme colors + spacing
+4. ✅ Card - Use theme colors + shadows + borderRadius
+5. ✅ Section - Use theme spacing + colors
+6. ✅ Container - Use theme layout + spacing
+
+**Verification:**
+- [ ] Components render with theme values
+- [ ] Changing theme updates components
+- [ ] Works in both editor and preview
+
+---
+
+### PHASE 3: Puck Editor Integration (4 hours)
+
+#### Step 3.1: Puck Config
+```tsx
+// resources/js/apps/central/config/puck-config.ts
+import { Config } from '@measured/puck';
+import {
+  Heading, Text, Button, Card, Image,
+  Section, Container, Grid, Flex
+} from '@/shared/puck/components';
+
+export const puckConfig: Config = {
+  components: {
+    // Layout
+    Section,
+    Container,
+    Grid,
+    Flex,
+    
+    // Content
+    Heading,
+    Text,
+    Button,
+    Card,
+    Image
+  },
+  categories: {
+    layout: {
+      title: "Layout",
+      components: ['Section', 'Container', 'Grid', 'Flex'],
+      defaultExpanded: true
+    },
+    content: {
+      title: "Content",
+      components: ['Heading', 'Text', 'Button', 'Card', 'Image'],
+      defaultExpanded: true
+    }
+  },
+  root: {
+    fields: {
+      header: { 
+        type: 'slot',
+        label: 'Header Content'
+      },
+      footer: { 
+        type: 'slot',
+        label: 'Footer Content'
+      }
+    },
+    defaultProps: {
+      header: [],
+      footer: []
+    },
+    render: ({ children, header: Header, footer: Footer }) => (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <header>
+          <Header />
+        </header>
+        <main style={{ flex: 1 }}>
+          {children}
+        </main>
+        <footer>
+          <Footer />
+        </footer>
+      </div>
+    )
+  }
+};
+```
+
+#### Step 3.2: Page Editor Component
+```tsx
+// resources/js/apps/central/components/pages/PageEditorPage.tsx
+import { Puck } from '@measured/puck';
+import { puckConfig } from '@/apps/central/config/puck-config';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
+import '@measured/puck/puck.css';
+
+export function PageEditorPage() {
+  const { id } = useParams();
+  const [page, setPage] = useState(null);
+  const { data: theme } = useTheme(); // From API
+  
+  useEffect(() => {
+    if (id) {
+      fetch(`/api/central/pages/${id}`)
+        .then(r => r.json())
+        .then(setPage);
+    }
+  }, [id]);
+  
+  const handlePublish = async (data) => {
+    await fetch(`/api/central/pages/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        puck_data: data,
+        status: 'published',
+        published_at: new Date()
+      })
+    });
+    toast.success('Page published!');
+  };
+  
+  if (!page || !theme) return <div>Loading...</div>;
+  
+  return (
+    <ThemeProvider theme={theme}>
+      <Puck
+        config={puckConfig}
+        data={page.puck_data}
+        onPublish={handlePublish}
+        headerTitle={page.title}
+      />
+    </ThemeProvider>
+  );
+}
+```
+
+**Verification:**
+- [ ] Editor loads with existing data
+- [ ] Can drag/drop components
+- [ ] Preview shows correct theme
+- [ ] Save/publish works
+
+---
+
+### PHASE 4: Public Rendering (2 hours)
+
+#### Step 4.1: Public Page Component
+```tsx
+// resources/js/apps/public/components/PageRenderer.tsx
+import { Render } from '@measured/puck';
+import { puckConfig } from '@/apps/central/config/puck-config';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
+
+export function PageRenderer({ slug }: { slug: string }) {
+  const [page, setPage] = useState(null);
+  const [theme, setTheme] = useState(null);
+  
+  useEffect(() => {
+    Promise.all([
+      fetch(`/api/tenant/pages/${slug}`).then(r => r.json()),
+      fetch('/api/tenant/theme').then(r => r.json())
+    ]).then(([pageData, themeData]) => {
+      setPage(pageData);
+      setTheme(themeData);
+      
+      // Set meta tags
+      document.title = pageData.title;
+    });
+  }, [slug]);
+  
+  if (!page || !theme) return <div>Loading...</div>;
+  
+  return (
+    <ThemeProvider theme={theme}>
+      <Render config={puckConfig} data={page.puck_data} />
+    </ThemeProvider>
+  );
+}
+```
+
+#### Step 4.2: Router Setup
+```tsx
+// resources/js/apps/public/App.tsx
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { PageRenderer } from './components/PageRenderer';
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<PageRenderer slug="home" />} />
+        <Route path="/:slug" element={<PageRenderer />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+```
+
+**Verification:**
+- [ ] Pages render correctly
+- [ ] Theme applies
+- [ ] Navigation works
+- [ ] Meta tags update
+
+---
+
+### PHASE 5: Page Management UI (3 hours)
+
+#### Step 5.1: Page List
+```tsx
+// resources/js/apps/central/components/pages/PagesPage.tsx
+import { useCrud } from '@/shared/hooks/useCrud';
+
+export function PagesPage() {
+  const {
+    items: pages,
+    loading,
+    create,
+    update,
+    destroy
+  } = useCrud('/api/central/pages');
+  
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Pages"
+        description="Manage your pages"
+        action={
+          <Button onClick={() => navigate('/pages/create')}>
+            <Plus className="w-4 h-4" />
+            New Page
+          </Button>
+        }
+      />
+      
+      <DataTable
+        columns={[
+          { key: 'title', label: 'Title' },
+          { key: 'slug', label: 'URL' },
+          { key: 'status', label: 'Status' },
+          { key: 'updated_at', label: 'Last Modified' }
+        ]}
+        data={pages}
+        onEdit={(page) => navigate(`/pages/${page.id}/edit`)}
+        onDelete={destroy}
+      />
+    </PageContainer>
+  );
+}
+```
+
+**Verification:**
+- [ ] Can list pages
+- [ ] Can create pages
+- [ ] Can edit pages
+- [ ] Can delete pages
+
+---
+
+### PHASE 6: Polish & Optimization (2 hours)
+
+#### Step 6.1: Loading States
+- Add skeleton loaders
+- Show spinner while saving
+- Handle errors gracefully
+
+#### Step 6.2: Validation
+- Validate slug format
+- Check for duplicate slugs
+- Validate required fields
+
+#### Step 6.3: UX Improvements
+- Auto-save drafts
+- Keyboard shortcuts
+- Confirm before delete
+
+**Verification:**
+- [ ] Good loading experience
+- [ ] Validation prevents errors
+- [ ] UX feels smooth
+
+---
+
+## ✨ **KEY SIMPLIFICATIONS**
+
+### What We Removed
+1. ❌ **Pre-compilation pipeline** - Too complex, not needed
+2. ❌ **Separate ThemeProvider for editor** - Use existing one
+3. ❌ **Theme parts + layouts** - Use root slots instead
+4. ❌ **Complex navigation system** - Use root header/footer
+5. ❌ **Multi-theme switching** - One theme per tenant (for now)
+6. ❌ **Compiled vs raw JSON** - Single JSON format
+
+### What We Kept
+1. ✅ **Puck for editing** - Core value proposition
+2. ✅ **Slot-based layouts** - Grid/Flex working well
+3. ✅ **Theme system** - Already working
+4. ✅ **Media library** - Already integrated
+5. ✅ **Component library** - Simple, reusable
+6. ✅ **Laravel backend** - Minimal changes
+
+---
+
+## 📊 **ESTIMATED TIMELINE**
+
+| Phase | Description | Time |
+|-------|-------------|------|
+| 1 | Database & API | 2h |
+| 2 | Theme Integration | 3h |
+| 3 | Editor Integration | 4h |
+| 4 | Public Rendering | 2h |
+| 5 | Page Management | 3h |
+| 6 | Polish | 2h |
+| **TOTAL** | **Complete Implementation** | **16h (2 days)** |
+
+---
+
+## 🎓 **COMPONENT DEVELOPMENT GUIDE**
+
+### Standard Component Template
+```tsx
+import { ComponentConfig } from '@measured/puck';
+import { useTheme } from '@/shared/contexts/ThemeContext';
+
+export interface MyComponentProps {
+  // Your props
+}
+
+export const MyComponent: ComponentConfig<MyComponentProps> = {
+  label: "My Component",
+  
+  fields: {
+    // Define fields
+  },
+  
+  defaultProps: {
+    // Set defaults
+  },
+  
+  render: ({ ...props }) => {
+    const theme = useTheme();
+    
+    // Use theme.resolve() for all theme values
+    const styles = {
+      color: theme.resolve('colors.primary'),
+      padding: theme.resolve('spacing.4')
+    };
+    
+    return <div style={styles}>Content</div>;
+  }
+};
+```
+
+### Theme Resolution Pattern
+```tsx
+// Colors
+theme.resolve('colors.primary')        // #3b82f6
+theme.resolve('colors.secondary')      // #8b5cf6
+
+// Typography
+theme.resolve('typography.sizes.h1')         // 3rem
+theme.resolve('typography.fontFamilyHeading') // Inter
+
+// Spacing
+theme.resolve('spacing.4')             // 1rem
+theme.resolve('spacing.8')             // 2rem
+
+// Border Radius
+theme.resolve('borderRadius.md')       // 0.375rem
+
+// Shadows
+theme.resolve('shadows.lg')            // 0 10px 15px...
+```
+
+### Slot Component Pattern
+```tsx
+export const Container: ComponentConfig = {
+  fields: {
+    content: {
+      type: 'slot',
+      label: 'Content'
+    }
+  },
+  render: ({ content: Content }) => {
+    const theme = useTheme();
+    
+    return (
+      <div style={{
+        maxWidth: theme.resolve('layout.contentSize'),
+        padding: theme.resolve('spacing.6')
+      }}>
+        <Content />
+      </div>
+    );
+  }
+};
+```
+
+---
+
+## 🚀 **NEXT STEPS**
+
+1. **Review this simplified plan** - Make sure it makes sense
+2. **Run Phase 1** - Database + API (2h)
+3. **Run Phase 2** - Update components to use theme (3h)
+4. **Run Phase 3** - Integrate Puck editor (4h)
+5. **Run Phase 4** - Public rendering (2h)
+6. **Run Phase 5** - Page management (3h)
+7. **Run Phase 6** - Polish (2h)
+
+**Total: 2 days of focused work**
+
+---
+
+## 💡 **BENEFITS OF THIS APPROACH**
+
+1. **Simple** - Easy to understand and maintain
+2. **Fast** - 16 hours vs weeks
+3. **Portable** - Clean JSON, no vendor lock-in
+4. **Flexible** - Easy to extend later
+5. **Proven** - Based on Puck best practices
+6. **Maintainable** - Less code, less complexity
+
+---
+
+## 📚 **RESOURCES**
+
+- **Puck Docs**: https://puckeditor.com/docs
+- **Puck Demo**: https://demo.puckeditor.com
+- **GitHub**: https://github.com/measuredco/puck
+- **Discord**: https://discord.gg/D9e4E3MQVZ
 
 ---
 

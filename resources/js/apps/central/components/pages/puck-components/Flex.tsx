@@ -1,17 +1,27 @@
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig, FieldLabel } from '@measured/puck';
+import React, { useState } from 'react';
 import { useTheme } from '@/shared/hooks';
+import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
+import type { Media } from '@/shared/services/api';
 import {
-  SpacingControl, BorderControl, ShadowControl,
-  SpacingValue, BorderValue, ShadowValue
+  SpacingValue, BorderValue, ShadowValue, WidthValue, ColorValue
 } from './fields';
+import { layoutContainerControls } from './controlPresets';
 
 export interface FlexProps {
-  content?: () => React.ReactElement;
+  items?: () => React.ReactElement;
+  backgroundColor?: ColorValue;
+  backgroundImage?: string;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  backgroundRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
   direction: 'row' | 'row-reverse' | 'column' | 'column-reverse';
   justify: 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly';
   align: 'start' | 'end' | 'center' | 'stretch' | 'baseline';
   wrap: 'nowrap' | 'wrap' | 'wrap-reverse';
-  gap: 'none' | 'sm' | 'md' | 'lg';
+  gap: number;
+  width?: WidthValue;
+  display?: 'flex' | 'inline-flex';
   margin?: SpacingValue;
   padding?: SpacingValue;
   border?: BorderValue;
@@ -19,12 +29,36 @@ export interface FlexProps {
   customCss?: string;
 }
 
-function FlexComponent({ content: Content, direction, justify, align, wrap, gap, margin, padding, border, shadow, customCss }: FlexProps) {
+function FlexComponent({
+  items: Items,
+  backgroundColor,
+  backgroundImage,
+  backgroundSize = 'cover',
+  backgroundPosition = 'center',
+  backgroundRepeat = 'no-repeat',
+  direction,
+  justify,
+  align,
+  wrap,
+  gap,
+  width,
+  display = 'flex',
+  margin,
+  padding,
+  border,
+  shadow,
+  customCss,
+}: FlexProps) {
   const { resolve } = useTheme();
 
-  // Get theme gap value
-  const gapValue = resolve(`components.flex.gap.${gap}`);
-
+  // Resolve background color from theme or use custom (with legacy string support)
+  const resolvedBackgroundColor = typeof backgroundColor === 'string'
+    ? (backgroundColor as string).startsWith('#') ? backgroundColor : resolve(backgroundColor)
+    : backgroundColor?.type === 'theme' && backgroundColor.value
+    ? (typeof backgroundColor.value === 'string' && backgroundColor.value.startsWith('#') ? backgroundColor.value : resolve(backgroundColor.value))
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : 'transparent';
   // Helper functions
   const spacingToCss = (spacing: SpacingValue | undefined) => {
     if (!spacing) return {};
@@ -84,26 +118,86 @@ function FlexComponent({ content: Content, direction, justify, align, wrap, gap,
     baseline: 'baseline',
   };
 
+  // Convert WidthValue to CSS value
+  const widthToCss = (w: WidthValue | undefined) => {
+    if (!w) return '100%'; // Default to full width for layout components
+    return w.value === 'auto' ? 'auto' : `${w.value}${w.unit}`;
+  };
+
   const styles: React.CSSProperties = {
-    display: 'flex',
+    display: display || 'flex',
     flexDirection: direction,
     justifyContent: justifyMap[justify],
     alignItems: alignMap[align],
     flexWrap: wrap,
-    gap: gapValue,
+    gap: `${gap}px`,
+    width: widthToCss(width),
+    backgroundColor: resolvedBackgroundColor,
+    ...(backgroundImage && {
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize,
+      backgroundPosition,
+      backgroundRepeat,
+    }),
     ...spacingToCss(margin),
     ...paddingToCss(padding),
     ...borderToCss(border),
     ...shadowToCss(shadow),
   };
 
+  const SlotComponent = Items as unknown as React.ComponentType<{ style: React.CSSProperties }>;
+
   return (
     <>
-      <div style={styles}>
-        {Content && <Content />}
-      </div>
+      {Items && <SlotComponent style={styles} />}
       {customCss && <style>{customCss}</style>}
     </>
+  );
+}
+
+// BackgroundImageField component for Flex
+function BackgroundImageField(props: { field: { label?: string }; value?: string; onChange: (value: string) => void }) {
+  const { field, value = '', onChange } = props;
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+
+  const handleMediaSelect = (media: Media) => {
+    onChange(media.url);
+    setIsMediaPickerOpen(false);
+  };
+
+  return (
+    <FieldLabel label={field.label || 'Background Image'}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter image URL or browse media"
+          style={{ flex: 1, padding: '6px 8px', border: '1px solid #ccc', borderRadius: '4px' }}
+        />
+        <button
+          type="button"
+          onClick={() => setIsMediaPickerOpen(true)}
+          style={{ padding: '6px 12px', background: '#0969da', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+        >
+          Browse
+        </button>
+      </div>
+      {value && (
+        <div style={{ marginTop: '8px' }}>
+          <img
+            src={value}
+            alt="Background preview"
+            style={{ maxWidth: '200px', maxHeight: '150px', border: '1px solid #e1e4e8', borderRadius: '4px' }}
+          />
+        </div>
+      )}
+      <MediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => setIsMediaPickerOpen(false)}
+        onSelect={handleMediaSelect}
+      />
+    </FieldLabel>
   );
 }
 
@@ -118,6 +212,48 @@ export const Flex: ComponentConfig<FlexProps> = {
         { label: 'Row Reverse', value: 'row-reverse' },
         { label: 'Column', value: 'column' },
         { label: 'Column Reverse', value: 'column-reverse' },
+      ],
+    },
+    items: {
+      type: 'slot',
+      label: 'Items',
+    },
+    // Spread layout container controls (background, spacing, visual effects)
+    ...layoutContainerControls,
+    // Flex-specific controls
+    backgroundImage: {
+      type: 'custom',
+      label: 'Background Image',
+      render: BackgroundImageField,
+    },
+    backgroundSize: {
+      type: 'radio',
+      label: 'Background Size',
+      options: [
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Auto', value: 'auto' },
+      ],
+    },
+    backgroundPosition: {
+      type: 'select',
+      label: 'Background Position',
+      options: [
+        { label: 'Center', value: 'center' },
+        { label: 'Top', value: 'top' },
+        { label: 'Bottom', value: 'bottom' },
+        { label: 'Left', value: 'left' },
+        { label: 'Right', value: 'right' },
+      ],
+    },
+    backgroundRepeat: {
+      type: 'radio',
+      label: 'Background Repeat',
+      options: [
+        { label: 'No Repeat', value: 'no-repeat' },
+        { label: 'Repeat', value: 'repeat' },
+        { label: 'Repeat X', value: 'repeat-x' },
+        { label: 'Repeat Y', value: 'repeat-y' },
       ],
     },
     justify: {
@@ -153,50 +289,18 @@ export const Flex: ComponentConfig<FlexProps> = {
       ],
     },
     gap: {
+      label: 'Gap (px)',
+      type: 'number',
+      min: 0,
+      max: 100,
+    },
+    display: {
       type: 'select',
-      label: 'Gap',
+      label: 'Display',
       options: [
-        { label: 'None', value: 'none' },
-        { label: 'Small', value: 'sm' },
-        { label: 'Medium', value: 'md' },
-        { label: 'Large', value: 'lg' },
+        { label: 'Flex', value: 'flex' },
+        { label: 'Inline Flex', value: 'inline-flex' },
       ],
-    },
-    content: {
-      type: 'slot',
-      label: 'Content',
-    },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    padding: {
-      type: 'custom',
-      label: 'Padding',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} allowNegative={false} />;
-      },
-    },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'none' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
     },
     customCss: {
       type: 'textarea',
@@ -208,7 +312,12 @@ export const Flex: ComponentConfig<FlexProps> = {
     justify: 'start',
     align: 'stretch',
     wrap: 'nowrap',
-    gap: 'md',
+    gap: 16,
+    width: { value: '100', unit: '%' },
+    display: 'flex',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
     margin: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     padding: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     border: { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' },

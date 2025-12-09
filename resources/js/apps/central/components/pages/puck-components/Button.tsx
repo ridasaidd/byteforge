@@ -2,11 +2,12 @@ import { ComponentConfig, FieldLabel } from '@measured/puck';
 import { useQuery } from '@tanstack/react-query';
 import { useTheme } from '@/shared/hooks';
 import { pages } from '@/shared/services/api/pages';
-import { SpacingControl, AlignmentControl, BorderControl, ShadowControl, type SpacingValue, type AlignmentValue, type BorderValue, type ShadowValue } from './fields';
+import { SpacingControl, AlignmentControl, BorderControl, ShadowControl, ColorPickerControl, WidthControl, DisplayControl, type SpacingValue, type AlignmentValue, type BorderValue, type ShadowValue, type ColorValue, type WidthValue, type DisplayValue } from './fields';
 
 export interface ButtonProps {
   text: string;
-  variant: 'primary' | 'secondary' | 'outline' | 'ghost';
+  backgroundColor?: ColorValue;
+  textColor?: ColorValue;
   size: 'sm' | 'md' | 'lg';
   linkType: 'none' | 'internal' | 'external';
   internalPage?: string;
@@ -14,6 +15,8 @@ export interface ButtonProps {
   openInNewTab?: boolean;
 
   // Advanced Styling
+  width?: WidthValue;
+  display?: DisplayValue;
   alignment?: AlignmentValue;
   margin?: SpacingValue;
   padding?: SpacingValue;
@@ -58,16 +61,21 @@ function PageSelectorField({ field, value, onChange }: { field: { label?: string
   );
 }
 
-function ButtonComponent({ text, variant, size, linkType, internalPage, href, openInNewTab, alignment, margin, padding, border, shadow, customCss }: ButtonProps) {
+function ButtonComponent({ text, backgroundColor, textColor, size, linkType, internalPage, href, openInNewTab, width, display = 'inline-flex', alignment, margin, padding, border, shadow, customCss }: ButtonProps) {
   const { resolve } = useTheme();
 
-  // Get theme values for the selected variant and size
-  const backgroundColor = resolve(`components.button.variants.${variant}.backgroundColor`);
-  const color = resolve(`components.button.variants.${variant}.color`);
-  const hoverBackgroundColor = resolve(`components.button.variants.${variant}.hoverBackgroundColor`);
-  const borderColor = resolve(`components.button.variants.${variant}.borderColor`);
-  const borderWidth = resolve(`components.button.variants.${variant}.borderWidth`);
-  const focusRing = resolve(`components.button.variants.${variant}.focusRing`);
+  // Resolve colors from theme if using theme color, otherwise use custom value
+  const resolvedBackgroundColor = backgroundColor?.type === 'theme' && backgroundColor.value
+    ? resolve(backgroundColor.value)
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : resolve('components.button.variants.primary.backgroundColor'); // fallback
+
+  const resolvedTextColor = textColor?.type === 'theme' && textColor.value
+    ? resolve(textColor.value)
+    : textColor?.type === 'custom'
+    ? textColor.value
+    : resolve('components.button.variants.primary.color'); // fallback
 
   const paddingX = resolve(`components.button.sizes.${size}.paddingX`);
   const paddingY = resolve(`components.button.sizes.${size}.paddingY`);
@@ -118,21 +126,25 @@ function ButtonComponent({ text, variant, size, linkType, internalPage, href, op
     return { boxShadow: shadows[shadowVal.preset] };
   };
 
+  // Convert WidthValue to CSS value
+  const widthToCss = (w: WidthValue | undefined) => {
+    if (!w) return undefined;
+    return w.value === 'auto' ? 'auto' : `${w.value}${w.unit}`;
+  };
+
   const baseStyles: React.CSSProperties = {
-    display: 'inline-flex',
+    display: display || 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     fontWeight: 500,
     transition: 'all 0.2s',
     cursor: 'pointer',
     textDecoration: 'none',
-    // Theme styles
-    backgroundColor,
-    color,
+    ...(widthToCss(width) ? { width: widthToCss(width) } : {}),
+    // Resolved colors
+    backgroundColor: resolvedBackgroundColor,
+    color: resolvedTextColor,
     fontSize,
-    ...(borderColor && borderWidth ? {
-      border: `${borderWidth} solid ${borderColor}`,
-    } : {}),
     // Default padding from theme (can be overridden)
     ...(padding ? paddingToCss(padding) : {
       paddingLeft: paddingX,
@@ -157,22 +169,20 @@ function ButtonComponent({ text, variant, size, linkType, internalPage, href, op
   } : {};
 
   const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
-    if (hoverBackgroundColor) {
-      e.currentTarget.style.backgroundColor = hoverBackgroundColor;
+    // Darken the background color on hover
+    const currentBg = resolvedBackgroundColor;
+    if (currentBg && currentBg.startsWith('#')) {
+      // Simple darkening for hex colors
+      e.currentTarget.style.opacity = '0.9';
     }
   };
 
   const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
-    if (backgroundColor) {
-      e.currentTarget.style.backgroundColor = backgroundColor;
-    }
+    e.currentTarget.style.opacity = '1';
   };
 
-  const handleFocus = (e: React.FocusEvent<HTMLElement>) => {
-    if (focusRing) {
-      e.currentTarget.style.outline = `2px solid ${focusRing}`;
-      e.currentTarget.style.outlineOffset = '2px';
-    }
+  const handleFocus = () => {
+    // Could add focus ring styling here if needed
   };
 
   const handleBlur = (e: React.FocusEvent<HTMLElement>) => {
@@ -226,15 +236,21 @@ export const Button: ComponentConfig<ButtonProps> = {
       type: 'text',
       label: 'Button Text',
     },
-    variant: {
-      type: 'select',
-      label: 'Variant',
-      options: [
-        { label: 'Primary', value: 'primary' },
-        { label: 'Secondary', value: 'secondary' },
-        { label: 'Outline', value: 'outline' },
-        { label: 'Ghost', value: 'ghost' },
-      ],
+    backgroundColor: {
+      type: 'custom',
+      label: 'Background Color',
+      render: (props) => {
+        const { value = { type: 'theme', value: 'components.button.variants.primary.backgroundColor' }, onChange } = props;
+        return <ColorPickerControl {...props} value={value} onChange={onChange} />;
+      },
+    },
+    textColor: {
+      type: 'custom',
+      label: 'Text Color',
+      render: (props) => {
+        const { value = { type: 'theme', value: 'components.button.variants.primary.color' }, onChange } = props;
+        return <ColorPickerControl {...props} value={value} onChange={onChange} />;
+      },
     },
     size: {
       type: 'select',
@@ -270,6 +286,19 @@ export const Button: ComponentConfig<ButtonProps> = {
         { label: 'Yes', value: true },
         { label: 'No', value: false },
       ],
+    },
+    width: {
+      type: 'custom',
+      label: 'Width',
+      render: (props) => <WidthControl {...props} />,
+    },
+    display: {
+      type: 'custom',
+      label: 'Display',
+      render: (props) => {
+        const { value = 'inline-flex', onChange } = props;
+        return <DisplayControl {...props} value={value as DisplayValue} onChange={onChange} />;
+      },
     },
     alignment: {
       type: 'custom',
@@ -318,10 +347,12 @@ export const Button: ComponentConfig<ButtonProps> = {
   },
   defaultProps: {
     text: 'Click me',
-    variant: 'primary',
+    backgroundColor: { type: 'theme', value: 'components.button.variants.primary.backgroundColor' },
+    textColor: { type: 'theme', value: 'components.button.variants.primary.color' },
     size: 'md',
     linkType: 'none',
     openInNewTab: false,
+    display: 'inline-flex',
     alignment: { horizontal: 'left' },
     margin: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     padding: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },

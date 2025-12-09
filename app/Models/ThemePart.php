@@ -13,6 +13,7 @@ class ThemePart extends Model
 
     protected $fillable = [
         'tenant_id',
+        'theme_id',
         'name',
         'slug',
         'type',
@@ -43,6 +44,14 @@ class ThemePart extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Get the theme this part belongs to.
+     */
+    public function theme()
+    {
+        return $this->belongsTo(Theme::class);
     }
 
     /**

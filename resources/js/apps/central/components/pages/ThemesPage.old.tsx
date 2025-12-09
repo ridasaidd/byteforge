@@ -60,7 +60,7 @@ export function ThemesPage() {
 
   const handleReset = async (id: number) => {
     try {
-      await themes.reset(id);
+  await themes.reset(id);
       toast({
         title: 'Success',
         description: 'Theme reset to default',
@@ -80,7 +80,7 @@ export function ThemesPage() {
     if (!name) return;
 
     try {
-      await themes.duplicate(id, { name });
+  await themes.duplicate(id, { name });
       toast({
         title: 'Success',
         description: 'Theme duplicated successfully',
@@ -99,7 +99,7 @@ export function ThemesPage() {
     if (!confirm('Are you sure you want to delete this theme?')) return;
 
     try {
-      await themes.delete(id);
+  await themes.delete(id);
       toast({
         title: 'Success',
         description: 'Theme deleted successfully',
@@ -116,7 +116,7 @@ export function ThemesPage() {
 
   const handleExport = async (id: number) => {
     try {
-      const data = await themes.export(id);
+  const data = await themes.export(id);
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -165,28 +165,60 @@ export function ThemesPage() {
     <div className="p-6">
       <PageHeader
         title="Themes"
-        description="Manage and activate your site themes"
+        description="Manage your site themes"
         actions={
-          <Button variant="default" size="sm" onClick={handleCreateTheme}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Theme
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="default" size="sm" onClick={handleCreateTheme}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create Theme
+            </Button>
+          </div>
         }
       />
 
-      {/* All Themes */}
+      {/* Available Themes */}
       <div className="mt-6">
-        {allThemes.length === 0 ? (
-          <div className="text-center py-12 border-2 border-dashed rounded-lg">
-            <p className="text-gray-500 mb-4">No themes available</p>
-            <Button onClick={handleCreateTheme} variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first theme
-            </Button>
-          </div>
+        <h2 className="text-lg font-semibold mb-4">Available Themes</h2>
+        {availableThemes.length === 0 ? (
+          <p className="text-gray-500 text-sm">All available themes are already installed.</p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {allThemes.map((theme) => (
+            {availableThemes.map((theme) => (
+              <Card key={theme.slug} className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold">{theme.name}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{theme.description}</p>
+                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                      <span>v{theme.version}</span>
+                      <span>•</span>
+                      <span>{theme.author}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleActivate(theme.slug)}
+                    className="flex-1"
+                  >
+                    Activate
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Installed Themes */}
+      {installedThemes.length > 0 && (
+        <div className="mt-8">
+          <h2 className="text-lg font-semibold mb-4">Installed Themes</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {installedThemes.map((theme) => (
               <Card key={theme.id} className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
@@ -208,13 +240,13 @@ export function ThemesPage() {
                   </div>
                 </div>
 
-                <div className="flex gap-2 flex-wrap">
+                <div className="flex gap-2">
                   {!isThemeActive(theme.slug) && (
                     <Button
                       variant="secondary"
                       size="sm"
                       onClick={() => handleActivate(theme.slug)}
-                      className="flex-1 min-w-[100px]"
+                      className="flex-1"
                     >
                       Activate
                     </Button>
@@ -271,8 +303,8 @@ export function ThemesPage() {
               </Card>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { DashboardPage } from './components/pages/DashboardPage';
 import { LoginPage } from './components/pages/LoginPage';
-import { PagesPage, PageEditorPage, ThemesPage, ThemePartsPage, ThemePartEditorPage } from './components/pages';
+import { PagesPage, PageEditorPage, ThemesPage, ThemeBuilderPage, ThemePartsPage, ThemePartEditorPage } from './components/pages';
 import { PublicPage } from './components/pages/PublicPage';
 import { NavigationsPage } from './components/pages/NavigationsPage';
 import { TenantsPage } from './components/pages/TenantsPage';
@@ -42,6 +42,8 @@ function ProtectedRoutes() {
       <Routes>
         {/* Full Screen Editors - Without Layout */}
         <Route path="pages/:id/edit" element={<PageEditorPage />} />
+        <Route path="themes/new/builder" element={<ThemeBuilderPage />} />
+        <Route path="themes/:id/builder" element={<ThemeBuilderPage />} />
         <Route path="theme-parts/:id/edit" element={<ThemePartEditorPage />} />
 
         {/* All other routes with Dashboard Layout */}

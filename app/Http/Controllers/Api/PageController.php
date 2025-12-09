@@ -286,17 +286,21 @@ class PageController extends Controller
         }
 
         $oldStatus = $page->status;
+        $oldHeaderId = $page->header_id;
+        $oldFooterId = $page->footer_id;
+        
         $page->update($validated);
 
         // Recompile if:
         // - Status changed to published, OR
-        // - Already published and puck_data changed
-        // Note: header/footer changes don't require recompilation (runtime merging)
+        // - Already published and (puck_data, header_id, or footer_id changed)
         $shouldCompile = (
             ($validated['status'] ?? $page->status) === 'published' &&
             (
                 $oldStatus !== 'published' ||
-                isset($validated['puck_data'])
+                isset($validated['puck_data']) ||
+                (isset($validated['header_id']) && $validated['header_id'] !== $oldHeaderId) ||
+                (isset($validated['footer_id']) && $validated['footer_id'] !== $oldFooterId)
             )
         );
 
@@ -360,41 +364,27 @@ class PageController extends Controller
             ->with(['header', 'footer', 'layout.header', 'layout.footer'])
             ->firstOrFail();
 
+        // Use compiled data (header + content + footer + metadata already merged during publish)
+        $pageData = $page->puck_data_compiled ?? $page->puck_data;
+
         return response()->json([
             'data' => [
                 'id' => $page->id,
                 'title' => $page->title,
                 'slug' => $page->slug,
                 'page_type' => $page->page_type,
-                'puck_data' => $page->puck_data,
-                'puck_data_compiled' => $page->puck_data_compiled,
+                'puck_data' => $pageData, // Pre-compiled: header + content + footer + metadata merged!
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
                 'is_homepage' => $page->is_homepage,
                 'published_at' => $page->published_at?->toISOString(),
                 'created_at' => $page->created_at->toISOString(),
                 'updated_at' => $page->updated_at->toISOString(),
-                // Include header/footer for runtime merging
-                'header' => $page->header ? [
-                    'id' => $page->header->id,
-                    'name' => $page->header->name,
-                    'puck_data_compiled' => $page->header->puck_data_compiled,
-                ] : ($page->layout && $page->layout->header ? [
-                    'id' => $page->layout->header->id,
-                    'name' => $page->layout->header->name,
-                    'puck_data_compiled' => $page->layout->header->puck_data_compiled,
-                ] : null),
-                'footer' => $page->footer ? [
-                    'id' => $page->footer->id,
-                    'name' => $page->footer->name,
-                    'puck_data_compiled' => $page->footer->puck_data_compiled,
-                ] : ($page->layout && $page->layout->footer ? [
-                    'id' => $page->layout->footer->id,
-                    'name' => $page->layout->footer->name,
-                    'puck_data_compiled' => $page->layout->footer->puck_data_compiled,
-                ] : null),
+                // No header/footer needed - already merged in puck_data_compiled!
             ]
-        ]);
+        ])
+        ->header('Cache-Control', 'public, max-age=3600') // Browser cache 1 hour
+        ->header('ETag', md5(json_encode($pageData))); // Enable conditional requests
     }
 
     /**
@@ -419,40 +409,26 @@ class PageController extends Controller
             ], 404);
         }
 
+        // Use compiled data (header + content + footer + metadata already merged during publish)
+        $pageData = $page->puck_data_compiled ?? $page->puck_data;
+
         return response()->json([
             'data' => [
                 'id' => $page->id,
                 'title' => $page->title,
                 'slug' => $page->slug,
                 'page_type' => $page->page_type,
-                'puck_data' => $page->puck_data,
-                'puck_data_compiled' => $page->puck_data_compiled,
+                'puck_data' => $pageData, // Pre-compiled: header + content + footer + metadata merged!
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
                 'is_homepage' => $page->is_homepage,
                 'published_at' => $page->published_at?->toISOString(),
                 'created_at' => $page->created_at->toISOString(),
                 'updated_at' => $page->updated_at->toISOString(),
-                // Include header/footer for runtime merging
-                'header' => $page->header ? [
-                    'id' => $page->header->id,
-                    'name' => $page->header->name,
-                    'puck_data_compiled' => $page->header->puck_data_compiled,
-                ] : ($page->layout && $page->layout->header ? [
-                    'id' => $page->layout->header->id,
-                    'name' => $page->layout->header->name,
-                    'puck_data_compiled' => $page->layout->header->puck_data_compiled,
-                ] : null),
-                'footer' => $page->footer ? [
-                    'id' => $page->footer->id,
-                    'name' => $page->footer->name,
-                    'puck_data_compiled' => $page->footer->puck_data_compiled,
-                ] : ($page->layout && $page->layout->footer ? [
-                    'id' => $page->layout->footer->id,
-                    'name' => $page->layout->footer->name,
-                    'puck_data_compiled' => $page->layout->footer->puck_data_compiled,
-                ] : null),
+                // No header/footer needed - already merged in puck_data_compiled!
             ]
-        ]);
+        ])
+        ->header('Cache-Control', 'public, max-age=3600')
+        ->header('ETag', md5(json_encode($pageData)));
     }
 }

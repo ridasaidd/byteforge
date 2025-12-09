@@ -29,6 +29,29 @@ export function SpacingControl({
   const [isLinked, setIsLinked] = useState(value.linked || false);
 
   const handleValueChange = (side: 'top' | 'right' | 'bottom' | 'left', newValue: string) => {
+    // Allow "auto" as a valid value
+    if (newValue === 'auto' || newValue === '') {
+      const finalValue = newValue === '' ? '0' : 'auto';
+
+      if (isLinked) {
+        onChange({
+          ...value,
+          top: finalValue,
+          right: finalValue,
+          bottom: finalValue,
+          left: finalValue,
+          linked: isLinked,
+        });
+      } else {
+        onChange({
+          ...value,
+          [side]: finalValue,
+          linked: isLinked,
+        });
+      }
+      return;
+    }
+
     const numValue = parseFloat(newValue) || 0;
     const clampedValue = allowNegative ? numValue : Math.max(minValue, numValue);
     const finalValue = clampedValue.toString();
@@ -123,10 +146,10 @@ export function SpacingControl({
               All Sides
             </label>
             <input
-              type="number"
+              type="text"
               value={value.top}
               onChange={(e) => handleValueChange('top', e.target.value)}
-              min={allowNegative ? undefined : minValue}
+              placeholder="0 or auto"
               style={{
                 width: '100%',
                 padding: '6px 8px',
@@ -143,10 +166,10 @@ export function SpacingControl({
                 Top
               </label>
               <input
-                type="number"
+                type="text"
                 value={value.top}
                 onChange={(e) => handleValueChange('top', e.target.value)}
-                min={allowNegative ? undefined : minValue}
+                placeholder="0 or auto"
                 style={{
                   width: '100%',
                   padding: '6px 8px',
@@ -162,10 +185,10 @@ export function SpacingControl({
                 Right
               </label>
               <input
-                type="number"
+                type="text"
                 value={value.right}
                 onChange={(e) => handleValueChange('right', e.target.value)}
-                min={allowNegative ? undefined : minValue}
+                placeholder="0 or auto"
                 style={{
                   width: '100%',
                   padding: '6px 8px',
@@ -181,10 +204,10 @@ export function SpacingControl({
                 Bottom
               </label>
               <input
-                type="number"
+                type="text"
                 value={value.bottom}
                 onChange={(e) => handleValueChange('bottom', e.target.value)}
-                min={allowNegative ? undefined : minValue}
+                placeholder="0 or auto"
                 style={{
                   width: '100%',
                   padding: '6px 8px',
@@ -200,10 +223,10 @@ export function SpacingControl({
                 Left
               </label>
               <input
-                type="number"
+                type="text"
                 value={value.left}
                 onChange={(e) => handleValueChange('left', e.target.value)}
-                min={allowNegative ? undefined : minValue}
+                placeholder="0 or auto"
                 style={{
                   width: '100%',
                   padding: '6px 8px',

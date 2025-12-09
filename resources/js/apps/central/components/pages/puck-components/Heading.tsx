@@ -1,15 +1,21 @@
 import { ComponentConfig } from '@measured/puck';
 import { useTheme } from '@/shared/hooks';
 import {
-  SpacingControl, BorderControl, ShadowControl,
-  SpacingValue, BorderValue, ShadowValue
+  SpacingValue, BorderValue, ShadowValue, WidthValue, DisplayValue,
+  ColorValue, FontSizeValue, FontWeightValue
 } from './fields';
+import { typographyControls } from './controlPresets';
 
 export interface HeadingProps {
   text: string;
   level: '1' | '2' | '3' | '4' | '5' | '6';
   align: 'left' | 'center' | 'right';
-  color: 'default' | 'primary' | 'secondary' | 'muted';
+  color?: ColorValue;
+  backgroundColor?: ColorValue;
+  fontSize?: FontSizeValue;
+  fontWeight?: FontWeightValue;
+  width?: WidthValue;
+  display?: DisplayValue;
   margin?: SpacingValue;
   padding?: SpacingValue;
   border?: BorderValue;
@@ -17,12 +23,59 @@ export interface HeadingProps {
   customCss?: string;
 }
 
-function HeadingComponent({ text, level, align, color, margin, padding, border, shadow, customCss }: HeadingProps) {
+function HeadingComponent({ text, level, align, color, backgroundColor, fontSize, fontWeight, width, display = 'block', margin, padding, border, shadow, customCss }: HeadingProps) {
   const { resolve } = useTheme();
   const Tag = `h${level}` as keyof JSX.IntrinsicElements;
 
-  // Get theme color for the heading
-  const themeColor = resolve(`components.heading.colors.${color}`);
+  // Resolve color from theme or use custom (with legacy string support)
+  const resolvedColor = typeof color === 'string'
+    ? (color as string).startsWith('#') ? color : resolve(color)
+    : color?.type === 'theme' && color.value
+    ? (typeof color.value === 'string' && color.value.startsWith('#')) ? color.value : resolve(color.value)
+    : color?.type === 'custom'
+    ? color.value
+    : resolve(`components.heading.colors.default`);
+
+  // Resolve background color (with legacy string support)
+  const resolvedBackgroundColor = typeof backgroundColor === 'string'
+    ? (backgroundColor as string).startsWith('#') ? backgroundColor : resolve(backgroundColor)
+    : backgroundColor?.type === 'theme' && backgroundColor.value
+    ? (typeof backgroundColor.value === 'string' && backgroundColor.value.startsWith('#')) ? backgroundColor.value : resolve(backgroundColor.value)
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : 'transparent';
+
+  // Resolve font size - use custom or theme, with fallback to level-based size
+  const levelFontSizeMap = {
+    '1': 'typography.fontSize.5xl',
+    '2': 'typography.fontSize.4xl',
+    '3': 'typography.fontSize.3xl',
+    '4': 'typography.fontSize.2xl',
+    '5': 'typography.fontSize.xl',
+    '6': 'typography.fontSize.lg',
+  };
+
+  const resolvedFontSize = fontSize?.type === 'custom'
+    ? fontSize.value
+    : fontSize?.type === 'theme' && fontSize.value
+    ? resolve(fontSize.value)
+    : resolve(levelFontSizeMap[level]);
+
+  // Resolve font weight - use custom or theme, with fallback to level-based weight
+  const levelFontWeightMap = {
+    '1': 'typography.fontWeight.bold',
+    '2': 'typography.fontWeight.bold',
+    '3': 'typography.fontWeight.semibold',
+    '4': 'typography.fontWeight.semibold',
+    '5': 'typography.fontWeight.medium',
+    '6': 'typography.fontWeight.medium',
+  };
+
+  const resolvedFontWeight = fontWeight?.type === 'custom'
+    ? fontWeight.value
+    : fontWeight?.type === 'theme' && fontWeight.value
+    ? resolve(fontWeight.value)
+    : resolve(levelFontWeightMap[level]);
 
   // Helper functions
   const spacingToCss = (spacing: SpacingValue | undefined) => {
@@ -65,31 +118,20 @@ function HeadingComponent({ text, level, align, color, margin, padding, border, 
     return { boxShadow: shadows[shadowVal.preset] };
   };
 
-  // Get font size based on level
-  const fontSizeMap = {
-    '1': resolve('typography.fontSize.5xl'),
-    '2': resolve('typography.fontSize.4xl'),
-    '3': resolve('typography.fontSize.3xl'),
-    '4': resolve('typography.fontSize.2xl'),
-    '5': resolve('typography.fontSize.xl'),
-    '6': resolve('typography.fontSize.lg'),
-  };
-
-  // Get font weight based on level
-  const fontWeightMap = {
-    '1': resolve('typography.fontWeight.bold'),
-    '2': resolve('typography.fontWeight.bold'),
-    '3': resolve('typography.fontWeight.semibold'),
-    '4': resolve('typography.fontWeight.semibold'),
-    '5': resolve('typography.fontWeight.medium'),
-    '6': resolve('typography.fontWeight.medium'),
+  // Convert WidthValue to CSS value
+  const widthToCss = (w: WidthValue | undefined) => {
+    if (!w) return undefined; // No width set - use natural content width
+    return w.value === 'auto' ? 'auto' : `${w.value}${w.unit}`;
   };
 
   const styles: React.CSSProperties = {
-    color: themeColor,
-    fontSize: fontSizeMap[level],
-    fontWeight: fontWeightMap[level],
+    color: resolvedColor,
+    backgroundColor: resolvedBackgroundColor,
+    fontSize: resolvedFontSize,
+    fontWeight: resolvedFontWeight,
     textAlign: align,
+    display: display || 'block',
+    ...(widthToCss(width) ? { width: widthToCss(width) } : {}),
     margin: 0,
     ...spacingToCss(margin),
     ...paddingToCss(padding),
@@ -111,6 +153,7 @@ export const Heading: ComponentConfig<HeadingProps> = {
     text: {
       type: 'text',
       label: 'Heading Text',
+      contentEditable: true,
     },
     level: {
       type: 'select',
@@ -133,48 +176,8 @@ export const Heading: ComponentConfig<HeadingProps> = {
         { label: 'Right', value: 'right' },
       ],
     },
-    color: {
-      type: 'select',
-      label: 'Color',
-      options: [
-        { label: 'Default', value: 'default' },
-        { label: 'Primary', value: 'primary' },
-        { label: 'Secondary', value: 'secondary' },
-        { label: 'Muted', value: 'muted' },
-      ],
-    },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    padding: {
-      type: 'custom',
-      label: 'Padding',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} allowNegative={false} />;
-      },
-    },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'none' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    // Spread typography controls (color, fontSize, fontWeight, spacing, visual effects)
+    ...typographyControls,
     customCss: {
       type: 'textarea',
       label: 'Custom CSS',
@@ -184,7 +187,8 @@ export const Heading: ComponentConfig<HeadingProps> = {
     text: 'Heading',
     level: '2',
     align: 'left',
-    color: 'default',
+    color: { type: 'theme', value: 'components.heading.colors.default' },
+    display: 'block',
     margin: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     padding: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     border: { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' },

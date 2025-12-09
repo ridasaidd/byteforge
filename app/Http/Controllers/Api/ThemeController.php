@@ -10,18 +10,7 @@ use Illuminate\Support\Facades\Validator;
 
 class ThemeController extends Controller
 {
-    /**
-     * Sync themes from disk to database (central app only).
-     * Requires 'sync themes' permission (superadmin, editors).
-     */
-    public function sync()
-    {
-        \App\Actions\Api\Superadmin\SyncThemesAction::run();
-        return response()->json([
-            'message' => 'Themes synced successfully.'
-        ]);
-    }
-    // ...existing code...
+
 
     /**
      * Public endpoint: Get active theme data for rendering (no auth required).
@@ -70,17 +59,7 @@ class ThemeController extends Controller
         return tenant()?->id;
     }
 
-    /**
-     * Get all available themes from disk.
-     */
-    public function available()
-    {
-        $themes = $this->themeService->getAvailableThemes();
 
-        return response()->json([
-            'data' => $themes,
-        ]);
-    }
 
     /**
      * Get all installed themes from database.
@@ -132,6 +111,60 @@ class ThemeController extends Controller
     }
 
     /**
+     * Create a new theme.
+     */
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'preview_image' => 'nullable|string',
+            'is_system_theme' => 'nullable|boolean',
+            'base_theme' => 'nullable|string',
+            'theme_data' => 'nullable|array',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $tenantId = $this->getTenantId();
+
+        // Generate slug from name
+        $slug = \Illuminate\Support\Str::slug($request->name);
+
+        // Ensure unique slug for this tenant
+        $originalSlug = $slug;
+        $counter = 1;
+        while (Theme::where('tenant_id', $tenantId)->where('slug', $slug)->exists()) {
+            $slug = $originalSlug . '-' . $counter;
+            $counter++;
+        }
+
+        $theme = Theme::create([
+            'tenant_id' => $tenantId,
+            'name' => $request->name,
+            'slug' => $slug,
+            'description' => $request->description,
+            'preview_image' => $request->preview_image,
+            'is_system_theme' => $request->is_system_theme ?? false,
+            'base_theme' => $request->base_theme,
+            'theme_data' => $request->theme_data ?? [],
+            'is_active' => false,
+            'author' => $request->user()?->name ?? 'Unknown',
+            'version' => '1.0.0',
+        ]);
+
+        return response()->json([
+            'data' => $theme,
+            'message' => 'Theme created successfully',
+        ], 201);
+    }
+
+    /**
      * Activate a theme.
      */
     public function activate(Request $request)
@@ -177,7 +210,10 @@ class ThemeController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'theme_data' => 'required|array',
+            'name' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
+            'preview_image' => 'nullable|string',
+            'theme_data' => 'nullable|array',
         ]);
 
         if ($validator->fails()) {
@@ -187,10 +223,26 @@ class ThemeController extends Controller
             ], 422);
         }
 
-        $theme = $this->themeService->updateTheme($theme, $request->theme_data);
+        // Update basic fields if provided
+        if ($request->has('name')) {
+            $theme->name = $request->name;
+        }
+        if ($request->has('description')) {
+            $theme->description = $request->description;
+        }
+        if ($request->has('preview_image')) {
+            $theme->preview_image = $request->preview_image;
+        }
+
+        // Update theme_data if provided
+        if ($request->has('theme_data')) {
+            $theme = $this->themeService->updateTheme($theme, $request->theme_data);
+        } else {
+            $theme->save();
+        }
 
         return response()->json([
-            'data' => $theme,
+            'data' => $theme->fresh(),
             'message' => 'Theme updated successfully',
         ]);
     }

@@ -1,12 +1,20 @@
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig, FieldLabel } from '@measured/puck';
+import { useState } from 'react';
 import { useTheme } from '@/shared/hooks';
+import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
+import type { Media } from '@/shared/services/api';
 import {
-  SpacingControl, AlignmentControl, BorderControl, ShadowControl,
-  SpacingValue, AlignmentValue, BorderValue, ShadowValue
+  SpacingValue, AlignmentValue, BorderValue, ShadowValue, ColorValue
 } from './fields';
+import { layoutContainerControls, paddingControl } from './controlPresets';
 
 export interface ContainerProps {
   content?: () => React.ReactElement;
+  backgroundColor?: ColorValue;
+  backgroundImage?: string;
+  backgroundSize?: 'cover' | 'contain' | 'auto';
+  backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
+  backgroundRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
   maxWidth: 'sm' | 'md' | 'lg' | 'xl' | 'full';
   padding: 'none' | 'sm' | 'md' | 'lg';
   alignment?: AlignmentValue;
@@ -17,10 +25,17 @@ export interface ContainerProps {
   customCss?: string;
 }
 
-function ContainerComponent({ content: Content, maxWidth, padding, alignment, margin, customPadding, border, shadow, customCss }: ContainerProps) {
+function ContainerComponent({ content: Content, backgroundColor, backgroundImage, backgroundSize = 'cover', backgroundPosition = 'center', backgroundRepeat = 'no-repeat', maxWidth, padding, alignment, margin, customPadding, border, shadow, customCss, puck }: ContainerProps & { puck?: { dragRef?: any } }) {
   const { resolve } = useTheme();
 
-  // Get theme values
+  // Resolve background color from theme or use custom (with legacy string support)
+  const resolvedBackgroundColor = typeof backgroundColor === 'string'
+    ? ((backgroundColor as string).startsWith('#') ? backgroundColor : resolve(backgroundColor))
+    : backgroundColor?.type === 'theme' && backgroundColor.value
+    ? (typeof backgroundColor.value === 'string' && backgroundColor.value.startsWith('#') ? backgroundColor.value : resolve(backgroundColor.value))
+    : backgroundColor?.type === 'custom'
+    ? backgroundColor.value
+    : 'transparent';  // Get theme values
   const maxWidthValue = resolve(`components.container.maxWidths.${maxWidth}`);
   const paddingValue = resolve(`components.container.padding.${padding}`);
 
@@ -70,7 +85,14 @@ function ContainerComponent({ content: Content, maxWidth, padding, alignment, ma
 
   const styles: React.CSSProperties = {
     maxWidth: maxWidthValue,
-    margin: '0 auto',
+    width: '100%',
+    backgroundColor: resolvedBackgroundColor,
+    ...(backgroundImage && {
+      backgroundImage: `url(${backgroundImage})`,
+      backgroundSize,
+      backgroundPosition,
+      backgroundRepeat,
+    }),
     // Default padding from theme (can be overridden)
     ...(customPadding ? paddingToCss(customPadding) : {
       padding: paddingValue,
@@ -96,7 +118,7 @@ function ContainerComponent({ content: Content, maxWidth, padding, alignment, ma
 
   return (
     <>
-      <div style={styles}>
+      <div ref={puck?.dragRef} style={styles}>
         {Content && <Content />}
       </div>
       {customCss && <style>{customCss}</style>}
@@ -104,12 +126,119 @@ function ContainerComponent({ content: Content, maxWidth, padding, alignment, ma
   );
 }
 
+// Custom field component for background image with Media Library integration
+function BackgroundImageField(props: { field: { label?: string }; value?: string; onChange: (value: string) => void }) {
+  const { field, value = '', onChange } = props;
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+
+  const handleMediaSelect = (media: Media) => {
+    onChange(media.url);
+  };
+
+  return (
+    <FieldLabel label={field.label || 'Background Image'}>
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Enter image URL or browse media library"
+          style={{
+            flex: 1,
+            padding: '8px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '4px',
+            fontSize: '14px',
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => setIsMediaPickerOpen(true)}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: '#2563eb',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: 500,
+          }}
+        >
+          Browse
+        </button>
+      </div>
+      {value && (
+        <div style={{ marginTop: '8px' }}>
+          <img
+            src={value}
+            alt="Preview"
+            style={{
+              maxWidth: '200px',
+              maxHeight: '150px',
+              objectFit: 'cover',
+              borderRadius: '4px',
+              border: '1px solid #e5e7eb',
+            }}
+          />
+        </div>
+      )}
+
+      <MediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => setIsMediaPickerOpen(false)}
+        onSelect={handleMediaSelect}
+        title="Select Background Image"
+      />
+    </FieldLabel>
+  );
+}
+
 export const Container: ComponentConfig<ContainerProps> = {
   label: 'Container',
+  inline: true,
   fields: {
     content: {
       type: 'slot',
       label: 'Content',
+    },
+    // Spread layout container controls (background, spacing, visual effects)
+    ...layoutContainerControls,
+    // Container-specific controls
+    backgroundImage: {
+      type: 'custom',
+      label: 'Background Image',
+      render: BackgroundImageField,
+    },
+    backgroundSize: {
+      type: 'radio',
+      label: 'Background Size',
+      options: [
+        { label: 'Cover', value: 'cover' },
+        { label: 'Contain', value: 'contain' },
+        { label: 'Auto', value: 'auto' },
+      ],
+    },
+    backgroundPosition: {
+      type: 'select',
+      label: 'Background Position',
+      options: [
+        { label: 'Center', value: 'center' },
+        { label: 'Top', value: 'top' },
+        { label: 'Bottom', value: 'bottom' },
+        { label: 'Left', value: 'left' },
+        { label: 'Right', value: 'right' },
+      ],
+    },
+    backgroundRepeat: {
+      type: 'radio',
+      label: 'Background Repeat',
+      options: [
+        { label: 'No Repeat', value: 'no-repeat' },
+        { label: 'Repeat', value: 'repeat' },
+        { label: 'Repeat X', value: 'repeat-x' },
+        { label: 'Repeat Y', value: 'repeat-y' },
+      ],
     },
     maxWidth: {
       type: 'select',
@@ -132,45 +261,9 @@ export const Container: ComponentConfig<ContainerProps> = {
         { label: 'Large', value: 'lg' },
       ],
     },
-    alignment: {
-      type: 'custom',
-      label: 'Alignment',
-      render: (props) => {
-        const { value = { horizontal: 'left' }, onChange } = props;
-        return <AlignmentControl {...props} value={value} onChange={onChange} showVertical={true} />;
-      },
-    },
-    margin: {
-      type: 'custom',
-      label: 'Margin',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} />;
-      },
-    },
     customPadding: {
-      type: 'custom',
+      ...paddingControl,
       label: 'Custom Padding',
-      render: (props) => {
-        const { value = { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true }, onChange } = props;
-        return <SpacingControl {...props} value={value} onChange={onChange} allowNegative={false} />;
-      },
-    },
-    border: {
-      type: 'custom',
-      label: 'Border',
-      render: (props) => {
-        const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
-        return <BorderControl {...props} value={value} onChange={onChange} />;
-      },
-    },
-    shadow: {
-      type: 'custom',
-      label: 'Shadow',
-      render: (props) => {
-        const { value = { preset: 'none' }, onChange } = props;
-        return <ShadowControl {...props} value={value} onChange={onChange} />;
-      },
     },
     customCss: {
       type: 'textarea',
@@ -178,10 +271,13 @@ export const Container: ComponentConfig<ContainerProps> = {
     },
   },
   defaultProps: {
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
     maxWidth: 'lg',
     padding: 'md',
     alignment: { horizontal: 'left' },
-    margin: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
+    margin: { top: '0', right: 'auto', bottom: '0', left: 'auto', unit: 'px', linked: false },
     customPadding: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
     border: { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' },
     shadow: { preset: 'none' },
