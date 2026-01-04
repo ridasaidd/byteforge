@@ -4,48 +4,77 @@ This folder holds a slim, up‑to‑date set of docs for contributors and review
 
 —
 
-## Quick navigation
+## Quick Navigation
 
-- Current status: see CURRENT_STATUS.md
-- Architecture (frontend/backend/high-level): see FRONTEND_ARCHITECTURE_PLAN.md
-- API overview: see API_DOCUMENTATION.md
-- Roadmap and next targets: see ROADMAP.md
-- Principles and ways of working: see DEVELOPMENT_PRINCIPLES.md and AI_COLLABORATION_GUIDE.md
-- Test accounts: see TESTING_CREDENTIALS.md
+### 🚀 Start Here
+- **Current status**: [CURRENT_STATUS.md](CURRENT_STATUS.md)
+- **Puck Roadmap & Architecture**: [PUCK_ROADMAP_AND_ARCHITECTURE.md](PUCK_ROADMAP_AND_ARCHITECTURE.md) ⭐ NEW
+- **Roadmap**: [ROADMAP.md](ROADMAP.md)
+- **Principles**: [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md) and [AI_COLLABORATION_GUIDE.md](AI_COLLABORATION_GUIDE.md)
 
-—
+### 📐 Architecture & Design
+- **Frontend Architecture**: [FRONTEND_ARCHITECTURE_PLAN.md](FRONTEND_ARCHITECTURE_PLAN.md)
+- **Theme System**: [THEME_SYSTEM_ARCHITECTURE.md](THEME_SYSTEM_ARCHITECTURE.md)
+- **API Documentation**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
+- **Auth Strategy**: [AUTH_STRATEGY.md](AUTH_STRATEGY.md)
 
-## What’s implemented (high level)
-
-- Multi-tenant backend with Passport auth, RBAC, activity logging
-- Full media library with folders, conversions, and React UI
-- Puck-based Page Builder with themed components and advanced controls
-- Theme system with disk sync, active theme, and theme editor endpoints
-- Public page rendering using Puck data and active theme
-- Central admin app with pages, themes, users, tenants, activity, settings
-
-Key code entry points (examples):
-- Page Builder config and components: resources/js/apps/central/components/pages/puck-components/
-- Theme provider/hook: resources/js/shared/contexts/ThemeContext.tsx and shared/hooks/useTheme.ts
-- API services and types: resources/js/shared/services/api/
-- Public render: resources/js/apps/central/components/pages/PublicPage.tsx
+### 🧪 Testing
+- **Testing Strategy**: [TESTING_STRATEGY.md](TESTING_STRATEGY.md)
+- **Puck Component Testing**: [PUCK_COMPONENT_TESTING_GUIDE.md](PUCK_COMPONENT_TESTING_GUIDE.md)
+- **Puck Testing Summary**: [PUCK_TESTING_SUMMARY.md](PUCK_TESTING_SUMMARY.md)
+- **Testing Checklist**: [TESTING_CHECKLIST.md](TESTING_CHECKLIST.md)
+- **Test Credentials**: [TESTING_CREDENTIALS.md](TESTING_CREDENTIALS.md)
 
 —
 
-## How to use these docs
+## What's Implemented (High Level)
 
-1) Scan CURRENT_STATUS.md for an at-a-glance view (what’s done, what’s next).  
-2) Use FRONTEND_ARCHITECTURE_PLAN.md for app structure and composition.  
-3) Use API_DOCUMENTATION.md for endpoint shapes; cross-check types in resources/js/shared/services/api/types.ts.  
-4) See ROADMAP.md to understand short-term focus and upcoming work.  
+- **Multi-tenant backend** with Passport auth, RBAC, activity logging
+- **Full media library** with folders, conversions, and React UI
+- **Puck-based Page Builder** with themed components and advanced controls
+- **Theme system** with disk sync, active theme, and theme editor endpoints
+- **Public page rendering** using Puck data and active theme
+- **Central admin app** with pages, themes, users, tenants, activity, settings
+
+### Key Code Entry Points
+- **Puck Components**: `resources/js/shared/puck/components/`
+- **Puck Fields & Controls**: `resources/js/shared/puck/fields/`
+- **Theme Provider**: `resources/js/shared/contexts/ThemeContext.tsx`
+- **Theme Hook**: `resources/js/shared/hooks/useTheme.ts`
+- **API Services**: `resources/js/shared/services/api/`
+- **Public Render**: `resources/js/apps/central/components/pages/PublicPage.tsx`
 
 —
 
-## Pruning and consolidation
+## How to Use These Docs
 
-We’ve drafted a removal/archive proposal in DOCS_PRUNE_PROPOSAL.md covering older “COMPLETE” and “IMPLEMENTATION_PLAN” files that are superseded by the code and this index. After review, we’ll archive or remove the listed files.
+### For Page Builder Work (Current Branch)
+1. **Start with**: [PUCK_ROADMAP_AND_ARCHITECTURE.md](PUCK_ROADMAP_AND_ARCHITECTURE.md) - Complete roadmap and patterns
+2. **Check**: Archived Puck docs in `ARCHIVE/` for historical context
+3. **Testing**: [PUCK_COMPONENT_TESTING_GUIDE.md](PUCK_COMPONENT_TESTING_GUIDE.md)
+
+### For General Development
+1. **Status Check**: [CURRENT_STATUS.md](CURRENT_STATUS.md) - What's done, what's next
+2. **Architecture**: [FRONTEND_ARCHITECTURE_PLAN.md](FRONTEND_ARCHITECTURE_PLAN.md) - App structure
+3. **API Reference**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md) - Endpoint shapes
+4. **Next Steps**: [ROADMAP.md](ROADMAP.md) - Short-term focus
 
 —
 
-Last updated: November 3, 2025  
-Current branch: feature/page-builder
+## Recent Consolidation (December 25, 2025)
+
+### 📁 Archived Puck Documents
+Moved to `ARCHIVE/` and consolidated into `PUCK_ROADMAP_AND_ARCHITECTURE.md`:
+- ~~PUCK_IMPLEMENTATION_CHECKLIST.md~~
+- ~~PUCK_ARCHITECTURE_REFACTOR.md~~
+- ~~FIELD_GROUPS_CONSOLIDATION.md~~
+- ~~UI_CONTROL_REFACTORING.md~~
+- ~~PUCK_INLINE_STRATEGY.md~~
+- ~~PUCK_STYLING_GUIDELINES.md~~
+
+All information preserved and organized by priority in the new roadmap document.
+
+—
+
+Last updated: December 25, 2025  
+Current branch: page-builder
