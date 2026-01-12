@@ -12,9 +12,11 @@ import {
   type ResponsiveDisplayValue,
   type ResponsiveLineHeightValue,
   type ResponsiveLetterSpacingValue,
+  type ResponsiveVisibilityValue,
   // Field groups
   displayField,
   layoutFields,
+  layoutAdvancedFields,
   spacingFields,
   typographyAdvancedFields,
   effectsFields,
@@ -24,10 +26,13 @@ import {
   // Utilities
   extractDefaults,
   generateWidthCSS,
+  generateMaxWidthCSS,
+  generateMaxHeightCSS,
   generatePaddingCSS,
   generateMarginCSS,
   generateDisplayCSS,
-  ColorPickerControl,
+  generateVisibilityCSS,
+  ColorPickerControlColorful as ColorPickerControl,
 } from '../../fields';
 
 export interface ButtonProps {
@@ -45,15 +50,20 @@ export interface ButtonProps {
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  textDecoration?: 'none' | 'underline' | 'line-through' | 'overline';
+  textDecorationStyle?: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
 
   // Advanced Styling
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   display?: ResponsiveDisplayValue;
   margin?: ResponsiveSpacingValue;
   padding?: ResponsiveSpacingValue;
   border?: BorderValue;
   borderRadius?: BorderRadiusValue;
   shadow?: ShadowValue;
+  visibility?: ResponsiveVisibilityValue;
   customCss?: string;
 
   // Interaction
@@ -105,15 +115,18 @@ function PageSelectorField({ field, value, onChange }: { field: { label?: string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType, internalPage, href, openInNewTab, width, display, margin, padding, border, shadow, customCss, lineHeight, letterSpacing, textTransform, cursor, transition, hoverOpacity, hoverBackgroundColor, hoverTextColor, hoverTransform, puck }: ButtonProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
+function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType, internalPage, href, openInNewTab, width, maxWidth, maxHeight, display, margin, padding, border, shadow, visibility, customCss, lineHeight, letterSpacing, textTransform, textDecoration, textDecorationStyle, cursor, transition, hoverOpacity, hoverBackgroundColor, hoverTextColor, hoverTransform, puck }: ButtonProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
   const { resolve } = useTheme();
   const className = `button-${id}`;
 
   // Generate responsive CSS - all applied directly to button element
   const widthCss = width ? generateWidthCSS(className, width) : '';
+  const maxWidthCss = maxWidth ? generateMaxWidthCSS(className, maxWidth) : '';
+  const maxHeightCss = maxHeight ? generateMaxHeightCSS(className, maxHeight) : '';
   const marginCss = margin ? generateMarginCSS(className, margin) : '';
   const displayCss = display ? generateDisplayCSS(className, display) : '';
   const paddingCss = padding ? generatePaddingCSS(className, padding) : '';
+  const visibilityCss = visibility ? generateVisibilityCSS(className, visibility) : '';
 
   // Resolve colors from theme if using theme color, otherwise use custom value
   // Always provide fallback to ensure colors are rendered
@@ -176,7 +189,8 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       align-items: center;
       justify-content: center;
       font-weight: ${resolve('typography.fontWeight.medium', '500')};
-      text-decoration: none;
+      text-decoration: ${textDecoration && textDecoration !== 'none' ? textDecoration : 'none'};
+      ${textDecorationStyle && textDecoration !== 'none' ? `text-decoration-style: ${textDecorationStyle};` : ''}
       background-color: ${resolvedBackgroundColor};
       color: ${resolvedTextColor};
       font-size: ${fontSize};
@@ -317,7 +331,10 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       <style>
         {buttonCss}
         {displayCss}
+        {visibilityCss}
         {widthCss}
+        {maxWidthCss}
+        {maxHeightCss}
         {marginCss}
         {paddingCss}
         {typographyCss}
@@ -430,6 +447,7 @@ export const Button: ComponentConfig<ButtonProps> = {
     // Layout
     ...displayField,
     ...layoutFields,
+    visibility: layoutAdvancedFields.visibility,
     // Spacing
     ...spacingFields,
     // Typography Advanced
@@ -450,6 +468,7 @@ export const Button: ComponentConfig<ButtonProps> = {
       buttonLinkFields as Record<string, { defaultValue?: string | number | boolean | object | undefined }>,
       displayField,
       layoutFields,
+      layoutAdvancedFields,
       spacingFields,
       typographyAdvancedFields,
       interactionFields,

@@ -1,6 +1,6 @@
 /**
  * Shared Puck Module
- * 
+ *
  * Central export for all Puck-related code shared between apps.
  * Import from '@/shared/puck' to use these exports.
  */
@@ -15,6 +15,8 @@ export {
   BorderControl,
   ShadowControl,
   ColorPickerControl,
+  ColorPickerControlColorful,
+  ColorPickerControlColorful as ColorPicker,
   WidthControl,
   DisplayControl,
   FontSizeControl,

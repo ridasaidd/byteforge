@@ -7,7 +7,7 @@ import { navigations, type Navigation as NavigationType, type MenuItem } from '@
 import { Menu, ChevronDown, ExternalLink, X } from 'lucide-react';
 import { useTheme } from '@/shared/hooks';
 import {
-  ColorPickerControl,
+  ColorPickerControlColorful as ColorPickerControl,
   FontWeightControl,
   type ColorValue,
   type FontWeightValue,
@@ -488,14 +488,14 @@ function NavigationRenderer({
   // Generate item padding styles
   const getItemPaddingStyle = (): React.CSSProperties => {
     if (!itemPadding) return { padding: '8px 12px' };
-    
+
     // Check if it's a responsive value with 'base' property or a direct SpacingValue
-    const spacingValue = typeof itemPadding === 'object' && 'base' in itemPadding 
-      ? itemPadding.base 
+    const spacingValue = typeof itemPadding === 'object' && 'base' in itemPadding
+      ? itemPadding.base
       : itemPadding;
-    
+
     if (!spacingValue || typeof spacingValue !== 'object') return { padding: '8px 12px' };
-    
+
     const { top, right, bottom, left, unit } = spacingValue as { top: string; right: string; bottom: string; left: string; unit: string };
     return {
       paddingTop: `${top}${unit}`,

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { FieldLabel } from '@measured/puck';
 import { Link, Unlink } from 'lucide-react';
+import { ColorPickerControlColorful } from './ColorPickerControlColorful';
+import type { ColorPickerValue } from './ColorPickerControl';
 
 export interface BorderSideValue {
   width: string;
   style: 'none' | 'solid' | 'dashed' | 'dotted' | 'double';
-  color: string;
+  color: ColorPickerValue | string;
 }
 
 export interface BorderValue {
@@ -17,7 +19,7 @@ export interface BorderValue {
   linked: boolean;
 }
 
-const DEFAULT_SIDE: BorderSideValue = { width: '0', style: 'none', color: '#e5e7eb' };
+const DEFAULT_SIDE: BorderSideValue = { width: '0', style: 'none', color: { type: 'custom', value: '#e5e7eb' } };
 
 interface BorderControlProps {
   field: { label?: string };
@@ -62,40 +64,53 @@ function BorderSideInput({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <label style={labelStyle}>{label}</label>
-      <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-        {/* Width */}
-        <input
-          type="number"
-          value={side.width}
-          onChange={(e) => onChange({ ...side, width: e.target.value })}
-          min="0"
-          style={{ ...inputStyle, width: '50px' }}
-          title={`Width (${unit})`}
-        />
-        {/* Style */}
-        <select
-          value={side.style}
-          onChange={(e) => onChange({ ...side, style: e.target.value as BorderSideValue['style'] })}
-          style={{ ...inputStyle, flex: 1 }}
-        >
-          {borderStyles.map(({ value, label }) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        {/* Color */}
-        <input
-          type="color"
+
+      {/* Width Input */}
+      <input
+        type="text"
+        inputMode="decimal"
+        pattern="[0-9]*\.?[0-9]*"
+        value={side.width}
+        onChange={(e) => onChange({ ...side, width: e.target.value })}
+        placeholder="0"
+        style={{ ...inputStyle }}
+        title={`Width (${unit})`}
+      />
+
+      {/* Style Toggle Buttons */}
+      <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap' }}>
+        {borderStyles.map(({ value: styleValue, label: styleLabel }) => (
+          <button
+            key={styleValue}
+            type="button"
+            onClick={() => onChange({ ...side, style: styleValue as BorderSideValue['style'] })}
+            title={styleLabel}
+            style={{
+              flex: '1 1 calc(33.333% - 2px)',
+              minWidth: '40px',
+              padding: '4px 6px',
+              fontSize: '11px',
+              fontWeight: side.style === styleValue ? 600 : 400,
+              border: side.style === styleValue ? '2px solid var(--puck-color-azure-04)' : '1px solid var(--puck-color-grey-04)',
+              borderRadius: '3px',
+              backgroundColor: side.style === styleValue ? '#eff6ff' : 'var(--puck-color-white)',
+              color: side.style === styleValue ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-08)',
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+            }}
+          >
+            {styleLabel}
+          </button>
+        ))}
+      </div>
+
+      {/* Color Picker */}
+      <div style={{ marginTop: '4px' }}>
+        <ColorPickerControlColorful
+          field={{ label: 'Color' }}
           value={side.color}
-          onChange={(e) => onChange({ ...side, color: e.target.value })}
-          style={{
-            width: '32px',
-            height: '32px',
-            padding: '2px',
-            border: '1px solid #e5e7eb',
-            borderRadius: '4px',
-            cursor: 'pointer',
-          }}
-          title="Border color"
+          onChange={(color) => onChange({ ...side, color })}
+          showCustom={true}
         />
       </div>
     </div>
@@ -161,36 +176,54 @@ export function BorderControl({
   return (
     <FieldLabel label={field.label || 'Border'}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        {/* Unit Selector and Link Toggle */}
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <select
-            value={value.unit}
-            onChange={(e) => handleUnitChange(e.target.value as BorderValue['unit'])}
-            style={{ ...inputStyle, flex: 1 }}
-          >
-            <option value="px">px</option>
-            <option value="em">em</option>
-            <option value="rem">rem</option>
-          </select>
+        {/* Unit and Link Toggle */}
+      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', justifyContent: 'space-between' }}>
+        {/* Unit Toggle Buttons */}
+        <div style={{ display: 'flex', gap: '3px', flex: 1 }}>
+          {['px', 'em', 'rem'].map((unitValue) => (
+            <button
+              key={unitValue}
+              type="button"
+              onClick={() => handleUnitChange(unitValue as BorderValue['unit'])}
+              style={{
+                flex: 1,
+                padding: '4px',
+                fontSize: '11px',
+                fontWeight: value.unit === unitValue ? 600 : 400,
+                border: value.unit === unitValue ? '2px solid var(--puck-color-azure-04)' : '1px solid var(--puck-color-grey-04)',
+                borderRadius: '3px',
+                backgroundColor: value.unit === unitValue ? '#eff6ff' : 'var(--puck-color-white)',
+                color: value.unit === unitValue ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-08)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {unitValue}
+            </button>
+          ))}
+        </div>
 
-          <button
-            type="button"
-            onClick={toggleLinked}
-            style={{
-              padding: '6px 8px',
-              border: '1px solid #e5e7eb',
-              borderRadius: '4px',
-              background: isLinked ? '#2563eb' : 'white',
-              color: isLinked ? 'white' : '#374151',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-            title={isLinked ? 'Unlink sides' : 'Link sides'}
-          >
-            {isLinked ? <Link className="w-4 h-4" /> : <Unlink className="w-4 h-4" />}
-          </button>
+        {/* Link Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleLinked}
+          style={{
+            padding: '4px 8px',
+            border: isLinked ? '2px solid var(--puck-color-azure-04)' : '1px solid var(--puck-color-grey-04)',
+            borderRadius: '3px',
+            background: isLinked ? '#eff6ff' : 'var(--puck-color-white)',
+            color: isLinked ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-08)',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.15s',
+            minWidth: '32px',
+          }}
+          title={isLinked ? 'Unlink sides' : 'Link sides'}
+        >
+          {isLinked ? <Link className="w-4 h-4" /> : <Unlink className="w-4 h-4" />}
+        </button>
         </div>
 
         {/* Border Inputs */}

@@ -10,16 +10,21 @@ import {
   type ResponsiveDisplayValue,
   type ResponsiveWidthValue,
   type ResponsiveSpacingValue,
+  type ResponsiveVisibilityValue,
   // Field groups
   displayField,
   layoutFields,
+  layoutAdvancedFields,
   effectsFields,
   advancedFields,
   // Utilities
   extractDefaults,
   generateWidthCSS,
+  generateMaxWidthCSS,
+  generateMaxHeightCSS,
   generateMarginCSS,
   generateDisplayCSS,
+  generateVisibilityCSS,
   ResponsiveSpacingControl,
   DEFAULT_BORDER,
   DEFAULT_BORDER_RADIUS,
@@ -30,8 +35,13 @@ export interface ImageProps {
   src: string;
   alt: string;
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   height?: ResponsiveWidthValue;
   display?: ResponsiveDisplayValue;
+  aspectRatio?: string;
+  aspectRatioCustom?: string;
+  visibility?: ResponsiveVisibilityValue;
   objectFit: 'contain' | 'cover' | 'fill' | 'none';
   borderRadiusPreset: 'none' | 'sm' | 'md' | 'lg' | 'full';
   margin?: ResponsiveSpacingValue;
@@ -46,8 +56,13 @@ function ImageComponent({
   src,
   alt,
   width,
+  maxWidth,
+  maxHeight,
   height,
   display = { mobile: 'inline-block' },
+  aspectRatio,
+  aspectRatioCustom,
+  visibility,
   objectFit,
   borderRadiusPreset,
   margin,
@@ -62,9 +77,22 @@ function ImageComponent({
 
   // Generate responsive CSS
   const widthCss = width ? generateWidthCSS(className, width) : '';
+  const maxWidthCss = maxWidth ? generateMaxWidthCSS(className, maxWidth) : '';
+  const maxHeightCss = maxHeight ? generateMaxHeightCSS(className, maxHeight) : '';
   const heightCss = height ? generateWidthCSS(className, height, 'height') : '';
   const marginCss = margin ? generateMarginCSS(className, margin) : '';
   const displayCss = display ? generateDisplayCSS(className, display) : '';
+  const visibilityCss = visibility ? generateVisibilityCSS(className, visibility) : '';
+
+  const aspectRatioCss = (() => {
+    if (!aspectRatio || aspectRatio === 'auto') return '';
+    const ratio = aspectRatio === 'custom' ? aspectRatioCustom : aspectRatio;
+    return ratio ? `
+      .${className} {
+        aspect-ratio: ${ratio};
+      }
+    ` : '';
+  })();
 
   // Border radius from theme with fallbacks (for preset)
   const borderRadiusMap = {
@@ -130,10 +158,14 @@ function ImageComponent({
         {borderCss}
         {borderRadiusCss}
         {shadowCss}
+        {aspectRatioCss}
         {widthCss}
+        {maxWidthCss}
+        {maxHeightCss}
         {heightCss}
         {marginCss}
         {displayCss}
+        {visibilityCss}
       </style>
       <img
         ref={puck?.dragRef}
@@ -286,6 +318,9 @@ export const Image: ComponentConfig<ImageProps> = {
       ...layoutFields.width,
       label: 'Height',
     },
+    aspectRatio: layoutAdvancedFields.aspectRatio,
+    aspectRatioCustom: layoutAdvancedFields.aspectRatioCustom,
+    visibility: layoutAdvancedFields.visibility,
     // Spacing (margin only for images)
     ...imageMarginField,
     // Effects
@@ -301,6 +336,7 @@ export const Image: ComponentConfig<ImageProps> = {
       imageStyleFields,
       displayField,
       layoutFields,
+      layoutAdvancedFields,
       imageMarginField,
       effectsFields,
       advancedFields

@@ -4,7 +4,28 @@ export { BorderControl, type BorderValue, type BorderSideValue } from './BorderC
 export { BorderRadiusControl, type BorderRadiusValue } from './BorderRadiusControl';
 export { ShadowControl, type ShadowValue } from './ShadowControl';
 export { ColorPickerControl, type ColorPickerValue as ColorValue } from './ColorPickerControl';
+export { ColorPickerControlColorful } from './ColorPickerControlColorful';
+// Default export points to new react-colorful picker
+export { ColorPickerControlColorful as ColorPicker } from './ColorPickerControlColorful';
 export { WidthControl, type WidthValue } from './WidthControl';
+export { HeightControl, type HeightValue } from './HeightControl';
+export { MinWidthControl, type MinWidthValue } from './MinWidthControl';
+export { MaxWidthControl, type MaxWidthValue } from './MaxWidthControl';
+export { MinHeightControl, type MinHeightValue } from './MinHeightControl';
+export { MaxHeightControl, type MaxHeightValue } from './MaxHeightControl';
+export { GapControl, type GapValue } from './GapControl';
+export {
+  ResponsiveGapControl,
+  generateResponsiveGapCSS,
+  type ResponsiveGapValue,
+} from './ResponsiveGapControl';
+export {
+  ResponsiveVisibilityControl,
+  generateVisibilityCSS,
+  type ResponsiveVisibilityValue,
+} from './ResponsiveVisibilityControl';
+export { ObjectFitControl, type ObjectFitValue } from './ObjectFitControl';
+export { ObjectPositionControl, type ObjectPositionValue } from './ObjectPositionControl';
 export { DisplayControl, type DisplayValue } from './DisplayControl';
 export { ZIndexControl, type ZIndexValue } from './ZIndexControl';
 export { OpacityControl } from './OpacityControl';
@@ -95,6 +116,36 @@ export {
   generateWidthCSS,
   type ResponsiveWidthValue,
 } from './ResponsiveWidthControl';
+
+export {
+  ResponsiveHeightControl,
+  generateHeightCSS,
+  type ResponsiveHeightValue,
+} from './ResponsiveHeightControl';
+
+export {
+  ResponsiveMinWidthControl,
+  generateMinWidthCSS,
+  type ResponsiveMinWidthValue,
+} from './ResponsiveMinWidthControl';
+
+export {
+  ResponsiveMaxWidthControl,
+  generateMaxWidthCSS,
+  type ResponsiveMaxWidthValue,
+} from './ResponsiveMaxWidthControl';
+
+export {
+  ResponsiveMinHeightControl,
+  generateMinHeightCSS,
+  type ResponsiveMinHeightValue,
+} from './ResponsiveMinHeightControl';
+
+export {
+  ResponsiveMaxHeightControl,
+  generateMaxHeightCSS,
+  type ResponsiveMaxHeightValue,
+} from './ResponsiveMaxHeightControl';
 
 // Field groups - reusable field compositions (organized by usage frequency)
 export {

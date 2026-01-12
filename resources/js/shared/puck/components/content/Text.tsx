@@ -8,13 +8,17 @@ import {
   ResponsiveSpacingValue,
   ResponsiveFontSizeValue,
   ResponsiveWidthValue,
+  ResponsiveMaxWidthValue,
+  ResponsiveMaxHeightValue,
   ResponsiveDisplayValue,
   FontWeightValue,
   ResponsiveLineHeightValue,
   ResponsiveLetterSpacingValue,
+  ResponsiveVisibilityValue,
   // Field groups
   displayField,
   layoutFields,
+  layoutAdvancedFields,
   textColorField,
   fontSizeField,
   fontWeightField,
@@ -40,13 +44,18 @@ export interface TextProps {
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  textDecoration?: 'none' | 'underline' | 'line-through' | 'overline';
+  textDecorationStyle?: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   display?: ResponsiveDisplayValue;
   margin?: ResponsiveSpacingValue;
   padding?: ResponsiveSpacingValue;
   border?: BorderValue;
   borderRadius?: BorderRadiusValue;
   shadow?: ShadowValue;
+  visibility?: ResponsiveVisibilityValue;
   customCss?: string;
 }
 
@@ -61,13 +70,18 @@ function TextComponent({
   lineHeight,
   letterSpacing,
   textTransform,
+  textDecoration,
+  textDecorationStyle,
   width,
+  maxWidth,
+  maxHeight,
   display,
   margin,
   padding,
   border,
   borderRadius,
   shadow,
+  visibility,
   customCss,
   puck,
 }: TextProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
@@ -100,6 +114,8 @@ function TextComponent({
     className,
     display,
     width,
+    maxWidth,
+    maxHeight,
     padding,
     margin,
     border,
@@ -112,6 +128,9 @@ function TextComponent({
     lineHeight,
     letterSpacing,
     textTransform,
+    textDecoration,
+    textDecorationStyle,
+    visibility,
   });
 
   // Responsive font size (handled separately)
@@ -156,6 +175,7 @@ export const Text: ComponentConfig<TextProps> = {
     ...textAlignWithJustify,
     ...displayField,
     ...layoutFields,
+    ...layoutAdvancedFields,
     // Typography
     ...textColorField,
     ...fontSizeField,
@@ -183,6 +203,7 @@ export const Text: ComponentConfig<TextProps> = {
       fontSizeField,
       fontWeightField,
       typographyAdvancedFields,
+      layoutAdvancedFields,
       spacingFields,
       backgroundFields,
       effectsFields,

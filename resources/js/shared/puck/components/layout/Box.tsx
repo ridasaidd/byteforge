@@ -7,6 +7,8 @@ import {
   ShadowValue,
   ColorValue,
   ResponsiveWidthValue,
+  ResponsiveMaxWidthValue,
+  ResponsiveMaxHeightValue,
   ResponsiveSpacingValue,
   ResponsiveDisplayValue,
   ResponsivePositionValue,
@@ -15,6 +17,8 @@ import {
   ResponsiveOverflowValue,
   ResponsiveGridColumnsValue,
   ResponsiveGridGapValue,
+  ResponsiveGapValue,
+  ResponsiveVisibilityValue,
   // Field groups (organized by usage frequency)
   displayField,
   layoutFields,
@@ -55,7 +59,7 @@ export interface BoxProps {
   justify?: 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly';
   align?: 'start' | 'end' | 'center' | 'stretch' | 'baseline';
   wrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
-  flexGap?: number;
+  flexGap?: ResponsiveGapValue;
 
   // Grid-specific
   numColumns?: ResponsiveGridColumnsValue;
@@ -64,6 +68,8 @@ export interface BoxProps {
 
   // Layout
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
 
   // Spacing
   padding?: ResponsiveSpacingValue;
@@ -86,6 +92,7 @@ export interface BoxProps {
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
+  visibility?: ResponsiveVisibilityValue;
 
   // Advanced
   customCss?: string;
@@ -102,11 +109,13 @@ export function BoxComponent({
   justify = 'start',
   align = 'stretch',
   wrap = 'nowrap',
-  flexGap = 16,
+  flexGap = { mobile: { value: '16', unit: 'px' } },
   numColumns = { mobile: 2 },
   gridGap = { mobile: 16 },
   alignItems = 'stretch',
   width,
+  maxWidth,
+  maxHeight,
   padding,
   margin,
   backgroundColor,
@@ -121,6 +130,7 @@ export function BoxComponent({
   zIndex,
   opacity,
   overflow,
+  visibility,
   customCss,
 }: BoxProps) {
   const { resolve } = useTheme();
@@ -130,11 +140,19 @@ export function BoxComponent({
   // Resolve background color
   const resolvedBackgroundColor = (() => {
     if (!backgroundColor) return undefined;
-    if (typeof backgroundColor === 'string') return backgroundColor;
-    if (backgroundColor.type === 'theme') {
-      return resolve(backgroundColor.value);
+    if (typeof backgroundColor === 'string') {
+      return backgroundColor || undefined; // Filter out empty strings
     }
-    return backgroundColor.value;
+    if (backgroundColor.type === 'theme') {
+      // If value is already a hex color, use it directly
+      if (backgroundColor.value?.startsWith('#')) {
+        return backgroundColor.value;
+      }
+      const resolved = resolve(backgroundColor.value);
+      return resolved || undefined;
+    }
+    // For custom type, return the value only if it's not empty
+    return backgroundColor.value || undefined;
   })();
 
   // Generate all CSS using centralized builder
@@ -153,12 +171,16 @@ export function BoxComponent({
     zIndex,
     opacity,
     overflow,
+    visibility,
     width,
+    maxWidth,
+    maxHeight,
     padding,
     margin,
     border,
     borderRadius,
     shadow,
+    resolveToken: resolve,
     backgroundColor: resolvedBackgroundColor,
     backgroundImage,
     backgroundSize,
@@ -205,6 +227,8 @@ export const Box: ComponentConfig<BoxProps> = {
     // 1. Layout (most used)
     ...displayField,
     ...layoutFields,
+    maxWidth: layoutFields.maxWidth,
+    maxHeight: layoutFields.maxHeight,
     // 2. Flex Options (conditional)
     ...flexLayoutFields,
     // 3. Grid Options (conditional)

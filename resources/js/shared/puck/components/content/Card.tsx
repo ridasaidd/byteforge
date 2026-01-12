@@ -25,7 +25,7 @@ import {
   // Utilities
   extractDefaults,
   buildTypographyCSS,
-  ColorPickerControl,
+  ColorPickerControlColorful as ColorPickerControl,
 } from '../../fields';
 import {
   Feather, Heart, Star, Zap, Shield, CheckCircle,
@@ -61,6 +61,8 @@ export type CardProps = {
   backgroundColor?: ColorValue;
   textAlign?: 'left' | 'center' | 'right';
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   display?: ResponsiveDisplayValue;
   padding?: ResponsiveSpacingValue;
   margin?: ResponsiveSpacingValue;
@@ -71,6 +73,7 @@ export type CardProps = {
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
+  visibility?: ResponsiveVisibilityValue;
   customCss?: string;
   cursor?: 'auto' | 'pointer' | 'default' | 'text' | 'move' | 'not-allowed';
   transition?: { duration?: string; easing?: string; properties?: string };
@@ -89,6 +92,8 @@ function CardComponent({
   backgroundColor,
   textAlign,
   width,
+  maxWidth,
+  maxHeight,
   display = { mobile: 'block' },
   padding,
   margin,
@@ -99,6 +104,7 @@ function CardComponent({
   zIndex,
   opacity,
   overflow,
+  visibility,
   cursor,
   transition,
   customCss,
@@ -136,6 +142,8 @@ function CardComponent({
     className,
     display,
     width,
+    maxWidth,
+    maxHeight,
     padding,
     margin,
     border,
@@ -145,10 +153,12 @@ function CardComponent({
     zIndex,
     opacity,
     overflow,
+    visibility,
     textAlign: textAlign || 'left',
     backgroundColor: resolvedBackgroundColor,
     cursor,
     transition,
+    resolveToken: resolve,
   });
 
   const IconComponent = icon && iconMap[icon] ? iconMap[icon] : null;

@@ -3,7 +3,7 @@ import { useMemo, useCallback } from 'react';
 import { useFormField } from './FormContext';
 import { useTheme } from '@/shared/hooks';
 import {
-  ColorPickerControl,
+  ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
   generateDisplayCSS,
@@ -174,7 +174,9 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
   const resolveColor = useCallback((colorVal: ColorValue | undefined, fallback: string): string => {
     if (!colorVal) return fallback;
     if (colorVal.type === 'custom') return colorVal.value;
-    return resolve(colorVal.value, fallback);
+    const val = colorVal.value;
+    if (val && (val.startsWith('#') || val.startsWith('rgb'))) return val;
+    return resolve(val, fallback);
   }, [resolve]);
 
   // Resolve colors

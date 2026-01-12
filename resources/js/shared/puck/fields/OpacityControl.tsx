@@ -53,11 +53,12 @@ export function OpacityControl({
         {/* Input field */}
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
-            type="number"
-            min="0"
-            max="100"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={opacityValue}
             onChange={(e) => handleChange(parseInt(e.target.value, 10) || 0)}
+            placeholder="100"
             style={{
               flex: 1,
               padding: '6px 8px',

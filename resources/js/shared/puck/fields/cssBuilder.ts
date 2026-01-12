@@ -1,6 +1,11 @@
 import {
   ResponsiveDisplayValue,
   ResponsiveWidthValue,
+  ResponsiveHeightValue,
+  ResponsiveMinWidthValue,
+  ResponsiveMaxWidthValue,
+  ResponsiveMinHeightValue,
+  ResponsiveMaxHeightValue,
   ResponsiveSpacingValue,
   ResponsivePositionValue,
   ResponsiveZIndexValue,
@@ -8,11 +13,19 @@ import {
   ResponsiveOverflowValue,
   ResponsiveGridColumnsValue,
   ResponsiveGridGapValue,
+  ResponsiveGapValue,
+  ResponsiveVisibilityValue,
   BorderValue,
   BorderRadiusValue,
   ShadowValue,
+  GapValue,
   generateDisplayCSS,
   generateWidthCSS,
+  generateHeightCSS,
+  generateMinWidthCSS,
+  generateMaxWidthCSS,
+  generateMinHeightCSS,
+  generateMaxHeightCSS,
   generatePaddingCSS,
   generateMarginCSS,
   generatePositionCSS,
@@ -23,10 +36,45 @@ import {
   ResponsiveLetterSpacingValue,
   generateGridColumnsCSS,
   generateGridGapCSS,
+  generateResponsiveGapCSS,
+  generateVisibilityCSS,
 } from './index';
 import { hasFlexInAnyBreakpoint, hasGridInAnyBreakpoint } from './conditionalFields';
 import { generateLineHeightCSS } from './ResponsiveLineHeightControl';
 import { generateLetterSpacingCSS } from './ResponsiveLetterSpacingControl';
+import type { ColorPickerValue } from './ColorPickerControl';
+
+// Theme resolver type used to resolve tokens like "colors.primary.500"
+type ThemeResolver = (path: string, defaultValue?: string) => string;
+
+/**
+ * Convert ColorPickerValue or string to a CSS color value
+ */
+function resolveColorValue(color: ColorPickerValue | string | undefined, resolver?: ThemeResolver): string {
+  if (!color) return 'transparent';
+
+  // If it's a string, return as-is (legacy format)
+  if (typeof color === 'string') {
+    // If it's an actual value (hex/rgba), use directly
+    if (color.startsWith('#') || color.startsWith('rgb')) return color;
+    // Otherwise, attempt to resolve via theme if available
+    return resolver ? (resolver(color) || color) : color;
+  }
+
+  // If it's a ColorPickerValue object, extract the actual color value
+  if (typeof color === 'object' && 'value' in color) {
+    const val = color.value || 'transparent';
+    // Custom values pass through; theme tokens should be resolved when possible
+    if (color.type === 'custom') return val;
+    if (color.type === 'theme') {
+      if (val.startsWith('#') || val.startsWith('rgb')) return val;
+      return resolver ? (resolver(val) || val) : val;
+    }
+    return val;
+  }
+
+  return 'transparent';
+}
 
 export interface LayoutCSSOptions {
   className: string;
@@ -37,7 +85,7 @@ export interface LayoutCSSOptions {
   justify?: 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly';
   align?: 'start' | 'end' | 'center' | 'stretch' | 'baseline';
   wrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
-  flexGap?: number;
+  flexGap?: ResponsiveGapValue;
 
   // Grid properties
   numColumns?: ResponsiveGridColumnsValue;
@@ -49,9 +97,17 @@ export interface LayoutCSSOptions {
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
+  aspectRatio?: string;
+  aspectRatioCustom?: string;
+  visibility?: ResponsiveVisibilityValue;
 
   // Common styling
   width?: ResponsiveWidthValue;
+  height?: ResponsiveHeightValue;
+  minWidth?: ResponsiveMinWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  minHeight?: ResponsiveMinHeightValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   padding?: ResponsiveSpacingValue;
   margin?: ResponsiveSpacingValue;
   border?: BorderValue;
@@ -64,13 +120,17 @@ export interface LayoutCSSOptions {
   backgroundSize?: 'cover' | 'contain' | 'auto';
   backgroundPosition?: 'center' | 'top' | 'bottom' | 'left' | 'right';
   backgroundRepeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y';
+
+  // Image-specific
+  objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';
+  objectPosition?: string;
 }
 
 /**
  * Generates all CSS for a layout component (Box, Flex, Columns, etc.)
  * Centralizes CSS generation logic to avoid duplication
  */
-export function buildLayoutCSS(options: LayoutCSSOptions): string {
+export function buildLayoutCSS(options: LayoutCSSOptions & { resolveToken?: ThemeResolver }): string {
   const {
     className,
     display,
@@ -86,7 +146,15 @@ export function buildLayoutCSS(options: LayoutCSSOptions): string {
     zIndex,
     opacity,
     overflow,
+    aspectRatio,
+    aspectRatioCustom,
+    visibility,
     width,
+    height,
+    minWidth,
+    maxWidth,
+    minHeight,
+    maxHeight,
     padding,
     margin,
     border,
@@ -97,6 +165,9 @@ export function buildLayoutCSS(options: LayoutCSSOptions): string {
     backgroundSize = 'cover',
     backgroundPosition = 'center',
     backgroundRepeat = 'no-repeat',
+    objectFit,
+    objectPosition,
+    resolveToken,
   } = options;
 
   let css = '';
@@ -132,9 +203,37 @@ export function buildLayoutCSS(options: LayoutCSSOptions): string {
     css += generateOverflowCSS(className, overflow);
   }
 
+  // Aspect Ratio CSS
+  if (aspectRatio && aspectRatio !== 'auto') {
+    const ratio = aspectRatio === 'custom' ? aspectRatioCustom : aspectRatio;
+    if (ratio) {
+      css += `.${className} { aspect-ratio: ${ratio}; }\n`;
+    }
+  }
+
+  // Visibility CSS
+  if (visibility) {
+    css += generateVisibilityCSS(className, visibility);
+  }
+
   // Spacing CSS
   if (width) {
     css += generateWidthCSS(className, width);
+  }
+  if (height) {
+    css += generateHeightCSS(className, height);
+  }
+  if (minWidth) {
+    css += generateMinWidthCSS(className, minWidth);
+  }
+  if (maxWidth) {
+    css += generateMaxWidthCSS(className, maxWidth);
+  }
+  if (minHeight) {
+    css += generateMinHeightCSS(className, minHeight);
+  }
+  if (maxHeight) {
+    css += generateMaxHeightCSS(className, maxHeight);
   }
   if (padding) {
     css += generatePaddingCSS(className, padding);
@@ -143,9 +242,17 @@ export function buildLayoutCSS(options: LayoutCSSOptions): string {
     css += generateMarginCSS(className, margin);
   }
 
+  // Object Fit/Position (for images)
+  if (objectFit && objectFit !== 'cover') {
+    css += `.${className} { object-fit: ${objectFit}; }\n`;
+  }
+  if (objectPosition && objectPosition !== 'center') {
+    css += `.${className} { object-position: ${objectPosition}; }\n`;
+  }
+
   // Border CSS
   if (border) {
-    css += buildBorderCSS(className, border);
+    css += buildBorderCSS(className, border, resolveToken);
   }
 
   // Border Radius CSS (separate from border)
@@ -182,10 +289,10 @@ function buildFlexCSS(
     justify?: string;
     align?: string;
     wrap?: string;
-    flexGap?: number;
+    flexGap?: ResponsiveGapValue;
   }
 ): string {
-  const { direction = 'row', justify = 'start', align = 'stretch', wrap = 'nowrap', flexGap = 16 } = options;
+  const { direction = 'row', justify = 'start', align = 'stretch', wrap = 'nowrap', flexGap } = options;
 
   const justifyMap: Record<string, string> = {
     start: 'flex-start',
@@ -204,15 +311,21 @@ function buildFlexCSS(
     baseline: 'baseline',
   };
 
-  return `
+  let css = `
     .${className} {
       flex-direction: ${direction};
       justify-content: ${justifyMap[justify] || justify};
       align-items: ${alignMap[align] || align};
       flex-wrap: ${wrap};
-      gap: ${flexGap}px;
     }
   `;
+
+  // Add responsive gap CSS if provided
+  if (flexGap) {
+    css += generateResponsiveGapCSS(className, flexGap);
+  }
+
+  return css;
 }
 
 /**
@@ -256,13 +369,14 @@ function buildGridCSS(
 /**
  * Generate border CSS (per-side support)
  */
-function buildBorderCSS(className: string, border: BorderValue): string {
+function buildBorderCSS(className: string, border: BorderValue, resolver?: ThemeResolver): string {
   const { top, right, bottom, left, unit = 'px' } = border;
 
   // Helper to build border shorthand for a side
-  const buildSide = (side: { width: string; style: string; color: string } | undefined) => {
+  const buildSide = (side: { width: string; style: string; color: ColorPickerValue | string } | undefined) => {
     if (!side || side.style === 'none' || side.width === '0') return 'none';
-    return `${side.width}${unit} ${side.style} ${side.color}`;
+    const colorValue = resolveColorValue(side.color, resolver);
+    return `${side.width}${unit} ${side.style} ${colorValue}`;
   };
 
   const topBorder = buildSide(top);
@@ -326,6 +440,7 @@ function buildBorderRadiusCSS(className: string, radius: BorderRadiusValue): str
 
 /**
  * Generate box-shadow CSS
+    resolveToken,
  */
 function buildShadowCSS(className: string, shadow: ShadowValue): string {
   if (!shadow || shadow.preset === 'none') return '';
@@ -370,7 +485,7 @@ function buildBackgroundCSS(
 
   const rules: string[] = [];
 
-  if (backgroundColor) {
+  if (backgroundColor && backgroundColor !== '') {
     rules.push(`background-color: ${backgroundColor};`);
   }
 
@@ -398,6 +513,8 @@ export interface TypographyCSSOptions {
   className: string;
   display?: ResponsiveDisplayValue;
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   padding?: ResponsiveSpacingValue;
   margin?: ResponsiveSpacingValue;
   border?: BorderValue;
@@ -409,6 +526,7 @@ export interface TypographyCSSOptions {
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
+  visibility?: ResponsiveVisibilityValue;
 
   // Typography specific
   textAlign?: 'left' | 'center' | 'right' | 'justify';
@@ -418,6 +536,8 @@ export interface TypographyCSSOptions {
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  textDecoration?: 'none' | 'underline' | 'line-through' | 'overline';
+  textDecorationStyle?: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
   // Interaction
   cursor?: 'auto' | 'pointer' | 'default' | 'text' | 'move' | 'not-allowed';
   transition?: { duration?: string; easing?: string; properties?: string };
@@ -426,11 +546,13 @@ export interface TypographyCSSOptions {
 /**
  * Generates all CSS for a typography component (Heading, Text)
  */
-export function buildTypographyCSS(options: TypographyCSSOptions): string {
+export function buildTypographyCSS(options: TypographyCSSOptions & { resolveToken?: ThemeResolver }): string {
   const {
     className,
     display,
     width,
+    maxWidth,
+    maxHeight,
     padding,
     margin,
     border,
@@ -440,6 +562,7 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
     zIndex,
     opacity,
     overflow,
+    visibility,
     textAlign = 'left',
     color,
     backgroundColor,
@@ -447,8 +570,11 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
     lineHeight,
     letterSpacing,
     textTransform,
+    textDecoration,
+    textDecorationStyle,
     cursor,
     transition,
+    resolveToken,
   } = options;
 
   let css = '';
@@ -463,6 +589,16 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
     css += generateWidthCSS(className, width);
   }
 
+  // Max Width CSS
+  if (maxWidth) {
+    css += generateMaxWidthCSS(className, maxWidth);
+  }
+
+  // Max Height CSS
+  if (maxHeight) {
+    css += generateMaxHeightCSS(className, maxHeight);
+  }
+
   // Spacing CSS
   if (padding) {
     css += generatePaddingCSS(className, padding);
@@ -473,7 +609,7 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
 
   // Border CSS
   if (border) {
-    css += buildBorderCSS(className, border);
+    css += buildBorderCSS(className, border, resolveToken);
   }
 
   // Border Radius CSS
@@ -498,6 +634,9 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
   }
   if (overflow) {
     css += generateOverflowCSS(className, overflow);
+  }
+  if (visibility) {
+    css += generateVisibilityCSS(className, visibility);
   }
 
   // Responsive typography properties (line-height, letter-spacing)
@@ -524,6 +663,12 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
   if (textTransform && textTransform !== 'none') {
     textRules.push(`text-transform: ${textTransform};`);
   }
+  if (textDecoration && textDecoration !== 'none') {
+    textRules.push(`text-decoration: ${textDecoration};`);
+    if (textDecorationStyle) {
+      textRules.push(`text-decoration-style: ${textDecorationStyle};`);
+    }
+  }
   if (cursor) {
     textRules.push(`cursor: ${cursor};`);
   }
@@ -539,6 +684,19 @@ export function buildTypographyCSS(options: TypographyCSSOptions): string {
       ${textRules.join('\n      ')}
     }
   `;
+
+  // Ensure text-decoration appears in the Puck editor overlay span as well
+  // The inline text editor renders content within a span using a portal
+  // which can prevent decorations from visually propagating. Target common
+  // descendants (including the overlay span) to reflect the decoration.
+  if (textDecoration && textDecoration !== 'none') {
+    css += `
+      .${className} *, .${className} [data-puck-overlay-portal="true"] {
+        text-decoration: ${textDecoration} !important;
+        ${textDecorationStyle ? `text-decoration-style: ${textDecorationStyle} !important;` : ''}
+      }
+    `;
+  }
 
   return css;
 }

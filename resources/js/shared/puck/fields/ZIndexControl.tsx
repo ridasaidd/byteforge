@@ -102,7 +102,9 @@ export function ZIndexControl({
               Custom Value
             </label>
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="-?[0-9]*"
               value={typeof value === 'number' ? value : customValue}
               onChange={(e) => handleCustomChange(e.target.value)}
               placeholder="Enter z-index"

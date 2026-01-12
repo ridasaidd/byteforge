@@ -23,11 +23,12 @@ export function ResponsiveGridColumnsControl({ field, value, onChange }: Respons
         defaultValue={2}
         renderControl={(currentValue, onValueChange) => (
           <input
-            type="number"
-            min={1}
-            max={12}
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
             value={currentValue ?? 2}
             onChange={(e) => onValueChange(Math.max(1, Math.min(12, parseInt(e.target.value || '1', 10))))}
+            placeholder="2"
             style={{
               width: '100%',
               padding: '6px 8px',

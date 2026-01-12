@@ -169,12 +169,12 @@ export function FontWeightControl({
             </div>
 
             <input
-              type="number"
-              value={parseInt(customWeight) || 400}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              value={customWeight}
               onChange={(e) => handleCustomWeightChange(e.target.value)}
-              min={100}
-              max={900}
-              step={100}
+              placeholder="400"
               style={{
                 padding: '8px 12px',
                 border: '1px solid #e5e7eb',

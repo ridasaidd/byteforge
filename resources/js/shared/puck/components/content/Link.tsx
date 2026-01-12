@@ -1,6 +1,7 @@
 import { ComponentConfig } from '@measured/puck';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme } from '@/shared/hooks';
+import { PagesSelector } from './PagesSelector';
 import {
   ColorValue,
   BorderValue,
@@ -13,10 +14,14 @@ import {
   FontWeightValue,
   ResponsiveLineHeightValue,
   ResponsiveLetterSpacingValue,
-  ColorPickerControl,
+  ResponsiveMaxWidthValue,
+  ResponsiveMaxHeightValue,
+  ResponsiveVisibilityValue,
+  ColorPickerControlColorful as ColorPickerControl,
   // Field groups
   displayField,
   layoutFields,
+  layoutAdvancedFields,
   textColorField,
   fontSizeField,
   fontWeightField,
@@ -60,9 +65,12 @@ export interface LinkProps {
 
   // Layout
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   display?: ResponsiveDisplayValue;
   margin?: ResponsiveSpacingValue;
   padding?: ResponsiveSpacingValue;
+  visibility?: ResponsiveVisibilityValue;
 
   // Effects
   border?: BorderValue;
@@ -104,12 +112,15 @@ function LinkComponent({
   textTransform,
   textDecoration = 'underline',
   width,
+  maxWidth,
+  maxHeight,
   display,
   margin,
   padding,
   border,
   borderRadius,
   shadow,
+  visibility,
   cursor,
   transition,
   hoverColor,
@@ -142,6 +153,8 @@ function LinkComponent({
     className,
     display,
     width,
+    maxWidth,
+    maxHeight,
     padding,
     margin,
     border,
@@ -154,6 +167,7 @@ function LinkComponent({
     textAlign: align,
     color: resolvedColor,
     backgroundColor: resolvedBgColor,
+    visibility,
     cursor,
     transition,
   });
@@ -172,6 +186,16 @@ function LinkComponent({
     text-decoration: ${textDecoration};
   }`;
 
+  // Check if in editor mode (puck prop with dragRef indicates editor)
+  const isInEditor = !!puck?.dragRef;
+
+  // Add pointer-events: none when in editor
+  const editorCss = isInEditor
+    ? `.${className} {
+        pointer-events: none;
+      }`
+    : '';
+
   // Link destination
   const destination = linkType === 'external' ? (href || '#') : (to || '/');
 
@@ -180,11 +204,12 @@ function LinkComponent({
     className,
     ...(elementId && { id: elementId }),
     ref: puck?.dragRef || undefined,
+    onClick: isInEditor ? (e: React.MouseEvent) => e.preventDefault() : undefined,
   };
 
   return (
     <>
-      <style>{css}{hoverCss}{textDecorationCss}</style>
+      <style>{css}{hoverCss}{textDecorationCss}{editorCss}</style>
       {linkType === 'external' ? (
         <a
           {...commonProps}
@@ -237,9 +262,11 @@ export const Link: ComponentConfig<LinkProps> = {
       placeholder: 'https://example.com',
     },
     to: {
-      type: 'text',
-      label: 'Route (Internal)',
-      placeholder: '/about',
+      type: 'custom',
+      label: 'Page (Internal)',
+      render: ({ value, onChange }: { value?: string; onChange: (value: string) => void }) => (
+        <PagesSelector value={value} onChange={onChange} />
+      ),
     },
     target: {
       type: 'select',
@@ -271,6 +298,7 @@ export const Link: ComponentConfig<LinkProps> = {
     // Layout
     ...displayField,
     ...layoutFields,
+    visibility: layoutAdvancedFields.visibility,
     ...spacingFields,
     ...backgroundFields,
     ...effectsFields,
@@ -337,6 +365,7 @@ export const Link: ComponentConfig<LinkProps> = {
       typographyAdvancedFields,
       displayField,
       layoutFields,
+      layoutAdvancedFields,
       spacingFields,
       backgroundFields,
       effectsFields,

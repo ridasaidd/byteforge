@@ -8,6 +8,8 @@ import {
   ResponsiveSpacingValue,
   ResponsiveFontSizeValue,
   ResponsiveWidthValue,
+  ResponsiveMaxWidthValue,
+  ResponsiveMaxHeightValue,
   ResponsiveDisplayValue,
   FontWeightValue,
   ResponsiveLineHeightValue,
@@ -15,6 +17,7 @@ import {
   // Field groups
   displayField,
   layoutFields,
+  layoutAdvancedFields,
   textColorField,
   fontSizeField,
   fontWeightField,
@@ -28,6 +31,7 @@ import {
   extractDefaults,
   buildTypographyCSS,
   generateFontSizeCSS,
+  ResponsiveVisibilityValue,
 } from '../../fields';
 
 export interface HeadingProps {
@@ -42,13 +46,18 @@ export interface HeadingProps {
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+  textDecoration?: 'none' | 'underline' | 'line-through' | 'overline';
+  textDecorationStyle?: 'solid' | 'double' | 'dotted' | 'dashed' | 'wavy';
   width?: ResponsiveWidthValue;
+  maxWidth?: ResponsiveMaxWidthValue;
+  maxHeight?: ResponsiveMaxHeightValue;
   display?: ResponsiveDisplayValue;
   margin?: ResponsiveSpacingValue;
   padding?: ResponsiveSpacingValue;
   border?: BorderValue;
   borderRadius?: BorderRadiusValue;
   shadow?: ShadowValue;
+  visibility?: ResponsiveVisibilityValue;
   customCss?: string;
 }
 
@@ -64,13 +73,18 @@ function HeadingComponent({
   lineHeight,
   letterSpacing,
   textTransform,
+  textDecoration,
+  textDecorationStyle,
   width,
+  maxWidth,
+  maxHeight,
   display,
   margin,
   padding,
   border,
   borderRadius,
   shadow,
+  visibility,
   customCss,
   puck,
 }: HeadingProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
@@ -114,6 +128,8 @@ function HeadingComponent({
     className,
     display,
     width,
+    maxWidth,
+    maxHeight,
     padding,
     margin,
     border,
@@ -126,6 +142,9 @@ function HeadingComponent({
     lineHeight,
     letterSpacing,
     textTransform,
+    textDecoration,
+    textDecorationStyle,
+    visibility,
   });
 
   // Responsive font size (handled separately)
@@ -167,6 +186,7 @@ export const Heading: ComponentConfig<HeadingProps> = {
     ...textAlignField,
     ...displayField,
     ...layoutFields,
+    ...layoutAdvancedFields,
     // Typography
     ...textColorField,
     ...fontSizeField,
@@ -193,6 +213,7 @@ export const Heading: ComponentConfig<HeadingProps> = {
       fontSizeField,
       fontWeightField,
       typographyAdvancedFields,
+      layoutAdvancedFields,
       spacingFields,
       backgroundFields,
       effectsFields,

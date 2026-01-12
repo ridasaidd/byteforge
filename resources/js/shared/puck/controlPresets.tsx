@@ -1,6 +1,6 @@
 import {
   BorderControl, ShadowControl,
-  ColorPickerControl, FontWeightControl, AlignmentControl,
+  ColorPickerControlColorful as ColorPickerControl, FontWeightControl, AlignmentControl,
   ResponsiveSpacingControl, ResponsiveFontSizeControl, ResponsiveWidthControl,
   ResponsiveDisplayControl
 } from './fields';

@@ -1,14 +1,14 @@
 # ByteForge – Current Status
 
-Last updated: December 17, 2025  
-Current branch: main
+Last updated: January 8, 2026  
+Current branch: page-builder
 
 —
 
 ## Snapshot
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
-- **Page Builder:** 70% complete (metadata injection ✅, caching ✅, editor ✅, list UI pending)
+- **Page Builder:** 85% complete (metadata injection ✅, caching ✅, editor ✅, pages list UI ✅, remaining: performance monitoring, docs)
 - **Frontend:** Functional and integrated
    - Central admin: Page Editor (Puck), Themes, Media Library, Users, Tenants, Activity, Settings, Roles/Permissions
    - Public rendering: Puck pages with active theme + instant navigation (metadata injection)
@@ -34,10 +34,13 @@ Testing status:
 
 **Frontend:**
 - PageEditorPage with Puck visual editor (viewport switcher)
+- PagesPage with full CRUD UI (create, read, update, delete with data table and forms)
 - Navigation component with metadata support (instant rendering)
 - Mobile navigation styles: none, hamburger-dropdown, off-canvas, full-width
 - Public renderer for Puck pages with active theme
 - Theme context + resolve() for tokens
+- ColorPickerControlColorful with react-colorful (RGBA, theme swatches, semantic colors)
+- CSS builder with theme token resolution for dynamic styles
 - Media library with folders
 - Dashboard pages: Themes, Users, Tenants, Settings, Activity, Roles/Permissions
 
@@ -51,10 +54,9 @@ Testing status:
 
 ## What's Remaining ⏳
 
-**Immediate (1-3 hours):**
-- [ ] Pages list UI component (table with CRUD actions)
+**Immediate (1-2 hours):**
 - [ ] Performance monitoring middleware (optional)
-- [ ] Documentation updates (API docs, README)
+- [ ] Final documentation updates (API docs, README)
 
 **Nice-to-Have (2-4 hours):**
 - [ ] Loading shell/splash screen with branding
@@ -77,6 +79,13 @@ Testing status:
 - Mobile navigation enhancements (4 styles)
 - Fixed hamburger menu positioning and interaction
 - Instant navigation rendering (no loading flash)
+
+**January 8, 2026:**
+- Migrated all color controls to ColorPickerControlColorful (react-colorful)
+- Enhanced CSS builder with theme token resolution for borders
+- Fixed color picker state sync issues (no more reset to primary color)
+- BorderControl now uses RGBA picker with theme swatches and semantic colors
+- Added resolveToken support to buildLayoutCSS and buildTypographyCSS
 
 **November 2025:**
 - PuckCompilerService metadata injection

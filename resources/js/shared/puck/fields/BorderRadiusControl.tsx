@@ -303,26 +303,29 @@ export function BorderRadiusControl({
           </div>
         )}
 
-        {/* Unit selector */}
-        <div>
-          <label style={labelStyle}>Unit</label>
-          <select
-            value={value.unit}
-            onChange={(e) => onChange({ ...value, unit: e.target.value as BorderRadiusValue['unit'], useSliders })}
-            style={{
-              width: '100%',
-              padding: '6px 8px',
-              border: '1px solid var(--puck-color-grey-04)',
-              borderRadius: '4px',
-              fontSize: '13px',
-              backgroundColor: 'var(--puck-color-white)',
-            }}
-          >
-            <option value="px">px</option>
-            <option value="em">em</option>
-            <option value="rem">rem</option>
-            <option value="%">%</option>
-          </select>
+        {/* Unit Toggle Buttons */}
+        <div style={{ display: 'flex', gap: '3px' }}>
+          {['px', 'em', 'rem', '%'].map((unitValue) => (
+            <button
+              key={unitValue}
+              type="button"
+              onClick={() => onChange({ ...value, unit: unitValue as BorderRadiusValue['unit'], useSliders })}
+              style={{
+                flex: 1,
+                padding: '4px',
+                fontSize: '11px',
+                fontWeight: value.unit === unitValue ? 600 : 400,
+                border: value.unit === unitValue ? '2px solid var(--puck-color-azure-04)' : '1px solid var(--puck-color-grey-04)',
+                borderRadius: '3px',
+                backgroundColor: value.unit === unitValue ? '#eff6ff' : 'var(--puck-color-white)',
+                color: value.unit === unitValue ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-08)',
+                cursor: 'pointer',
+                transition: 'all 0.15s',
+              }}
+            >
+              {unitValue}
+            </button>
+          ))}
         </div>
 
         {/* Preview */}

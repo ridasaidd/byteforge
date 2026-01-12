@@ -1,5 +1,5 @@
 import type { ComponentConfig } from '@measured/puck';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { FormProvider } from './FormContext';
 import { useTheme } from '@/shared/hooks';
 import {
@@ -16,7 +16,7 @@ import {
   type ColorValue,
   type BorderValue,
   type ShadowValue,
-  ColorPickerControl,
+  ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
   ResponsiveWidthControl,
@@ -78,25 +78,31 @@ const shadowPresets: Record<string, string> = {
 function FormComponent(props: FormProps) {
   const {
     id, formFields: FormFields, formName, submitAction, emailTo, webhookUrl,
+    successMessage, errorMessage,
     display, gap, direction, justify, align, width,
     backgroundColor, padding, margin, border, shadow, puck,
   } = props;
 
   const { resolve } = useTheme();
-  const className = `form-${id}`;
+  const className = `form-${id || 'unknown'}`;
 
   const resolveColor = useCallback((colorVal: ColorValue | undefined, fallback: string): string => {
-    if (!colorVal) return fallback;
-    if (colorVal.type === 'custom') return colorVal.value;
-    const val = colorVal.value;
-    if (val && (val.startsWith('#') || val.startsWith('rgb'))) return val;
-    return resolve(val, fallback);
+    try {
+      if (!colorVal) return fallback;
+      if (colorVal.type === 'custom') return colorVal.value;
+      const val = colorVal.value;
+      if (val && (val.startsWith('#') || val.startsWith('rgb'))) return val;
+      return resolve(val, fallback);
+    } catch (err) {
+      console.warn('Error resolving color:', err, colorVal);
+      return fallback;
+    }
   }, [resolve]);
 
   const baseDisplay = getDisplayBaseStyle(display) || 'flex';
   const isFlexMode = baseDisplay === 'flex' || baseDisplay === 'inline-flex';
 
-  const buildCSS = (): string => {
+  const buildCSS = useMemo(() => (): string => {
     const rules: string[] = [];
 
     const displayCSS = generateDisplayCSS(className, display);
@@ -147,7 +153,7 @@ function FormComponent(props: FormProps) {
     if (puck?.isEditing) rules.push(`.${className} { min-height: 100px; }`);
 
     return rules.join('\n');
-  };
+  }, [className, direction, justify, align, gap, display, isFlexMode, width, padding, margin, backgroundColor, border, shadow, puck?.isEditing, resolveColor]);
 
   const handleSubmit = useCallback(async (values: Record<string, unknown>) => {
     if (puck?.isEditing) return;
@@ -218,7 +224,7 @@ export const Form: ComponentConfig<FormProps> = {
     backgroundColor: { type: 'custom', label: 'Background Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'transparent' }} onChange={props.onChange} /> },
     padding: { type: 'custom', label: 'Padding', render: (props) => <ResponsiveSpacingControl {...props} field={{ label: 'Padding' }} /> },
     margin: { type: 'custom', label: 'Margin', render: (props) => <ResponsiveSpacingControl {...props} field={{ label: 'Margin' }} /> },
-    border: { type: 'custom', label: 'Border', render: (props) => <BorderControl {...props} value={props.value || { width: '1', style: 'solid', color: '#e5e7eb', radius: '8', unit: 'px' }} onChange={props.onChange} /> },
+    border: { type: 'custom', label: 'Border', render: (props) => <BorderControl {...props} value={props.value || { top: { width: '1', style: 'solid', color: '#e5e7eb' }, right: { width: '1', style: 'solid', color: '#e5e7eb' }, bottom: { width: '1', style: 'solid', color: '#e5e7eb' }, left: { width: '1', style: 'solid', color: '#e5e7eb' }, unit: 'px', linked: true }} onChange={props.onChange} /> },
     shadow: { type: 'custom', label: 'Shadow', render: (props) => <ShadowControl {...props} value={props.value || { preset: 'none' }} onChange={props.onChange} /> },
   },
 
@@ -238,7 +244,14 @@ export const Form: ComponentConfig<FormProps> = {
     backgroundColor: { type: 'theme', value: 'transparent' },
     padding: { mobile: { top: '24', right: '24', bottom: '24', left: '24', unit: 'px', linked: true } },
     margin: { mobile: { top: '0', right: 'auto', bottom: '0', left: 'auto', unit: 'px', linked: false } },
-    border: { width: '1', style: 'solid', color: '#e5e7eb', radius: '8', unit: 'px' },
+    border: {
+      top: { width: '1', style: 'solid', color: '#e5e7eb' },
+      right: { width: '1', style: 'solid', color: '#e5e7eb' },
+      bottom: { width: '1', style: 'solid', color: '#e5e7eb' },
+      left: { width: '1', style: 'solid', color: '#e5e7eb' },
+      unit: 'px',
+      linked: true,
+    },
     shadow: { preset: 'none' },
   },
 

@@ -143,38 +143,47 @@ export function FontSizeControl({
 
         {/* Custom Size Tab */}
         {activeTab === 'custom' && showCustom && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <input
-                type="number"
-                value={parseFloat(customSize) || 16}
-                onChange={(e) => handleCustomSizeChange(e.target.value, customUnit)}
-                min={8}
-                max={200}
-                step={1}
-                style={{
-                  flex: 1,
-                  padding: '8px 12px',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                }}
-              />
-              <select
-                value={customUnit}
-                onChange={(e) => handleCustomSizeChange(parseFloat(customSize).toString(), e.target.value as 'px' | 'rem' | 'em')}
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '6px',
-                  fontSize: '14px',
-                  backgroundColor: 'white',
-                }}
-              >
-                <option value="px">px</option>
-                <option value="rem">rem</option>
-                <option value="em">em</option>
-              </select>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {/* Value Input */}
+            <input
+              type="text"
+              inputMode="decimal"
+              pattern="[0-9]*\.?[0-9]*"
+              value={customSize}
+              onChange={(e) => handleCustomSizeChange(e.target.value, customUnit)}
+              placeholder="16"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                fontSize: '14px',
+              }}
+            />
+
+            {/* Unit Toggle Buttons */}
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {(['px', 'rem', 'em'] as const).map((unit) => (
+                <button
+                  key={unit}
+                  type="button"
+                  onClick={() => handleCustomSizeChange(customSize, unit)}
+                  style={{
+                    flex: 1,
+                    padding: '6px',
+                    border: customUnit === unit ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: customUnit === unit ? 600 : 400,
+                    backgroundColor: customUnit === unit ? '#eff6ff' : 'white',
+                    color: customUnit === unit ? '#2563eb' : '#6b7280',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  {unit}
+                </button>
+              ))}
             </div>
 
             {/* Preview */}

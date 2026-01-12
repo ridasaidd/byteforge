@@ -17,12 +17,22 @@ import { FieldLabel } from '@measured/puck';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
 import type { Media } from '@/shared/services/api';
 import {
-  ColorPickerControl,
+  ColorPickerControlColorful as ColorPickerControl,
   ColorValue,
   ResponsiveDisplayControl,
   ResponsiveDisplayValue,
   ResponsiveWidthControl,
   ResponsiveWidthValue,
+  ResponsiveHeightControl,
+  ResponsiveHeightValue,
+  ResponsiveMinWidthControl,
+  ResponsiveMinWidthValue,
+  ResponsiveMaxWidthControl,
+  ResponsiveMaxWidthValue,
+  ResponsiveMinHeightControl,
+  ResponsiveMinHeightValue,
+  ResponsiveMaxHeightControl,
+  ResponsiveMaxHeightValue,
   ResponsiveSpacingControl,
   ResponsiveSpacingValue,
   BorderControl,
@@ -51,6 +61,16 @@ import {
   ResponsiveGridColumnsValue,
   ResponsiveGridGapControl,
   ResponsiveGridGapValue,
+  GapControl,
+  GapValue,
+  ResponsiveGapControl,
+  ResponsiveGapValue,
+  ResponsiveVisibilityControl,
+  ResponsiveVisibilityValue,
+  ObjectFitControl,
+  ObjectFitValue,
+  ObjectPositionControl,
+  ObjectPositionValue,
 } from './index';
 
 // ============================================================================
@@ -100,6 +120,69 @@ export const layoutFields = {
       <ResponsiveWidthControl field={field} value={value} onChange={onChange} />
     ),
     defaultValue: { mobile: { value: '100', unit: '%' as const } },
+  },
+  height: {
+    type: 'custom' as const,
+    label: 'Height',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveHeightValue; onChange: (value: ResponsiveHeightValue) => void }) => (
+      <ResponsiveHeightControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: { value: 'auto', unit: 'auto' as const } },
+  },
+  minWidth: {
+    type: 'custom' as const,
+    label: 'Min Width',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveMinWidthValue; onChange: (value: ResponsiveMinWidthValue) => void }) => (
+      <ResponsiveMinWidthControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: { value: 'auto', unit: 'auto' as const } },
+  },
+  maxWidth: {
+    type: 'custom' as const,
+    label: 'Max Width',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveMaxWidthValue; onChange: (value: ResponsiveMaxWidthValue) => void }) => (
+      <ResponsiveMaxWidthControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: { value: 'none', unit: 'none' as const } },
+  },
+  minHeight: {
+    type: 'custom' as const,
+    label: 'Min Height',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveMinHeightValue; onChange: (value: ResponsiveMinHeightValue) => void }) => (
+      <ResponsiveMinHeightControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: { value: 'auto', unit: 'auto' as const } },
+  },
+  maxHeight: {
+    type: 'custom' as const,
+    label: 'Max Height',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveMaxHeightValue; onChange: (value: ResponsiveMaxHeightValue) => void }) => (
+      <ResponsiveMaxHeightControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: { value: 'none', unit: 'none' as const } },
+  },
+};
+
+// ============================================================================
+// Image Fields (for image-based components)
+// ============================================================================
+
+export const imageFields = {
+  objectFit: {
+    type: 'custom' as const,
+    label: 'Object Fit',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ObjectFitValue; onChange: (value: ObjectFitValue) => void }) => (
+      <ObjectFitControl field={field} value={value || 'cover'} onChange={onChange} />
+    ),
+    defaultValue: 'cover',
+  },
+  objectPosition: {
+    type: 'custom' as const,
+    label: 'Object Position',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ObjectPositionValue; onChange: (value: ObjectPositionValue) => void }) => (
+      <ObjectPositionControl field={field} value={value || 'center'} onChange={onChange} />
+    ),
+    defaultValue: 'center',
   },
 };
 
@@ -177,6 +260,31 @@ export const typographyAdvancedFields = {
     ],
     defaultValue: 'none',
   },
+
+  textDecoration: {
+    type: 'select' as const,
+    label: 'Text Decoration',
+    options: [
+      { label: 'None', value: 'none' },
+      { label: 'Underline', value: 'underline' },
+      { label: 'Line Through', value: 'line-through' },
+      { label: 'Overline', value: 'overline' },
+    ],
+    defaultValue: 'none',
+  },
+
+  textDecorationStyle: {
+    type: 'select' as const,
+    label: 'Decoration Style',
+    options: [
+      { label: 'Solid', value: 'solid' },
+      { label: 'Double', value: 'double' },
+      { label: 'Dotted', value: 'dotted' },
+      { label: 'Dashed', value: 'dashed' },
+      { label: 'Wavy', value: 'wavy' },
+    ],
+    defaultValue: 'solid',
+  },
 };
 
 export const textAlignField = {
@@ -248,11 +356,12 @@ export const flexLayoutFields = {
   },
 
   flexGap: {
-    label: 'Gap (px)',
-    type: 'number' as const,
-    min: 0,
-    max: 100,
-    defaultValue: 16,
+    type: 'custom' as const,
+    label: 'Gap',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveGapValue; onChange: (value: ResponsiveGapValue) => void }) => (
+      <ResponsiveGapControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: { value: '16', unit: 'px' as const } },
   },
 };
 
@@ -271,12 +380,12 @@ export const gridLayoutFields = {
   },
 
   gridGap: {
-    label: 'Gap (px)',
     type: 'custom' as const,
+    label: 'Gap',
     render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveGridGapValue; onChange: (value: ResponsiveGridGapValue) => void }) => (
       <ResponsiveGridGapControl field={field} value={value} onChange={onChange} />
     ),
-    defaultValue: { mobile: 16 },
+    defaultValue: { mobile: { value: '16', unit: 'px' as const } },
   },
 
   alignItems: {
@@ -491,6 +600,38 @@ export const layoutAdvancedFields = {
       <ResponsiveOverflowControl field={field} value={value} onChange={onChange} />
     ),
     defaultValue: { mobile: 'visible' as const },
+  },
+
+  aspectRatio: {
+    type: 'select' as const,
+    label: 'Aspect Ratio',
+    options: [
+      { label: 'Auto', value: 'auto' },
+      { label: '16:9 (Widescreen)', value: '16/9' },
+      { label: '4:3 (Standard)', value: '4/3' },
+      { label: '1:1 (Square)', value: '1/1' },
+      { label: '21:9 (Ultrawide)', value: '21/9' },
+      { label: '3:2 (Photo)', value: '3/2' },
+      { label: '2:3 (Portrait)', value: '2/3' },
+      { label: 'Custom', value: 'custom' },
+    ],
+    defaultValue: 'auto',
+  },
+
+  aspectRatioCustom: {
+    type: 'text' as const,
+    label: 'Custom Ratio',
+    placeholder: 'e.g., 5/4',
+    defaultValue: '1/1',
+  },
+
+  visibility: {
+    type: 'custom' as const,
+    label: 'Visibility',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveVisibilityValue; onChange: (value: ResponsiveVisibilityValue) => void }) => (
+      <ResponsiveVisibilityControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: 'visible' as const, tablet: 'visible' as const, desktop: 'visible' as const },
   },
 };
 
