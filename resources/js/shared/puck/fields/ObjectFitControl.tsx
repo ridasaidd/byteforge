@@ -28,6 +28,7 @@ export function ObjectFitControl({
             key={optionValue}
             type="button"
             onClick={() => onChange(optionValue)}
+            aria-label={optionLabel}
             style={{
               flex: '1 1 calc(50% - 2px)',
               minWidth: '50px',

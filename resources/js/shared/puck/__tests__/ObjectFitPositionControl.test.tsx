@@ -68,13 +68,14 @@ describe('ObjectFitControl', () => {
 
     const fillButton = screen.getByRole('button', { name: /fill/i });
     expect(fillButton).toHaveStyle('fontWeight: 600');
-    expect(fillButton).toHaveStyle('border: 2px solid var(--puck-color-azure-04)');
+    expect(fillButton).toHaveStyle('backgroundColor: rgb(239, 246, 255)');
   });
 
   it('supports all valid fit values', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const fitValues: ObjectFitValue[] = ['fill', 'contain', 'cover', 'scale-down'];
+    const fitLabels = ['Fill', 'Contain', 'Cover', 'Scale'];
 
     const { rerender } = render(
       <ObjectFitControl
@@ -84,10 +85,10 @@ describe('ObjectFitControl', () => {
       />
     );
 
-    for (const fitValue of fitValues) {
-      const button = screen.getByRole('button', { name: new RegExp(fitValue, 'i') });
+    for (let i = 0; i < fitValues.length; i++) {
+      const button = screen.getByRole('button', { name: fitLabels[i] });
       await user.click(button);
-      expect(onChange).toHaveBeenCalledWith(fitValue);
+      expect(onChange).toHaveBeenCalledWith(fitValues[i]);
     }
   });
 });
@@ -105,16 +106,16 @@ describe('ObjectPositionControl', () => {
     );
 
     expect(screen.getByText('Object Position')).toBeInTheDocument();
-    // Check for all 9 position buttons using arrow symbols
-    expect(screen.getByRole('button', { name: '↖' })).toBeInTheDocument(); // top-left
-    expect(screen.getByRole('button', { name: '↑' })).toBeInTheDocument();  // top-center
-    expect(screen.getByRole('button', { name: '↗' })).toBeInTheDocument(); // top-right
-    expect(screen.getByRole('button', { name: '←' })).toBeInTheDocument(); // center-left
-    expect(screen.getByRole('button', { name: '●' })).toBeInTheDocument(); // center
-    expect(screen.getByRole('button', { name: '→' })).toBeInTheDocument(); // center-right
-    expect(screen.getByRole('button', { name: '↙' })).toBeInTheDocument(); // bottom-left
-    expect(screen.getByRole('button', { name: '↓' })).toBeInTheDocument();  // bottom-center
-    expect(screen.getByRole('button', { name: '↘' })).toBeInTheDocument(); // bottom-right
+    // Check for all 9 position buttons using aria-labels
+    expect(screen.getByRole('button', { name: 'Position: top-left' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: top-center' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: top-right' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: center-left' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: center' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: center-right' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: bottom-left' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: bottom-center' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Position: bottom-right' })).toBeInTheDocument();
   });
 
   it('sets default to center', () => {
@@ -127,7 +128,7 @@ describe('ObjectPositionControl', () => {
       />
     );
 
-    const centerButton = screen.getByRole('button', { name: '●' });
+    const centerButton = screen.getByRole('button', { name: 'Position: center' });
     expect(centerButton).toHaveStyle('fontWeight: 600');
   });
 
