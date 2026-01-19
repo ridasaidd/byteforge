@@ -310,6 +310,7 @@ export function BorderRadiusControl({
               key={unitValue}
               type="button"
               onClick={() => onChange({ ...value, unit: unitValue as BorderRadiusValue['unit'], useSliders })}
+              aria-label={unitValue}
               style={{
                 flex: 1,
                 padding: '4px',

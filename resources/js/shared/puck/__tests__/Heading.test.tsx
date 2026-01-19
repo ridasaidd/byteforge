@@ -112,7 +112,7 @@ describe('Heading Component', () => {
 
   it('applies theme colors', () => {
     render(
-      <Heading
+      <HeadingRender
         {...defaultProps}
         color={{ type: 'theme', value: 'primary' }}
       />
@@ -123,7 +123,7 @@ describe('Heading Component', () => {
 
   it('applies custom colors', () => {
     render(
-      <Heading
+      <HeadingRender
         {...defaultProps}
         color={{ type: 'custom', value: '#ff0000' }}
       />
@@ -134,7 +134,7 @@ describe('Heading Component', () => {
 
   it('handles responsive font sizes', () => {
     render(
-      <Heading
+      <HeadingRender
         {...defaultProps}
         fontSize={{
           desktop: '64px',

@@ -210,7 +210,7 @@ describe('Box Component', () => {
 
     it('applies grid gap', () => {
       const { container } = render(
-        <BoxComponent {...gridProps} gridGap={{ mobile: 20 }} />
+        <BoxComponent {...gridProps} gridGap={{ mobile: { value: '20', unit: 'px' } }} />
       );
       const style = container.querySelector('style');
       expect(style?.textContent).toContain('gap: 20px');

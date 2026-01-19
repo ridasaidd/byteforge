@@ -28,47 +28,46 @@ describe('ResponsiveWidthControl', () => {
 
   it('renders with label', () => {
     const onChange = vi.fn();
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={defaultValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={defaultValue}
+        onChange={onChange}
       />
     );
-    
+
     expect(screen.getByText('Width')).toBeInTheDocument();
   });
 
   it('displays breakpoint toggles', () => {
     const onChange = vi.fn();
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={defaultValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={defaultValue}
+        onChange={onChange}
       />
     );
-    
-    // Should have breakpoint buttons
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThanOrEqual(1);
+
+    // Should show breakpoint label (relies on Puck viewport for switching)
+    expect(screen.getByText(/Editing:/)).toBeInTheDocument();
   });
 
   it('updates desktop width value', () => {
     const onChange = vi.fn();
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={defaultValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={defaultValue}
+        onChange={onChange}
       />
     );
-    
+
     const input = screen.queryByRole('spinbutton') || screen.queryByRole('textbox');
-    
+
     if (input) {
       fireEvent.change(input, { target: { value: '80' } });
       expect(onChange).toHaveBeenCalled();
@@ -82,15 +81,15 @@ describe('ResponsiveWidthControl', () => {
       tablet: '100%',
       mobile: '100%',
     };
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={percentValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={percentValue}
+        onChange={onChange}
       />
     );
-    
+
     expect(screen.getByText('Width')).toBeInTheDocument();
   });
 
@@ -101,15 +100,15 @@ describe('ResponsiveWidthControl', () => {
       tablet: '768px',
       mobile: '375px',
     };
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={pxValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={pxValue}
+        onChange={onChange}
       />
     );
-    
+
     expect(screen.getByText('Width')).toBeInTheDocument();
   });
 
@@ -120,47 +119,43 @@ describe('ResponsiveWidthControl', () => {
       tablet: 'auto',
       mobile: 'auto',
     };
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={autoValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={autoValue}
+        onChange={onChange}
       />
     );
-    
+
     expect(screen.getByText('Width')).toBeInTheDocument();
   });
 
   it('switches between breakpoints', () => {
     const onChange = vi.fn();
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={defaultValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={defaultValue}
+        onChange={onChange}
       />
     );
-    
-    const buttons = screen.getAllByRole('button');
-    
-    // Click through breakpoint buttons
-    if (buttons.length > 1) {
-      fireEvent.click(buttons[1]);
-      expect(screen.getByText('Width')).toBeInTheDocument();
-    }
+
+    // Component relies on Puck viewport switching, verify it renders
+    expect(screen.getByText('Width')).toBeInTheDocument();
+    expect(screen.getByText(/Editing:/)).toBeInTheDocument();
   });
 
   it('handles undefined value gracefully', () => {
     const onChange = vi.fn();
-    
+
     expect(() => {
       render(
-        <ResponsiveWidthControl 
-          field={{ label: 'Width' }} 
-          value={undefined} 
-          onChange={onChange} 
+        <ResponsiveWidthControl
+          field={{ label: 'Width' }}
+          value={undefined}
+          onChange={onChange}
         />
       );
     }).not.toThrow();
@@ -172,13 +167,13 @@ describe('ResponsiveWidthControl', () => {
       desktop: '100%',
       // tablet and mobile undefined
     };
-    
+
     expect(() => {
       render(
-        <ResponsiveWidthControl 
-          field={{ label: 'Width' }} 
-          value={partialValue as typeof defaultValue} 
-          onChange={onChange} 
+        <ResponsiveWidthControl
+          field={{ label: 'Width' }}
+          value={partialValue as typeof defaultValue}
+          onChange={onChange}
         />
       );
     }).not.toThrow();
@@ -186,23 +181,23 @@ describe('ResponsiveWidthControl', () => {
 
   it('shows unit selector if available', () => {
     const onChange = vi.fn();
-    
+
     render(
-      <ResponsiveWidthControl 
-        field={{ label: 'Width' }} 
-        value={defaultValue} 
-        onChange={onChange} 
+      <ResponsiveWidthControl
+        field={{ label: 'Width' }}
+        value={defaultValue}
+        onChange={onChange}
       />
     );
-    
+
     // Look for unit dropdown or buttons
     const selects = screen.queryAllByRole('combobox');
     const unitButtons = screen.queryAllByRole('button').filter(btn =>
-      btn.textContent === 'px' || 
-      btn.textContent === '%' || 
+      btn.textContent === 'px' ||
+      btn.textContent === '%' ||
       btn.textContent === 'rem'
     );
-    
+
     // Component should render regardless
     expect(screen.getByText('Width')).toBeInTheDocument();
   });
