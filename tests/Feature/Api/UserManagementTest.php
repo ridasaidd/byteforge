@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
+use Illuminate\Support\Facades\Hash;
 
 class UserManagementTest extends TestCase
 {
@@ -182,7 +183,7 @@ class UserManagementTest extends TestCase
         $response->assertStatus(200);
 
         $user->refresh();
-        $this->assertTrue(\Hash::check('newpassword123', $user->password));
+        $this->assertTrue(Hash::check('newpassword123', $user->password));
     }
 
     public function test_can_delete_user(): void

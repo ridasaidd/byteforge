@@ -232,9 +232,11 @@ class PuckCompilerServiceTest extends TestCase
 
         $compiled = $this->compiler->compilePage($page);
 
-        // Should only compile page content, NOT header/footer
-        $this->assertCount(1, $compiled['content']);
-        $this->assertEquals('Page Content', $compiled['content'][0]['props']['text']);
+        // Should compile header + page content + footer
+        $this->assertCount(3, $compiled['content']);
+        $this->assertEquals('Site Header', $compiled['content'][0]['props']['title']);
+        $this->assertEquals('Page Content', $compiled['content'][1]['props']['text']);
+        $this->assertEquals('Copyright 2025', $compiled['content'][2]['props']['text']);
     }
 
     /** @test */
@@ -267,9 +269,10 @@ class PuckCompilerServiceTest extends TestCase
 
         $compiled = $this->compiler->compilePage($page);
 
-        // Should only contain page content
-        $this->assertCount(1, $compiled['content']);
-        $this->assertEquals('Page Content', $compiled['content'][0]['props']['text']);
+        // Should contain layout header + page content
+        $this->assertCount(2, $compiled['content']);
+        $this->assertEquals('Layout Header', $compiled['content'][0]['props']['title']);
+        $this->assertEquals('Page Content', $compiled['content'][1]['props']['text']);
     }
 
     /** @test */
@@ -353,7 +356,11 @@ class PuckCompilerServiceTest extends TestCase
         $compiled = $this->compiler->compilePage($page);
 
         $this->assertIsArray($compiled);
-        // Empty puck_data returns empty array
-        $this->assertEquals([], $compiled);
+        // Empty puck_data still returns full structure with metadata
+        $this->assertArrayHasKey('content', $compiled);
+        $this->assertArrayHasKey('root', $compiled);
+        $this->assertArrayHasKey('zones', $compiled);
+        $this->assertArrayHasKey('metadata', $compiled);
+        $this->assertEmpty($compiled['content']);
     }
 }
