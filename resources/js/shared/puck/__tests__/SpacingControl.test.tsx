@@ -27,7 +27,7 @@ describe('SpacingControl', () => {
     );
 
     // Should have 4 inputs for top, right, bottom, left (rendered as textbox for text inputs)
-    const inputs = screen.getAllByRole('textbox');
+    const inputs = screen.getAllByRole('spinbutton');
     expect(inputs).toHaveLength(4);
   });
 
@@ -56,7 +56,7 @@ describe('SpacingControl', () => {
       />
     );
 
-    const inputs = screen.getAllByRole('textbox');
+    const inputs = screen.getAllByRole('spinbutton');
     fireEvent.change(inputs[0], { target: { value: '10' } });
 
     expect(onChange).toHaveBeenCalledWith(
@@ -84,7 +84,7 @@ describe('SpacingControl', () => {
     );
 
     // When linked, there's only one input for "All Sides"
-    const input = screen.getByRole('textbox');
+    const input = screen.getByRole('spinbutton');
     fireEvent.change(input, { target: { value: '20' } });
 
     // When linked, all values should update together

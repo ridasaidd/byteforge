@@ -51,9 +51,8 @@ describe('ResponsiveWidthControl', () => {
       />
     );
     
-    // Should have breakpoint buttons
-    const buttons = screen.getAllByRole('button');
-    expect(buttons.length).toBeGreaterThanOrEqual(1);
+    // Should show breakpoint label (relies on Puck viewport for switching)
+    expect(screen.getByText(/Editing:/)).toBeInTheDocument();
   });
 
   it('updates desktop width value', () => {
@@ -143,13 +142,9 @@ describe('ResponsiveWidthControl', () => {
       />
     );
     
-    const buttons = screen.getAllByRole('button');
-    
-    // Click through breakpoint buttons
-    if (buttons.length > 1) {
-      fireEvent.click(buttons[1]);
-      expect(screen.getByText('Width')).toBeInTheDocument();
-    }
+    // Component relies on Puck viewport switching, verify it renders
+    expect(screen.getByText('Width')).toBeInTheDocument();
+    expect(screen.getByText(/Editing:/)).toBeInTheDocument();
   });
 
   it('handles undefined value gracefully', () => {
