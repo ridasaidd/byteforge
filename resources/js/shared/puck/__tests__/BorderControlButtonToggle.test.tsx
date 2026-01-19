@@ -147,7 +147,7 @@ describe('BorderControl (Button Toggle Pattern)', () => {
 
     const dashedButton = screen.getByRole('button', { name: 'Dashed' });
     expect(dashedButton).toHaveStyle('fontWeight: 600');
-    expect(dashedButton).toHaveStyle('border: 2px solid var(--puck-color-azure-04)');
+    expect(dashedButton).toHaveStyle('backgroundColor: rgb(239, 246, 255)');
   });
 
   it('highlights active unit button', () => {
@@ -164,7 +164,7 @@ describe('BorderControl (Button Toggle Pattern)', () => {
 
     const emButton = screen.getByRole('button', { name: 'em' });
     expect(emButton).toHaveStyle('fontWeight: 600');
-    expect(emButton).toHaveStyle('border: 2px solid var(--puck-color-azure-04)');
+    expect(emButton).toHaveStyle('backgroundColor: rgb(239, 246, 255)');
   });
 
   it('supports linked and unlinked modes', async () => {

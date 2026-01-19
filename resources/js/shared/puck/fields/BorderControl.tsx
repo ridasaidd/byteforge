@@ -68,6 +68,10 @@ function BorderSideInput({
       {/* Width Input */}
       <input
         type="text"
+        role="spinbutton"
+        aria-valuenow={parseFloat(side.width) || 0}
+        aria-valuemin={0}
+        aria-valuemax={999}
         inputMode="decimal"
         pattern="[0-9]*\.?[0-9]*"
         value={side.width}
@@ -185,6 +189,7 @@ export function BorderControl({
               key={unitValue}
               type="button"
               onClick={() => handleUnitChange(unitValue as BorderValue['unit'])}
+              aria-label={unitValue}
               style={{
                 flex: 1,
                 padding: '4px',

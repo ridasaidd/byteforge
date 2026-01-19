@@ -71,8 +71,8 @@ describe('BorderControl', () => {
       />
     );
 
-    const [, styleSelect] = screen.getAllByRole('combobox');
-    fireEvent.change(styleSelect, { target: { value: 'solid' } });
+    const solidButton = screen.getByRole('button', { name: 'Solid' });
+    fireEvent.click(solidButton);
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -120,7 +120,11 @@ describe('BorderControl', () => {
     fireEvent.change(colorInput, { target: { value: '#ff0000' } });
 
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ top: expect.objectContaining({ color: '#ff0000' }) })
+      expect.objectContaining({ 
+        top: expect.objectContaining({ 
+          color: expect.objectContaining({ type: 'custom', value: '#ff0000' }) 
+        }) 
+      })
     );
   });
 
@@ -135,16 +139,10 @@ describe('BorderControl', () => {
       />
     );
 
-    const [, styleSelect] = screen.getAllByRole('combobox');
-    expect(styleSelect).toBeInTheDocument();
-
-    // Check options exist
-    const options = styleSelect.querySelectorAll('option');
-    const optionValues = Array.from(options).map(opt => opt.value);
-
-    expect(optionValues).toContain('none');
-    expect(optionValues).toContain('solid');
-    expect(optionValues).toContain('dashed');
-    expect(optionValues).toContain('dotted');
+    expect(screen.getByRole('button', { name: 'None' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Solid' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dashed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Dotted' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Double' })).toBeInTheDocument();
   });
 });
