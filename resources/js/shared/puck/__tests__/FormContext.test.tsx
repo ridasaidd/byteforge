@@ -1,6 +1,15 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { FormProvider, useFormField, useFormContext } from '../components/forms/FormContext';
+
+// Suppress unhandled rejection warnings in tests (errors are caught by FormProvider)
+beforeEach(() => {
+  const originalError = console.error;
+  vi.spyOn(console, 'error').mockImplementation((...args) => {
+    if (args[0]?.includes?.('unhandled')) return;
+    originalError(...args);
+  });
+});
 
 // Test component that uses useFormField
 function TestInput({ name }: { name: string }) {
@@ -26,10 +35,18 @@ function TestSubmitButton() {
 
   if (!ctx) return <button disabled>No Form</button>;
 
+  const handleSubmit = async () => {
+    try {
+      await ctx.submit();
+    } catch (error) {
+      // Error is already captured in form context state
+    }
+  };
+
   return (
     <button
       data-testid="submit-button"
-      onClick={() => ctx.submit()}
+      onClick={handleSubmit}
       disabled={ctx.isSubmitting}
     >
       {ctx.isSubmitting ? 'Submitting...' : 'Submit'}
@@ -203,8 +220,6 @@ describe('FormContext', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('submit-error')).toHaveTextContent('Network error');
-      }).catch(() => {
-        // Ignore timeout - error is expected to be handled
       });
     });
   });
