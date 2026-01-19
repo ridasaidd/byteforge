@@ -121,21 +121,27 @@ class MediaTest extends TestCase
         $domain = 'tenant-media-filter.test';
         $tenant->domains()->create(['domain' => $domain]);
 
-        $page = Page::create([
+        // Create MediaLibrary entries and attach media to different collections
+        $mediaLib1 = \App\Models\MediaLibrary::create([
             'tenant_id' => $tenant->id,
-            'title' => 'Test Page',
-            'slug' => 'test-page-filter',
-            'page_type' => 'general',
-            'status' => 'published',
-            'is_homepage' => false,
-            'sort_order' => 1,
-            'created_by' => $user->id,
+            'name' => 'Featured Image',
+            'uploaded_by' => $user->id,
         ]);
+        $mediaLib1->addMedia(UploadedFile::fake()->image('featured.jpg'))->toMediaCollection('featured-image');
 
-        // Add media to different collections
-        $page->addMedia(UploadedFile::fake()->image('featured.jpg'))->toMediaCollection('featured-image');
-        $page->addMedia(UploadedFile::fake()->image('gallery1.jpg'))->toMediaCollection('gallery');
-        $page->addMedia(UploadedFile::fake()->image('gallery2.jpg'))->toMediaCollection('gallery');
+        $mediaLib2 = \App\Models\MediaLibrary::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Gallery Image 1',
+            'uploaded_by' => $user->id,
+        ]);
+        $mediaLib2->addMedia(UploadedFile::fake()->image('gallery1.jpg'))->toMediaCollection('gallery');
+
+        $mediaLib3 = \App\Models\MediaLibrary::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Gallery Image 2',
+            'uploaded_by' => $user->id,
+        ]);
+        $mediaLib3->addMedia(UploadedFile::fake()->image('gallery2.jpg'))->toMediaCollection('gallery');
 
         $response = $this->getJson("https://{$domain}/api/media?collection=gallery");
 
@@ -286,8 +292,6 @@ class MediaTest extends TestCase
     #[Test]
     public function page_can_have_media_collections()
     {
-        Storage::fake('public');
-
         $tenant = Tenant::factory()->create();
         $user = User::factory()->create();
         tenancy()->initialize($tenant);
@@ -315,12 +319,17 @@ class MediaTest extends TestCase
         $page->addMedia(UploadedFile::fake()->image('gallery2.jpg'))
             ->toMediaCollection('gallery');
 
+        $page->refresh();
         $this->assertCount(2, $page->getMedia('gallery'));
 
         // Test attachments collection
         $page->addMedia(UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'))
             ->toMediaCollection('attachments');
 
+        $page->refresh();
         $this->assertCount(1, $page->getMedia('attachments'));
+
+        // Clean up - delete test media files
+        $page->clearMediaCollection();
     }
 }

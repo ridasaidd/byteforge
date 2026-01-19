@@ -134,8 +134,8 @@ class MediaSecurityTest extends TestCase
     #[Test]
     public function blocks_oversized_file_upload()
     {
-        // Create a file larger than 10MB (10241 KB)
-        $file = UploadedFile::fake()->create('large.jpg', 10241, 'image/jpeg');
+        // Create a file larger than 20MB (20481 KB - exceeds the 20MB limit)
+        $file = UploadedFile::fake()->create('large.jpg', 20481, 'image/jpeg');
 
         $response = $this->postJson('/api/superadmin/media', [
             'file' => $file,

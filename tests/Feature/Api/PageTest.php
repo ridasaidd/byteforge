@@ -95,7 +95,7 @@ class PageTest extends TestCase
         $response = $this->getJson("https://{$domain}/api/pages?status=published");
 
         $response->assertStatus(200)
-            ->assertJsonCount(1)
+            ->assertJsonCount(1, 'data')
             ->assertJsonFragment(['title' => 'Published Page']);
     }
 

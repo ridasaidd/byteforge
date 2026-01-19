@@ -25,7 +25,7 @@ class CentralMediaLibraryTest extends TestCase
         $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
 
         Storage::fake('public');
-        
+
         $this->user = User::factory()->create();
         Passport::actingAs($this->user);
     }
@@ -44,12 +44,15 @@ class CentralMediaLibraryTest extends TestCase
                 'message',
                 'data' => [
                     'id',
+                    'uuid',
                     'name',
                     'file_name',
                     'mime_type',
                     'size',
+                    'collection_name',
                     'url',
-                    'thumbnail_url',
+                    'custom_properties',
+                    'created_at',
                 ],
             ]);
 
@@ -114,13 +117,15 @@ class CentralMediaLibraryTest extends TestCase
                 'data' => [
                     '*' => [
                         'id',
+                        'uuid',
                         'name',
                         'file_name',
                         'mime_type',
                         'size',
+                        'collection_name',
                         'url',
-                        'thumbnail_url',
-                        'human_readable_size',
+                        'custom_properties',
+                        'created_at',
                     ],
                 ],
                 'links',
@@ -164,7 +169,7 @@ class CentralMediaLibraryTest extends TestCase
 
         $response->assertStatus(200);
         $data = $response->json('data');
-        
+
         $this->assertCount(1, $data);
         $this->assertEquals('in-folder', $data[0]['name']);
     }
