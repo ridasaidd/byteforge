@@ -22,7 +22,7 @@ class MediaSecurityTest extends TestCase
         $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
 
         Storage::fake('public');
-        
+
         $this->user = User::factory()->create();
         Passport::actingAs($this->user);
     }

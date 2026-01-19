@@ -51,6 +51,7 @@ class UserManagementTest extends TestCase
             'email' => 'newuser@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
+            'role' => 'admin',
         ];
 
         $response = $this->postJson('/api/superadmin/users', $data);

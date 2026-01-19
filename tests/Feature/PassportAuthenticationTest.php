@@ -41,8 +41,8 @@ class PassportAuthenticationTest extends TestCase
 
         // Check permissions
         $this->assertTrue($super->hasRole('superadmin'));
-        $this->assertTrue($super->hasPermissionTo('manage users', 'web'));
-        $this->assertTrue($super->hasPermissionTo('manage tenants', 'web'));
+        $this->assertTrue($super->hasPermissionTo('manage users', 'api'));
+        $this->assertTrue($super->hasPermissionTo('manage tenants', 'api'));
         $this->assertFalse($super->hasRole('tenant_owner')); // Ensure no tenant-specific roles
     }
 
@@ -60,8 +60,8 @@ class PassportAuthenticationTest extends TestCase
         Passport::actingAs($super, ['manage-users', 'manage-tenants'], 'api');
 
         // Ensure global permissions
-        $this->assertTrue($super->hasPermissionTo('manage tenants', 'web'));
-        $this->assertTrue($super->hasPermissionTo('manage users', 'web'));
+        $this->assertTrue($super->hasPermissionTo('manage tenants', 'api'));
+        $this->assertTrue($super->hasPermissionTo('manage users', 'api'));
         $this->assertFalse($super->hasRole('tenant_owner')); // No tenant roles
     }
 
@@ -77,13 +77,13 @@ class PassportAuthenticationTest extends TestCase
         tenancy()->initialize($tenant);
 
         $tenantUser = User::factory()->create(['type' => 'tenant_user', 'email' => 'tenant@example.com', 'password' => bcrypt('password')]);
-        $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'tenant_owner']);
+        $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'tenant_owner', 'guard_name' => 'api']);
         $tenantUser->assignRole($role);
 
         // Check permissions
         $this->assertTrue($tenantUser->hasRole('tenant_owner'));
         $this->assertFalse($tenantUser->hasRole('superadmin')); // No global roles
-        $this->assertFalse($tenantUser->hasPermissionTo('manage tenants', 'web')); // Global permission denied
+        $this->assertFalse($tenantUser->hasPermissionTo('manage tenants', 'api')); // Global permission denied
 
         tenancy()->end();
     }
@@ -98,12 +98,12 @@ class PassportAuthenticationTest extends TestCase
         tenancy()->initialize($tenant);
 
         $tenantUser = User::factory()->create(['type' => 'tenant_user']);
-        $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'staff']);
+        $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'staff', 'guard_name' => 'api']);
         $tenantUser->assignRole($role);
 
         // Ensure no global permissions
-        $this->assertFalse($tenantUser->hasPermissionTo('manage tenants', 'web'));
-        $this->assertFalse($tenantUser->hasPermissionTo('manage users', 'web')); // Staff lacks this
+        $this->assertFalse($tenantUser->hasPermissionTo('manage tenants', 'api'));
+        $this->assertFalse($tenantUser->hasPermissionTo('manage users', 'api')); // Staff lacks this
         $this->assertFalse($tenantUser->hasRole('superadmin')); // No global roles
 
         tenancy()->end();

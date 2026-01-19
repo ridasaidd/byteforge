@@ -35,7 +35,8 @@ class ApiRoutesTest extends TestCase
                 'password' => 'password',
             ]);
 
-        $response->assertStatus(200)->assertJson(['message' => 'Route auth.login works']);
+        $response->assertStatus(200)
+            ->assertJsonStructure(['user', 'token']);
     }
 
     #[Test]
@@ -49,8 +50,8 @@ class ApiRoutesTest extends TestCase
                 'password_confirmation' => 'password',
             ]);
 
-        $response->assertStatus(200)
-            ->assertJson(['message' => 'Route auth.register works']);
+        $response->assertStatus(201)
+            ->assertJsonStructure(['user', 'token']);
     }
 
     #[Test]
@@ -63,7 +64,7 @@ class ApiRoutesTest extends TestCase
             ->postJson('/api/auth/logout');
 
         $response->assertStatus(200)
-            ->assertJson(['message' => 'Route auth.logout works']);
+            ->assertJson(['message' => 'Successfully logged out']);
     }
 
     #[Test]
@@ -85,7 +86,7 @@ class ApiRoutesTest extends TestCase
             ->getJson('/api/auth/user');
 
         $response->assertStatus(200)
-            ->assertJson(['message' => 'Route auth.user works']);
+            ->assertJsonStructure(['id', 'name', 'email']);
     }
 
     #[Test]
