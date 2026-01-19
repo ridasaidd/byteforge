@@ -120,10 +120,10 @@ describe('BorderControl', () => {
     fireEvent.change(colorInput, { target: { value: '#ff0000' } });
 
     expect(onChange).toHaveBeenCalledWith(
-      expect.objectContaining({ 
-        top: expect.objectContaining({ 
-          color: expect.objectContaining({ type: 'custom', value: '#ff0000' }) 
-        }) 
+      expect.objectContaining({
+        top: expect.objectContaining({
+          color: expect.objectContaining({ type: 'custom', value: '#ff0000' })
+        })
       })
     );
   });

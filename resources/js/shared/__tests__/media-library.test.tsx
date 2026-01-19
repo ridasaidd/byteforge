@@ -41,29 +41,29 @@ describe('FolderCard', () => {
   it('calls onClick when folder is clicked', () => {
     const handleClick = vi.fn();
     renderWithQueryClient(<FolderCard folder={mockFolder} onClick={handleClick} />);
-    
+
     const folderCard = screen.getByText('Test Folder').closest('div');
     fireEvent.click(folderCard!);
-    
+
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
   it('shows rename and delete options when handlers are provided', () => {
     const handleRename = vi.fn();
     const handleDelete = vi.fn();
-    
+
     renderWithQueryClient(
-      <FolderCard 
-        folder={mockFolder} 
+      <FolderCard
+        folder={mockFolder}
         onRename={handleRename}
         onDelete={handleDelete}
       />
     );
-    
+
     // Hover to show menu (actions are opacity-0 by default)
     const card = screen.getByText('Test Folder').closest('div');
     fireEvent.mouseOver(card!);
-    
+
     // Menu button should be visible
     const menuButton = screen.getByRole('button');
     expect(menuButton).toBeInTheDocument();
@@ -71,14 +71,14 @@ describe('FolderCard', () => {
 
   it('handles rename functionality', () => {
     const handleRename = vi.fn();
-    
+
     renderWithQueryClient(
-      <FolderCard 
-        folder={mockFolder} 
+      <FolderCard
+        folder={mockFolder}
         onRename={handleRename}
       />
     );
-    
+
     // Menu button should be present when onRename handler is provided
     const menuButton = screen.getByRole('button');
     expect(menuButton).toBeInTheDocument();
@@ -113,58 +113,58 @@ describe('MediaCard', () => {
 
   it('renders media name correctly', () => {
     renderWithQueryClient(
-      <MediaCard 
+      <MediaCard
         media={mockMedia}
         isSelected={false}
         onSelect={vi.fn()}
         onClick={vi.fn()}
       />
     );
-    
+
     expect(screen.getByText('test-image')).toBeInTheDocument();
   });
 
   it('displays file size in human readable format', () => {
     renderWithQueryClient(
-      <MediaCard 
+      <MediaCard
         media={mockMedia}
         isSelected={false}
         onSelect={vi.fn()}
         onClick={vi.fn()}
       />
     );
-    
+
     expect(screen.getByText('100 KB')).toBeInTheDocument();
   });
 
   it('calls onClick when card is clicked', () => {
     const handleClick = vi.fn();
-    
+
     renderWithQueryClient(
-      <MediaCard 
+      <MediaCard
         media={mockMedia}
         isSelected={false}
         onSelect={vi.fn()}
         onClick={handleClick}
       />
     );
-    
+
     const card = screen.getByText('test-image').closest('div');
     fireEvent.click(card!);
-    
+
     expect(handleClick).toHaveBeenCalledWith(mockMedia);
   });
 
   it('shows selected state correctly', () => {
     const { container } = renderWithQueryClient(
-      <MediaCard 
+      <MediaCard
         media={mockMedia}
         isSelected={true}
         onSelect={vi.fn()}
         onClick={vi.fn()}
       />
     );
-    
+
     // Check if selected styling is applied (you'll need to adjust based on actual implementation)
     const card = container.firstChild as HTMLElement;
     expect(card.className).toContain('ring'); // Assuming selected cards have a ring class
@@ -172,9 +172,9 @@ describe('MediaCard', () => {
 
   it('shows delete button when onDelete is provided', () => {
     const handleDelete = vi.fn();
-    
+
     renderWithQueryClient(
-      <MediaCard 
+      <MediaCard
         media={mockMedia}
         isSelected={false}
         onSelect={vi.fn()}
@@ -182,11 +182,11 @@ describe('MediaCard', () => {
         onDelete={handleDelete}
       />
     );
-    
+
     // Delete button should be present (might be hidden until hover)
     const card = screen.getByText('test-image').closest('div');
     fireEvent.mouseOver(card!);
-    
+
     // Look for delete icon/button
     const deleteButtons = screen.getAllByRole('button');
     expect(deleteButtons.length).toBeGreaterThan(0);
@@ -204,7 +204,7 @@ describe('ConfirmDialog', () => {
         onConfirm={vi.fn()}
       />
     );
-    
+
     expect(screen.getByText('Delete File')).toBeInTheDocument();
     expect(screen.getByText('Are you sure you want to delete this file?')).toBeInTheDocument();
   });
@@ -212,7 +212,7 @@ describe('ConfirmDialog', () => {
   it('calls onConfirm when confirm button is clicked', async () => {
     const handleConfirm = vi.fn();
     const handleOpenChange = vi.fn();
-    
+
     renderWithQueryClient(
       <ConfirmDialog
         open={true}
@@ -223,10 +223,10 @@ describe('ConfirmDialog', () => {
         onConfirm={handleConfirm}
       />
     );
-    
+
     const deleteButton = screen.getByRole('button', { name: 'Delete' });
     fireEvent.click(deleteButton);
-    
+
     await waitFor(() => {
       expect(handleConfirm).toHaveBeenCalledTimes(1);
       expect(handleOpenChange).toHaveBeenCalledWith(false);
@@ -235,7 +235,7 @@ describe('ConfirmDialog', () => {
 
   it('calls onOpenChange when cancel button is clicked', () => {
     const handleOpenChange = vi.fn();
-    
+
     renderWithQueryClient(
       <ConfirmDialog
         open={true}
@@ -246,10 +246,10 @@ describe('ConfirmDialog', () => {
         onConfirm={vi.fn()}
       />
     );
-    
+
     const cancelButton = screen.getByText('Cancel');
     fireEvent.click(cancelButton);
-    
+
     expect(handleOpenChange).toHaveBeenCalledWith(false);
   });
 
@@ -265,7 +265,7 @@ describe('ConfirmDialog', () => {
         onConfirm={vi.fn()}
       />
     );
-    
+
     const deleteButton = screen.getByRole('button', { name: 'Delete' });
     expect(deleteButton).toBeInTheDocument();
     // Button should have destructive variant classes
@@ -281,7 +281,7 @@ describe('ConfirmDialog', () => {
         onConfirm={vi.fn()}
       />
     );
-    
+
     expect(screen.queryByText('Delete File')).not.toBeInTheDocument();
   });
 });
@@ -298,14 +298,14 @@ describe('Media Library Integration', () => {
     };
 
     const handleDelete = vi.fn();
-    
+
     renderWithQueryClient(
-      <FolderCard 
+      <FolderCard
         folder={mockFolder}
         onDelete={handleDelete}
       />
     );
-    
+
     // This tests the integration flow of delete action
     // In real app, clicking delete would open ConfirmDialog
     // and confirming would call the delete mutation
