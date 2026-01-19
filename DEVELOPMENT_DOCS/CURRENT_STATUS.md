@@ -1,25 +1,25 @@
 # ByteForge – Current Status
 
-Last updated: January 8, 2026  
-Current branch: page-builder
+Last updated: January 19, 2026  
+Current branch: main
 
 —
 
 ## Snapshot
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
-- **Page Builder:** 85% complete (metadata injection ✅, caching ✅, editor ✅, pages list UI ✅, remaining: performance monitoring, docs)
-- **Frontend:** Functional and integrated
-   - Central admin: Page Editor (Puck), Themes, Media Library, Users, Tenants, Activity, Settings, Roles/Permissions
-   - Public rendering: Puck pages with active theme + instant navigation (metadata injection)
+- **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
+- **Testing:** ✅ All tests passing (577 frontend + 123 backend = 700+ total)
+- **Page Builder:** 100% complete and merged to main (metadata injection, caching, editor, pages list, tests)
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
-- **Media:** Upload/delete, folders CRUD, picker modal integrated
+- **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
 
-Testing status:
-- Backend feature tests passing
-- Frontend uses typed API services with React Query
-- Navigation component fully tested (Dec 16-17, 2025)
+Testing status (Jan 19, 2026):
+- ✅ **Frontend:** 577 tests passing, 52 E2E tests appropriately skipped
+- ✅ **Backend Feature:** 111 tests passing (all user management, auth, pages, media, navigation)
+- ✅ **Backend Unit:** 12 tests passing (PuckCompilerService)
+- ✅ **Total:** 700+ assertions passing, 0 failures, 0 errors
 
 —
 
@@ -54,21 +54,27 @@ Testing status:
 
 ## What's Remaining ⏳
 
-**Immediate (1-2 hours):**
-- [ ] Performance monitoring middleware (optional)
-- [ ] Final documentation updates (API docs, README)
+**Priority 1 - Central Admin UX (next):**
+- [ ] Dashboard home page with key stats (pages, tenants, activity, system health)
+- [ ] Theme customization UI (live edit tokens - colors, typography, spacing)
 
-**Nice-to-Have (2-4 hours):**
+**Priority 2 - Central Admin Features:**
+- [ ] Settings management UI (email, SMTP, general config)
+- [ ] Analytics dashboard (activity trends, usage metrics)
+- [ ] Performance monitoring & optimization
+
+**Priority 3 - Business/Platform:**
+- [ ] Payment/billing system (subscriptions, Stripe integration)
+- [ ] Tenant dashboard access (scoped pages, media, themes for tenant users)
+- [ ] Usage tracking & quotas
+
+**Later (not blocking):**
 - [ ] Loading shell/splash screen with branding
 - [ ] Performance benchmarks and testing
-- [ ] Additional Puck component presets
+- [ ] Theme customization live preview with versioning
 - [ ] Navigation drag-and-drop tree UI
-
-**Future:**
-- [ ] Theme customization UI (live editing)
-- [ ] Version history for pages
-- [ ] Partial page loading (app shell architecture)
-- [ ] CDN integration
+- [ ] Content/version history for pages
+- [ ] Role-scoped UI with feature flags
 
 —
 
