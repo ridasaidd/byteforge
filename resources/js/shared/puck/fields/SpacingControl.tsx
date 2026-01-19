@@ -116,6 +116,10 @@ export function SpacingControl({
             />
             <input
               type="text"
+              role="spinbutton"
+              aria-valuenow={parseFloat(sideValue) || 0}
+              aria-valuemin={allowNegative ? -maxValue : minValue}
+              aria-valuemax={maxValue}
               value={sideValue}
               onChange={(e) => handleValueChange(side, e.target.value)}
               placeholder="0"
@@ -129,6 +133,10 @@ export function SpacingControl({
         ) : (
           <input
             type="text"
+            role="spinbutton"
+            aria-valuenow={parseFloat(sideValue) || 0}
+            aria-valuemin={allowNegative ? -maxValue : minValue}
+            aria-valuemax={maxValue}
             value={sideValue}
             onChange={(e) => handleValueChange(side, e.target.value)}
             placeholder="0"
