@@ -12,16 +12,17 @@ Last updated: January 19, 2026
 - ✅ Public page rendering with active theme + metadata injection
 - ✅ Central admin UI for core domains (pages, themes, media, users, tenants, activity, settings)
 - ✅ Full test suite (577 frontend + 123 backend, all passing)
+- ✅ Dashboard home page with real stats, recent tenants, activity, and permission-based visibility (Jan 21)
 
 —
 
 ## In flight / Priority Order
 
 ### M1: Central Admin Completion (in progress - next)
-- Dashboard home page with stats & quick actions
+- ✅ Dashboard home page with stats & quick actions (Jan 21)
 - Theme customization UI (live token editing, preview, reset)
 - Settings management UI (email, SMTP, general config)
-- **Est:** 8-10 hours
+- **Est:** 5-7 hours remaining
 
 ### M2: Analytics & Insights
 - Analytics dashboard (activity, usage, trends)
@@ -42,6 +43,7 @@ Last updated: January 19, 2026
 - Loading states/splash screens
 - Performance optimization & benchmarks
 - Enhanced component presets
+- Dashboard stats caching (create dedicated `/superadmin/dashboard/stats` endpoint with 5-10min cache)
 - **Est:** 6-8 hours
 
 —

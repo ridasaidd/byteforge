@@ -18,6 +18,7 @@ export { pages } from './api/pages';
 export { media } from './api/media';
 export { mediaFolders } from './api/mediaFolders';
 export { themes } from './api/themes';
+export { stats } from './api/stats';
 
 // Aggregate API object for backward compatibility
 import { auth } from './api/auth';
@@ -29,6 +30,7 @@ import { pages } from './api/pages';
 import { media } from './api/media';
 import { mediaFolders } from './api/mediaFolders';
 import { themes } from './api/themes';
+import { stats } from './api/stats';
 
 /**
  * Aggregated API object for convenient access to all API modules
@@ -52,4 +54,5 @@ export const api = {
   media,
   mediaFolders,
   themes,
+  stats,
 };

@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: January 19, 2026  
+Last updated: January 21, 2026  
 Current branch: main
 
 —
@@ -43,6 +43,7 @@ Testing status (Jan 19, 2026):
 - CSS builder with theme token resolution for dynamic styles
 - Media library with folders
 - Dashboard pages: Themes, Users, Tenants, Settings, Activity, Roles/Permissions
+- Dashboard home with real stats, recent tenants/activity, permission-based visibility
 
 **Performance:**
 - Metadata injection eliminates 3+ API calls
@@ -55,8 +56,8 @@ Testing status (Jan 19, 2026):
 ## What's Remaining ⏳
 
 **Priority 1 - Central Admin UX (next):**
-- [ ] Dashboard home page with key stats (pages, tenants, activity, system health)
 - [ ] Theme customization UI (live edit tokens - colors, typography, spacing)
+- [ ] Settings management UI polish (if needed)
 
 **Priority 2 - Central Admin Features:**
 - [ ] Settings management UI (email, SMTP, general config)
@@ -92,6 +93,14 @@ Testing status (Jan 19, 2026):
 - Fixed color picker state sync issues (no more reset to primary color)
 - BorderControl now uses RGBA picker with theme swatches and semantic colors
 - Added resolveToken support to buildLayoutCSS and buildTypographyCSS
+
+**January 21, 2026:**
+- Dashboard home page with real data (stats, recent tenants, activity)
+- Permission-based dashboard visibility using usePermissions hook
+- Added stats API service (frontend aggregation approach)
+- Quick action buttons for common tasks
+- Loading skeletons and empty states
+- date-fns integration for relative timestamps
 
 **November 2025:**
 - PuckCompilerService metadata injection

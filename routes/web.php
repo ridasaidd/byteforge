@@ -15,8 +15,8 @@ foreach (config('tenancy.central_domains') as $domain) {
                 ->first();
 
             if ($homepage) {
-                // If homepage exists, render it using the React app
-                return view('dash-central');
+                // If homepage exists, render it using the public React app
+                return view('public-central');
             }
 
             // Otherwise, show the default welcome page
@@ -25,15 +25,15 @@ foreach (config('tenancy.central_domains') as $domain) {
 
         // Public page viewing (e.g., /pages/about, /pages/contact)
         Route::get('/pages/{slug}', function () {
-            return view('dash-central');
+            return view('public-central');
         })->where('slug', '[a-z0-9\-]+');
 
-        // Public login page (no auth required)
+        // Public login page (uses dashboard app for auth UI)
         Route::get('/login', function () {
             return view('dash-central');
         })->name('login');
 
-        // Central Admin Dashboard (protected routes)
+        // Central Admin Dashboard (protected routes - uses dashboard app)
         Route::middleware(['auth:api'])->prefix('dashboard')->group(function () {
             Route::get('/{any?}', function () {
                 return view('dash-central');
