@@ -1,10 +1,23 @@
-import { FC } from 'react'
+import { FC } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { PublicPage } from '@/apps/central/components/pages/PublicPage';
 
 export const PublicApp: FC = () => {
     return (
-        <div className="min-h-screen bg-white">
-            <h1 className="text-2xl font-bold p-8">Public Page Renderer</h1>
-            <p className="px-8 text-gray-600">Public-facing pages rendered with PuckEditor</p>
-        </div>
-    )
+        <BrowserRouter
+            basename="/"
+            future={{
+                v7_startTransition: true,
+                v7_relativeSplatPath: true,
+            }}
+        >
+            <Routes>
+                {/* Homepage */}
+                <Route path="/" element={<PublicPage />} />
+
+                {/* Public pages */}
+                <Route path="/pages/:slug" element={<PublicPage />} />
+            </Routes>
+        </BrowserRouter>
+    );
 };

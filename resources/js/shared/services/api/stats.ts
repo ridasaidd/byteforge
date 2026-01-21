@@ -1,11 +1,11 @@
 import { http } from '../http';
-import type { PaginatedResponse, Tenant, User, ActivityLog } from './types';
+import type { PaginatedResponse, Tenant, User, ActivityLog, Page } from './types';
 
 export interface DashboardStats {
   totalTenants: number;
   totalUsers: number;
   recentActivityCount: number;
-  totalPages?: number;
+  totalPages: number;
 }
 
 /**
@@ -22,16 +22,18 @@ export const stats = {
   async getDashboardStats(): Promise<DashboardStats> {
     try {
       // Fetch counts from pagination metadata (per_page=1 for minimal data transfer)
-      const [tenantsResponse, usersResponse, activityResponse] = await Promise.all([
+      const [tenantsResponse, usersResponse, activityResponse, pagesResponse] = await Promise.all([
         http.getAll<PaginatedResponse<Tenant>>('/superadmin/tenants', { per_page: 1 }),
         http.getAll<PaginatedResponse<User>>('/superadmin/users', { per_page: 1 }),
         http.getAll<PaginatedResponse<ActivityLog>>('/superadmin/activity-logs', { per_page: 1 }),
+        http.getAll<PaginatedResponse<Page>>('/superadmin/pages', { per_page: 1 }),
       ]);
 
       return {
         totalTenants: tenantsResponse.meta.total,
         totalUsers: usersResponse.meta.total,
         recentActivityCount: activityResponse.meta.total,
+        totalPages: pagesResponse.meta.total,
       };
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);

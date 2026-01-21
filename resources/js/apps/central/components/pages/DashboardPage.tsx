@@ -148,7 +148,7 @@ export function DashboardPage() {
         {canViewTenants && (
           <StatCard
             title="Pages"
-            value={statsData?.totalPages ?? 'N/A'}
+            value={statsData?.totalPages ?? 0}
             icon={FileText}
             isLoading={statsLoading}
           />
