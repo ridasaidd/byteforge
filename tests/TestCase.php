@@ -17,7 +17,7 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Get a central app user by role.
-     * 
+     *
      * Usage in tests:
      *   $superadmin = $this->getCentralUser('superadmin');
      *   $admin = $this->getCentralUser('admin');
@@ -31,7 +31,7 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Get a tenant user by tenant slug.
-     * 
+     *
      * Usage in tests:
      *   $userOne = $this->getTenantUser('tenant-one');
      */
@@ -42,7 +42,7 @@ abstract class TestCase extends BaseTestCase
 
     /**
      * Get a tenant by slug.
-     * 
+     *
      * Usage in tests:
      *   $tenantOne = $this->getTenant('tenant-one');
      */
