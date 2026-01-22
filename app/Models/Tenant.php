@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Stancl\Tenancy\Database\Models\Domain;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
 class Tenant extends BaseTenant
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     /**
      * Get the domains for the tenant.
@@ -47,5 +49,16 @@ class Tenant extends BaseTenant
     public function users()
     {
         return $this->belongsToMany(User::class, 'memberships');
+    }
+
+    /**
+     * Configure activity logging
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'slug'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

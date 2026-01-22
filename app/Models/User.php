@@ -7,6 +7,8 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -15,7 +17,7 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 class User extends Authenticatable implements OAuthenticatable, HasMedia
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, HasRoles, Notifiable, InteractsWithMedia;
+    use HasApiTokens, HasFactory, HasRoles, Notifiable, InteractsWithMedia, LogsActivity;
 
     /**
      * The guard name for Spatie Permission
@@ -112,5 +114,16 @@ class User extends Authenticatable implements OAuthenticatable, HasMedia
     public function getAvatarUrlAttribute(): ?string
     {
         return $this->getFirstMediaUrl('avatar', 'small') ?: null;
+    }
+
+    /**
+     * Configure activity logging
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'type'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }
