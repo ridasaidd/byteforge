@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\MediaLibrary\MediaCollections\Models\Media as BaseMedia;
 
 class Media extends BaseMedia
 {
+    use LogsActivity;
     /**
      * The attributes that should be cast.
      *
@@ -74,5 +77,16 @@ class Media extends BaseMedia
         }
 
         return round($bytes, 2).' '.$units[$i];
+    }
+
+    /**
+     * Configure activity logging
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'file_name', 'collection_name', 'size'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }
