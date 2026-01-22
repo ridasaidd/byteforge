@@ -26,7 +26,14 @@ export function Drawer({ isOpen, onClose, menuItems }: DrawerProps) {
   const location = useLocation();
   const { hasAnyPermission, hasAllPermissions, hasAnyRole, hasAllRoles } = usePermissions();
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path + '/');
+  // Treat dashboard root as exact match to avoid highlighting it on all child routes
+  const isActive = (path: string) => {
+    if (path === '/dashboard') {
+      return location.pathname === '/dashboard';
+    }
+
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
   /**
    * Check if user has access to a menu item based on its permission/role requirements

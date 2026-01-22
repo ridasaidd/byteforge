@@ -115,6 +115,13 @@ class ThemeController extends Controller
      */
     public function store(Request $request)
     {
+        // Check permission for theme management
+        if (!$request->user()->hasPermissionTo('themes.manage')) {
+            return response()->json([
+                'message' => 'Unauthorized: You do not have permission to manage themes.',
+            ], 403);
+        }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -200,6 +207,13 @@ class ThemeController extends Controller
      */
     public function update(Request $request, Theme $theme)
     {
+        // Check permission for theme management
+        if (!$request->user()->hasPermissionTo('themes.manage')) {
+            return response()->json([
+                'message' => 'Unauthorized: You do not have permission to manage themes.',
+            ], 403);
+        }
+
         $tenantId = $this->getTenantId();
 
         // Ensure theme belongs to current tenant
@@ -311,8 +325,15 @@ class ThemeController extends Controller
     /**
      * Delete a theme.
      */
-    public function destroy(Theme $theme)
+    public function destroy(Request $request, Theme $theme)
     {
+        // Check permission for theme management
+        if (!$request->user()->hasPermissionTo('themes.manage')) {
+            return response()->json([
+                'message' => 'Unauthorized: You do not have permission to manage themes.',
+            ], 403);
+        }
+
         $tenantId = $this->getTenantId();
 
         // Ensure theme belongs to current tenant

@@ -29,8 +29,8 @@ class MediaTest extends TestCase
     #[Test]
     public function authenticated_user_can_upload_media()
     {
-        $tenant = Tenant::factory()->create();
-        $user = User::factory()->create();
+        $tenant = $this->getTenant('tenant-one');
+        $user = $this->getCentralUser('superadmin');
         Passport::actingAs($user);
 
         tenancy()->initialize($tenant);

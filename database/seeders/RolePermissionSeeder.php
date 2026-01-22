@@ -13,33 +13,29 @@ class RolePermissionSeeder extends Seeder
         // Reset cached roles and permissions
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        // Define granular permissions for pages and navigation
+        // Define granular permissions across central and tenant contexts
         $permissions = [
-            // Pages (for tenants to manage their website content)
-            'pages.create',
-            'pages.edit',
-            'pages.delete',
-            'pages.view',
-            // Navigation (for tenants to manage their website navigation)
-            'navigation.create',
-            'navigation.edit',
-            'navigation.delete',
-            'navigation.view',
-            // User Management (central admin)
-            'view users',
-            'manage users',
-            // Tenant Management (central admin)
-            'view tenants',
-            'manage tenants',
-            // Role & Permission Management (central admin)
+            // Pages
+            'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
+            // Navigation
+            'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
+            // Themes & presentation
+            'themes.view', 'themes.manage', 'themes.activate',
+            'layouts.view', 'layouts.manage',
+            'templates.view', 'templates.manage',
+            // Media
+            'media.view', 'media.manage',
+            // Users & tenants
+            'view users', 'manage users',
+            'view tenants', 'manage tenants',
+            // Roles & permissions
             'manage roles',
-            // Activity Logs (central admin)
+            // Activity Logs
             'view activity logs',
-            // Settings (central admin)
-            'view settings',
-            'manage settings',
-            // Analytics (central admin and tenants)
-            'view analytics',
+            // Settings
+            'view settings', 'manage settings',
+            // Analytics & dashboard
+            'view analytics', 'view dashboard stats',
         ];
 
         // Create permissions for both web and api guards
@@ -55,22 +51,30 @@ class RolePermissionSeeder extends Seeder
             // Central Admin Roles (for managing the platform)
             'superadmin' => $permissions, // Full access to everything
             'admin' => [
+                'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
+                'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
+                'themes.view', 'themes.manage', 'themes.activate',
+                'layouts.view', 'layouts.manage',
+                'templates.view', 'templates.manage',
+                'media.view', 'media.manage',
                 'manage users', 'view users',
                 'manage tenants', 'view tenants',
                 'manage roles',
-                'view analytics',
+                'view analytics', 'view dashboard stats',
                 'view activity logs',
                 'view settings', 'manage settings',
-            ], // Full central admin access (can do everything except assign superadmin powers)
+            ],
             'support' => [
+                'pages.view', 'navigation.view', 'themes.view', 'layouts.view', 'templates.view', 'media.view',
                 'view users', 'view tenants',
-                'view analytics',
+                'view analytics', 'view dashboard stats',
                 'view activity logs',
-            ], // Read-only access to help tenants and view system stats
+            ],
             'viewer' => [
+                'pages.view', 'navigation.view', 'themes.view', 'layouts.view', 'templates.view', 'media.view',
                 'view users', 'view tenants',
-                'view analytics',
-            ], // Read-only observer (can see users, tenants, and analytics but not activity logs)
+                'view analytics', 'view dashboard stats',
+            ],
         ];
 
         // Create roles for both web and api guards

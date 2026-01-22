@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: January 19, 2026
+Last updated: January 22, 2026
 
 —
 
@@ -13,16 +13,28 @@ Last updated: January 19, 2026
 - ✅ Central admin UI for core domains (pages, themes, media, users, tenants, activity, settings)
 - ✅ Full test suite (577 frontend + 123 backend, all passing)
 - ✅ Dashboard home page with real stats, recent tenants, activity, and permission-based visibility (Jan 21)
+- ✅ Public/dashboard blade template separation for performance (Jan 22)
+- ✅ Stats API service with permission-based data fetching (Jan 22)
 
 —
 
 ## In flight / Priority Order
 
 ### M1: Central Admin Completion (in progress - next)
-- ✅ Dashboard home page with stats & quick actions (Jan 21)
-- Theme customization UI (live token editing, preview, reset)
-- Settings management UI (email, SMTP, general config)
-- **Est:** 5-7 hours remaining
+- ✅ Dashboard home page with stats & quick actions (Jan 22)
+- ✅ Public/dashboard blade separation (Jan 22)
+- **Theme CSS Architecture** (Feb 1-3, ~4-6 hours) ← **Starting now**
+  - Generate and save base theme CSS to disk
+  - Store customizations in database
+  - Link CSS in public blade template
+  - Convert 3-4 Puck components to use CSS variables (Hero, Card, Button, CTA)
+  - Create ThemeCssGeneratorService with full test coverage
+  - **Branch:** `feature/theme-css-architecture`
+  - **Tests required:** Unit + Feature tests for CSS generation and theme activation
+- Theme customization UI (live token editing, preview, reset) (Feb 4-5, ~6-8 hours)
+- Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with 5-10min cache) (~2 hours)
+- Settings management UI polish (if needed) (~2 hours)
+- **Est:** 12-18 hours remaining
 
 ### M2: Analytics & Insights
 - Analytics dashboard (activity, usage, trends)
@@ -57,7 +69,24 @@ Last updated: January 19, 2026
 - CDN integration
 - Role-scoped UI with feature flags
 
-- M1 (now): Theme customization UI + editor polish
-- M2: Navigation enhancements + public menu helpers
-- M3: Cache/SSG + CI pipelines
-- M4: Tests coverage uplift (frontend + backend) and docs pass
+—
+
+## Development Standards
+
+**Branch Naming:**
+- `feature/` - New features (e.g., `feature/theme-css-architecture`)
+- `fix/` - Bug fixes (e.g., `fix/modal-overflow`)
+- `refactor/` - Code improvements (e.g., `refactor/puck-components-ddd`)
+- `docs/` - Documentation only
+
+**Before Every PR:**
+- ✅ All tests pass: `npm run test && php artisan test`
+- ✅ Linting passes: `npm run lint && php artisan lint`
+- ✅ CURRENT_STATUS.md updated with changes
+- ✅ Branch is clean (no merge commits, rebased on latest main)
+
+**Testing Requirements by Type:**
+- **New Service:** Unit + Feature tests (80%+ coverage)
+- **New API Endpoint:** Feature tests for happy/error paths
+- **New Component:** Component tests for props and interactions
+- **Refactoring:** All existing tests still pass (no regressions)

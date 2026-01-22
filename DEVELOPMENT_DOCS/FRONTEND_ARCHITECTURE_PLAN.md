@@ -129,13 +129,19 @@ All services use the centralized `http` client with auth token handling.
 - Page Builder with Puck (Hero, TextBlock, ButtonBlock, ImageBlock, CardGrid, ContactForm)
 - Theme system with context provider and API integration
 - Media library with folder organization and picker modal
-- Admin pages for Central (Tenants, Users, Themes, Settings, Activity) and Tenant (Pages, Media, Navigation, Dashboard)
+- Admin pages for Central (Tenants, Users, Themes, Settings, Activity, Roles/Permissions) and Tenant (Pages, Media, Navigation, Dashboard)
+- Dashboard home page with real stats, recent tenants, recent activity
+- Permission-based dashboard visibility using usePermissions hook
 - Public page renderer with Puck JSON support
 - React Query for server state management
 - Toast notifications via Sonner
 - Authentication context and hooks
+- Public/dashboard blade template separation for performance (`public-central.blade.php` vs `dash-central.blade.php`)
+- Stats API service with permission-aware data aggregation
 
 🚧 **To-Do**:
+- Theme customization UI (live token editor for colors, typography, spacing)
+- Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with caching)
 - Component test coverage expansion
 - Additional Puck components as needed
 - Performance optimization (code splitting, lazy loading)
