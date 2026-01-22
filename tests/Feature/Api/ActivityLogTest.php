@@ -28,10 +28,10 @@ class ActivityLogTest extends TestCase
         Passport::actingAs($user);
 
         tenancy()->initialize($tenant);
-        
+
         // Grant permissions in tenant context
         $user->givePermissionTo('pages.create');
-        
+
         $domain = 'tenant-activity-test.test';
         $tenant->domains()->create(['domain' => $domain]);
 
@@ -64,10 +64,10 @@ class ActivityLogTest extends TestCase
         Passport::actingAs($user);
 
         tenancy()->initialize($tenant);
-        
+
         // Grant permissions in tenant context
         $user->givePermissionTo(['pages.create', 'pages.edit']);
-        
+
         $domain = 'tenant-activity-update.test';
         $tenant->domains()->create(['domain' => $domain]);
 
@@ -102,10 +102,10 @@ class ActivityLogTest extends TestCase
         Passport::actingAs($user);
 
         tenancy()->initialize($tenant);
-        
+
         // Grant permissions in tenant context
         $user->givePermissionTo(['pages.create', 'view activity logs']);
-        
+
         $domain = 'tenant-activity-view.test';
         $tenant->domains()->create(['domain' => $domain]);
 
@@ -140,10 +140,10 @@ class ActivityLogTest extends TestCase
         Passport::actingAs($user);
 
         tenancy()->initialize($tenant);
-        
+
         // Grant permissions in tenant context
         $user->givePermissionTo(['pages.create', 'view activity logs']);
-        
+
         $domain = 'tenant-activity-filter.test';
         $tenant->domains()->create(['domain' => $domain]);
 
