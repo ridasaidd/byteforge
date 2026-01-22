@@ -5,6 +5,7 @@ namespace Database\Factories;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 /**
  * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\User>
@@ -42,4 +43,24 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+    /**
+     * Configure the factory for testing - auto-assign superadmin role.
+     */
+    public function configure(): static
+    {
+        return $this->afterCreating(function ($user) {
+            // In test environment, auto-assign superadmin role for convenience
+            if (app()->environment('testing')) {
+                $superadmin = Role::where('name', 'superadmin')
+                    ->where('guard_name', 'api')
+                    ->first();
+
+                if ($superadmin) {
+                    $user->syncRoles([$superadmin]);
+                }
+            }
+        });
+    }
 }
+

@@ -14,29 +14,40 @@ export interface DashboardStats {
  */
 export const stats = {
   /**
-   * Get dashboard stats by fetching minimal data from multiple endpoints
-   * This is a frontend aggregation approach - for better performance,
-   * consider creating a dedicated /superadmin/dashboard/stats endpoint
-   * with server-side caching (see ROADMAP.md - Performance section)
+   * Get dashboard stats from dedicated optimized endpoint
+   *
+   * This endpoint aggregates stats server-side with 10-minute caching,
+   * reducing 4 API calls to 1 single call.
+   *
+   * Previous approach (4 API calls for pagination metadata):
+   * - /superadmin/tenants?per_page=1
+   * - /superadmin/users?per_page=1
+   * - /superadmin/activity-logs?per_page=1
+   * - /superadmin/pages?per_page=1
+   *
+   * New approach (1 optimized call):
+   * - /superadmin/dashboard/stats ✓
    */
   async getDashboardStats(): Promise<DashboardStats> {
     try {
-      // Fetch counts from pagination metadata (per_page=1 for minimal data transfer)
-      const [tenantsResponse, usersResponse, activityResponse, pagesResponse] = await Promise.all([
-        http.getAll<PaginatedResponse<Tenant>>('/superadmin/tenants', { per_page: 1 }),
-        http.getAll<PaginatedResponse<User>>('/superadmin/users', { per_page: 1 }),
-        http.getAll<PaginatedResponse<ActivityLog>>('/superadmin/activity-logs', { per_page: 1 }),
-        http.getAll<PaginatedResponse<Page>>('/superadmin/pages', { per_page: 1 }),
-      ]);
-
-      return {
-        totalTenants: tenantsResponse.meta.total,
-        totalUsers: usersResponse.meta.total,
-        recentActivityCount: activityResponse.meta.total,
-        totalPages: pagesResponse.meta.total,
-      };
+      const response = await http.get<DashboardStats>('/superadmin/dashboard/stats');
+      return response;
     } catch (error) {
       console.error('Failed to fetch dashboard stats:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Refresh dashboard stats cache (invalidate and fetch fresh data)
+   * Useful for immediately seeing updated statistics
+   */
+  async refreshStats(): Promise<DashboardStats> {
+    try {
+      const response = await http.post<DashboardStats>('/superadmin/dashboard/stats/refresh', {});
+      return response;
+    } catch (error) {
+      console.error('Failed to refresh dashboard stats:', error);
       throw error;
     }
   },

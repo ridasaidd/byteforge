@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: January 21, 2026  
+Last updated: January 22, 2026  
 Current branch: main
 
 —
@@ -50,13 +50,27 @@ Testing status (Jan 19, 2026):
 - Server-side caching (1hr TTL) for metadata
 - HTTP caching reduces bandwidth
 - Navigation auto-recompiles on changes
+- Dashboard stats fetches via frontend aggregation (4 endpoints → 1 optional future optimization)
+- Public/dashboard blade separation reduces initial page load for visitors
 
 —
 
 ## What's Remaining ⏳
 
-**Priority 1 - Central Admin UX (next):**
-- [ ] Theme customization UI (live edit tokens - colors, typography, spacing)
+**Priority 1 - Central Admin UX & Theme System (next):**
+- [x] Dashboard home page with stats and quick actions (Jan 22)
+- [x] Public/dashboard blade separation for performance (Jan 22)
+- [ ] **Theme CSS Architecture** (Feb 1-3) ← **Now starting**
+  - Generate base theme CSS file from settings
+  - Store CSS to public disk (`storage/public/themes/{id}.css`)
+  - Store customizations in database (JSON column)
+  - Link CSS in public blade with cache-busting version
+  - Convert 3-4 Puck components to use CSS variables
+  - **Tests required:** ThemeCssGeneratorService, component rendering with theme vars
+  - **Branch:** `feature/theme-css-architecture`
+  - **Command to start:** `git checkout -b feature/theme-css-architecture`
+- [ ] Theme customization UI (live token editing - colors, typography, spacing)
+- [ ] Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with caching)
 - [ ] Settings management UI polish (if needed)
 
 **Priority 2 - Central Admin Features:**
@@ -97,10 +111,20 @@ Testing status (Jan 19, 2026):
 **January 21, 2026:**
 - Dashboard home page with real data (stats, recent tenants, activity)
 - Permission-based dashboard visibility using usePermissions hook
-- Added stats API service (frontend aggregation approach)
+- Added stats API service (frontend aggregatio
+
+**January 22, 2026:**
+- Separated public and dashboard Blade templates for performance
+  - `public-central.blade.php`: Minimal JS/CSS for storefront visitors
+  - `dash-central.blade.php`: Full admin bundle for authenticated users
+  - Eliminates unnecessary code loading for public-facing pages
+- Dashboard stats widget fully functional with permission-based visibility
+- Recent tenants and activity feeds with formatted timestamps
 - Quick action buttons for common tasks
 - Loading skeletons and empty states
 - date-fns integration for relative timestamps
+- **Planned:** Theme CSS architecture (generate base CSS on disk, store customizations in DB)
+- **Planned:** Adopt hybrid build + patterns approach (DDD, CQRS, Events incrementally)
 
 **November 2025:**
 - PuckCompilerService metadata injection
@@ -131,3 +155,70 @@ Testing status (Jan 19, 2026):
 - API docs: `DEVELOPMENT_DOCS/API_DOCUMENTATION.md`
 
 See ROADMAP.md for milestone timeline.
+
+—
+
+## Development Workflow Standards
+
+**Always use Feature Branches:**
+```bash
+# ❌ Never code directly on main
+git checkout main
+
+# ✅ Create feature branch from main
+git checkout -b feature/theme-css-architecture
+
+# Make changes, commit, push
+git push origin feature/theme-css-architecture
+
+# Create PR before merging to main
+```
+
+**Before Creating a PR:**
+1. ✅ Run tests: `npm run test` + `php artisan test` (all 700+ must pass)
+2. ✅ Check lint: `npm run lint` + `php artisan lint`
+3. ✅ Update CURRENT_STATUS.md with your changes
+4. ✅ Create descriptive commit messages
+5. ✅ Ensure branch name is clear (`feature/*`, `fix/*`, `refactor/*`)
+
+**Testing is Non-Negotiable:**
+- Unit tests for new services (ThemeCssGeneratorService)
+- Feature tests for user workflows (theme creation, activation)
+- Component tests for UI changes (Puck components with CSS vars)
+- All existing tests must still pass (no regressions)
+- Target: 80%+ coverage on new code
+
+**Code Review Checklist Before Merge:**
+- [ ] All tests pass (700+ tests)
+- [ ] No direct main commits in history
+- [ ] Branch name is descriptive
+- [ ] CURRENT_STATUS.md is updated
+- [ ] Documentation is clear (comments, README)
+- [ ] No console.logs or debug code left in
+
+**Example Workflow for Theme CSS Feature:**
+```bash
+# Start on main, pull latest
+git checkout main
+git pull origin main
+
+# Create feature branch
+git checkout -b feature/theme-css-architecture
+
+# Work on: 
+#  - ThemeCssGeneratorService
+#  - Public blade link
+#  - Puck component updates
+#  - Tests for all above
+
+# Before PR, run tests
+npm run test && php artisan test
+
+# Commit and push
+git add .
+git commit -m "feat: implement theme CSS generation and disk storage"
+git push origin feature/theme-css-architecture
+
+# Create PR in GitHub
+# Wait for review, then merge
+```

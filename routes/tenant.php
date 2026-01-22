@@ -54,25 +54,35 @@ Route::middleware([
         Route::get('dashboard', [TenantController::class, 'dashboard']);
 
         // Resource routes
-        Route::apiResource('pages', PageController::class);
-        Route::apiResource('navigations', NavigationController::class);
-        Route::apiResource('theme-parts', ThemePartController::class);
-        Route::apiResource('layouts', LayoutController::class);
-        Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy']);
+        Route::apiResource('pages', PageController::class)
+            ->middleware('permission:pages.view|pages.create|pages.edit|pages.delete');
+        Route::apiResource('navigations', NavigationController::class)
+            ->middleware('permission:navigation.view|navigation.create|navigation.edit|navigation.delete');
+        Route::apiResource('theme-parts', ThemePartController::class)
+            ->middleware('permission:themes.view|themes.manage');
+        Route::apiResource('layouts', LayoutController::class)
+            ->middleware('permission:layouts.view|layouts.manage');
+        Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy'])
+            ->middleware('permission:view users');
 
         // Media management
-        Route::apiResource('media', MediaController::class)->except(['update']);
-        Route::apiResource('media-folders', MediaFolderController::class);
-        Route::get('media-folders-tree', [MediaFolderController::class, 'tree']);
+        Route::apiResource('media', MediaController::class)->except(['update'])
+            ->middleware('permission:media.view|media.manage');
+        Route::apiResource('media-folders', MediaFolderController::class)
+            ->middleware('permission:media.manage');
+        Route::get('media-folders-tree', [MediaFolderController::class, 'tree'])
+            ->middleware('permission:media.view|media.manage');
 
         // User role management
-        Route::post('users/{user}/roles', [UserController::class, 'assignRole']);
-        Route::delete('users/{user}/roles/{role}', [UserController::class, 'removeRole']);        // Settings management
-        Route::get('settings', [SettingsController::class, 'index']);
-        Route::put('settings', [SettingsController::class, 'update']);
+        Route::post('users/{user}/roles', [UserController::class, 'assignRole'])->middleware('permission:manage users');
+        Route::delete('users/{user}/roles/{role}', [UserController::class, 'removeRole'])->middleware('permission:manage users');
+
+        // Settings management
+        Route::get('settings', [SettingsController::class, 'index'])->middleware('permission:view settings');
+        Route::put('settings', [SettingsController::class, 'update'])->middleware('permission:manage settings');
 
         // Activity logs
-        Route::get('activity-logs', [ActivityLogController::class, 'index']);
-        Route::get('activity-logs/{id}', [ActivityLogController::class, 'show']);
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:view activity logs');
+        Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('permission:view activity logs');
     });
 });

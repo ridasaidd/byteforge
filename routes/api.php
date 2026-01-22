@@ -23,6 +23,10 @@ foreach (config('tenancy.central_domains') as $domain) {
 
         // Superadmin routes - require superadmin role
         Route::prefix('superadmin')->middleware(['auth:api'])->group(function () {
+            // Dashboard stats (aggregated, cached)
+            Route::get('dashboard/stats', [\App\Http\Controllers\Api\StatsController::class, 'getDashboardStats'])->middleware('permission:view dashboard stats');
+            Route::post('dashboard/stats/refresh', [\App\Http\Controllers\Api\StatsController::class, 'refresh'])->middleware('permission:view dashboard stats');
+
             // Tenants management
             Route::get('tenants', [SuperadminController::class, 'indexTenants'])->middleware('permission:view tenants');
             Route::post('tenants', [SuperadminController::class, 'storeTenant'])->middleware('permission:manage tenants');
@@ -37,31 +41,45 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:manage users');
             Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:manage users');
 
-                        // Pages management (for central public site)
-            Route::apiResource('pages', \App\Http\Controllers\Api\PageController::class);
+            // Pages management (for central public site)
+            Route::apiResource('pages', \App\Http\Controllers\Api\PageController::class)
+                ->middleware('permission:pages.view|pages.create|pages.edit|pages.delete');
 
             // Navigation management (for central public site)
-            Route::apiResource('navigations', \App\Http\Controllers\Api\NavigationController::class);
+            Route::apiResource('navigations', \App\Http\Controllers\Api\NavigationController::class)
+                ->middleware('permission:navigation.view|navigation.create|navigation.edit|navigation.delete');
 
             // Theme parts and layouts management
-            Route::apiResource('theme-parts', \App\Http\Controllers\Api\ThemePartController::class);
-            Route::apiResource('page-templates', \App\Http\Controllers\Api\PageTemplateController::class);
-            Route::apiResource('layouts', \App\Http\Controllers\Api\LayoutController::class);
+            Route::apiResource('theme-parts', \App\Http\Controllers\Api\ThemePartController::class)
+                ->middleware('permission:themes.manage|themes.view');
+            Route::apiResource('page-templates', \App\Http\Controllers\Api\PageTemplateController::class)
+                ->middleware('permission:templates.view|templates.manage');
+            Route::apiResource('layouts', \App\Http\Controllers\Api\LayoutController::class)
+                ->middleware('permission:layouts.view|layouts.manage');
 
             // Themes management
-            Route::get('themes/available', [\App\Http\Controllers\Api\ThemeController::class, 'available']);
-            Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active']);
-            Route::get('themes/active/templates', [\App\Http\Controllers\Api\ThemeController::class, 'activeTemplates']);
-            Route::get('themes/{slug}/templates', [\App\Http\Controllers\Api\ThemeController::class, 'templates']);
-            Route::post('themes/activate', [\App\Http\Controllers\Api\ThemeController::class, 'activate']);
-            Route::post('themes/{theme}/reset', [\App\Http\Controllers\Api\ThemeController::class, 'reset']);
-            Route::post('themes/{theme}/duplicate', [\App\Http\Controllers\Api\ThemeController::class, 'duplicate']);
-            Route::get('themes/{theme}/export', [\App\Http\Controllers\Api\ThemeController::class, 'export']);
+            Route::get('themes/available', [\App\Http\Controllers\Api\ThemeController::class, 'available'])
+                ->middleware('permission:themes.view');
+            Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active'])
+                ->middleware('permission:themes.view');
+            Route::get('themes/active/templates', [\App\Http\Controllers\Api\ThemeController::class, 'activeTemplates'])
+                ->middleware('permission:themes.view');
+            Route::get('themes/{slug}/templates', [\App\Http\Controllers\Api\ThemeController::class, 'templates'])
+                ->middleware('permission:themes.view');
+            Route::post('themes/activate', [\App\Http\Controllers\Api\ThemeController::class, 'activate'])
+                ->middleware('permission:themes.activate|themes.manage');
+            Route::post('themes/{theme}/reset', [\App\Http\Controllers\Api\ThemeController::class, 'reset'])
+                ->middleware('permission:themes.manage');
+            Route::post('themes/{theme}/duplicate', [\App\Http\Controllers\Api\ThemeController::class, 'duplicate'])
+                ->middleware('permission:themes.manage');
+            Route::get('themes/{theme}/export', [\App\Http\Controllers\Api\ThemeController::class, 'export'])
+                ->middleware('permission:themes.view');
             // Route for syncing themes from disk (restricted by permission)
 
             // Route for importing themes (commented out)
             // Route::post('themes/import', [\App\Http\Controllers\Api\ThemeController::class, 'import']);
-            Route::apiResource('themes', \App\Http\Controllers\Api\ThemeController::class);
+            Route::apiResource('themes', \App\Http\Controllers\Api\ThemeController::class)
+                ->middleware('permission:themes.manage|themes.view');
 
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
@@ -93,13 +111,19 @@ foreach (config('tenancy.central_domains') as $domain) {
 
         // Media Management (Central) - using central storage, not tenant-scoped
         Route::middleware(['auth:api'])->prefix('superadmin')->group(function () {
-            Route::get('media', [\App\Http\Controllers\Api\MediaController::class, 'index']);
-            Route::post('media', [\App\Http\Controllers\Api\MediaController::class, 'store']);
-            Route::get('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'show']);
-            Route::delete('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'destroy']);
+            Route::get('media', [\App\Http\Controllers\Api\MediaController::class, 'index'])
+                ->middleware('permission:media.view|media.manage');
+            Route::post('media', [\App\Http\Controllers\Api\MediaController::class, 'store'])
+                ->middleware('permission:media.manage');
+            Route::get('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'show'])
+                ->middleware('permission:media.view|media.manage');
+            Route::delete('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'destroy'])
+                ->middleware('permission:media.manage');
 
-            Route::apiResource('media-folders', \App\Http\Controllers\Api\Tenant\MediaFolderController::class);
-            Route::get('media-folders-tree', [\App\Http\Controllers\Api\Tenant\MediaFolderController::class, 'tree']);
+            Route::apiResource('media-folders', \App\Http\Controllers\Api\Tenant\MediaFolderController::class)
+                ->middleware('permission:media.manage');
+            Route::get('media-folders-tree', [\App\Http\Controllers\Api\Tenant\MediaFolderController::class, 'tree'])
+                ->middleware('permission:media.view|media.manage');
         });
 
         // Public routes
