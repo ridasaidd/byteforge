@@ -19,6 +19,7 @@ This folder holds a slim, up‑to‑date set of docs for contributors and review
 - **Design Patterns & Best Practices**: [DESIGN_PATTERNS_AND_BEST_PRACTICES.md](DESIGN_PATTERNS_AND_BEST_PRACTICES.md) - 30 patterns explained with examples
 - **Frontend Architecture**: [FRONTEND_ARCHITECTURE_PLAN.md](FRONTEND_ARCHITECTURE_PLAN.md)
 - **Theme System**: [THEME_SYSTEM_ARCHITECTURE.md](THEME_SYSTEM_ARCHITECTURE.md)
+- **Theme CSS Implementation**: [THEME_CSS_IMPLEMENTATION_GUIDE.md](THEME_CSS_IMPLEMENTATION_GUIDE.md) ⭐ **NEW - Step-by-step CSS theming**
 - **Puck Roadmap & Architecture**: [PUCK_ROADMAP_AND_ARCHITECTURE.md](PUCK_ROADMAP_AND_ARCHITECTURE.md)
 - **API Documentation**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md)
 - **Auth Strategy**: [AUTH_STRATEGY.md](AUTH_STRATEGY.md)
@@ -67,8 +68,9 @@ This folder holds a slim, up‑to‑date set of docs for contributors and review
 
 ### For Theme Customization
 1. **Architecture**: [THEME_SYSTEM_ARCHITECTURE.md](THEME_SYSTEM_ARCHITECTURE.md) - Complete theme system guide
-2. **Implementation**: See ThemeBuilderPage vs ThemeCustomizerPage sections
-3. **API**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md) - Theme endpoints
+2. **CSS Implementation**: [THEME_CSS_IMPLEMENTATION_GUIDE.md](THEME_CSS_IMPLEMENTATION_GUIDE.md) - Step-by-step CSS theming
+3. **Implementation**: See ThemeBuilderPage vs ThemeCustomizerPage sections
+4. **API**: [API_DOCUMENTATION.md](API_DOCUMENTATION.md) - Theme endpoints
 
 ### For General Development
 1. **Status Check**: [CURRENT_STATUS.md](CURRENT_STATUS.md) - What's done, what's next
