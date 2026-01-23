@@ -32,6 +32,11 @@ class Theme extends Model
         'is_system_theme' => 'boolean',
     ];
 
+    protected $appends = [
+        'css_url',
+        'css_version',
+    ];
+
     public function getActivitylogOptions(): \Spatie\Activitylog\LogOptions
     {
         return \Spatie\Activitylog\LogOptions::defaults()
@@ -141,6 +146,26 @@ class Theme extends Model
     public function getCssVersion(): string
     {
         return (string) $this->updated_at->timestamp;
+    }
+
+    /**
+     * Accessor for css_url attribute (for JSON serialization).
+     *
+     * @return string
+     */
+    public function getCssUrlAttribute(): string
+    {
+        return $this->getCssUrl();
+    }
+
+    /**
+     * Accessor for css_version attribute (for JSON serialization).
+     *
+     * @return string
+     */
+    public function getCssVersionAttribute(): string
+    {
+        return $this->getCssVersion();
     }
 
     /**
