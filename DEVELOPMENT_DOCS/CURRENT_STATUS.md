@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: January 23, 2026 (Updated: Phase 1 Theme CSS Generator)  
+Last updated: January 23, 2026 (Updated: Phase 2 Blade Integration Complete)  
 Current branch: feature/theme-css-v2
 
 —
@@ -9,18 +9,18 @@ Current branch: feature/theme-css-v2
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
 - **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** ✅ All tests passing (577 frontend + 123 backend = 700+, now 715+ with Phase 1)
+- **Testing:** ✅ All tests passing (577 frontend + 140+ backend = 720+)
 - **Page Builder:** 100% complete and merged to main (metadata injection, caching, editor, pages list, tests)
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
-- **Theme CSS Generation:** ✅ Phase 1 COMPLETE (Service, tests, feature tests)
+- **Theme CSS Generation:** ✅ Phase 1 & 2 COMPLETE (Service, tests, Blade integration, SPA CSS injection)
 
-Testing status (Jan 23, 2026 - Phase 1 Complete):
+Testing status (Jan 23, 2026 - Phase 2 Complete):
 - ✅ **Frontend:** 577 tests passing, 52 E2E tests appropriately skipped
-- ✅ **Backend Feature:** 111 + 5 = 116 tests passing (includes Phase 1 CSS generation)
-- ✅ **Backend Unit:** 12 + 10 = 22 tests passing (includes Phase 1 CSS generator)
-- ✅ **Total:** 715+ assertions passing, 0 failures on new code, 0 errors
+- ✅ **Backend Feature:** 116 + 11 = 127 tests passing (includes Phase 1 & 2 CSS generation)
+- ✅ **Backend Unit:** 22 tests passing (includes Phase 1 CSS generator)
+- ✅ **Total:** 726+ assertions passing, 0 failures on new code, 0 errors
 
 —
 
@@ -67,28 +67,29 @@ Testing status (Jan 23, 2026 - Phase 1 Complete):
     - `getCssUrl(themeId, version)`: Public URL with cache-busting
     - `writeCssFile()` / `deleteCssFile()`: File management
   - ✅ Key transformation: `colors→color`, `typography→font-*`, camelCase→kebab-case
-  - ✅ Unit tests: 10 comprehensive tests covering colors, typography, spacing, radius, shadows, nested data, edge cases (48 assertions)
-  - ✅ Feature tests: 5 integration tests (CSS generation, updates, deletion, versioning) (18 assertions)
+  - ✅ Unit tests: 10 tests (48 assertions)
+  - ✅ Feature tests: 5 tests (18 assertions)
+- [x] **Phase 2 - Blade Integration & CSS Injection** (Jan 23) ✅ COMPLETE
+  - ✅ Theme model: getCssUrl(), getCssVersion() methods
+  - ✅ ThemeService: CSS generation on activate/update
+  - ✅ Blade integration: public-central.blade.php with CSS link
+  - ✅ SPA CSS injection: ThemeProvider useEffect injects CSS dynamically
+  - ✅ Feature tests: 11 tests (35 assertions) - activation, updates, versioning
   - **Branch:** `feature/theme-css-v2` (created Jan 23)
-  - **Next:** Phase 2 (Blade integration) - activate theme trigger CSS generation + link tag
-- [ ] **Phase 2 - Blade Integration** (30 min)
-  - Add CSS link tag to public-central.blade.php
-  - Integrate ThemeCssGeneratorService into ThemeService (activate/update hooks)
-  - Feature tests: verify CSS file created on theme activation
-- [ ] **Phase 3 - Editor CSS Injection** (1 hr)
-  - CSS injection in ThemeProvider useEffect
+- [ ] **Phase 3 - Editor CSS Injection** (1 hr) ← **Next**
+  - CSS injection in Puck editor (useEffect in PuckProvider or PageEditorPage)
   - Dynamic style tag update when theme token changes
   - Editor preview with live CSS updates
+  - Test: Editor loads theme CSS, styles apply to components
 - [ ] **Phase 4 - Component Conversion** (2-3 hrs)
   - Convert 3-4 Puck components to use CSS variables
   - Remove inline style builder logic from components
-  - Test component rendering with theme variables
+  - Test: Components render correctly with theme variables
 - [ ] **Phase 5 - Testing & Validation** (1 hr)
   - Full integration tests (UI → CSS generation → component render)
   - Performance benchmarks (CSS file size, style injection time)
   - Cross-tenant CSS isolation verification
 - [ ] Theme customization UI (live token editing - colors, typography, spacing)
-- [ ] Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with caching)
 
 **Priority 2 - Central Admin Features:**
 - [ ] Settings management UI (email, SMTP, general config)
@@ -159,34 +160,63 @@ Testing status (Jan 23, 2026 - Phase 1 Complete):
 
 —
 
-## Phase 1: Theme CSS Generator Implementation (Completed Jan 23, 2026)
+## Phase 1 & 2: Theme CSS Generator & Blade Integration (Completed Jan 23, 2026)
+
+### Phase 1: Backend CSS Generator
 
 **Service:** `app/Services/ThemeCssGeneratorService.php`
 
 **Key Methods:**
-- `generateCss(?array $themeData): string` - Converts nested theme data to CSS variables
-  - Flattens: `['colors' => ['primary' => '#3b82f6']]` → `--color-primary: #3b82f6;`
-  - Supports: colors, typography, spacing, radius, shadows
-  - Key transformations: `colors→color`, `fontFamily→font-family`, camelCase→kebab-case
-  - Special handling: `typography` prefix skipped (goes straight to children)
-  - Wraps in `:root { ... }`
+- `generateCss(?array $themeData): string` - Flattens nested theme data to CSS variables
 - `getCssUrl(int $themeId, string $version): string` - Returns `/storage/themes/{id}.css?v={version}`
-- `getCssVersion(): string` - Returns timestamp for cache-busting
-- `writeCssFile(int $themeId, string $css): bool` - Writes CSS to `storage/public/themes/{id}.css`
+- `getCssVersion(): string` - Timestamp-based version for cache-busting
+- `writeCssFile(int $themeId, string $css): bool` - Writes CSS to storage
 - `deleteCssFile(int $themeId): bool` - Removes CSS file
 
 **Tests:**
 - Unit tests: `tests/Unit/Services/ThemeCssGeneratorServiceTest.php` (10 tests, 48 assertions)
 - Feature tests: `tests/Feature/ThemeCssGenerationTest.php` (5 tests, 18 assertions)
-- All 15 tests passing ✅
 
-**Branch:** `feature/theme-css-v2` (created Jan 23, 2026)
+### Phase 2: Blade Integration & CSS Injection
 
-**Next Phases (2-5):**
-- Phase 2: Blade integration - CSS generation on theme activation + link tag
-- Phase 3: Editor CSS injection - useEffect in ThemeProvider for dynamic updates
-- Phase 4: Component conversion - Puck components to use CSS variables
-- Phase 5: Testing & validation - E2E tests, performance, cross-tenant isolation
+**Theme Model Updates:**
+- `getCssUrl(): string` - Returns `/storage/themes/{id}.css?v={version}` for theme
+- `getCssVersion(): string` - Returns `updated_at` timestamp for cache-busting
+
+**ThemeService Integration:**
+- Constructor injection of ThemeCssGeneratorService
+- `activateTheme()` - Generates CSS after theme activation
+- `updateTheme()` - Regenerates CSS after theme data updates
+
+**CSS Injection:**
+- Blade: `public-central.blade.php` - Conditional CSS link tag with `id='theme-css-link'`
+- React SPA: `ThemeProvider.tsx` - useEffect that injects/updates theme CSS dynamically
+
+**Tests:**
+- Feature tests: `tests/Feature/ThemeActivationCssGenerationTest.php` (7 tests, 23 assertions)
+- Feature tests: `tests/Feature/BladeCssLinkRenderingTest.php` (4 tests, 12 assertions)
+
+**Test Coverage:**
+- ✅ Theme activation triggers CSS generation
+- ✅ Theme updates trigger CSS regeneration
+- ✅ CSS file is created in storage/public/themes/
+- ✅ CSS URL format with cache-busting version
+- ✅ Multiple theme activations maintain separate CSS files
+- ✅ Blade view can access theme CSS URL
+- ✅ SPA can dynamically inject theme CSS link
+
+**Git History:**
+- Commit 1: `83c25ae` - "feat: implement ThemeCssGeneratorService with TDD (Phase 1)"
+- Commit 2: `1168660` - "feat: add feature tests for CSS generation (Phase 1 integration)"
+- Commit 3: `dbd28fc` - "feat: implement Phase 2 - Blade integration & CSS injection (TDD)"
+- Branch: `feature/theme-css-v2`
+
+**Total Tests: 26 passed (101 assertions)**
+
+**Next Phases (3-5):**
+1. **Phase 3:** CSS injection in Puck editor (1 hr)
+2. **Phase 4:** Component conversion to CSS variables (2-3 hrs)
+3. **Phase 5:** Testing & validation (1 hr)
 
 —
 
