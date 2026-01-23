@@ -87,6 +87,7 @@ class Media extends BaseMedia
         return LogOptions::defaults()
             ->logOnly(['name', 'file_name', 'collection_name', 'size'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName(tenancy()->initialized ? 'tenant' : 'central');
     }
 }

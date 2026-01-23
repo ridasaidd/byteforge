@@ -124,6 +124,7 @@ class User extends Authenticatable implements OAuthenticatable, HasMedia
         return LogOptions::defaults()
             ->logOnly(['name', 'email', 'type'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('central');
     }
 }

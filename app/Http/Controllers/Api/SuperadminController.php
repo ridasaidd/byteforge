@@ -121,6 +121,7 @@ class SuperadminController extends Controller
     public function indexActivity(Request $request)
     {
         $query = TenantActivity::query()
+            ->whereNull('tenant_id')
             ->where('log_name', 'central')
             ->with(['subject', 'causer'])
             ->orderBy('created_at', 'desc');

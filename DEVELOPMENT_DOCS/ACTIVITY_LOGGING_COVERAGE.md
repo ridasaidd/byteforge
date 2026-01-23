@@ -77,18 +77,36 @@ Logs configuration changes:
 All models use the following configuration:
 - **logOnlyDirty()**: Only logs when actual changes occur
 - **dontSubmitEmptyLogs()**: Prevents empty activity log entries
-- **log_name**: Defaults to 'default' for tenant context, 'central' for central context
+- **log_name**: Context-aware via `tenancy()->initialized` check:
+  - Central models: `'central'` (User, Tenant, etc.)
+  - Shared models: `'tenant'` if `tenancy()->initialized`, else `'central'` (ThemePart, Media, MediaFolder)
+  - Isolation: Central queries filter `whereNull('tenant_id')` AND `log_name = 'central'`
+  - Tenant queries use `forTenant()` scope to isolate by `tenant_id`
 
 ## Testing
 
 Activity logging is covered by the following tests:
 
+### Functional Tests
 1. **ActivityLogTest::page_creation_is_logged** - Verifies page creation is logged
 2. **ActivityLogTest::page_update_is_logged** - Verifies page updates are logged
 3. **ActivityLogTest::authenticated_user_can_view_activity_logs** - Verifies users can view activity logs
 4. **ActivityLogTest::activity_logs_can_be_filtered_by_subject_type** - Verifies filtering works
 
-All 4 tests passing (14 assertions).
+### Isolation Tests (Jan 23, 2026)
+1. **CentralActivityLogIsolationTest::central_activity_endpoint_excludes_tenant_logs**
+   - Verifies central dashboard returns only `log_name = 'central'` with `tenant_id IS NULL`
+   - Ensures tenant-created activities never leak to central dashboard
+   - 17 assertions
+
+2. **TenantActivityLogIsolationTest::tenant_activity_controller_uses_for_tenant_scope**
+   - Verifies `TenantActivity::forTenant()` scoping prevents cross-tenant visibility
+   - Ensures tenant-one only sees tenant-one activities, tenant-two sees tenant-two
+   - 8 assertions
+
+**Test run:** `php artisan test --without-tty --filter="ActivityLogIsolation"`
+
+All tests passing (25 assertions across isolation tests).
 
 ## Viewing Activity Logs
 

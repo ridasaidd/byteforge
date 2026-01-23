@@ -95,7 +95,7 @@ class ThemePart extends Model
             ->logOnly(['name', 'slug', 'type', 'status'])
             ->logOnlyDirty()
             ->dontSubmitEmptyLogs()
-            ->useLogName('theme_parts')
+            ->useLogName(tenancy()->initialized ? 'tenant' : 'central')
             ->setDescriptionForEvent(fn (string $eventName) => "Theme part {$eventName}");
     }
 }

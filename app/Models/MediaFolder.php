@@ -134,6 +134,7 @@ class MediaFolder extends Model
         return LogOptions::defaults()
             ->logOnly(['name', 'slug', 'path', 'parent_id'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName(tenancy()->initialized ? 'tenant' : 'central');
     }
 }

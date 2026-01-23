@@ -37,7 +37,7 @@ class StatsController extends Controller
                 'totalTenants' => Tenant::count(),
                 'totalUsers' => User::count(),
                 'totalPages' => Page::whereNull('tenant_id')->count(),
-                'recentActivityCount' => TenantActivity::where('log_name', 'central')->count(),
+                'recentActivityCount' => TenantActivity::whereNull('tenant_id')->where('log_name', 'central')->count(),
             ];
 
             // Cache the results

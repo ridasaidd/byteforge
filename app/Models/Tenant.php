@@ -59,6 +59,7 @@ class Tenant extends BaseTenant
         return LogOptions::defaults()
             ->logOnly(['name', 'slug'])
             ->logOnlyDirty()
-            ->dontSubmitEmptyLogs();
+            ->dontSubmitEmptyLogs()
+            ->useLogName('central');
     }
 }

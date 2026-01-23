@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: January 22, 2026  
+Last updated: January 23, 2026  
 Current branch: main
 
 —
@@ -113,7 +113,15 @@ Testing status (Jan 19, 2026):
 - Permission-based dashboard visibility using usePermissions hook
 - Added stats API service (frontend aggregatio
 
-**January 22, 2026:**
+**January 23, 2026:**
+- Fixed activity logging to prevent cross-tenant and central/tenant leakage:
+  - User, Tenant, ThemePart, Media, MediaFolder models now use context-aware log names
+  - Central queries hardened with `whereNull('tenant_id')` AND `log_name = 'central'`
+  - Tenant queries use `forTenant()` scope for strict `tenant_id` isolation
+- Added isolation tests:
+  - `CentralActivityLogIsolationTest`: Verifies central dashboard excludes tenant logs (17 assertions)
+  - `TenantActivityLogIsolationTest`: Verifies tenant queries don't leak between tenants (8 assertions)
+  - Run: `php artisan test --without-tty --filter="ActivityLogIsolation"`
 - Separated public and dashboard Blade templates for performance
   - `public-central.blade.php`: Minimal JS/CSS for storefront visitors
   - `dash-central.blade.php`: Full admin bundle for authenticated users
