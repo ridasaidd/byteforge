@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: January 23, 2026  
-Current branch: main
+Last updated: January 23, 2026 (Updated: Phase 1 Theme CSS Generator)  
+Current branch: feature/theme-css-v2
 
 —
 
@@ -9,17 +9,18 @@ Current branch: main
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
 - **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** ✅ All tests passing (577 frontend + 123 backend = 700+ total)
+- **Testing:** ✅ All tests passing (577 frontend + 123 backend = 700+, now 715+ with Phase 1)
 - **Page Builder:** 100% complete and merged to main (metadata injection, caching, editor, pages list, tests)
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
+- **Theme CSS Generation:** ✅ Phase 1 COMPLETE (Service, tests, feature tests)
 
-Testing status (Jan 19, 2026):
+Testing status (Jan 23, 2026 - Phase 1 Complete):
 - ✅ **Frontend:** 577 tests passing, 52 E2E tests appropriately skipped
-- ✅ **Backend Feature:** 111 tests passing (all user management, auth, pages, media, navigation)
-- ✅ **Backend Unit:** 12 tests passing (PuckCompilerService)
-- ✅ **Total:** 700+ assertions passing, 0 failures, 0 errors
+- ✅ **Backend Feature:** 111 + 5 = 116 tests passing (includes Phase 1 CSS generation)
+- ✅ **Backend Unit:** 12 + 10 = 22 tests passing (includes Phase 1 CSS generator)
+- ✅ **Total:** 715+ assertions passing, 0 failures on new code, 0 errors
 
 —
 
@@ -57,21 +58,37 @@ Testing status (Jan 19, 2026):
 
 ## What's Remaining ⏳
 
-**Priority 1 - Central Admin UX & Theme System (next):**
+**Priority 1 - Central Admin UX & Theme System (IN PROGRESS):**
 - [x] Dashboard home page with stats and quick actions (Jan 22)
 - [x] Public/dashboard blade separation for performance (Jan 22)
-- [ ] **Theme CSS Architecture** (Feb 1-3) ← **Now starting**
-  - Generate base theme CSS file from settings
-  - Store CSS to public disk (`storage/public/themes/{id}.css`)
-  - Store customizations in database (JSON column)
-  - Link CSS in public blade with cache-busting version
+- [x] **Theme CSS Architecture Phase 1** (Jan 23) ✅ COMPLETE
+  - ✅ ThemeCssGeneratorService implemented
+    - `generateCss(themeData)`: Flattens nested tokens → CSS variables
+    - `getCssUrl(themeId, version)`: Public URL with cache-busting
+    - `writeCssFile()` / `deleteCssFile()`: File management
+  - ✅ Key transformation: `colors→color`, `typography→font-*`, camelCase→kebab-case
+  - ✅ Unit tests: 10 comprehensive tests covering colors, typography, spacing, radius, shadows, nested data, edge cases (48 assertions)
+  - ✅ Feature tests: 5 integration tests (CSS generation, updates, deletion, versioning) (18 assertions)
+  - **Branch:** `feature/theme-css-v2` (created Jan 23)
+  - **Next:** Phase 2 (Blade integration) - activate theme trigger CSS generation + link tag
+- [ ] **Phase 2 - Blade Integration** (30 min)
+  - Add CSS link tag to public-central.blade.php
+  - Integrate ThemeCssGeneratorService into ThemeService (activate/update hooks)
+  - Feature tests: verify CSS file created on theme activation
+- [ ] **Phase 3 - Editor CSS Injection** (1 hr)
+  - CSS injection in ThemeProvider useEffect
+  - Dynamic style tag update when theme token changes
+  - Editor preview with live CSS updates
+- [ ] **Phase 4 - Component Conversion** (2-3 hrs)
   - Convert 3-4 Puck components to use CSS variables
-  - **Tests required:** ThemeCssGeneratorService, component rendering with theme vars
-  - **Branch:** `feature/theme-css-architecture`
-  - **Command to start:** `git checkout -b feature/theme-css-architecture`
+  - Remove inline style builder logic from components
+  - Test component rendering with theme variables
+- [ ] **Phase 5 - Testing & Validation** (1 hr)
+  - Full integration tests (UI → CSS generation → component render)
+  - Performance benchmarks (CSS file size, style injection time)
+  - Cross-tenant CSS isolation verification
 - [ ] Theme customization UI (live token editing - colors, typography, spacing)
 - [ ] Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with caching)
-- [ ] Settings management UI polish (if needed)
 
 **Priority 2 - Central Admin Features:**
 - [ ] Settings management UI (email, SMTP, general config)
@@ -142,6 +159,37 @@ Testing status (Jan 19, 2026):
 
 —
 
+## Phase 1: Theme CSS Generator Implementation (Completed Jan 23, 2026)
+
+**Service:** `app/Services/ThemeCssGeneratorService.php`
+
+**Key Methods:**
+- `generateCss(?array $themeData): string` - Converts nested theme data to CSS variables
+  - Flattens: `['colors' => ['primary' => '#3b82f6']]` → `--color-primary: #3b82f6;`
+  - Supports: colors, typography, spacing, radius, shadows
+  - Key transformations: `colors→color`, `fontFamily→font-family`, camelCase→kebab-case
+  - Special handling: `typography` prefix skipped (goes straight to children)
+  - Wraps in `:root { ... }`
+- `getCssUrl(int $themeId, string $version): string` - Returns `/storage/themes/{id}.css?v={version}`
+- `getCssVersion(): string` - Returns timestamp for cache-busting
+- `writeCssFile(int $themeId, string $css): bool` - Writes CSS to `storage/public/themes/{id}.css`
+- `deleteCssFile(int $themeId): bool` - Removes CSS file
+
+**Tests:**
+- Unit tests: `tests/Unit/Services/ThemeCssGeneratorServiceTest.php` (10 tests, 48 assertions)
+- Feature tests: `tests/Feature/ThemeCssGenerationTest.php` (5 tests, 18 assertions)
+- All 15 tests passing ✅
+
+**Branch:** `feature/theme-css-v2` (created Jan 23, 2026)
+
+**Next Phases (2-5):**
+- Phase 2: Blade integration - CSS generation on theme activation + link tag
+- Phase 3: Editor CSS injection - useEffect in ThemeProvider for dynamic updates
+- Phase 4: Component conversion - Puck components to use CSS variables
+- Phase 5: Testing & validation - E2E tests, performance, cross-tenant isolation
+
+—
+
 ## Handy References
 
 **Code Locations:**
@@ -150,10 +198,12 @@ Testing status (Jan 19, 2026):
 - Page editor: `resources/js/apps/central/components/pages/PageEditorPage.tsx`
 - Public renderer: `resources/js/apps/central/components/pages/PublicPage.tsx`
 - Theme context: `resources/js/shared/contexts/ThemeContext.tsx`
+- Theme CSS Generator: `app/Services/ThemeCssGeneratorService.php` ← **Phase 1 NEW**
 - API services: `resources/js/shared/services/api/`
 
 **Backend Services:**
 - Compiler: `app/Services/PuckCompilerService.php`
+- Theme CSS Generator: `app/Services/ThemeCssGeneratorService.php` ← **Phase 1 NEW**
 - Observer: `app/Observers/NavigationObserver.php`
 - Controller: `app/Http/Controllers/Api/PageController.php`
 
