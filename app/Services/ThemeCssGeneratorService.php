@@ -75,6 +75,9 @@ class ThemeCssGeneratorService
      * - shadows -> shadow
      * - fontFamily -> font-family
      * - fontSize -> font-size
+     * - letterSpacing -> letter-spacing
+     * - borderRadius -> border-radius
+     * - backgroundColor -> background-color
      *
      * @param string $key The key to transform
      * @return string
@@ -92,6 +95,12 @@ class ThemeCssGeneratorService
             'fontSize' => 'font-size',
             'fontWeight' => 'font-weight',
             'lineHeight' => 'line-height',
+            'letterSpacing' => 'letter-spacing',
+            'borderRadius' => 'border-radius',
+            'backgroundColor' => 'background-color',
+            'textColor' => 'text-color',
+            'components' => 'component',
+            'variants' => 'variant',
         ];
 
         // If the key exists in our map, use the mapped value

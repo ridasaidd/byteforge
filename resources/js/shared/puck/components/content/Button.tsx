@@ -131,8 +131,12 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
   // Resolve colors from theme if using theme color, otherwise use custom value
   // Always provide fallback to ensure colors are rendered
   // Handle case where "theme" type has a hex/rgb value instead of a theme path
+  // NOW: Use CSS variables for defaults, resolve for user-selected theme values
   const resolvedBackgroundColor = (() => {
-    if (!backgroundColor) return resolve('components.button.variants.primary.backgroundColor', '#3b82f6');
+    if (!backgroundColor) {
+      // No color specified - use CSS variable
+      return 'var(--component-button-variant-primary-background-color, var(--color-primary-500, #3b82f6))';
+    }
 
     const value = backgroundColor.value;
 
@@ -151,11 +155,14 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       return value;
     }
 
-    return resolve('components.button.variants.primary.backgroundColor', '#3b82f6');
+    return 'var(--component-button-variant-primary-background-color, var(--color-primary-500, #3b82f6))';
   })();
 
   const resolvedTextColor = (() => {
-    if (!textColor) return resolve('components.button.variants.primary.color', '#ffffff');
+    if (!textColor) {
+      // No color specified - use CSS variable
+      return 'var(--component-button-variant-primary-color, #ffffff)';
+    }
 
     const value = textColor.value;
 
@@ -174,7 +181,7 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       return value;
     }
 
-    return resolve('components.button.variants.primary.color', '#ffffff');
+    return 'var(--component-button-variant-primary-color, #ffffff)';
   })();
 
   const paddingX = resolve(`components.button.sizes.${size}.paddingX`, size === 'sm' ? '12px' : size === 'md' ? '16px' : '20px');
@@ -188,7 +195,7 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-weight: ${resolve('typography.fontWeight.medium', '500')};
+      font-weight: var(--font-weight-medium, 500);
       text-decoration: ${textDecoration && textDecoration !== 'none' ? textDecoration : 'none'};
       ${textDecorationStyle && textDecoration !== 'none' ? `text-decoration-style: ${textDecorationStyle};` : ''}
       background-color: ${resolvedBackgroundColor};
