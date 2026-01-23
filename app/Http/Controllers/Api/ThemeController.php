@@ -79,6 +79,23 @@ class ThemeController extends Controller
     }
 
     /**
+     * Get available system themes (themes that can be activated).
+     * Returns system themes from central database.
+     */
+    public function available()
+    {
+        // Get system themes (central themes with is_system_theme = true)
+        $themes = Theme::whereNull('tenant_id')
+            ->where('is_system_theme', true)
+            ->orderBy('name')
+            ->get();
+
+        return response()->json([
+            'data' => $themes,
+        ]);
+    }
+
+    /**
      * Get the active theme.
      */
     public function active()
