@@ -122,6 +122,28 @@ class Theme extends Model
     }
 
     /**
+     * Get the public URL for this theme's generated CSS file.
+     * Includes cache-busting version parameter.
+     *
+     * @return string
+     */
+    public function getCssUrl(): string
+    {
+        $version = $this->getCssVersion();
+        return "/storage/themes/{$this->id}.css?v={$version}";
+    }
+
+    /**
+     * Get the version string for cache-busting (based on updated_at timestamp).
+     *
+     * @return string
+     */
+    public function getCssVersion(): string
+    {
+        return (string) $this->updated_at->timestamp;
+    }
+
+    /**
      * Check if a string is an actual value (not a reference).
      */
     private function isActualValue(string $value): bool

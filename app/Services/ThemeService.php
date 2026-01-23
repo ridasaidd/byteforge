@@ -7,6 +7,12 @@ use Illuminate\Support\Str;
 
 class ThemeService
 {
+    protected ThemeCssGeneratorService $cssGenerator;
+
+    public function __construct(ThemeCssGeneratorService $cssGenerator)
+    {
+        $this->cssGenerator = $cssGenerator;
+    }
     /**
      * Activate a theme for a tenant.
      * If theme doesn't exist in DB, return null.
@@ -37,6 +43,10 @@ class ThemeService
 
         // Activate the theme
         $theme->activate();
+
+        // Generate CSS file for the theme
+        $css = $this->cssGenerator->generateCss($theme->theme_data);
+        $this->cssGenerator->writeCssFile($theme->id, $css);
 
         return $theme;
     }
@@ -151,6 +161,10 @@ class ThemeService
 
         $theme->theme_data = $themeData;
         $theme->save();
+
+        // Regenerate CSS file with updated theme data
+        $css = $this->cssGenerator->generateCss($theme->theme_data);
+        $this->cssGenerator->writeCssFile($theme->id, $css);
 
         return $theme;
     }

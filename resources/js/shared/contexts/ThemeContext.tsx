@@ -35,6 +35,33 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
   }, [initialTheme]);
 
   /**
+   * Inject theme CSS file into the document head.
+   * This is called whenever the active theme changes.
+   * Uses cache-busting version parameter to ensure latest CSS is loaded.
+   */
+  useEffect(() => {
+    if (theme?.id) {
+      // Build the CSS URL with cache-busting version
+      // Assuming theme has updated_at timestamp that we can use
+      const cssUrl = `/storage/themes/${theme.id}.css?v=${new Date().getTime()}`;
+
+      // Find or create a link element for theme CSS
+      let themeLink = document.getElementById('theme-css-link') as HTMLLinkElement | null;
+
+      if (!themeLink) {
+        // Create new link element
+        themeLink = document.createElement('link');
+        themeLink.id = 'theme-css-link';
+        themeLink.rel = 'stylesheet';
+        document.head.appendChild(themeLink);
+      }
+
+      // Update the href to the theme CSS file
+      themeLink.href = cssUrl;
+    }
+  }, [theme?.id]);
+
+  /**
    * Resolve a theme value using dot notation.
    * Handles recursive references (e.g., "colors.primary.600" references).
    */
