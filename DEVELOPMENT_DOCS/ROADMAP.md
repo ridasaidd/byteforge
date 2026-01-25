@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: January 22, 2026
+Last updated: January 24, 2026
 
 —
 
@@ -15,6 +15,7 @@ Last updated: January 22, 2026
 - ✅ Dashboard home page with real stats, recent tenants, activity, and permission-based visibility (Jan 21)
 - ✅ Public/dashboard blade template separation for performance (Jan 22)
 - ✅ Stats API service with permission-based data fetching (Jan 22)
+- ✅ Theme CSS Architecture Decision (Jan 24) - Two-layer model finalized
 
 —
 
@@ -23,18 +24,27 @@ Last updated: January 22, 2026
 ### M1: Central Admin Completion (in progress - next)
 - ✅ Dashboard home page with stats & quick actions (Jan 22)
 - ✅ Public/dashboard blade separation (Jan 22)
-- **Theme CSS Architecture** (Feb 1-3, ~4-6 hours) ← **Starting now**
-  - Generate and save base theme CSS to disk
-  - Store customizations in database
-  - Link CSS in public blade template
-  - Convert 3-4 Puck components to use CSS variables (Hero, Card, Button, CTA)
-  - Create ThemeCssGeneratorService with full test coverage
-  - **Branch:** `feature/theme-css-architecture`
-  - **Tests required:** Unit + Feature tests for CSS generation and theme activation
-- Theme customization UI (live token editing, preview, reset) (Feb 4-5, ~6-8 hours)
-- Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with 5-10min cache) (~2 hours)
-- Settings management UI polish (if needed) (~2 hours)
-- **Est:** 12-18 hours remaining
+- ✅ Theme CSS Architecture Decision (Jan 24)
+  - Two-layer CSS: shared base file + tenant overrides in DB
+  - Atomic section saves in Theme Builder
+  - Publish/merge flow for final CSS
+  - See: [THEME_CSS_IMPLEMENTATION_GUIDE.md](THEME_CSS_IMPLEMENTATION_GUIDE.md)
+- **Theme CSS Implementation** (~8-12 hours total) ← **Starting now**
+  - **Phase 3:** Backend services + API (2-3 hrs)
+    - `ThemeCssSectionService`, `ThemeCssPublishService`, `ThemeCssController`
+    - Migration: `custom_css` column
+  - **Phase 4:** Frontend aggregator (1-2 hrs)
+    - `PuckCssAggregator.ts`, `themeCss.ts` API
+  - **Phase 5:** Theme Builder integration (2-3 hrs)
+    - Section saves on step transitions
+    - Publish button on final step
+  - **Phase 6-7:** Blade/SPA injection + Editor (1.5 hrs)
+  - **Phase 8-10:** Tenant customization, component migration, testing (3-4 hrs)
+  - **Branch:** `feature/theme-css-v3`
+  - **Tests required:** Unit + Feature for services, API, aggregator
+- Theme customization UI (live token editing, preview, reset) (~6-8 hours)
+- Dashboard stats endpoint optimization (~2 hours)
+- **Est:** 16-22 hours remaining
 
 ### M2: Analytics & Insights
 - Analytics dashboard (activity, usage, trends)
@@ -74,7 +84,7 @@ Last updated: January 22, 2026
 ## Development Standards
 
 **Branch Naming:**
-- `feature/` - New features (e.g., `feature/theme-css-architecture`)
+- `feature/` - New features (e.g., `feature/theme-css-v3`)
 - `fix/` - Bug fixes (e.g., `fix/modal-overflow`)
 - `refactor/` - Code improvements (e.g., `refactor/puck-components-ddd`)
 - `docs/` - Documentation only

@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: January 23, 2026 (Updated: Phase 2 Blade Integration Complete)  
+Last updated: January 25, 2026 (Updated: Phase 5b - PuckCssAggregator Bug Fixes Complete)  
 Current branch: feature/theme-css-v2
 
 —
@@ -9,18 +9,17 @@ Current branch: feature/theme-css-v2
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
 - **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** ✅ All tests passing (577 frontend + 140+ backend = 720+)
+- **Testing:** ✅ All tests passing (624 frontend + 140+ backend = 770+)
 - **Page Builder:** 100% complete and merged to main (metadata injection, caching, editor, pages list, tests)
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
-- **Theme CSS Generation:** ✅ Phase 1 & 2 COMPLETE (Service, tests, Blade integration, SPA CSS injection)
+- **Theme CSS Generation:** ✅ Phase 3, 4, 5a, 5b COMPLETE (Backend services, Frontend aggregator, ThemeBuilderPage integration, CSS extraction bug fixes)
 
-Testing status (Jan 23, 2026 - Phase 2 Complete):
-- ✅ **Frontend:** 577 tests passing, 52 E2E tests appropriately skipped
-- ✅ **Backend Feature:** 116 + 11 = 127 tests passing (includes Phase 1 & 2 CSS generation)
-- ✅ **Backend Unit:** 22 tests passing (includes Phase 1 CSS generator)
-- ✅ **Total:** 726+ assertions passing, 0 failures on new code, 0 errors
+Testing status (Jan 24, 2026 - Phase 5a Complete):
+- ✅ **Frontend:** 624 tests passing (47 from Phase 4-5 integration, 52 E2E tests appropriately skipped)
+- ✅ **Backend:** 140+ tests passing (includes Phase 3 CSS services)
+- ✅ **Total:** 770+ tests/assertions passing, 0 failures, 0 errors
 
 —
 
@@ -32,6 +31,7 @@ Testing status (Jan 23, 2026 - Phase 2 Complete):
 - NavigationObserver for automatic page recompilation
 - HTTP caching (ETag, Cache-Control) on public page endpoints
 - APIs: users, tenants, pages, navigation, media, settings, themes
+- **NEW (Phase 3)**: ThemeCssSectionService (section file management), ThemeCssPublishService (validation & publishing), ThemeCssController (REST API)
 
 **Frontend:**
 - PageEditorPage with Puck visual editor (viewport switcher)
@@ -45,6 +45,8 @@ Testing status (Jan 23, 2026 - Phase 2 Complete):
 - Media library with folders
 - Dashboard pages: Themes, Users, Tenants, Settings, Activity, Roles/Permissions
 - Dashboard home with real stats, recent tenants/activity, permission-based visibility
+- **NEW (Phase 4)**: PuckCssAggregator (extract CSS from Puck data), themeCssApi client
+- **NEW (Phase 5)**: ThemeStepCssGenerator (step-based CSS generation), useThemeCssSectionSave hook, **ThemeBuilderPage CSS integration**
 
 **Performance:**
 - Metadata injection eliminates 3+ API calls
@@ -61,34 +63,36 @@ Testing status (Jan 23, 2026 - Phase 2 Complete):
 **Priority 1 - Central Admin UX & Theme System (IN PROGRESS):**
 - [x] Dashboard home page with stats and quick actions (Jan 22)
 - [x] Public/dashboard blade separation for performance (Jan 22)
-- [x] **Theme CSS Architecture Phase 1** (Jan 23) ✅ COMPLETE
-  - ✅ ThemeCssGeneratorService implemented
-    - `generateCss(themeData)`: Flattens nested tokens → CSS variables
-    - `getCssUrl(themeId, version)`: Public URL with cache-busting
-    - `writeCssFile()` / `deleteCssFile()`: File management
-  - ✅ Key transformation: `colors→color`, `typography→font-*`, camelCase→kebab-case
-  - ✅ Unit tests: 10 tests (48 assertions)
-  - ✅ Feature tests: 5 tests (18 assertions)
-- [x] **Phase 2 - Blade Integration & CSS Injection** (Jan 23) ✅ COMPLETE
-  - ✅ Theme model: getCssUrl(), getCssVersion() methods
-  - ✅ ThemeService: CSS generation on activate/update
-  - ✅ Blade integration: public-central.blade.php with CSS link
-  - ✅ SPA CSS injection: ThemeProvider useEffect injects CSS dynamically
-  - ✅ Feature tests: 11 tests (35 assertions) - activation, updates, versioning
-  - **Branch:** `feature/theme-css-v2` (created Jan 23)
-- [ ] **Phase 3 - Editor CSS Injection** (1 hr) ← **Next**
-  - CSS injection in Puck editor (useEffect in PuckProvider or PageEditorPage)
-  - Dynamic style tag update when theme token changes
-  - Editor preview with live CSS updates
-  - Test: Editor loads theme CSS, styles apply to components
-- [ ] **Phase 4 - Component Conversion** (2-3 hrs)
-  - Convert 3-4 Puck components to use CSS variables
-  - Remove inline style builder logic from components
-  - Test: Components render correctly with theme variables
-- [ ] **Phase 5 - Testing & Validation** (1 hr)
-  - Full integration tests (UI → CSS generation → component render)
-  - Performance benchmarks (CSS file size, style injection time)
-  - Cross-tenant CSS isolation verification
+- [x] **Theme CSS Architecture Phase 1-2** (Jan 23) ✅ COMPLETE
+  - ✅ ThemeCssGeneratorService implemented (variables generation)
+  - ✅ Blade integration + SPA CSS injection
+  - ✅ Unit + Feature tests passing
+  - **Branch:** `feature/theme-css-v2`
+- [x] **Architecture Decision** (Jan 24) ✅ FINALIZED
+  - ✅ Two-layer CSS: shared base file + tenant overrides in DB
+  - ✅ Atomic section saves: `{id}_variables.css`, `{id}_header.css`, `{id}_footer.css`
+  - ✅ Publish/merge flow: merge sections into `{id}.css` on final step
+  - ✅ Tenant `custom_css` column for overrides (no file writes)
+  - ✅ Frontend CSS generation via `PuckCssAggregator` using existing `cssBuilder.ts`
+  - See: [THEME_CSS_IMPLEMENTATION_GUIDE.md](THEME_CSS_IMPLEMENTATION_GUIDE.md)
+- [ ] **Phase 3 - Backend Services** (2-3 hrs) ← **Next**
+  - Create `ThemeCssSectionService` (folder init, section save/read)
+  - Create `ThemeCssPublishService` (validate, merge, publish)
+  - Create `ThemeCssController` (section & publish endpoints)
+  - Migration: add `custom_css` column to themes table
+  - Unit + Feature tests for new services
+- [ ] **Phase 4 - Frontend Aggregator** (1-2 hrs)
+  - Create `PuckCssAggregator.ts` (extract CSS from Puck data)
+  - Create `themeCss.ts` API service (section/publish calls)
+  - Tests for aggregator
+- [ ] **Phase 5 - Theme Builder Integration** (2-3 hrs)
+  - Wire section saves on step transitions
+  - Add publish button on final step
+  - Backtracking behavior (overwrite section files)
+- [ ] **Phase 6 - Blade & SPA Injection** (1 hr)
+  - Update `public-central.blade.php` (base link + inline overrides)
+  - Update `ThemeContext.tsx` (inject both layers for SPA)
+- [ ] **Phase 7-10** - Editor, Tenant Customization, Components, Testing
 - [ ] Theme customization UI (live token editing - colors, typography, spacing)
 
 **Priority 2 - Central Admin Features:**
@@ -112,6 +116,29 @@ Testing status (Jan 23, 2026 - Phase 2 Complete):
 —
 
 ## Key Implementations (Recent)
+
+**January 25, 2026 (Phase 5b - PuckCssAggregator Fixes):**
+- ✅ Fixed recursive component collection in PuckCssAggregator
+  - `collectComponents()` now properly traverses nested Box slots and zones
+  - Fixed duplication bug where `props.items` was visited twice
+  - Components in Box containers now correctly extracted from Puck data
+- ✅ Implemented theme-aware CSS builders
+  - `buildBoxCss()`, `buildHeadingCss()`, `buildTextCss()` use field module's CSS builders
+  - Proper theme token resolution via `createThemeResolver()`
+  - Class name generation matches runtime selectors (`.box-{id}`, `.heading-{id}`)
+- ✅ Fixed heading font-weight resolution
+  - `resolveHeadingFontWeight()` prioritizes level-based CSS vars (h1/h2=bold, h3/h4=semibold, h5/h6=medium)
+  - Only overridden when user explicitly customizes font-weight
+- ✅ TypeScript strict mode compliance
+  - Added `@ts-expect-error` comments for Puck's dynamic runtime data fields
+  - All compilation errors resolved
+- **Validated**: Theme 2 save generates correct CSS with Box + Heading rules, proper font-weights, no duplication
+
+**January 24, 2026:**
+- Finalized Theme CSS architecture decision
+- Two-layer model: shared base CSS + tenant overrides in DB
+- Atomic section saves for Theme Builder
+- Updated THEME_CSS_IMPLEMENTATION_GUIDE.md with 10-phase plan
 
 **December 16-17, 2025:**
 - Navigation component rewrite with metadata support

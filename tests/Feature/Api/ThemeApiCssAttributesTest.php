@@ -53,10 +53,10 @@ class ThemeApiCssAttributesTest extends TestCase
         $response->assertStatus(200);
 
         $data = $response->json('data');
-        
+
         // Data should not be null
         $this->assertNotNull($data);
-        
+
         // Should have CSS attributes
         $this->assertArrayHasKey('css_url', $data);
         $this->assertArrayHasKey('css_version', $data);
@@ -118,7 +118,7 @@ class ThemeApiCssAttributesTest extends TestCase
         // Get initial CSS URL
         $response1 = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/themes/active');
-        
+
         $initialUrl = $response1->json('data.css_url');
         $initialVersion = $response1->json('data.css_version');
 
@@ -146,7 +146,7 @@ class ThemeApiCssAttributesTest extends TestCase
 
         // Version should have changed
         $this->assertNotEquals($initialVersion, $newVersion);
-        
+
         // URL should have different version parameter
         $this->assertNotEquals($initialUrl, $newUrl);
     }
@@ -166,9 +166,9 @@ class ThemeApiCssAttributesTest extends TestCase
             ->getJson('/api/superadmin/themes/active');
 
         $response->assertStatus(200);
-        
+
         $data = $response->json('data');
-        
+
         // Frontend can access these properties
         $this->assertArrayHasKey('css_url', $data);
         $this->assertArrayHasKey('css_version', $data);

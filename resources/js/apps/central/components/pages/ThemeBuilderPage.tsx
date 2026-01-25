@@ -9,14 +9,17 @@ import { useToast } from '@/shared/hooks';
 import { themes } from '@/shared/services/api/themes';
 import { themeParts } from '@/shared/services/api/themeParts';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
+import { useThemeCssSectionSave } from '@/shared/hooks/useThemeCssSectionSave';
+import { generateThemeStepCss } from '@/shared/puck/services/ThemeStepCssGenerator';
 import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData } from '@/shared/services/api/types';
 import { config } from './puck-components';
 
 export function ThemeBuilderPage() {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const isNew = id === 'new';
+  const { saveSection } = useThemeCssSectionSave();
+  const isNew = !id || id === 'new';
 
   const [activeTab, setActiveTab] = useState('info');
   const [isLoading, setIsLoading] = useState(!isNew);
@@ -180,6 +183,22 @@ export function ThemeBuilderPage() {
           const headerResponse = await themeParts.create(headerPartData);
           setHeaderPartId(headerResponse.data.id);
         }
+
+        // Generate and save header CSS
+        try {
+          const headerCss = generateThemeStepCss('header', {
+            puckData: headerDataRef.current,
+            themeData: themeData as ThemeData,
+          });
+          await saveSection(Number(themeId), 'header', headerCss);
+        } catch (cssError) {
+          console.error('Failed to save header CSS:', cssError);
+          toast({
+            title: 'Warning',
+            description: 'Theme saved but header CSS generation failed',
+            variant: 'destructive',
+          });
+        }
       }
 
       // Save footer part
@@ -200,6 +219,37 @@ export function ThemeBuilderPage() {
           const footerResponse = await themeParts.create(footerPartData);
           setFooterPartId(footerResponse.data.id);
         }
+
+        // Generate and save footer CSS
+        try {
+          const footerCss = generateThemeStepCss('footer', {
+            puckData: footerDataRef.current,
+            themeData: themeData as ThemeData,
+          });
+          await saveSection(Number(themeId), 'footer', footerCss);
+        } catch (cssError) {
+          console.error('Failed to save footer CSS:', cssError);
+          toast({
+            title: 'Warning',
+            description: 'Theme saved but footer CSS generation failed',
+            variant: 'destructive',
+          });
+        }
+      }
+
+      // Generate and save variables CSS from theme settings
+      try {
+        const variablesCss = generateThemeStepCss('settings', {
+          themeData: themeData as ThemeData,
+        });
+        await saveSection(Number(themeId), 'variables', variablesCss);
+      } catch (cssError) {
+        console.error('Failed to save variables CSS:', cssError);
+        toast({
+          title: 'Warning',
+          description: 'Theme saved but CSS variables generation failed',
+          variant: 'destructive',
+        });
       }
 
       // Navigate to the theme builder page if it was newly created

@@ -75,16 +75,16 @@ class ThemeEditorCssInjectionTest extends TestCase
 
         // Verify CSS contains variables needed by editor components
         $css = Storage::disk('public')->get("themes/{$activatedTheme->id}.css");
-        
+
         // Color variables for components
         $this->assertStringContainsString('--color-primary: #3b82f6;', $css);
         $this->assertStringContainsString('--color-secondary: #10b981;', $css);
         $this->assertStringContainsString('--color-accent: #f59e0b;', $css);
-        
+
         // Typography variables
         $this->assertStringContainsString('--font-family-body: Inter, sans-serif;', $css);
         $this->assertStringContainsString('--font-family-heading: Playfair Display, serif;', $css);
-        
+
         // Spacing variables
         $this->assertStringContainsString('--spacing-4: 1rem;', $css);
         $this->assertStringContainsString('--spacing-8: 2rem;', $css);
@@ -102,14 +102,14 @@ class ThemeEditorCssInjectionTest extends TestCase
 
         // Get active theme (as editor would)
         $activeTheme = Theme::forTenant($this->tenant->id)->active()->first();
-        
+
         $this->assertNotNull($activeTheme);
-        
+
         // Editor should be able to get CSS URL
         $cssUrl = $activeTheme->getCssUrl();
         $this->assertStringContainsString('/storage/themes/', $cssUrl);
         $this->assertStringContainsString('?v=', $cssUrl);
-        
+
         // CSS file should exist
         Storage::disk('public')->assertExists("themes/{$activeTheme->id}.css");
     }
@@ -123,7 +123,7 @@ class ThemeEditorCssInjectionTest extends TestCase
 
         // Activate theme
         $this->themeService->activateTheme($this->theme->slug, $this->tenant->id);
-        
+
         // Simulate editor updating theme colors
         $updatedTheme = $this->themeService->updateTheme($this->theme, [
             'colors' => [
@@ -136,7 +136,7 @@ class ThemeEditorCssInjectionTest extends TestCase
         $css = Storage::disk('public')->get("themes/{$updatedTheme->id}.css");
         $this->assertStringContainsString('--color-primary: #ef4444;', $css);
         $this->assertStringContainsString('--color-secondary: #8b5cf6;', $css);
-        
+
         // Old values should not exist
         $this->assertStringNotContainsString('--color-primary: #3b82f6;', $css);
         $this->assertStringNotContainsString('--color-secondary: #10b981;', $css);
@@ -154,16 +154,16 @@ class ThemeEditorCssInjectionTest extends TestCase
 
         // Simulate fetching theme data as editor would via API
         $theme = Theme::find($activatedTheme->id);
-        
+
         // Theme should have CSS URL and version methods
         $cssUrl = $theme->getCssUrl();
         $cssVersion = $theme->getCssVersion();
-        
+
         $this->assertNotEmpty($cssUrl);
         $this->assertNotEmpty($cssVersion);
         $this->assertIsString($cssUrl);
         $this->assertIsString($cssVersion);
-        
+
         // URL should match expected format
         $expectedPattern = "/^\/storage\/themes\/\d+\.css\?v=\d+$/";
         $this->assertTrue(preg_match($expectedPattern, $cssUrl) === 1);
@@ -190,13 +190,13 @@ class ThemeEditorCssInjectionTest extends TestCase
 
         // Activate first theme
         $this->themeService->activateTheme($this->theme->slug, $this->tenant->id);
-        
+
         $css1 = Storage::disk('public')->get("themes/{$this->theme->id}.css");
         $this->assertStringContainsString('--color-primary: #3b82f6;', $css1);
 
         // Switch to second theme (as editor would)
         $this->themeService->activateTheme($theme2->slug, $this->tenant->id);
-        
+
         $css2 = Storage::disk('public')->get("themes/{$theme2->id}.css");
         $this->assertStringContainsString('--color-primary: #8b5cf6;', $css2);
         $this->assertStringContainsString('--color-secondary: #ec4899;', $css2);
@@ -204,7 +204,7 @@ class ThemeEditorCssInjectionTest extends TestCase
         // Both CSS files should exist independently
         Storage::disk('public')->assertExists("themes/{$this->theme->id}.css");
         Storage::disk('public')->assertExists("themes/{$theme2->id}.css");
-        
+
         // First theme CSS should be unchanged
         $css1Check = Storage::disk('public')->get("themes/{$this->theme->id}.css");
         $this->assertStringContainsString('--color-primary: #3b82f6;', $css1Check);
@@ -266,10 +266,10 @@ class ThemeEditorCssInjectionTest extends TestCase
 
         // Version should have changed
         $this->assertNotEquals($initialVersion, $newVersion);
-        
+
         // URL should have different version parameter
         $this->assertNotEquals($initialUrl, $newUrl);
-        
+
         // Both should still be valid URLs
         $this->assertStringContainsString('?v=', $initialUrl);
         $this->assertStringContainsString('?v=', $newUrl);
