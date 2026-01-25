@@ -44,9 +44,8 @@ class ThemeService
         // Activate the theme
         $theme->activate();
 
-        // Generate CSS file for the theme
-        $css = $this->cssGenerator->generateCss($theme->theme_data);
-        $this->cssGenerator->writeCssFile($theme->id, $css);
+        // Note: CSS generation now handled by section-based approach (ThemeCssPublishService)
+        // No longer generating monolithic CSS file here
 
         return $theme;
     }
@@ -162,9 +161,8 @@ class ThemeService
         $theme->theme_data = $themeData;
         $theme->save();
 
-        // Regenerate CSS file with updated theme data
-        $css = $this->cssGenerator->generateCss($theme->theme_data);
-        $this->cssGenerator->writeCssFile($theme->id, $css);
+        // Note: CSS generation now handled by section-based approach (ThemeCssPublishService)
+        // No longer generating monolithic CSS file here
 
         return $theme;
     }

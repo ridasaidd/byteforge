@@ -135,7 +135,7 @@ class Theme extends Model
     public function getCssUrl(): string
     {
         $version = $this->getCssVersion();
-        return "/storage/themes/{$this->id}.css?v={$version}";
+        return "/storage/themes/{$this->id}/{$this->id}.css?v={$version}";
     }
 
     /**

@@ -127,7 +127,7 @@ function resolveColorValue(
 
 function isLayoutComponent(type?: string): boolean {
   if (!type) return false;
-  return ['box'].includes(type.toLowerCase());
+  return ['box', 'card', 'button'].includes(type.toLowerCase());
 }
 
 function isTypographyComponent(type?: string): boolean {
@@ -330,6 +330,92 @@ function buildBoxCss(component: PuckComponent, resolver: ThemeResolver): string 
   });
 }
 
+function buildCardCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const className = `card-${component.type}-${(props.id as string) || component.props?.id || 'unknown'}`;
+
+  const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
+  const titleColor = resolveColorValue(props.titleColor as ColorValue | string | undefined, resolver);
+  const descriptionColor = resolveColorValue(props.descriptionColor as ColorValue | string | undefined, resolver);
+  const iconColor = resolveColorValue(props.iconColor as ColorValue | string | undefined, resolver);
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const borderRadius = normalizeBorderRadius(props.borderRadius);
+
+  return buildLayoutCSS({
+    className,
+    display: props.display as ResponsiveDisplayValue,
+    position: props.position as ResponsivePositionValue,
+    zIndex: props.zIndex as ResponsiveZIndexValue,
+    opacity: props.opacity as ResponsiveOpacityValue,
+    overflow: props.overflow as ResponsiveOverflowValue,
+    visibility: props.visibility as ResponsiveVisibilityValue,
+    width: props.width as ResponsiveWidthValue,
+    maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
+    maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
+    padding,
+    margin,
+    border: props.border as BorderValue,
+    borderRadius,
+    shadow: props.shadow as ShadowValue,
+    backgroundColor,
+    resolveToken: resolver,
+  });
+}
+
+function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const className = `button-${component.type}-${(props.id as string) || component.props?.id || 'unknown'}`;
+
+  const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
+  const textColor = resolveColorValue(props.textColor as ColorValue | string | undefined, resolver);
+  const hoverBackgroundColor = resolveColorValue(props.hoverBackgroundColor as ColorValue | string | undefined, resolver);
+  const hoverTextColor = resolveColorValue(props.hoverTextColor as ColorValue | string | undefined, resolver);
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const borderRadius = normalizeBorderRadius(props.borderRadius);
+
+  const baseCss = buildLayoutCSS({
+    className,
+    display: props.display as ResponsiveDisplayValue,
+    width: props.width as ResponsiveWidthValue,
+    maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
+    maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
+    padding,
+    margin,
+    border: props.border as BorderValue,
+    borderRadius,
+    shadow: props.shadow as ShadowValue,
+    backgroundColor,
+    visibility: props.visibility as ResponsiveVisibilityValue,
+    resolveToken: resolver,
+  });
+
+  // Add text color if specified
+  let textColorCss = '';
+  if (textColor) {
+    textColorCss = `.${className} { color: ${textColor}; }`;
+  }
+
+  // Add hover states if specified
+  let hoverCss = '';
+  if (hoverBackgroundColor || hoverTextColor || props.hoverOpacity || props.hoverTransform) {
+    const hoverRules: string[] = [];
+    if (hoverBackgroundColor) hoverRules.push(`background-color: ${hoverBackgroundColor} !important;`);
+    if (hoverTextColor) hoverRules.push(`color: ${hoverTextColor} !important;`);
+    if (props.hoverOpacity) hoverRules.push(`opacity: ${props.hoverOpacity} !important;`);
+    if (props.hoverTransform) hoverRules.push(`transform: ${props.hoverTransform};`);
+    
+    if (hoverRules.length > 0) {
+      hoverCss = `.${className}:hover { ${hoverRules.join(' ')} }`;
+    }
+  }
+
+  return [baseCss, textColorCss, hoverCss].filter(Boolean).join('\n');
+}
+
 function resolveHeadingFontWeight(fontWeight: unknown, level: string): string {
   const levelFontWeightCssVarMap: Record<string, string> = {
     '1': 'var(--font-weight-bold, 700)',
@@ -497,6 +583,12 @@ export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData
     switch (type) {
       case 'box':
         cssRules.push(buildBoxCss(component, resolver));
+        break;
+      case 'card':
+        cssRules.push(buildCardCss(component, resolver));
+        break;
+      case 'button':
+        cssRules.push(buildButtonCss(component, resolver));
         break;
       default:
         break;

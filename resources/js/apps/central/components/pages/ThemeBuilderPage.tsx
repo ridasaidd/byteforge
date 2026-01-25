@@ -9,6 +9,7 @@ import { useToast } from '@/shared/hooks';
 import { themes } from '@/shared/services/api/themes';
 import { themeParts } from '@/shared/services/api/themeParts';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
+import { themeCssApi } from '@/shared/services/api/themeCss';
 import { useThemeCssSectionSave } from '@/shared/hooks/useThemeCssSectionSave';
 import { generateThemeStepCss } from '@/shared/puck/services/ThemeStepCssGenerator';
 import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData } from '@/shared/services/api/types';
@@ -166,6 +167,10 @@ export function ThemeBuilderPage() {
       }
 
       // Save header part
+      console.log('Header Data Ref:', headerDataRef.current);
+      console.log('Header has content:', headerDataRef.current?.content?.length > 0);
+      console.log('Header has root:', Object.keys(headerDataRef.current?.root || {}).length > 0);
+
       if (headerDataRef.current && (headerDataRef.current.content.length > 0 || Object.keys(headerDataRef.current.root).length > 0)) {
         const headerPartData = {
           theme_id: Number(themeId),
@@ -186,11 +191,20 @@ export function ThemeBuilderPage() {
 
         // Generate and save header CSS
         try {
+          console.log('Generating header CSS...');
           const headerCss = generateThemeStepCss('header', {
             puckData: headerDataRef.current,
             themeData: themeData as ThemeData,
           });
-          await saveSection(Number(themeId), 'header', headerCss);
+          console.log('Header CSS generated:', headerCss?.length, 'chars');
+          console.log('Header CSS preview:', headerCss?.substring(0, 200));
+          if (headerCss && headerCss.trim().length > 0) {
+            console.log('Calling saveSection for header...');
+            await saveSection(Number(themeId), 'header', headerCss);
+            console.log('Header CSS saved successfully');
+          } else {
+            console.log('Header CSS is empty, skipping save');
+          }
         } catch (cssError) {
           console.error('Failed to save header CSS:', cssError);
           toast({
@@ -202,6 +216,10 @@ export function ThemeBuilderPage() {
       }
 
       // Save footer part
+      console.log('Footer Data Ref:', footerDataRef.current);
+      console.log('Footer has content:', footerDataRef.current?.content?.length > 0);
+      console.log('Footer has root:', Object.keys(footerDataRef.current?.root || {}).length > 0);
+
       if (footerDataRef.current && (footerDataRef.current.content.length > 0 || Object.keys(footerDataRef.current.root).length > 0)) {
         const footerPartData = {
           theme_id: Number(themeId),
@@ -222,11 +240,20 @@ export function ThemeBuilderPage() {
 
         // Generate and save footer CSS
         try {
+          console.log('Generating footer CSS...');
           const footerCss = generateThemeStepCss('footer', {
             puckData: footerDataRef.current,
             themeData: themeData as ThemeData,
           });
-          await saveSection(Number(themeId), 'footer', footerCss);
+          console.log('Footer CSS generated:', footerCss?.length, 'chars');
+          console.log('Footer CSS preview:', footerCss?.substring(0, 200));
+          if (footerCss && footerCss.trim().length > 0) {
+            console.log('Calling saveSection for footer...');
+            await saveSection(Number(themeId), 'footer', footerCss);
+            console.log('Footer CSS saved successfully');
+          } else {
+            console.log('Footer CSS is empty, skipping save');
+          }
         } catch (cssError) {
           console.error('Failed to save footer CSS:', cssError);
           toast({
@@ -252,6 +279,20 @@ export function ThemeBuilderPage() {
         });
       }
 
+      // Publish master CSS file (merge all sections)
+      try {
+        console.log('Publishing theme CSS...');
+        const publishResult = await themeCssApi.publish(Number(themeId));
+        console.log('Theme CSS published:', publishResult);
+      } catch (publishError) {
+        console.error('Failed to publish theme CSS:', publishError);
+        toast({
+          title: 'Warning',
+          description: 'Theme saved but CSS publishing failed. Master CSS file not updated.',
+          variant: 'destructive',
+        });
+      }
+
       // Navigate to the theme builder page if it was newly created
       if (isNew && themeId) {
         navigate(`/dashboard/themes/${themeId}/builder`, { replace: true });
@@ -269,11 +310,13 @@ export function ThemeBuilderPage() {
   };
 
   const handleHeaderChange = (newData: Data) => {
+    console.log('Header onChange called with:', newData);
     headerDataRef.current = newData;
     setHeaderData(newData);
   };
 
   const handleFooterChange = (newData: Data) => {
+    console.log('Footer onChange called with:', newData);
     footerDataRef.current = newData;
     setFooterData(newData);
   };
@@ -344,17 +387,37 @@ export function ThemeBuilderPage() {
         is_active: true,
       };
 
+      let savedTemplate;
       if (editingTemplate) {
-        await pageTemplates.update(editingTemplate.id, templatePayload);
+        savedTemplate = await pageTemplates.update(editingTemplate.id, templatePayload);
         toast({
           title: 'Success',
           description: 'Template updated successfully',
         });
       } else {
-        await pageTemplates.create(templatePayload as CreatePageTemplateData);
+        savedTemplate = await pageTemplates.create(templatePayload as CreatePageTemplateData);
         toast({
           title: 'Success',
           description: 'Template created successfully',
+        });
+      }
+
+      // Generate and save template CSS
+      try {
+        const templateId = savedTemplate.data.id;
+        const templateCss = generateThemeStepCss('template', {
+          puckData: templateData,
+          themeData: themeData as ThemeData,
+        });
+        if (templateCss && templateCss.trim().length > 0) {
+          await saveSection(Number(id), `template-${templateId}`, templateCss);
+        }
+      } catch (error) {
+        console.error('Failed to save template CSS:', error);
+        toast({
+          title: 'Warning',
+          description: 'Template saved but CSS generation failed',
+          variant: 'default',
         });
       }
 

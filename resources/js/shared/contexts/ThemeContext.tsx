@@ -41,9 +41,12 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
    */
   useEffect(() => {
     if (theme?.id) {
-      // Build the CSS URL with cache-busting version
-      // Assuming theme has updated_at timestamp that we can use
-      const cssUrl = `/storage/themes/${theme.id}.css?v=${new Date().getTime()}`;
+      // Prefer backend-provided URL if present; fallback to nested path
+      const baseUrl = (theme as any).css_url || `/storage/themes/${theme.id}/${theme.id}.css`;
+      const version = (theme as any).css_version || new Date().getTime();
+      // Remove existing query params to avoid double version parameter
+      const cleanUrl = baseUrl.split('?')[0];
+      const cssUrl = `${cleanUrl}?v=${version}`;
 
       // Find or create a link element for theme CSS
       let themeLink = document.getElementById('theme-css-link') as HTMLLinkElement | null;
