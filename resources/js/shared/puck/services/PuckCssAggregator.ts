@@ -535,13 +535,16 @@ export function extractTypographyComponentsCss(puckData: Data, themeData?: Theme
   return cssRules.filter(Boolean).join('\n');
 }
 
-export function extractCssFromPuckData(puckData: Data, themeData?: ThemeData): string {
+export function extractCssFromPuckData(
+  puckData: Data,
+  themeData?: ThemeData,
+  includeVariables: boolean = true
+): string {
   const cssParts: string[] = [];
 
-  if (themeData && Object.keys(themeData).length > 0) {
+  // Only include variables if requested (settings step) or if themeData exists and includeVariables is true
+  if (includeVariables && themeData && Object.keys(themeData).length > 0) {
     cssParts.push(generateVariablesCss(themeData));
-  } else {
-    cssParts.push(':root {}');
   }
 
   const layoutCss = extractLayoutComponentsCss(puckData, themeData);

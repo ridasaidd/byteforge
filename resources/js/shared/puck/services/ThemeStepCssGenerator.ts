@@ -31,10 +31,11 @@ export function generateThemeStepCss(
     case 'footer':
     case 'template':
       // Puck-based steps: extract CSS from Puck data
+      // Pass includeVariables: false to avoid duplicating variables in section files
       if (!puckData) {
         return '';
       }
-      return extractCssFromPuckData(puckData, themeData);
+      return extractCssFromPuckData(puckData, themeData, false);
 
     default:
       throw new Error(`Unknown theme builder step: ${step}`);
