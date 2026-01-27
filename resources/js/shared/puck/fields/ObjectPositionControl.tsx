@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 
 export type ObjectPositionValue =
   | 'top-left' | 'top-center' | 'top-right'

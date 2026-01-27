@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { AlignLeft, AlignCenter, AlignRight, AlignJustify } from 'lucide-react';
 
 export interface AlignmentValue {

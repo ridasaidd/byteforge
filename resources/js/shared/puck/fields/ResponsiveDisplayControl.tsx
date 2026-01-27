@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { DisplayControl, type DisplayValue } from './DisplayControl';
 import { ResponsiveWrapper, type ResponsiveValue, generateResponsiveCSS, getBaseValue } from './ResponsiveWrapper';
 

@@ -1,5 +1,5 @@
 import { generateVariablesCss, extractCssFromPuckData } from './PuckCssAggregator';
-import type { Data } from '@measured/puck';
+import type { Data } from '@puckeditor/core';
 import type { ThemeData } from './PuckCssAggregator';
 
 export type ThemeBuilderStep = 'settings' | 'header' | 'footer' | 'template';

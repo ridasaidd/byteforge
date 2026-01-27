@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig } from '@puckeditor/core';
 import type { ReactElement } from 'react';
 import {
   assertHasInlineTrue,

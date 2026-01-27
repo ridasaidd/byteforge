@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import type { ReactElement } from 'react';
-import type { ComponentConfig } from '@measured/puck';
+import type { ComponentConfig } from '@puckeditor/core';
 import {
   renderPuckComponent,
   renderPuckComponentWithDragRef,

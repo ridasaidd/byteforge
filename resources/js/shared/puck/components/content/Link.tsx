@@ -1,6 +1,6 @@
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig } from '@puckeditor/core';
 import { Link as RouterLink } from 'react-router-dom';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import { PagesSelector } from './PagesSelector';
 import {
   ColorValue,
@@ -130,6 +130,7 @@ function LinkComponent({
   puck,
 }: LinkProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const className = customClassName ? `link-${id} ${customClassName}` : `link-${id}`;
   const elementId = customId || undefined;
 
@@ -148,8 +149,8 @@ function LinkComponent({
   const resolvedHoverColor = resolveColor(hoverColor, resolve('components.link.colors.hover', '#0052a3'));
   const resolvedHoverBgColor = resolveColor(hoverBackgroundColor, 'transparent');
 
-  // Generate CSS using centralized builder
-  const css = buildTypographyCSS({
+  // Generate CSS in edit mode for live preview
+  const css = isEditing ? buildTypographyCSS({
     className,
     display,
     width,
@@ -170,10 +171,10 @@ function LinkComponent({
     visibility,
     cursor,
     transition,
-  });
+  }) : '';
 
-  // Generate hover state CSS
-  const hoverCss = hoverColor || hoverBackgroundColor || hoverTransform
+  // Generate hover state CSS in edit mode
+  const hoverCss = isEditing && (hoverColor || hoverBackgroundColor || hoverTransform)
     ? `.${className}:hover {
         ${hoverColor ? `color: ${resolvedHoverColor} !important;` : ''}
         ${hoverBackgroundColor ? `background-color: ${resolvedHoverBgColor} !important;` : ''}
@@ -181,38 +182,33 @@ function LinkComponent({
       }`
     : '';
 
-  // Add text-decoration
-  const textDecorationCss = `.${className} {
+  // Add text-decoration in edit mode
+  const textDecorationCss = isEditing ? `.${className} {
     text-decoration: ${textDecoration};
-  }`;
-
-  // Check if in editor mode (puck prop with dragRef indicates editor)
-  const isInEditor = !!puck?.dragRef;
-
-  // Add pointer-events: none when in editor
-  const editorCss = isInEditor
-    ? `.${className} {
-        pointer-events: none;
-      }`
-    : '';
+  }` : '';
 
   // Link destination
   const destination = linkType === 'external' ? (href || '#') : (to || '/');
 
-  // Common props
-  const commonProps = {
-    className,
-    ...(elementId && { id: elementId }),
-    ref: puck?.dragRef || undefined,
-    onClick: isInEditor ? (e: React.MouseEvent) => e.preventDefault() : undefined,
-  };
-
   return (
     <>
-      <style>{css}{hoverCss}{textDecorationCss}{editorCss}</style>
-      {linkType === 'external' ? (
+      {isEditing && (css || hoverCss || textDecorationCss) && (
+        <style>{css}{hoverCss}{textDecorationCss}</style>
+      )}
+      {puck?.dragRef ? (
+        // In editor: render as span to prevent all navigation
+        <span
+          ref={puck.dragRef}
+          className={className}
+          {...(elementId && { id: elementId })}
+        >
+          {label}
+        </span>
+      ) : linkType === 'external' ? (
+        // Storefront: external link
         <a
-          {...commonProps}
+          className={className}
+          {...(elementId && { id: elementId })}
           href={destination}
           target={target}
           rel={target === '_blank' ? 'noopener noreferrer' : undefined}
@@ -220,8 +216,10 @@ function LinkComponent({
           {label}
         </a>
       ) : (
+        // Storefront: internal link with React Router
         <RouterLink
-          {...commonProps}
+          className={className}
+          {...(elementId && { id: elementId })}
           to={destination}
         >
           {label}

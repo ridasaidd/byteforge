@@ -5,7 +5,7 @@
  * Allows setting different max-heights for mobile, tablet, and desktop.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { MaxHeightControl, MaxHeightValue } from './MaxHeightControl';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

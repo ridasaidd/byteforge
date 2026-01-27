@@ -5,7 +5,7 @@
  * Allows setting different min-widths for mobile, tablet, and desktop.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { MinWidthControl, MinWidthValue } from './MinWidthControl';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

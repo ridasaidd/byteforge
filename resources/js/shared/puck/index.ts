@@ -39,8 +39,8 @@ export {
 // Config
 export { puckConfig, default as config } from './config';
 
-// Types from @measured/puck
-export type { Config, Data, ComponentConfig } from '@measured/puck';
+// Types from @puckeditor/core
+export type { Config, Data, ComponentConfig } from '@puckeditor/core';
 
 // Types from fields
 export type {

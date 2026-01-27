@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 
 export interface MaxWidthValue {
   value: string;

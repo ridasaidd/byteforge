@@ -5,7 +5,7 @@
  * Allows different position values across breakpoints.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 
 export type PositionValue = 'static' | 'relative' | 'absolute' | 'fixed' | 'sticky';

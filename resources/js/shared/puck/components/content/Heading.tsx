@@ -1,5 +1,5 @@
-import { ComponentConfig } from '@measured/puck';
-import { useTheme } from '@/shared/hooks';
+import { ComponentConfig } from '@puckeditor/core';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorValue,
   BorderValue,
@@ -152,6 +152,9 @@ function HeadingComponent({
   );
   const resolvedBgColor = resolveColor(backgroundColor, 'transparent', 'transparent');
 
+  // Detect if we're in edit mode
+  const isEditing = usePuckEditMode();
+
   // Generate CSS using centralized builder
   const css = buildTypographyCSS({
     className,
@@ -181,8 +184,9 @@ function HeadingComponent({
 
   return (
     <>
-      <style>{css}</style>
-      {fontSizeCss && <style>{fontSizeCss}</style>}
+      {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
+      {isEditing && <style>{css}</style>}
+      {isEditing && fontSizeCss && <style>{fontSizeCss}</style>}
       <Tag ref={puck?.dragRef} className={className}>
         {text}
       </Tag>

@@ -5,7 +5,7 @@
  * Allows different opacity values across breakpoints.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 import { OpacityControl } from './OpacityControl';
 

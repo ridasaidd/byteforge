@@ -2,12 +2,13 @@ import { describe, it, expect, vi } from 'vitest';
 import { defineBlockTestSuite } from '../../blockTestFactory';
 import { mockThemeResolver } from '../../testUtils';
 
-// Mock useTheme hook
+// Mock useTheme and usePuckEditMode hooks
 vi.mock('@/shared/hooks', () => ({
   useTheme: () => ({
     theme: {},
     resolve: mockThemeResolver()
-  })
+  }),
+  usePuckEditMode: () => true // Always return true in tests to generate CSS
 }));
 
 const defaultProps = {

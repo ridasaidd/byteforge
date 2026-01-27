@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { useState, useContext } from 'react';
 import { ThemeContext } from '@/shared/contexts/theme-context';
 

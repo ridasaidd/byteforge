@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateThemeStepCss, ThemeStepCssGenerator } from '../ThemeStepCssGenerator';
 import { generateVariablesCss, extractCssFromPuckData } from '../PuckCssAggregator';
-import type { Data } from '@measured/puck';
+import type { Data } from '@puckeditor/core';
 import type { ThemeData } from '../PuckCssAggregator';
 
 vi.mock('../PuckCssAggregator', () => ({

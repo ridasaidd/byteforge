@@ -1,15 +1,9 @@
-import type { ComponentConfig } from '@measured/puck';
+import type { ComponentConfig } from '@puckeditor/core';
 import { useCallback, useMemo } from 'react';
 import { FormProvider } from './FormContext';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
-  generatePaddingCSS,
-  generateMarginCSS,
-  generateWidthCSS,
-  generateDisplayCSS,
-  getDisplayBaseStyle,
-  isResponsiveValue,
-  BREAKPOINTS,
+  buildLayoutCSS,
   type ResponsiveSpacingValue,
   type ResponsiveWidthValue,
   type ResponsiveDisplayValue,
@@ -84,6 +78,7 @@ function FormComponent(props: FormProps) {
   } = props;
 
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const className = `form-${id || 'unknown'}`;
 
   const resolveColor = useCallback((colorVal: ColorValue | undefined, fallback: string): string => {
@@ -99,61 +94,38 @@ function FormComponent(props: FormProps) {
     }
   }, [resolve]);
 
-  const baseDisplay = getDisplayBaseStyle(display) || 'flex';
-  const isFlexMode = baseDisplay === 'flex' || baseDisplay === 'inline-flex';
-
-  const buildCSS = useMemo(() => (): string => {
+  // Build all CSS using buildLayoutCSS
+  const css = isEditing ? (() => {
     const rules: string[] = [];
 
-    const displayCSS = generateDisplayCSS(className, display);
-    if (displayCSS) rules.push(displayCSS);
+    // Resolve background color
+    const resolvedBgColor = resolveColor(backgroundColor, 'transparent');
 
-    if (isFlexMode) {
-      rules.push(`.${className} {
-  flex-direction: ${direction};
-  justify-content: ${justifyMap[justify]};
-  align-items: ${alignMap[align]};
-  gap: ${gap}px;
-}`);
+    // Use buildLayoutCSS for comprehensive layout styling
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      width,
+      padding,
+      margin,
+      border: border as any,  // BorderValue type compatibility
+      shadow,
+      backgroundColor: resolvedBgColor,
+      // Flex properties
+      direction,
+      justify,
+      align,
+      flexGap: { mobile: gap } as any,  // Convert gap string to responsive format
+    });
+    if (layoutCss) rules.push(layoutCss);
+
+    // Add min-height for editor
+    if (puck?.isEditing) {
+      rules.push(`.${className} { min-height: 100px; }`);
     }
 
-    if (display && isResponsiveValue(display)) {
-      if (display.tablet === 'flex' || display.tablet === 'inline-flex') {
-        rules.push(`@media (min-width: ${BREAKPOINTS.tablet}px) {
-  .${className} { flex-direction: ${direction}; justify-content: ${justifyMap[justify]}; align-items: ${alignMap[align]}; gap: ${gap}px; }
-}`);
-      }
-      if (display.desktop === 'flex' || display.desktop === 'inline-flex') {
-        rules.push(`@media (min-width: ${BREAKPOINTS.desktop}px) {
-  .${className} { flex-direction: ${direction}; justify-content: ${justifyMap[justify]}; align-items: ${alignMap[align]}; gap: ${gap}px; }
-}`);
-      }
-    }
-
-    const widthCSS = generateWidthCSS(className, width);
-    if (widthCSS) rules.push(widthCSS);
-
-    const paddingCSS = generatePaddingCSS(className, padding);
-    if (paddingCSS) rules.push(paddingCSS);
-
-    const marginCSS = generateMarginCSS(className, margin);
-    if (marginCSS) rules.push(marginCSS);
-
-    rules.push(`.${className} { background-color: ${resolveColor(backgroundColor, 'transparent')}; }`);
-
-    if (border && border.style !== 'none') {
-      rules.push(`.${className} { border: ${border.width}${border.unit} ${border.style} ${border.color}; border-radius: ${border.radius}${border.unit}; }`);
-    }
-
-    if (shadow && shadow.preset !== 'none') {
-      const shadowValue = shadow.preset === 'custom' ? shadow.custom : shadowPresets[shadow.preset];
-      if (shadowValue) rules.push(`.${className} { box-shadow: ${shadowValue}; }`);
-    }
-
-    if (puck?.isEditing) rules.push(`.${className} { min-height: 100px; }`);
-
-    return rules.join('\n');
-  }, [className, direction, justify, align, gap, display, isFlexMode, width, padding, margin, backgroundColor, border, shadow, puck?.isEditing, resolveColor]);
+    return rules.join('\\n');
+  })() : '';
 
   const handleSubmit = useCallback(async (values: Record<string, unknown>) => {
     if (puck?.isEditing) return;
@@ -176,7 +148,7 @@ function FormComponent(props: FormProps) {
 
   return (
     <>
-      <style>{buildCSS()}</style>
+      {isEditing && css && <style>{css}</style>}
       <FormProvider onSubmit={handleSubmit}>
         <form ref={puck?.dragRef} className={className} onSubmit={(e) => e.preventDefault()}>
           {FormFields && <FormFields />}

@@ -1,33 +1,34 @@
 # Theme CSS Implementation Guide
 
-**Date:** January 24, 2026  
-**Status:** Architecture Finalized → Ready for Implementation  
-**Branch:** `feature/theme-css-v3`
+**Date:** January 25, 2026  
+**Status:** Phase 5b Complete → Phase 6 Validation Next  
+**Branch:** `feature/theme-css-v2`
 
 ---
 
 ## Overview
 
-This guide outlines the step-by-step implementation of a CSS-based theming system that:
-- Uses a **two-layer CSS architecture** (shared base + tenant overrides)
+This guide outlines the CSS-based theming system that:
 - Generates CSS files from theme settings, stored on disk per theme ID
-- Supports **atomic section saves** in the Theme Builder (variables, header, footer, templates)
-- **Tenant customizations stored in database** (not files) for isolation
-- Delivers CSS via `<link>` tags (not inline styles or style tags)
+- Uses a **two-layer CSS architecture** (shared base + tenant overrides)
+- **Tenant customizations stored in database** (pivot table, not files)
+- Delivers CSS via `<link>` tags (cacheable, valid HTML)
 - Works in both public pages AND the Puck editor
-- Uses CSS variables for consistent, cacheable styling
 
 ---
 
-## Architecture Decision Summary
+## Architecture Summary
 
-### Key Decisions (Jan 24, 2026)
+### Current Status (Phase 5b Complete)
 
-1. **Shared base CSS per theme ID**: Published themes have a merged CSS file at `/storage/themes/{themeId}/{themeId}.css`
-2. **Tenant overrides in database**: Tenant customizations stored in `themes.custom_css` column, rendered inline after the base link
-3. **Atomic section saves**: Theme Builder saves each section (variables, header, footer, templates) to separate files
-4. **Publish/merge flow**: "Publish" button merges all section files into the master CSS
-5. **No cross-tenant impact**: Base CSS is per theme ID (unique per tenant's theme record)
+✅ CSS generation working - files stored at `/storage/themes/{id}/{id}.css`
+✅ Frontend PuckCssAggregator extracts CSS from Puck data
+✅ ThemeBuilderPage integration complete
+✅ 770+ tests passing
+
+### Immediate Next Step: Phase 6 - Validate CSS Loading
+
+Load CSS from disk to `<link>` tag in Blade head. Test on actual storefront to confirm the concept works before continuing.
 
 ---
 
@@ -37,19 +38,17 @@ This guide outlines the step-by-step implementation of a CSS-based theming syste
 ```
 /storage/themes/{themeId}/{themeId}.css
 ```
-- Generated from merged section files (variables + header + footer + templates)
-- Published via "Save All" / "Publish" action in Theme Builder
+- Generated from theme settings + component styles
+- Published when theme is saved in Theme Builder
 - Cached by browser, CDN-friendly
-- Never modified by tenant token edits (those go to Layer 2)
 
 ### Layer 2: Tenant Overrides (Database, Inline)
 ```sql
-themes.custom_css  -- Stores CSS variable overrides + component customizations
+tenant_themes.custom_css  -- Stores CSS variable overrides
 ```
 - Small payload (just the delta from tenant edits)
 - Rendered as inline `<style>` tag after base CSS link
 - Cascades over Layer 1 via CSS specificity
-- No file I/O; just DB column update
 
 ### Rendering Flow
 ```html
@@ -60,14 +59,218 @@ themes.custom_css  -- Stores CSS variable overrides + component customizations
   <!-- Layer 2: Tenant customizations (from DB, inline) -->
   <style>
     :root { --color-primary: #custom123; }
-    .box-xyz { background-color: #tenant-override; }
   </style>
 </head>
 ```
 
 ---
 
-## File Structure
+## Simplified Architecture: Pivot Table Approach
+
+### Problem with Current Cloning Approach
+
+Currently, when a tenant activates a system theme, we clone the entire theme record:
+- Duplicates `theme_data` (large JSON blob)
+- Creates orphaned theme records
+- Complex to update templates (need to update each clone)
+
+### New Approach: Pivot Table
+
+System themes remain as templates. Tenant activations + customizations stored in a pivot table.
+
+```sql
+-- themes table (templates only, no tenant_id needed)
+themes:
+  - id
+  - name
+  - slug
+  - theme_data (JSON - the template)
+  - is_system_theme (true for templates)
+
+-- NEW: tenant_themes pivot table
+tenant_themes:
+  - tenant_id (FK to tenants)
+  - theme_id (FK to themes)
+  - is_active (boolean)
+  - custom_css (text - tenant overrides)
+  - activated_at (timestamp)
+  - PRIMARY KEY (tenant_id, theme_id)
+```
+
+### Query: Get Active Theme + Customizations (Single Hit)
+
+```php
+// Eloquent relationship on Theme model
+public function tenants()
+{
+    return $this->belongsToMany(Tenant::class, 'tenant_themes')
+        ->withPivot('is_active', 'custom_css', 'activated_at')
+        ->withTimestamps();
+}
+
+// Usage - single query with JOIN
+$theme = Theme::whereHas('tenants', function($query) use ($tenantId) {
+    $query->where('tenant_id', $tenantId)
+          ->where('tenant_themes.is_active', true);
+})->with(['tenants' => function($query) use ($tenantId) {
+    $query->where('tenant_id', $tenantId);
+}])->first();
+
+// Access customizations from pivot
+$customCss = $theme?->tenants->first()?->pivot->custom_css;
+```
+
+### Benefits
+
+- ✅ **No data duplication** - theme_data stored once in system theme
+- ✅ **Single DB query** - JOIN gets theme + tenant customizations
+- ✅ **Easy template updates** - update once, all tenants see changes
+- ✅ **Clean separation** - templates vs tenant activations
+- ✅ **Performance** - Eloquent compiles to same efficient SQL
+
+---
+
+## Implementation Phases
+
+### Phase 6: Validate CSS Loading (IMMEDIATE - 1-2 hrs)
+
+**Goal:** Confirm CSS generation architecture works end-to-end
+
+**Tasks:**
+1. Update `public-central.blade.php` to add theme CSS link in `<head>`
+2. Test on actual storefront page
+3. Verify styles apply correctly
+4. Confirm cache-busting works
+
+**Files to Modify:**
+
+```blade
+{{-- resources/views/public-central.blade.php --}}
+<head>
+    ...existing...
+    
+    @if($theme ?? null)
+        <link rel="stylesheet" href="{{ $theme->getCssUrl() }}" id="theme-base-css">
+    @endif
+</head>
+```
+
+---
+
+### Phase 7: Architecture Refactor - Pivot Table (3-4 hrs)
+
+**Goal:** Replace cloning with pivot table approach
+
+**Migration: `create_tenant_themes_table`**
+```php
+Schema::create('tenant_themes', function (Blueprint $table) {
+    $table->string('tenant_id');
+    $table->foreignId('theme_id')->constrained()->onDelete('cascade');
+    $table->boolean('is_active')->default(false);
+    $table->longText('custom_css')->nullable();
+    $table->timestamp('activated_at')->nullable();
+    $table->timestamps();
+    
+    $table->primary(['tenant_id', 'theme_id']);
+    $table->foreign('tenant_id')->references('id')->on('tenants')->onDelete('cascade');
+    $table->index(['tenant_id', 'is_active']);
+});
+```
+
+**Actions to Create (using laravel-actions):**
+
+1. **`app/Actions/ActivateTheme.php`**
+```php
+class ActivateTheme
+{
+    public function handle(string $tenantId, int $themeId): Theme
+    {
+        // Deactivate all themes for this tenant
+        DB::table('tenant_themes')
+            ->where('tenant_id', $tenantId)
+            ->update(['is_active' => false]);
+        
+        // Activate or create pivot row
+        DB::table('tenant_themes')->updateOrInsert(
+            ['tenant_id' => $tenantId, 'theme_id' => $themeId],
+            ['is_active' => true, 'activated_at' => now(), 'updated_at' => now()]
+        );
+        
+        return Theme::find($themeId);
+    }
+}
+```
+
+2. **`app/Actions/SaveThemeCustomCss.php`**
+```php
+class SaveThemeCustomCss
+{
+    public function handle(string $tenantId, int $themeId, string $customCss): void
+    {
+        DB::table('tenant_themes')
+            ->where('tenant_id', $tenantId)
+            ->where('theme_id', $themeId)
+            ->update(['custom_css' => $customCss, 'updated_at' => now()]);
+    }
+}
+```
+
+**Update Theme Model:**
+```php
+// Add relationship
+public function tenants()
+{
+    return $this->belongsToMany(Tenant::class, 'tenant_themes')
+        ->withPivot('is_active', 'custom_css', 'activated_at')
+        ->withTimestamps();
+}
+
+// Add scope for active theme
+public function scopeActiveForTenant($query, string $tenantId)
+{
+    return $query->whereHas('tenants', function($q) use ($tenantId) {
+        $q->where('tenant_id', $tenantId)
+          ->where('tenant_themes.is_active', true);
+    });
+}
+```
+
+**Remove from ThemeService:**
+- Delete `cloneSystemTheme()` method
+- Update `activateTheme()` to use `ActivateTheme` action
+
+---
+
+### Phase 8: Tenant Customization UI (4-6 hrs)
+
+**Goal:** Allow tenants to customize colors, typography, spacing
+
+**Features:**
+- Live token editing (color pickers, font selectors)
+- Preview before applying
+- Save to `tenant_themes.custom_css`
+- Reset to theme defaults
+
+---
+
+### Phase 9: Puck Editor CSS (1-2 hrs)
+
+**Goal:** Ensure editor preview loads theme CSS
+
+**Note:** Puck does NOT use iframes. CSS in `<head>` applies to preview automatically.
+
+---
+
+### Phase 10: Extended Component Builders (2-3 hrs)
+
+**Goal:** Add CSS builders for remaining components
+
+**Current:** Box, Card, Button, Heading, Text
+**To Add:** Link, Image, Form
+
+---
+
+## File Structure (Reference)
 
 ```
 storage/themes/
@@ -80,255 +283,11 @@ storage/themes/
     └── preview.jpg               # ← Theme preview image
 ```
 
-**Benefits:**
-- All theme assets in one folder
-- Theme ID as folder name = no naming conflicts
-- Atomic section saves = overwrite specific file
-- Easy merge = concatenate all section files
-
 ---
 
-## Current vs New Architecture
+### Phase 6 Implementation Detail: Blade & SPA CSS Injection
 
-### Current (Working - Keep for now)
-```
-theme.theme_data (JSON in DB)
-  ↓
-ThemeProvider.resolve('colors.primary.500')
-  ↓
-Components compute inline styles at render time
-  ↓
-<style> tags injected per component
-```
-
-**Problems:**
-- Style tags in `<body>` (invalid HTML)
-- No caching (styles generated on every render)
-- Each component resolves tokens independently
-
-### New (To Implement)
-```
-Theme Builder saves sections → /storage/themes/{themeId}/{themeId}_{section}.css
-  ↓
-Publish merges sections → /storage/themes/{themeId}/{themeId}.css
-  ↓
-<link rel="stylesheet" href="/storage/themes/{themeId}/{themeId}.css?v={timestamp}">
-  ↓
-Tenant overrides (if any) → <style>{{ $theme->custom_css }}</style>
-  ↓
-Components use: var(--color-primary), var(--font-heading)
-```
-
-**Benefits:**
-- Valid HTML (`<link>` in `<head>`)
-- Browser-cacheable CSS file
-- Atomic saves = no merge conflicts
-- Tenant isolation via DB overrides
-- Single source of truth per theme
-
----
-
-## Implementation Phases
-
-### Phase 1: Database Migration (15 mins)
-
-**Goal:** Add `custom_css` column for tenant overrides
-
-**Files to CREATE:**
-
-1. **Migration: `add_custom_css_to_themes_table`**
-   ```php
-   Schema::table('themes', function (Blueprint $table) {
-       $table->longText('custom_css')->nullable()->after('theme_data');
-   });
-   ```
-
-**Files to MODIFY:**
-
-2. **`app/Models/Theme.php`**
-   - Add `custom_css` to `$fillable` array
-   - Add `getCssUrl(): string` method
-   - Add `getCssVersion(): string` method
-
----
-
-### Phase 2: Backend Services (2-3 hours)
-
-**Goal:** Create services for CSS section management and publishing
-
-**Files to CREATE:**
-
-1. **`app/Services/ThemeCssSectionService.php`** (NEW)
-   ```php
-   class ThemeCssSectionService
-   {
-       public function initializeThemeFolder(Theme $theme): void
-       public function saveSectionCss(int $themeId, string $section, string $css): void
-       public function getSectionCss(int $themeId, string $section): ?string
-       public function sectionExists(int $themeId, string $section): bool
-       public function getRequiredSections(): array // ['variables', 'header', 'footer']
-       public function getAllSectionFiles(int $themeId): array
-   }
-   ```
-
-2. **`app/Services/ThemeCssPublishService.php`** (NEW)
-   ```php
-   class ThemeCssPublishService
-   {
-       public function validateRequiredSections(int $themeId): array // Returns missing sections
-       public function publishTheme(int $themeId): string // Returns published CSS URL
-       public function mergeAllSections(int $themeId): string // Returns merged CSS content
-   }
-   ```
-
-3. **`tests/Unit/Services/ThemeCssSectionServiceTest.php`** (NEW)
-   - Test folder creation
-   - Test section save/read
-   - Test file existence checks
-
-4. **`tests/Unit/Services/ThemeCssPublishServiceTest.php`** (NEW)
-   - Test validation of required sections
-   - Test merge logic
-   - Test publish writes correct file
-
-5. **`tests/Feature/ThemeCssWorkflowTest.php`** (NEW)
-   - Test full workflow: create → save sections → publish
-
----
-
-### Phase 3: API Endpoints (1 hour)
-
-**Goal:** Expose section save and publish endpoints
-
-**Files to CREATE/MODIFY:**
-
-1. **`app/Http/Controllers/Api/ThemeCssController.php`** (NEW)
-   ```php
-   class ThemeCssController extends Controller
-   {
-       // POST /api/superadmin/themes/{id}/sections/{section}
-       public function saveSection(Request $request, int $themeId, string $section)
-       
-       // GET /api/superadmin/themes/{id}/sections/{section}
-       public function getSection(int $themeId, string $section)
-       
-       // POST /api/superadmin/themes/{id}/publish
-       public function publish(int $themeId)
-       
-       // GET /api/superadmin/themes/{id}/publish/validate
-       public function validatePublish(int $themeId)
-   }
-   ```
-
-2. **`routes/api.php`** - Add routes:
-   ```php
-   Route::prefix('superadmin/themes/{theme}')->group(function () {
-       Route::post('sections/{section}', [ThemeCssController::class, 'saveSection']);
-       Route::get('sections/{section}', [ThemeCssController::class, 'getSection']);
-       Route::post('publish', [ThemeCssController::class, 'publish']);
-       Route::get('publish/validate', [ThemeCssController::class, 'validatePublish']);
-   });
-   ```
-
-3. **`tests/Feature/Api/ThemeCssSectionApiTest.php`** (NEW)
-   - Test save section endpoint
-   - Test get section endpoint
-   - Test publish endpoint
-   - Test validation endpoint
-
----
-
-### Phase 4: Frontend CSS Aggregator (1-2 hours)
-
-**Goal:** Create service to extract CSS from Puck data
-
-**Files to CREATE:**
-
-1. **`resources/js/shared/puck/services/PuckCssAggregator.ts`** (NEW)
-   ```typescript
-   import { buildLayoutCSS, buildTypographyCSS } from '../fields/cssBuilder';
-   import type { Data } from '@measured/puck';
-   
-   export function extractCssFromPuckData(
-     puckData: Data,
-     themeResolver?: ThemeResolver
-   ): string
-   
-   export function generateVariablesCss(themeData: ThemeData): string
-   
-   // Helper to identify component type
-   function isLayoutComponent(type: string): boolean
-   function isTypographyComponent(type: string): boolean
-   ```
-
-2. **`resources/js/shared/services/api/themeCss.ts`** (NEW)
-   ```typescript
-   export const themeCssApi = {
-     saveSection: (themeId: number, section: string, css: string) => Promise<void>,
-     getSection: (themeId: number, section: string) => Promise<string>,
-     publish: (themeId: number) => Promise<{ cssUrl: string }>,
-     validatePublish: (themeId: number) => Promise<{ valid: boolean, missing: string[] }>,
-   };
-   ```
-
-3. **`resources/js/shared/puck/services/__tests__/PuckCssAggregator.test.ts`** (NEW)
-   - Test CSS extraction from sample Puck data
-   - Test variable generation from theme data
-   - Test nested component handling
-
----
-
-### Phase 5: Theme Builder Integration (2-3 hours)
-
-**Goal:** Wire up section saves on step transitions and publish on final step
-
-**Files to MODIFY:**
-
-1. **`resources/js/apps/central/components/pages/ThemeBuilderPage.tsx`**
-   - Import `PuckCssAggregator` and `themeCssApi`
-   - On "Next" from Step 1 (Info): Create theme + initialize folder
-   - On "Next" from Step 2 (Settings): Save `{id}_variables.css`
-   - On "Next" from Step 3 (Header): Save `{id}_header.css`
-   - On "Next" from Step 4 (Footer): Save `{id}_footer.css`
-   - On Step 5 (Templates): Save each `{id}_template-{name}.css`
-   - On "Publish": Call publish endpoint, show success with CSS URL
-
-2. **Add step transition handlers:**
-   ```typescript
-   const handleStepChange = async (fromStep: number, toStep: number) => {
-     // Save current step's CSS before transitioning
-     if (fromStep === 1 && themeId) {
-       // Settings step: generate and save variables CSS
-       const variablesCss = generateVariablesCss(themeData);
-       await themeCssApi.saveSection(themeId, 'variables', variablesCss);
-     }
-     if (fromStep === 2 && themeId) {
-       const headerCss = extractCssFromPuckData(headerData, resolve);
-       await themeCssApi.saveSection(themeId, 'header', headerCss);
-     }
-     // ... etc
-     setCurrentStep(toStep);
-   };
-   ```
-
-3. **Add publish button on final step:**
-   ```typescript
-   const handlePublish = async () => {
-     const validation = await themeCssApi.validatePublish(themeId);
-     if (!validation.valid) {
-       toast.error(`Missing sections: ${validation.missing.join(', ')}`);
-       return;
-     }
-     const { cssUrl } = await themeCssApi.publish(themeId);
-     toast.success('Theme published!');
-   };
-   ```
-
----
-
-### Phase 6: Blade & SPA CSS Injection (1 hour)
-
-**Goal:** Link published CSS in public pages + tenant overrides
+**Goal:** Link published CSS in public pages
 
 **Files to MODIFY:**
 
@@ -340,14 +299,16 @@ Components use: var(--color-primary), var(--font-heading)
        @if($theme ?? null)
            <link rel="stylesheet" href="{{ $theme->getCssUrl() }}" id="theme-base-css">
            
-           @if($theme->custom_css)
+           @if($customCss ?? null)
            <style id="theme-overrides-css">
-               {!! $theme->custom_css !!}
+               {!! $customCss !!}
            </style>
            @endif
        @endif
    </head>
    ```
+
+   Note: With pivot table approach, `$customCss` comes from `tenant_themes.custom_css` via the relationship.
 
 2. **`resources/js/shared/contexts/ThemeContext.tsx`** - For SPA navigation:
    ```tsx
@@ -363,7 +324,7 @@ Components use: var(--color-primary), var(--font-heading)
        }
        link.href = `/storage/themes/${theme.id}/${theme.id}.css?v=${theme.updated_at}`;
        
-       // Inject overrides style tag
+       // Inject overrides style tag (if tenant has customizations)
        let style = document.getElementById('theme-overrides-css') as HTMLStyleElement;
        if (theme.custom_css) {
          if (!style) {
@@ -381,7 +342,7 @@ Components use: var(--color-primary), var(--font-heading)
 
 ---
 
-### Phase 7: Editor Integration (30 mins)
+### Phase 7 Implementation Detail: Editor Integration
 
 **Goal:** Make CSS work in Puck editor preview
 
@@ -400,37 +361,59 @@ Components use: var(--color-primary), var(--font-heading)
 
 ---
 
-### Phase 8: Tenant Customization Flow (1 hour)
+### Phase 8 Implementation Detail: Tenant Customization Flow
 
-**Goal:** When tenant edits tokens on activated theme, save to `custom_css` column
+**Goal:** When tenant edits tokens on activated theme, save to `tenant_themes.custom_css`
 
-**Files to MODIFY:**
+**Using Actions (laravel-actions):**
 
-1. **`app/Http/Controllers/Api/ThemeController.php`**
-   - `updateCustomizations()`: Generate CSS from changed tokens, save to `custom_css`
+```php
+// app/Actions/SaveThemeCustomCss.php
+use Lorisleiva\Actions\Concerns\AsAction;
 
-2. **Create endpoint for tenant token updates:**
-   ```php
-   // PATCH /api/superadmin/themes/{id}/customize
-   public function customize(Request $request, Theme $theme)
-   {
-       $validated = $request->validate([
-           'custom_css' => 'required|string',
-       ]);
-       
-       $theme->update(['custom_css' => $validated['custom_css']]);
-       
-       return response()->json(['success' => true]);
-   }
-   ```
+class SaveThemeCustomCss
+{
+    use AsAction;
 
-3. **Frontend ThemeCustomizerPage** (future):
-   - Edit tokens → generate CSS string → save to `custom_css`
-   - Preview shows inline overrides immediately
+    public function handle(string $tenantId, int $themeId, string $customCss): void
+    {
+        DB::table('tenant_themes')
+            ->where('tenant_id', $tenantId)
+            ->where('theme_id', $themeId)
+            ->update([
+                'custom_css' => $customCss,
+                'updated_at' => now(),
+            ]);
+    }
+}
+```
+
+**API Endpoint:**
+```php
+// PATCH /api/superadmin/themes/{id}/customize
+public function customize(Request $request, Theme $theme)
+{
+    $validated = $request->validate([
+        'custom_css' => 'required|string',
+    ]);
+    
+    SaveThemeCustomCss::run(
+        tenant('id'),
+        $theme->id,
+        $validated['custom_css']
+    );
+    
+    return response()->json(['success' => true]);
+}
+```
+
+**Frontend ThemeCustomizerPage** (future):
+- Edit tokens → generate CSS string → save to pivot table
+- Preview shows inline overrides immediately
 
 ---
 
-### Phase 9: Convert Puck Components (2-3 hours)
+### Phase 9 Implementation Detail: Convert Puck Components
 
 **Goal:** Components use CSS variables instead of inline resolved colors
 

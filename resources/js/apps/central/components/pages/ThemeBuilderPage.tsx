@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Puck, Data } from '@measured/puck';
-import '@measured/puck/puck.css';
+import { Puck, Data } from '@puckeditor/core';
+import '@puckeditor/core/puck.css';
 import { Loader2, Save, ArrowLeft, Plus, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
-import { useToast } from '@/shared/hooks';
+import { useToast, useEditorCssLoader } from '@/shared/hooks';
+import { useSettingsRuntimeCss } from '@/shared/hooks/useSettingsRuntimeCss';
 import { themes } from '@/shared/services/api/themes';
 import { themeParts } from '@/shared/services/api/themeParts';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
@@ -69,6 +70,35 @@ export function ThemeBuilderPage() {
   // Refs to store current data
   const headerDataRef = useRef<Data>({ content: [], root: {} });
   const footerDataRef = useRef<Data>({ content: [], root: {} });
+  const [settingsRefreshTrigger, setSettingsRefreshTrigger] = useState(0);
+
+  // Load pre-generated CSS files for live preview in editor
+  // CSS from files provides base styles, component runtime CSS cascades over it
+  // Load CSS when theme is loaded (independent of active tab)
+  useEditorCssLoader({
+    themeId: id,
+    section: 'settings',
+    enabled: !isNew && !isLoading,
+    refreshTrigger: settingsRefreshTrigger,
+  });
+
+  useEditorCssLoader({
+    themeId: id,
+    section: 'header',
+    enabled: !isNew && !isLoading,
+  });
+
+  useEditorCssLoader({
+    themeId: id,
+    section: 'footer',
+    enabled: !isNew && !isLoading,
+  });
+
+  // Inject runtime CSS variables for live preview (settings only active when on settings tab)
+  useSettingsRuntimeCss({
+    themeData,
+    enabled: !isNew && activeTab === 'settings',
+  });
 
   useEffect(() => {
     if (!isNew && id) {
@@ -270,6 +300,9 @@ export function ThemeBuilderPage() {
           themeData: themeData as ThemeData,
         });
         await saveSection(Number(themeId), 'variables', variablesCss);
+
+        // Trigger refresh of settings CSS in editor
+        setSettingsRefreshTrigger((prev) => prev + 1);
       } catch (cssError) {
         console.error('Failed to save variables CSS:', cssError);
         toast({

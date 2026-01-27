@@ -5,7 +5,7 @@
  * Allows setting different font sizes for mobile, tablet, and desktop.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { FontSizeControl, FontSizeValue } from './FontSizeControl';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

@@ -1,6 +1,6 @@
-import { ComponentConfig, FieldLabel } from '@measured/puck';
+import { ComponentConfig, FieldLabel } from '@puckeditor/core';
 import { useState } from 'react';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
 import type { Media } from '@/shared/services/api';
 import {
@@ -9,6 +9,9 @@ import {
   type ShadowValue,
   type ResponsiveDisplayValue,
   type ResponsiveWidthValue,
+  type ResponsiveHeightValue,
+  type ResponsiveMaxWidthValue,
+  type ResponsiveMaxHeightValue,
   type ResponsiveSpacingValue,
   type ResponsiveVisibilityValue,
   // Field groups
@@ -19,15 +22,8 @@ import {
   advancedFields,
   // Utilities
   extractDefaults,
-  generateWidthCSS,
-  generateMaxWidthCSS,
-  generateMaxHeightCSS,
-  generateMarginCSS,
-  generateDisplayCSS,
-  generateVisibilityCSS,
+  buildLayoutCSS,
   ResponsiveSpacingControl,
-  DEFAULT_BORDER,
-  DEFAULT_BORDER_RADIUS,
 } from '../../fields';
 
 export interface ImageProps {
@@ -73,26 +69,8 @@ function ImageComponent({
   puck,
 }: ImageProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const className = `image-${id}`;
-
-  // Generate responsive CSS
-  const widthCss = width ? generateWidthCSS(className, width) : '';
-  const maxWidthCss = maxWidth ? generateMaxWidthCSS(className, maxWidth) : '';
-  const maxHeightCss = maxHeight ? generateMaxHeightCSS(className, maxHeight) : '';
-  const heightCss = height ? generateWidthCSS(className, height, 'height') : '';
-  const marginCss = margin ? generateMarginCSS(className, margin) : '';
-  const displayCss = display ? generateDisplayCSS(className, display) : '';
-  const visibilityCss = visibility ? generateVisibilityCSS(className, visibility) : '';
-
-  const aspectRatioCss = (() => {
-    if (!aspectRatio || aspectRatio === 'auto') return '';
-    const ratio = aspectRatio === 'custom' ? aspectRatioCustom : aspectRatio;
-    return ratio ? `
-      .${className} {
-        aspect-ratio: ${ratio};
-      }
-    ` : '';
-  })();
 
   // Border radius from theme with fallbacks (for preset)
   const borderRadiusMap = {
@@ -103,70 +81,52 @@ function ImageComponent({
     full: resolve('borderRadius.full', '9999px'),
   };
 
-  // Build CSS
-  const imgCss = `
-    .${className} {
-      object-fit: ${objectFit};
-      border-radius: ${borderRadiusMap[borderRadiusPreset || 'none']};
+  // Generate comprehensive CSS using buildLayoutCSS (only in edit mode)
+  const css = isEditing ? (() => {
+    const rules: string[] = [];
+
+    // Layout CSS with all responsive properties
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      width,
+      maxWidth,
+      maxHeight,
+      height: height as ResponsiveHeightValue, // ImageProps uses ResponsiveWidthValue for height, but buildLayoutCSS expects ResponsiveHeightValue
+      margin,
+      border,
+      borderRadius,
+      shadow,
+      visibility,
+      aspectRatio,
+      aspectRatioCustom,
+      objectFit,
+    });
+    if (layoutCss) rules.push(layoutCss);
+
+    // Always include object-fit (buildLayoutCSS only adds it when not 'cover')
+    rules.push(`
+      .${className} {
+        object-fit: ${objectFit};
+      }
+    `);
+
+    // Preset border radius (if specified)
+    if (borderRadiusPreset && borderRadiusPreset !== 'none') {
+      rules.push(`
+        .${className} {
+          border-radius: ${borderRadiusMap[borderRadiusPreset]};
+        }
+      `);
     }
-  `;
 
-  // Build border CSS from new per-side border format
-  const borderCss = (() => {
-    if (!border) return '';
-    const { top, unit = 'px' } = border;
-    if (!top || top.style === 'none' || top.width === '0') return '';
-    return `
-      .${className} {
-        border: ${top.width}${unit} ${top.style} ${top.color};
-      }
-    `;
-  })();
-
-  // Build border radius CSS from per-corner format
-  const borderRadiusCss = (() => {
-    if (!borderRadius) return '';
-    const { topLeft, topRight, bottomRight, bottomLeft, unit = 'px' } = borderRadius;
-    if (topLeft === '0' && topRight === '0' && bottomRight === '0' && bottomLeft === '0') return '';
-    return `
-      .${className} {
-        border-radius: ${topLeft}${unit} ${topRight}${unit} ${bottomRight}${unit} ${bottomLeft}${unit};
-      }
-    `;
-  })();
-
-  const shadowCss = (() => {
-    if (!shadow || shadow.preset === 'none') return '';
-    const shadowPresets: Record<string, string> = {
-      sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-      md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-      lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    };
-    const shadowValue = shadow.preset === 'custom' ? shadow.custom : shadowPresets[shadow.preset];
-    return shadowValue ? `
-      .${className} {
-        box-shadow: ${shadowValue};
-      }
-    ` : '';
-  })();
+    return rules.join('\n');
+  })() : '';
 
   return (
     <>
-      <style>
-        {imgCss}
-        {borderCss}
-        {borderRadiusCss}
-        {shadowCss}
-        {aspectRatioCss}
-        {widthCss}
-        {maxWidthCss}
-        {maxHeightCss}
-        {heightCss}
-        {marginCss}
-        {displayCss}
-        {visibilityCss}
-      </style>
+      {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
+      {isEditing && css && <style>{css}</style>}
       <img
         ref={puck?.dragRef}
         className={className}
@@ -331,9 +291,10 @@ export const Image: ComponentConfig<ImageProps> = {
 
   defaultProps: {
     src: '',
+    alt: 'Image',
+    objectFit: 'cover',
+    borderRadiusPreset: 'none',
     ...extractDefaults(
-      imageContentFields,
-      imageStyleFields,
       displayField,
       layoutFields,
       layoutAdvancedFields,

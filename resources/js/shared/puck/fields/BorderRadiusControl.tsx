@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { Link, Unlink } from 'lucide-react';
 
 export interface BorderRadiusValue {

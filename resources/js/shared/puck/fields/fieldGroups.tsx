@@ -13,7 +13,7 @@
  */
 
 import { useState } from 'react';
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
 import type { Media } from '@/shared/services/api';
 import {

@@ -1,4 +1,4 @@
-import type { Data } from '@measured/puck';
+import type { Data } from '@puckeditor/core';
 import {
   buildLayoutCSS,
   buildTypographyCSS,
@@ -127,12 +127,25 @@ function resolveColorValue(
 
 function isLayoutComponent(type?: string): boolean {
   if (!type) return false;
-  return ['box', 'card', 'button'].includes(type.toLowerCase());
+  return [
+    'box',
+    'card',
+    'button',
+    'image',
+    'navigation',
+    'form',
+    'textinput',
+    'textarea',
+    'select',
+    'radiogroup',
+    'checkbox',
+    'submitbutton',
+  ].includes(type.toLowerCase());
 }
 
 function isTypographyComponent(type?: string): boolean {
   if (!type) return false;
-  return ['heading', 'text', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(type.toLowerCase());
+  return ['heading', 'text', 'link', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(type.toLowerCase());
 }
 
 function isComponentLike(value: unknown): value is PuckComponent {
@@ -332,7 +345,7 @@ function buildBoxCss(component: PuckComponent, resolver: ThemeResolver): string 
 
 function buildCardCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
-  const className = `card-${component.type}-${(props.id as string) || component.props?.id || 'unknown'}`;
+  const className = `card-Card-${(props.id as string) || component.props?.id || 'unknown'}`;
 
   const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
   const titleColor = resolveColorValue(props.titleColor as ColorValue | string | undefined, resolver);
@@ -366,7 +379,7 @@ function buildCardCss(component: PuckComponent, resolver: ThemeResolver): string
 
 function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
-  const className = `button-${component.type}-${(props.id as string) || component.props?.id || 'unknown'}`;
+  const className = `button-Button-${(props.id as string) || component.props?.id || 'unknown'}`;
 
   const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
   const textColor = resolveColorValue(props.textColor as ColorValue | string | undefined, resolver);
@@ -407,7 +420,7 @@ function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): stri
     if (hoverTextColor) hoverRules.push(`color: ${hoverTextColor} !important;`);
     if (props.hoverOpacity) hoverRules.push(`opacity: ${props.hoverOpacity} !important;`);
     if (props.hoverTransform) hoverRules.push(`transform: ${props.hoverTransform};`);
-    
+
     if (hoverRules.length > 0) {
       hoverCss = `.${className}:hover { ${hoverRules.join(' ')} }`;
     }
@@ -572,6 +585,185 @@ function buildTextCss(component: PuckComponent, resolver: ThemeResolver): string
   return [css, fontSizeCss].filter(Boolean).join('\n');
 }
 
+function buildImageCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const id = props.id ?? component.id ?? 'image';
+  const className = `image-${id}`;
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const borderRadius = normalizeBorderRadius(props.borderRadius);
+
+  return buildLayoutCSS({
+    className,
+    display: props.display as ResponsiveDisplayValue,
+    width: props.width as ResponsiveWidthValue,
+    maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
+    maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
+    margin,
+    border: props.border as BorderValue,
+    borderRadius,
+    shadow: props.shadow as ShadowValue,
+    visibility: props.visibility as ResponsiveVisibilityValue,
+    // @ts-expect-error Puck runtime data is dynamically typed from editor
+    objectFit: props.objectFit,
+    // @ts-expect-error Puck runtime data is dynamically typed from editor
+    objectPosition: props.objectPosition,
+    // @ts-expect-error Puck runtime data is dynamically typed from editor
+    aspectRatio: props.aspectRatio,
+    resolveToken: resolver,
+  });
+}
+
+function buildLinkCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const id = props.id ?? component.id ?? 'link';
+  const className = `link-${id}`;
+
+  const resolvedColor = resolveColorValue(
+    props.color as ColorValue | string | undefined,
+    resolver,
+    'var(--component-link-color-default, inherit)',
+    'inherit'
+  );
+
+  const resolvedBackground = resolveColorValue(
+    props.backgroundColor as ColorValue | string | undefined,
+    resolver,
+    'transparent',
+    'transparent'
+  );
+
+  const hoverColor = resolveColorValue(
+    props.hoverColor as ColorValue | string | undefined,
+    resolver
+  );
+
+  const hoverBackgroundColor = resolveColorValue(
+    props.hoverBackgroundColor as ColorValue | string | undefined,
+    resolver
+  );
+
+  const fontWeight = (() => {
+    const value = props.fontWeight;
+    if (!value) return 'var(--font-weight-normal, 400)';
+    if (typeof value === 'string' || typeof value === 'number') return String(value);
+    if (typeof value === 'object' && 'type' in (value as Record<string, unknown>) && (value as Record<string, unknown>).type === 'custom') {
+      return (value as Record<string, unknown>).value as string;
+    }
+    return 'var(--font-weight-normal, 400)';
+  })();
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const borderRadius = normalizeBorderRadius(props.borderRadius);
+  const fontSize = normalizeFontSize(props.fontSize);
+
+  const baseCss = buildTypographyCSS({
+    className,
+    display: props.display as ResponsiveDisplayValue,
+    width: props.width as ResponsiveWidthValue,
+    maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
+    maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
+    padding,
+    margin,
+    border: props.border as BorderValue,
+    borderRadius,
+    shadow: props.shadow as ShadowValue,
+    textAlign: ((props.align || 'left') as string) as 'left' | 'center' | 'right' | 'justify',
+    color: resolvedColor,
+    backgroundColor: resolvedBackground,
+    fontWeight,
+    lineHeight: props.lineHeight as ResponsiveLineHeightValue,
+    letterSpacing: props.letterSpacing as ResponsiveLetterSpacingValue,
+    // @ts-expect-error Puck runtime data is dynamically typed from editor
+    textTransform: props.textTransform,
+    // @ts-expect-error Puck runtime data is dynamically typed from editor
+    textDecoration: props.textDecoration,
+    visibility: props.visibility as ResponsiveVisibilityValue,
+    resolveToken: resolver,
+  });
+
+  const fontSizeCss = fontSize ? generateFontSizeCSS(className, fontSize) : '';
+
+  let hoverCss = '';
+  if (hoverColor || hoverBackgroundColor || props.hoverTransform) {
+    const hoverRules: string[] = [];
+    if (hoverColor) hoverRules.push(`color: ${hoverColor} !important;`);
+    if (hoverBackgroundColor) hoverRules.push(`background-color: ${hoverBackgroundColor} !important;`);
+    if (props.hoverTransform) hoverRules.push(`transform: ${props.hoverTransform};`);
+
+    if (hoverRules.length > 0) {
+      hoverCss = `.${className}:hover { ${hoverRules.join(' ')} }`;
+    }
+  }
+
+  return [baseCss, fontSizeCss, hoverCss].filter(Boolean).join('\n');
+}
+
+function buildNavigationCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const id = props.id ?? component.id ?? 'navigation';
+  const className = `navigation-${id}`;
+
+  const backgroundColor = resolveColorValue(
+    props.backgroundColor as ColorValue | string | undefined,
+    resolver,
+    'transparent',
+    'transparent'
+  );
+
+  const textColor = resolveColorValue(
+    props.textColor as ColorValue | string | undefined,
+    resolver,
+    'inherit',
+    'inherit'
+  );
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const fontSize = normalizeFontSize(props.fontSize);
+
+  const baseCss = buildLayoutCSS({
+    className,
+    padding,
+    margin,
+    backgroundColor,
+    resolveToken: resolver,
+  });
+
+  const fontSizeCss = fontSize ? generateFontSizeCSS(className, fontSize) : '';
+  const colorCss = textColor ? `.${className} { color: ${textColor}; }` : '';
+
+  return [baseCss, fontSizeCss, colorCss].filter(Boolean).join('\n');
+}
+
+function buildFormComponentCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const type = (component.type || '').toLowerCase();
+  const id = props.id ?? component.id ?? type;
+  const className = `${type}-${id}`;
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const borderRadius = normalizeBorderRadius(props.borderRadius);
+
+  return buildLayoutCSS({
+    className,
+    display: props.display as ResponsiveDisplayValue,
+    width: props.width as ResponsiveWidthValue,
+    maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
+    maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
+    padding,
+    margin,
+    border: props.border as BorderValue,
+    borderRadius,
+    shadow: props.shadow as ShadowValue,
+    visibility: props.visibility as ResponsiveVisibilityValue,
+    resolveToken: resolver,
+  });
+}
+
 export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData): string {
   const resolver = createThemeResolver(themeData);
   const cssRules: string[] = [];
@@ -589,6 +781,21 @@ export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData
         break;
       case 'button':
         cssRules.push(buildButtonCss(component, resolver));
+        break;
+      case 'image':
+        cssRules.push(buildImageCss(component, resolver));
+        break;
+      case 'navigation':
+        cssRules.push(buildNavigationCss(component, resolver));
+        break;
+      case 'form':
+      case 'textinput':
+      case 'textarea':
+      case 'select':
+      case 'radiogroup':
+      case 'checkbox':
+      case 'submitbutton':
+        cssRules.push(buildFormComponentCss(component, resolver));
         break;
       default:
         break;
@@ -618,6 +825,9 @@ export function extractTypographyComponentsCss(puckData: Data, themeData?: Theme
         break;
       case 'text':
         cssRules.push(buildTextCss(component, resolver));
+        break;
+      case 'link':
+        cssRules.push(buildLinkCss(component, resolver));
         break;
       default:
         break;

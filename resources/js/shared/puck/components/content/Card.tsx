@@ -1,17 +1,20 @@
-import type { ComponentConfig } from '@measured/puck';
-import { useTheme } from '@/shared/hooks';
+import type { ComponentConfig } from '@puckeditor/core';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   type BorderValue,
   type BorderRadiusValue,
   type ShadowValue,
   type ColorValue,
   type ResponsiveWidthValue,
+  type ResponsiveMaxWidthValue,
+  type ResponsiveMaxHeightValue,
   type ResponsiveSpacingValue,
   type ResponsiveDisplayValue,
   type ResponsivePositionValue,
   type ResponsiveZIndexValue,
   type ResponsiveOpacityValue,
   type ResponsiveOverflowValue,
+  type ResponsiveVisibilityValue,
   // Field groups
   displayField,
   layoutFields,
@@ -24,7 +27,7 @@ import {
   advancedFields,
   // Utilities
   extractDefaults,
-  buildTypographyCSS,
+  buildLayoutCSS,
   ColorPickerControlColorful as ColorPickerControl,
 } from '../../fields';
 import {
@@ -94,7 +97,7 @@ function CardComponent({
   width,
   maxWidth,
   maxHeight,
-  display = { mobile: 'block' },
+  display,
   padding,
   margin,
   border,
@@ -105,12 +108,11 @@ function CardComponent({
   opacity,
   overflow,
   visibility,
-  cursor,
-  transition,
   customCss,
   puck,
 }: CardProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const className = `card-${id}`;
 
   // Resolve color helper
@@ -131,14 +133,16 @@ function CardComponent({
     return fallback;
   };
 
-  // Resolve colors
+  // Resolve colors (for inline styles on inner elements)
   const resolvedBackgroundColor = resolveColor(backgroundColor, mode === 'card' ? '#FFFFFF' : 'transparent');
   const resolvedIconColor = resolveColor(iconColor, resolve('colors.primary.500', '#3B82F6'));
   const resolvedTitleColor = resolveColor(titleColor, resolve('colors.foreground', '#111827'));
   const resolvedDescriptionColor = resolveColor(descriptionColor, resolve('colors.muted', '#6B7280'));
 
-  // Generate CSS using centralized builder
-  const css = buildTypographyCSS({
+  const IconComponent = icon && iconMap[icon] ? iconMap[icon] : null;
+
+  // Generate CSS using centralized builder (only in edit mode)
+  const containerCss = isEditing ? buildLayoutCSS({
     className,
     display,
     width,
@@ -154,18 +158,12 @@ function CardComponent({
     opacity,
     overflow,
     visibility,
-    textAlign: textAlign || 'left',
     backgroundColor: resolvedBackgroundColor,
-    cursor,
-    transition,
-    resolveToken: resolve,
-  });
-
-  const IconComponent = icon && iconMap[icon] ? iconMap[icon] : null;
+  }) + (textAlign ? `.${className} { text-align: ${textAlign}; }` : '') : '';
 
   return (
     <>
-      <style>{css}</style>
+      {isEditing && containerCss && <style>{containerCss}</style>}
       <div ref={puck?.dragRef} className={className}>
         {IconComponent && (
           <div style={{ marginBottom: '1rem', color: resolvedIconColor }}>

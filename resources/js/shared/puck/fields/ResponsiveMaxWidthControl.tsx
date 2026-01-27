@@ -5,7 +5,7 @@
  * Allows setting different max-widths for mobile, tablet, and desktop.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { MaxWidthControl, MaxWidthValue } from './MaxWidthControl';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

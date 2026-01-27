@@ -5,7 +5,7 @@
  * Allows setting different min-heights for mobile, tablet, and desktop.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { MinHeightControl, MinHeightValue } from './MinHeightControl';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

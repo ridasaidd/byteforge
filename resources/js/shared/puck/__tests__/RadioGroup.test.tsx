@@ -19,6 +19,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
+  usePuckEditMode: () => true
 }));
 
 // Dynamic import to ensure mock is applied
@@ -147,4 +148,5 @@ describe('RadioGroup Component', () => {
     expect(radios[1]).not.toBeChecked();
     expect(radios[2]).toBeChecked();
   });
+  usePuckEditMode: () => true
 });

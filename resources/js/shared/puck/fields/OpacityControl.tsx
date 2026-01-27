@@ -5,7 +5,7 @@
  * Used for transparency effects, ghost elements, overlays.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { useState, useEffect } from 'react';
 
 interface OpacityControlProps {

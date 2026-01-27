@@ -5,7 +5,7 @@
  * Allows different z-index values across breakpoints.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 import { ZIndexControl, ZIndexValue } from './ZIndexControl';
 

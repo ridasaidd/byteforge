@@ -2,7 +2,7 @@
  * ResponsiveGridGapControl
  * Responsive control for CSS grid gap with unit support (px, rem, em)
  */
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { GapControl, GapValue } from './GapControl';
 import { ResponsiveWrapper, type ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

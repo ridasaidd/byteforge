@@ -1,5 +1,5 @@
 import { ReactElement } from 'react';
-import { FieldLabel, createUsePuck } from '@measured/puck';
+import { FieldLabel, createUsePuck } from '@puckeditor/core';
 
 // Create a properly memoized usePuck hook with selector support
 const usePuck = createUsePuck();

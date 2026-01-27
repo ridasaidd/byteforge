@@ -5,7 +5,7 @@ import {
   extractLayoutComponentsCss,
   extractTypographyComponentsCss,
 } from '../PuckCssAggregator';
-import type { Data } from '@measured/puck';
+import type { Data } from '@puckeditor/core';
 
 describe('PuckCssAggregator', () => {
   describe('generateVariablesCss', () => {
@@ -226,8 +226,9 @@ describe('PuckCssAggregator', () => {
       const puckData: Partial<Data> = {
         content: [
           {
-            type: 'hero',
-            props: { padding: { top: 40, bottom: 40, left: 20, right: 20 } },
+            type: 'Box',
+            id: 'box-123',
+            props: { id: 'box-123', padding: { mobile: { top: '40', bottom: '40', left: '20', right: '20', unit: 'px', linked: false } } },
           },
         ],
       };
@@ -242,8 +243,9 @@ describe('PuckCssAggregator', () => {
       const puckData: Partial<Data> = {
         content: [
           {
-            type: 'hero',
-            props: { padding: { top: 40, bottom: 40, left: 20, right: 20 } },
+            type: 'Box',
+            id: 'box-456',
+            props: { id: 'box-456', padding: { mobile: { top: '40', bottom: '40', left: '20', right: '20', unit: 'px', linked: false } } },
           },
         ],
       };

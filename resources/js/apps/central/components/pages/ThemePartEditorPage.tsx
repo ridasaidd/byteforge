@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Puck, Data } from '@measured/puck';
-import '@measured/puck/puck.css';
+import { Puck, Data } from '@puckeditor/core';
+import '@puckeditor/core/puck.css';
 import { Loader2, Save, ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { useToast } from '@/shared/hooks';

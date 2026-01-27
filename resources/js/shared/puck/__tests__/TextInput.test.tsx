@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { FormProvider } from '../components/forms/FormContext';
 
-// Mock useTheme hook
+// Mock useTheme and usePuckEditMode hooks
 vi.mock('@/shared/hooks', () => ({
   useTheme: () => ({
     theme: {
@@ -25,6 +25,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
+  usePuckEditMode: () => true
 }));
 
 // Dynamic import to ensure mock is applied

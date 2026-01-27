@@ -23,6 +23,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
+  usePuckEditMode: () => true
 }));
 
 // Dynamic import to ensure mock is applied
@@ -125,4 +126,5 @@ describe('Checkbox Component', () => {
     renderCheckbox({ checkboxColor: { type: 'custom', value: '#ff0000' } });
     expect(screen.getByRole('checkbox')).toBeInTheDocument();
   });
+  usePuckEditMode: () => true
 });

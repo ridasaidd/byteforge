@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Config } from '@measured/puck';
+import { Config } from '@puckeditor/core';
 import {
   // Layout
   Box,

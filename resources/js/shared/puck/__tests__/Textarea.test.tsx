@@ -25,6 +25,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
+  usePuckEditMode: () => true
 }));
 
 // Dynamic import to ensure mock is applied
@@ -139,4 +140,5 @@ describe('Textarea Component', () => {
 
     expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
+  usePuckEditMode: () => true
 });

@@ -7,7 +7,7 @@ import { themes } from '@/shared/services/api/themes';
 import { themeParts } from '@/shared/services/api/themeParts';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
 import { themeCssApi } from '@/shared/services/api/themeCss';
-import type { Data } from '@measured/puck';
+import type { Data } from '@puckeditor/core';
 
 // Mock dependencies
 vi.mock('@/shared/services/api/themes');
@@ -23,7 +23,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Mock Puck
-vi.mock('@measured/puck', async (importOriginal) => {
+vi.mock('@puckeditor/core', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
