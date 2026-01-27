@@ -9,7 +9,9 @@ class TenantSeeder extends Seeder
 {
     public function run(): void
     {
+        activity()->disableLogging();
         // Create 2 additional random tenants (we already have 3 fixed tenants)
         Tenant::factory()->count(2)->create();
+        activity()->enableLogging();
     }
 }

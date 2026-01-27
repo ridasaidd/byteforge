@@ -1,13 +1,12 @@
-import type { ComponentConfig } from '@measured/puck';
+import type { ComponentConfig } from '@puckeditor/core';
 import { useMemo, useCallback } from 'react';
 import { useFormField } from './FormContext';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
-  generateDisplayCSS,
-  generateMarginCSS,
+  buildLayoutCSS,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
@@ -63,6 +62,7 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
   } = props;
 
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const { value, error, onChange, onBlur } = useFormField(name);
   const className = `checkbox-${id || name.replace(/\s+/g, '-').toLowerCase()}`;
 
@@ -104,16 +104,16 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
   );
 
   // Build all CSS - no inline styles
-  const buildCSS = (): string => {
+  const css = isEditing ? (() => {
     const rules: string[] = [];
 
-    // Display (responsive)
-    const displayCSS = generateDisplayCSS(className, display);
-    if (displayCSS) rules.push(displayCSS);
-
-    // Margin (responsive)
-    const marginCSS = generateMarginCSS(className, margin);
-    if (marginCSS) rules.push(marginCSS);
+    // Layout CSS with responsive properties
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      margin,
+    });
+    if (layoutCss) rules.push(layoutCss);
 
     // Container
     rules.push(`.${className} { display: block; }`);
@@ -166,11 +166,11 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
 .${className}-required { margin-left: 4px; color: ${colors.error}; }`);
 
     return rules.join('\n');
-  };
+  })() : '';
 
   return (
     <>
-      <style>{buildCSS()}</style>
+      {isEditing && css && <style>{css}</style>}
       <div ref={puck?.dragRef} className={className}>
         <label htmlFor={checkboxId} className={`${className}-label`}>
           {/* Custom Checkbox */}

@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { RgbaColorPicker } from 'react-colorful';
 import { useMemo, useState, useEffect, useRef } from 'react';
 import { useTheme } from '@/shared/hooks';

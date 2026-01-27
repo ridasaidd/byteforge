@@ -1,13 +1,12 @@
-import type { ComponentConfig } from '@measured/puck';
+import type { ComponentConfig } from '@puckeditor/core';
 import { useMemo, useCallback } from 'react';
 import { useFormField } from './FormContext';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
-  generateDisplayCSS,
-  generateMarginCSS,
+  buildLayoutCSS,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
@@ -167,8 +166,9 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
   } = props;
 
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const { value, error, onChange, onBlur } = useFormField(name);
-  const className = `radiogroup-${id || name.replace(/\\s+/g, '-').toLowerCase()}`;
+  const className = `radiogroup-${id || name.replace(/\s+/g, '-').toLowerCase()}`;
 
   // Helper to resolve color value
   const resolveColor = useCallback((colorVal: ColorValue | undefined, fallback: string): string => {
@@ -205,16 +205,16 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
   );
 
   // Build all CSS - no inline styles
-  const buildCSS = (): string => {
+  const css = isEditing ? (() => {
     const rules: string[] = [];
 
-    // Display (responsive)
-    const displayCSS = generateDisplayCSS(className, display);
-    if (displayCSS) rules.push(displayCSS);
-
-    // Margin (responsive)
-    const marginCSS = generateMarginCSS(className, margin);
-    if (marginCSS) rules.push(marginCSS);
+    // Layout CSS with responsive properties
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      margin,
+    });
+    if (layoutCss) rules.push(layoutCss);
 
     // Container
     rules.push(`.${className} { display: block; }`);
@@ -280,11 +280,11 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
 .${className}-help { margin-top: 4px; font-size: 13px; color: ${resolve('colors.muted', '#6b7280')}; }`);
 
     return rules.join('\n');
-  };
+  })() : '';
 
   return (
     <>
-      <style>{buildCSS()}</style>
+      {isEditing && css && <style>{css}</style>}
       <div ref={puck?.dragRef} className={className} role="radiogroup" aria-labelledby={`${groupId}-label`}>
         {/* Group Label */}
         {label && (

@@ -3,12 +3,13 @@ import { screen } from '@testing-library/react';
 import { defineBlockTestSuite } from '../../blockTestFactory';
 import { mockThemeResolver } from '../../testUtils';
 
-// Mock useTheme hook
+// Mock useTheme and usePuckEditMode hooks
 vi.mock('@/shared/hooks', () => ({
   useTheme: () => ({
     theme: {},
     resolve: mockThemeResolver()
   }),
+  usePuckEditMode: () => true,
   useQuery: vi.fn(() => ({ data: null }))
 }));
 
@@ -109,15 +110,17 @@ defineBlockTestSuite({
 
     describe('Alignment', () => {
       it('does not have container wrapper when no alignment', () => {
-        const { container } = renderWithDefaults({ alignment: undefined });
+        const { container } = renderWithDefaults({});
         const containerDiv = container.querySelector('.button-test-button-container');
         expect(containerDiv).not.toBeInTheDocument();
         const button = container.querySelector('button');
         expect(button).toBeInTheDocument();
       });
 
-      it('uses inline-flex layout when alignment is set', () => {
-        const { css } = renderWithDefaults({ alignment: { horizontal: 'center' } });
+      it('applies display property from layout CSS', () => {
+        const { css } = renderWithDefaults({ display: { mobile: 'block', tablet: 'inline-flex' } });
+        // Should contain responsive display CSS
+        expect(css).toContain('display: block');
         expect(css).toContain('display: inline-flex');
       });
     });

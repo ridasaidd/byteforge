@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { useTheme } from '@/shared/hooks';
 import { useState, useMemo } from 'react';
 

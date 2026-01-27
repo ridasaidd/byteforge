@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 
 export interface ResponsiveGapValue {
   mobile: { value: string; unit: 'px' | 'rem' | 'em' };

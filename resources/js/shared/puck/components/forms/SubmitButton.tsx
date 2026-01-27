@@ -1,13 +1,12 @@
-import type { ComponentConfig } from '@measured/puck';
+import type { ComponentConfig } from '@puckeditor/core';
 import { useMemo, useCallback } from 'react';
 import { useFormContext } from './FormContext';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
-  generateDisplayCSS,
-  generateMarginCSS,
+  buildLayoutCSS,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
@@ -67,6 +66,7 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
   } = props;
 
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const formContext = useFormContext();
   const className = `submitbutton-${id || 'button'}`;
 
@@ -117,16 +117,16 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
   const displayText = isSubmitting ? loadingText : text;
 
   // Build all CSS - no inline styles
-  const buildCSS = (): string => {
+  const css = isEditing ? (() => {
     const rules: string[] = [];
 
-    // Display (responsive) - applied directly to button
-    const displayCSS = generateDisplayCSS(className, display);
-    if (displayCSS) rules.push(displayCSS);
-
-    // Margin (responsive) - applied directly to button
-    const marginCSS = generateMarginCSS(className, margin);
-    if (marginCSS) rules.push(marginCSS);
+    // Layout CSS with responsive properties (applied directly to button)
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      margin,
+    });
+    if (layoutCss) rules.push(layoutCss);
 
     // Button styles
     rules.push(`.${className} {
@@ -150,7 +150,7 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
 .${className}-spinner { animation: spin 1s linear infinite; }`);
 
     return rules.join('\n');
-  };
+  })() : '';
 
   // Arrow icon
   const ArrowIcon = () => (
@@ -192,7 +192,7 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
 
   return (
     <>
-      <style>{buildCSS()}</style>
+      {isEditing && css && <style>{css}</style>}
       <button
         ref={puck?.dragRef}
         type="submit"

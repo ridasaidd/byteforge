@@ -7,6 +7,14 @@
 
     <title>{{ config('app.name', 'ByteForge') }}</title>
 
+    <!-- Theme CSS (Phase 2: CSS Variables) -->
+    @if($themeCssUrl ?? null)
+        <link rel="stylesheet" href="{{ $themeCssUrl }}" id="theme-css-link">
+    @else
+        <!-- TEMP: Hardcoded CSS link for smoke test; replace when dynamic loading is wired -->
+        <link rel="stylesheet" href="/storage/themes/1/1.css" id="theme-css-link-temp">
+    @endif
+
     <!-- Vite CSS -->
     @viteReactRefresh
     @vite(['resources/css/app.css'])

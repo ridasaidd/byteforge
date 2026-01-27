@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import { ReactElement } from 'react';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig } from '@puckeditor/core';
 
 /**
  * Render Puck component with ThemeProvider

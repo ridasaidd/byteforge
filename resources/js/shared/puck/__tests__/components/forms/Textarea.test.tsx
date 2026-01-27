@@ -2,11 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { defineBlockTestSuite } from '../../blockTestFactory';
 import { mockThemeResolver } from '../../testUtils';
 
-// Mock the theme hook
+// Mock the theme and usePuckEditMode hooks
 vi.mock('@/shared/hooks', () => ({
   useTheme: () => ({
     resolve: mockThemeResolver()
-  })
+  }),
+  usePuckEditMode: () => true
 }));
 
 // Mock FormContext

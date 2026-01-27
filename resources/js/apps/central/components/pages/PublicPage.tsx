@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
-import { Render, type Data } from '@measured/puck';
+import { Render, type Data } from '@puckeditor/core';
 import { config } from '../pages/puck-components';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 

@@ -2,10 +2,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import type React from 'react';
 import { Link } from 'react-router-dom';
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig } from '@puckeditor/core';
 import { navigations, type Navigation as NavigationType, type MenuItem } from '@/shared/services/api/navigations';
 import { Menu, ChevronDown, ExternalLink, X } from 'lucide-react';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorPickerControlColorful as ColorPickerControl,
   FontWeightControl,
@@ -16,8 +16,7 @@ import {
   type ResponsiveFontSizeValue,
   type ResponsiveSpacingValue,
   generateFontSizeCSS,
-  generatePaddingCSS,
-  generateMarginCSS
+  buildLayoutCSS
 } from '../../fields';
 
 // =============================================================================
@@ -283,6 +282,7 @@ function NavigationRenderer({
   puck,
 }: NavigationProps & { puck?: { metadata?: { navigations?: NavigationType[] } } }) {
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
 
   // Detect if we're in editor mode by checking if we're on an edit route
   // puck prop exists in both editor and public view (for metadata), so we check the URL
@@ -477,9 +477,23 @@ function NavigationRenderer({
   // Responsive CSS Generation
   // ==========================================================================
 
-  const fontSizeCss = fontSize ? generateFontSizeCSS(cssClassName, fontSize) : '';
-  const paddingCss = padding ? generatePaddingCSS(cssClassName, padding) : '';
-  const marginCss = margin ? generateMarginCSS(cssClassName, margin) : '';
+  const css = isEditing ? (() => {
+    const rules: string[] = [];
+
+    // Font size (responsive, handled separately)
+    const fontSizeCss = fontSize ? generateFontSizeCSS(cssClassName, fontSize) : '';
+    if (fontSizeCss) rules.push(fontSizeCss);
+
+    // Layout CSS for padding and margin
+    const layoutCss = buildLayoutCSS({
+      className: cssClassName,
+      padding,
+      margin,
+    });
+    if (layoutCss) rules.push(layoutCss);
+
+    return rules.join('\n');
+  })() : '';
 
   // ==========================================================================
   // Render Menu Item
@@ -673,9 +687,7 @@ function NavigationRenderer({
   return (
     <>
       {/* Responsive CSS */}
-      {(fontSizeCss || paddingCss || marginCss) && (
-        <style>{fontSizeCss}{paddingCss}{marginCss}</style>
-      )}
+      {isEditing && css && <style>{css}</style>}
 
       {/* Off-canvas backdrop overlay */}
       {mobileStyle === 'off-canvas' && (

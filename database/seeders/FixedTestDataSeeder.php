@@ -21,6 +21,9 @@ class FixedTestDataSeeder extends Seeder
      */
     public function run(): void
     {
+        // Disable activity logging during seeding
+        activity()->disableLogging();
+
         // Create or get fixed tenants
         $tenantOne = Tenant::firstOrCreate(
             ['id' => 'tenant_one'],
@@ -143,5 +146,8 @@ class FixedTestDataSeeder extends Seeder
         $this->command->info("    • {$tenantTwo->domain}");
         $this->command->info("  - {$userSingle->email} (password: password) owns:");
         $this->command->info("    • {$tenantThree->domain}");
+
+        // Re-enable activity logging
+        activity()->enableLogging();
     }
 }

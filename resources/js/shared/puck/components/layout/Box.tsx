@@ -1,6 +1,6 @@
-import { ComponentConfig } from '@measured/puck';
+import { ComponentConfig } from '@puckeditor/core';
 import React from 'react';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   BorderValue,
   BorderRadiusValue,
@@ -137,60 +137,69 @@ export function BoxComponent({
   const className = customClassName ? `box-${id} ${customClassName}` : `box-${id}`;
   const elementId = customId || undefined;
 
-  // Resolve background color
-  const resolvedBackgroundColor = (() => {
-    if (!backgroundColor) return undefined;
-    if (typeof backgroundColor === 'string') {
-      return backgroundColor || undefined; // Filter out empty strings
+  // Detect if we're in edit mode
+  const isEditing = usePuckEditMode();
+
+  // Resolve background color - handle ColorValue object properly
+  const resolvedBgColor = (() => {
+    if (!backgroundColor) return 'transparent';
+
+    const value = backgroundColor.value;
+
+    // If value is already a color (starts with # or rgb), use it directly
+    if (value && (value.startsWith('#') || value.startsWith('rgb'))) {
+      return value;
     }
-    if (backgroundColor.type === 'theme') {
-      // If value is already a hex color, use it directly
-      if (backgroundColor.value?.startsWith('#')) {
-        return backgroundColor.value;
-      }
-      const resolved = resolve(backgroundColor.value);
-      return resolved || undefined;
+
+    // If type is theme and value is a theme path, resolve it
+    if (backgroundColor.type === 'theme' && value) {
+      return resolve(value, 'transparent');
     }
-    // For custom type, return the value only if it's not empty
-    return backgroundColor.value || undefined;
+
+    // If type is custom, use the value
+    if (backgroundColor.type === 'custom' && value) {
+      return value;
+    }
+
+    return 'transparent';
   })();
 
-  // Generate all CSS using centralized builder
-  const layoutCss = buildLayoutCSS({
+  // Generate CSS using centralized builder (only in edit mode)
+  const layoutCss = isEditing ? buildLayoutCSS({
     className,
     display,
     direction,
     justify,
     align,
     wrap,
-    flexGap,
+    gap: flexGap,
     numColumns,
     gridGap,
     alignItems,
-    position,
-    zIndex,
-    opacity,
-    overflow,
-    visibility,
     width,
     maxWidth,
     maxHeight,
     padding,
     margin,
-    border,
-    borderRadius,
-    shadow,
-    resolveToken: resolve,
-    backgroundColor: resolvedBackgroundColor,
+    backgroundColor: resolvedBgColor,
     backgroundImage,
     backgroundSize,
     backgroundPosition,
     backgroundRepeat,
-  });
+    border,
+    borderRadius,
+    shadow,
+    position,
+    zIndex,
+    opacity,
+    overflow,
+    visibility,
+  }) : '';
 
   return (
     <>
-      <style>{layoutCss}</style>
+      {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
+      {isEditing && layoutCss && <style>{layoutCss}</style>}
       {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
       {Items && <Items {...({ className, ...(elementId && { id: elementId }) } as any)} />}
       {customCss && <style>{customCss}</style>}

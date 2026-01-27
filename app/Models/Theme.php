@@ -32,6 +32,11 @@ class Theme extends Model
         'is_system_theme' => 'boolean',
     ];
 
+    protected $appends = [
+        'css_url',
+        'css_version',
+    ];
+
     public function getActivitylogOptions(): \Spatie\Activitylog\LogOptions
     {
         return \Spatie\Activitylog\LogOptions::defaults()
@@ -119,6 +124,48 @@ class Theme extends Model
         }
 
         return $value;
+    }
+
+    /**
+     * Get the public URL for this theme's generated CSS file.
+     * Includes cache-busting version parameter.
+     *
+     * @return string
+     */
+    public function getCssUrl(): string
+    {
+        $version = $this->getCssVersion();
+        return "/storage/themes/{$this->id}/{$this->id}.css?v={$version}";
+    }
+
+    /**
+     * Get the version string for cache-busting (based on updated_at timestamp).
+     *
+     * @return string
+     */
+    public function getCssVersion(): string
+    {
+        return (string) $this->updated_at->timestamp;
+    }
+
+    /**
+     * Accessor for css_url attribute (for JSON serialization).
+     *
+     * @return string
+     */
+    public function getCssUrlAttribute(): string
+    {
+        return $this->getCssUrl();
+    }
+
+    /**
+     * Accessor for css_version attribute (for JSON serialization).
+     *
+     * @return string
+     */
+    public function getCssVersionAttribute(): string
+    {
+        return $this->getCssVersion();
     }
 
     /**

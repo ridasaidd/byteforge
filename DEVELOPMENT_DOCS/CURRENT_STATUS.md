@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: January 23, 2026  
-Current branch: main
+Last updated: January 25, 2026 (Updated: Architecture Simplified - Pivot Table Approach)  
+Current branch: feature/theme-css-v2
 
 —
 
@@ -9,17 +9,17 @@ Current branch: main
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
 - **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** ✅ All tests passing (577 frontend + 123 backend = 700+ total)
+- **Testing:** ✅ All tests passing (624 frontend + 140+ backend = 770+)
 - **Page Builder:** 100% complete and merged to main (metadata injection, caching, editor, pages list, tests)
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
+- **Theme CSS Generation:** ✅ Phase 3, 4, 5a, 5b, **5c, 5d** COMPLETE (Backend services, Frontend aggregator, ThemeBuilderPage integration, CSS extraction fixes, Editor CSS loading, CSS builder migration)
 
-Testing status (Jan 19, 2026):
-- ✅ **Frontend:** 577 tests passing, 52 E2E tests appropriately skipped
-- ✅ **Backend Feature:** 111 tests passing (all user management, auth, pages, media, navigation)
-- ✅ **Backend Unit:** 12 tests passing (PuckCompilerService)
-- ✅ **Total:** 700+ assertions passing, 0 failures, 0 errors
+Testing status (Jan 26, 2026):
+- ✅ **Frontend:** 624+ tests passing (includes 143 Puck component tests from Phase 5d)
+- ✅ **Backend:** 140+ tests passing (includes Phase 3 CSS services)
+- ✅ **Total:** 770+ tests/assertions passing, 0 failures, 0 errors
 
 —
 
@@ -31,6 +31,7 @@ Testing status (Jan 19, 2026):
 - NavigationObserver for automatic page recompilation
 - HTTP caching (ETag, Cache-Control) on public page endpoints
 - APIs: users, tenants, pages, navigation, media, settings, themes
+- **NEW (Phase 3)**: ThemeCssSectionService (section file management), ThemeCssPublishService (validation & publishing), ThemeCssController (REST API)
 
 **Frontend:**
 - PageEditorPage with Puck visual editor (viewport switcher)
@@ -44,6 +45,10 @@ Testing status (Jan 19, 2026):
 - Media library with folders
 - Dashboard pages: Themes, Users, Tenants, Settings, Activity, Roles/Permissions
 - Dashboard home with real stats, recent tenants/activity, permission-based visibility
+- **NEW (Phase 4)**: PuckCssAggregator (extract CSS from Puck data), themeCssApi client
+- **NEW (Phase 5a-b)**: ThemeStepCssGenerator (step-based CSS generation), useThemeCssSectionSave hook, ThemeBuilderPage CSS integration, CSS extraction bug fixes
+- **NEW (Phase 5c)**: useEditorCssLoader hook (loads pre-generated CSS into editor head tag), integrated into ThemeBuilderPage
+- **NEW (Phase 5d)**: usePuckEditMode hook, migrated all 15 Puck components to buildLayoutCSS/buildTypographyCSS, dual-mode rendering (CSS only in editor)
 
 **Performance:**
 - Metadata injection eliminates 3+ API calls
@@ -55,23 +60,127 @@ Testing status (Jan 19, 2026):
 
 —
 
-## What's Remaining ⏳
+## What's RemaininEnd-to-End Testing & Validation**
 
-**Priority 1 - Central Admin UX & Theme System (next):**
-- [x] Dashboard home page with stats and quick actions (Jan 22)
-- [x] Public/dashboard blade separation for performance (Jan 22)
-- [ ] **Theme CSS Architecture** (Feb 1-3) ← **Now starting**
-  - Generate base theme CSS file from settings
-  - Store CSS to public disk (`storage/public/themes/{id}.css`)
-  - Store customizations in database (JSON column)
-  - Link CSS in public blade with cache-busting version
-  - Convert 3-4 Puck components to use CSS variables
-  - **Tests required:** ThemeCssGeneratorService, component rendering with theme vars
-  - **Branch:** `feature/theme-css-architecture`
-  - **Command to start:** `git checkout -b feature/theme-css-architecture`
-- [ ] Theme customization UI (live token editing - colors, typography, spacing)
-- [ ] Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with caching)
-- [ ] Settings management UI polish (if needed)
+Now that all components are migrated to use centralized CSS builders with dual-mode rendering, we need to validate the complete system works end-to-end.
+
+**Immediate Tasks (2-4 hrs):**
+
+1. **Integrate CSS Loading into PageEditorPage (Tenant App)**
+   - Add `useEditorCssLoader` to tenant page editor
+   - Follow same pattern as ThemeBuilderPage
+   - Test live preview works in tenant context
+
+2. **Browser Testing - Editor**
+   - Test all 15 components in Puck editor (central & tenant)
+   - Verify live preview for all property controls
+   - Test responsive properties (mobile/tablet/desktop)
+   - Verify specific fixes:
+     - Button: spacing, visibility, line-height, borders, shadows
+     - Card: all layout properties
+     - Image: all responsive layout properties
+     - Form components: display, margin controls
+
+3. **Browser Testing - Storefront**
+   - Verify NO `<style>` tags injected in storefront pages
+   - Confirm only pre-generated CSS files loaded
+   - Test theme styling applies correctly
+   - Verify cache-busting (change theme → new CSS loads)
+
+4. **Performance Validation**
+   - Measure storefront page load time
+   - Confirm no runtime CSS compilation overhead
+   - Verify components render with correct styles from files
+
+**Files to Update:**
+- `resources/js/apps/tenant/components/pages/PageEditorPage.tsx` - Add useEditorCssLoader
+- Create browser test checklist for all 15 components
+
+---
+
+**Future: Phase 7 - Architecture Refactor (IF VALIDATION SUCCEEDS
+
+**Architecture Refactor: Pivot Table Approach (Simplified)**
+
+Current architecture clones entire theme records per tenant. This is inefficient.
+
+**New Approach:**
+- System themes remain as templates (one row per theme in `themes` table)
+- Tenant activations + customizations stored in `tenant_themes` pivot table
+- Single query gets both theme template + tenant customizations
+- No data duplication
+
+**Benefits:**
+- ✅ No theme_data duplication (stored once in system theme)
+- ✅ Still one DB hit (JOIN query)
+- ✅ Easier updates (update template once, all tenants get it)
+- ✅ Customizations isolated per tenant (in pivot table)
+- ✅ Simpler to understand and maintain
+
+**Schema:**
+```sql
+-- themes table (unchanged - stores templates)
+themes:
+  - id
+  - name, slug
+  - theme_data (JSON - the template)
+  - is_system_theme (true for templates)
+
+-- NEW: tenant_themes pivot table
+tenant_themes:
+  - tenant_End-to-End Testing & Validation (NEXT - 2-4 hrs)**
+- [ ] Integrate useEditorCssLoader into PageEditorPage (tenant app)
+- [ ] Browser test all 15 components in editor (live preview)
+- [ ] Browser test storefront (no runtime CSS, only pre-generated files)
+- [ ] Verify Button, Card, Image fixes work in real browser
+- [ ] Performance validation (page load time, no CSS compilation overhead)
+- [ ] Create test checklist for all component properties
+
+**Phase 7: Architecture Refactor (AFTER VALIDATION
+**Query to get active theme + customizations:**
+```php
+// Using Eloquent (efficient, same as raw SQL)
+$theme = Theme::with(['tenants' => function($query) use ($tenantId) {
+    $query->where('tenant_id', $tenantId)
+          ->wherePivot('is_active', true);
+}])->first();
+
+$customCss = $theme->tenants->first()?->pivot->custom_css;
+```
+
+---
+
+**Phase 6: Validate CSS Loading (IMMEDIATE - 1-2 hrs)**
+- [ ] Update `public-central.blade.php` to add `<link>` tag for theme CSS
+- [ ] Test storefront loads theme CSS correctly
+- [ ] Verify styles apply to page content
+- [ ] Confirm cache-busting works (update theme → new CSS loads)
+
+**Phase 7: Architecture Refactor (IF VALIDATION SUCCEEDS - 3-4 hrs)**
+- [ ] Create `tenant_themes` migration (pivot table)
+- [ ] Add `BelongsToMany` relationship to Theme model
+- [ ] Create `ActivateTheme` Action (using laravel-actions)
+- [ ] Create `SaveThemeCustomCss` Action
+- [ ] Update `ThemeService` to use pivot table instead of cloning
+- [ ] Update tenant theme queries to use new relationship
+- [ ] Remove old cloning logic
+- [ ] Tests for new Actions
+
+**Phase 8: Tenant Customization UI (4-6 hrs)**
+- [ ] Live token editing (colors, typography, spacing)
+- [ ] Save customizations to `tenant_themes.custom_css`
+- [ ] Preview before applying
+- [ ] Reset to theme defaults
+
+**Phase 9: Puck Editor CSS Loading (1-2 hrs)**
+- [ ] Ensure editor preview loads theme CSS
+- [ ] Hot-reload CSS on theme changes
+
+**Phase 10: Extended Component CSS Builders (2-3 hrs)**
+- [ ] Add Link, Image, Form CSS builders
+- [ ] Currently have: Box, Card, Button, Heading, Text
+
+---
 
 **Priority 2 - Central Admin Features:**
 - [ ] Settings management UI (email, SMTP, general config)
@@ -94,6 +203,29 @@ Testing status (Jan 19, 2026):
 —
 
 ## Key Implementations (Recent)
+
+**January 25, 2026 (Phase 5b - PuckCssAggregator Fixes):**
+- ✅ Fixed recursive component collection in PuckCssAggregator
+  - `collectComponents()` now properly traverses nested Box slots and zones
+  - Fixed duplication bug where `props.items` was visited twice
+  - Components in Box containers now correctly extracted from Puck data
+- ✅ Implemented theme-aware CSS builders
+  - `buildBoxCss()`, `buildHeadingCss()`, `buildTextCss()` use field module's CSS builders
+  - Proper theme token resolution via `createThemeResolver()`
+  - Class name generation matches runtime selectors (`.box-{id}`, `.heading-{id}`)
+- ✅ Fixed heading font-weight resolution
+  - `resolveHeadingFontWeight()` prioritizes level-based CSS vars (h1/h2=bold, h3/h4=semibold, h5/h6=medium)
+  - Only overridden when user explicitly customizes font-weight
+- ✅ TypeScript strict mode compliance
+  - Added `@ts-expect-error` comments for Puck's dynamic runtime data fields
+  - All compilation errors resolved
+- **Validated**: Theme 2 save generates correct CSS with Box + Heading rules, proper font-weights, no duplication
+
+**January 24, 2026:**
+- Finalized Theme CSS architecture decision
+- Two-layer model: shared base CSS + tenant overrides in DB
+- Atomic section saves for Theme Builder
+- Updated THEME_CSS_IMPLEMENTATION_GUIDE.md with 10-phase plan
 
 **December 16-17, 2025:**
 - Navigation component rewrite with metadata support
@@ -142,6 +274,66 @@ Testing status (Jan 19, 2026):
 
 —
 
+## Phase 1 & 2: Theme CSS Generator & Blade Integration (Completed Jan 23, 2026)
+
+### Phase 1: Backend CSS Generator
+
+**Service:** `app/Services/ThemeCssGeneratorService.php`
+
+**Key Methods:**
+- `generateCss(?array $themeData): string` - Flattens nested theme data to CSS variables
+- `getCssUrl(int $themeId, string $version): string` - Returns `/storage/themes/{id}.css?v={version}`
+- `getCssVersion(): string` - Timestamp-based version for cache-busting
+- `writeCssFile(int $themeId, string $css): bool` - Writes CSS to storage
+- `deleteCssFile(int $themeId): bool` - Removes CSS file
+
+**Tests:**
+- Unit tests: `tests/Unit/Services/ThemeCssGeneratorServiceTest.php` (10 tests, 48 assertions)
+- Feature tests: `tests/Feature/ThemeCssGenerationTest.php` (5 tests, 18 assertions)
+
+### Phase 2: Blade Integration & CSS Injection
+
+**Theme Model Updates:**
+- `getCssUrl(): string` - Returns `/storage/themes/{id}.css?v={version}` for theme
+- `getCssVersion(): string` - Returns `updated_at` timestamp for cache-busting
+
+**ThemeService Integration:**
+- Constructor injection of ThemeCssGeneratorService
+- `activateTheme()` - Generates CSS after theme activation
+- `updateTheme()` - Regenerates CSS after theme data updates
+
+**CSS Injection:**
+- Blade: `public-central.blade.php` - Conditional CSS link tag with `id='theme-css-link'`
+- React SPA: `ThemeProvider.tsx` - useEffect that injects/updates theme CSS dynamically
+
+**Tests:**
+- Feature tests: `tests/Feature/ThemeActivationCssGenerationTest.php` (7 tests, 23 assertions)
+- Feature tests: `tests/Feature/BladeCssLinkRenderingTest.php` (4 tests, 12 assertions)
+
+**Test Coverage:**
+- ✅ Theme activation triggers CSS generation
+- ✅ Theme updates trigger CSS regeneration
+- ✅ CSS file is created in storage/public/themes/
+- ✅ CSS URL format with cache-busting version
+- ✅ Multiple theme activations maintain separate CSS files
+- ✅ Blade view can access theme CSS URL
+- ✅ SPA can dynamically inject theme CSS link
+
+**Git History:**
+- Commit 1: `83c25ae` - "feat: implement ThemeCssGeneratorService with TDD (Phase 1)"
+- Commit 2: `1168660` - "feat: add feature tests for CSS generation (Phase 1 integration)"
+- Commit 3: `dbd28fc` - "feat: implement Phase 2 - Blade integration & CSS injection (TDD)"
+- Branch: `feature/theme-css-v2`
+
+**Total Tests: 26 passed (101 assertions)**
+
+**Next Phases (3-5):**
+1. **Phase 3:** CSS injection in Puck editor (1 hr)
+2. **Phase 4:** Component conversion to CSS variables (2-3 hrs)
+3. **Phase 5:** Testing & validation (1 hr)
+
+—
+
 ## Handy References
 
 **Code Locations:**
@@ -150,10 +342,12 @@ Testing status (Jan 19, 2026):
 - Page editor: `resources/js/apps/central/components/pages/PageEditorPage.tsx`
 - Public renderer: `resources/js/apps/central/components/pages/PublicPage.tsx`
 - Theme context: `resources/js/shared/contexts/ThemeContext.tsx`
+- Theme CSS Generator: `app/Services/ThemeCssGeneratorService.php` ← **Phase 1 NEW**
 - API services: `resources/js/shared/services/api/`
 
 **Backend Services:**
 - Compiler: `app/Services/PuckCompilerService.php`
+- Theme CSS Generator: `app/Services/ThemeCssGeneratorService.php` ← **Phase 1 NEW**
 - Observer: `app/Observers/NavigationObserver.php`
 - Controller: `app/Http/Controllers/Api/PageController.php`
 

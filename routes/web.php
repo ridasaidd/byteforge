@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\ThemeService;
 use Illuminate\Support\Facades\Route;
 
 // routes/web.php, api.php or any other central route files you have
@@ -8,24 +9,40 @@ foreach (config('tenancy.central_domains') as $domain) {
     Route::domain($domain)->group(function () {
         // Public landing page - check for homepage or show welcome
         Route::get('/', function () {
+            /** @var ThemeService $themeService */
+            $themeService = app(ThemeService::class);
+
             // Check if there's a published homepage
             $homepage = \App\Models\Page::whereNull('tenant_id')
                 ->where('is_homepage', true)
                 ->where('status', 'published')
                 ->first();
 
+            $theme = $themeService->getOrCreateDefaultTheme(null);
+            $themeCssUrl = $theme?->getCssUrl();
+
             if ($homepage) {
                 // If homepage exists, render it using the public React app
-                return view('public-central');
+                return view('public-central', [
+                    'themeCssUrl' => $themeCssUrl,
+                ]);
             }
 
             // Otherwise, show the default welcome page
-            return view('welcome');
+            return view('welcome', [
+                'themeCssUrl' => $themeCssUrl,
+            ]);
         });
 
         // Public page viewing (e.g., /pages/about, /pages/contact)
         Route::get('/pages/{slug}', function () {
-            return view('public-central');
+            /** @var ThemeService $themeService */
+            $themeService = app(ThemeService::class);
+            $theme = $themeService->getOrCreateDefaultTheme(null);
+
+            return view('public-central', [
+                'themeCssUrl' => $theme?->getCssUrl(),
+            ]);
         })->where('slug', '[a-z0-9\-]+');
 
         // Public login page (uses dashboard app for auth UI)

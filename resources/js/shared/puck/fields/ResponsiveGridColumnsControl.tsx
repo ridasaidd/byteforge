@@ -2,7 +2,7 @@
  * ResponsiveGridColumnsControl
  * Responsive control for grid-template-columns (repeat N columns)
  */
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { ResponsiveWrapper, type ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 
 export type ResponsiveGridColumnsValue = ResponsiveValue<number>;

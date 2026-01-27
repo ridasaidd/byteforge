@@ -21,6 +21,9 @@ class TestFixturesSeeder extends Seeder
      */
     public function run(): void
     {
+        // Disable activity logging during seeding
+        activity()->disableLogging();
+
         // Ensure roles and permissions exist first
         $this->call(RolePermissionSeeder::class);
 
@@ -166,5 +169,10 @@ class TestFixturesSeeder extends Seeder
         echo "  - user.tenant-one@byteforge.se\n";
         echo "  - user.tenant-two@byteforge.se\n";
         echo "  - user.tenant-three@byteforge.se\n";
+
+        // Re-enable activity logging
+        activity()->enableLogging();
+    }
+}
     }
 }

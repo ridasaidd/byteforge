@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\SuperadminController;
+use App\Http\Controllers\Api\ThemeCssController;
 use Illuminate\Support\Facades\Route;
 
 // Central API routes - available on central domains
@@ -57,9 +58,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::apiResource('layouts', \App\Http\Controllers\Api\LayoutController::class)
                 ->middleware('permission:layouts.view|layouts.manage');
 
-            // Themes management
-            Route::get('themes/available', [\App\Http\Controllers\Api\ThemeController::class, 'available'])
-                ->middleware('permission:themes.view');
+            // Themes management (available endpoint unused; commented to avoid stale frontend calls)
+            // Route::get('themes/available', [\App\Http\Controllers\Api\ThemeController::class, 'available'])
+            //     ->middleware('permission:themes.view');
             Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active'])
                 ->middleware('permission:themes.view');
             Route::get('themes/active/templates', [\App\Http\Controllers\Api\ThemeController::class, 'activeTemplates'])
@@ -80,6 +81,16 @@ foreach (config('tenancy.central_domains') as $domain) {
             // Route::post('themes/import', [\App\Http\Controllers\Api\ThemeController::class, 'import']);
             Route::apiResource('themes', \App\Http\Controllers\Api\ThemeController::class)
                 ->middleware('permission:themes.manage|themes.view');
+
+            // Theme CSS management (section saves, publish)
+            Route::post('themes/{theme}/sections/{section}', [ThemeCssController::class, 'saveSection'])
+                ->middleware('permission:themes.manage');
+            Route::get('themes/{theme}/sections/{section}', [ThemeCssController::class, 'getSection'])
+                ->middleware('permission:themes.view');
+            Route::get('themes/{theme}/publish/validate', [ThemeCssController::class, 'validatePublish'])
+                ->middleware('permission:themes.manage');
+            Route::post('themes/{theme}/publish', [ThemeCssController::class, 'publish'])
+                ->middleware('permission:themes.manage');
 
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');

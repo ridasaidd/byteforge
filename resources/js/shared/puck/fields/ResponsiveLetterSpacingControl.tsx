@@ -6,7 +6,7 @@
  * Supports values from -0.05em to 0.5em or custom em/rem/px values.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { useState, useEffect } from 'react';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 

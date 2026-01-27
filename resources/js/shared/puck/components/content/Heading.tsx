@@ -1,5 +1,5 @@
-import { ComponentConfig } from '@measured/puck';
-import { useTheme } from '@/shared/hooks';
+import { ComponentConfig } from '@puckeditor/core';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorValue,
   BorderValue,
@@ -92,17 +92,42 @@ function HeadingComponent({
   const Tag = `h${level}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
   const className = `heading-${id}`;
 
-  // Resolve color helper
-  const resolveColor = (colorVal: ColorValue | undefined, fallback: string): string => {
-    if (!colorVal) return fallback;
+  // Resolve color helper - now uses CSS variables for theme values
+  const resolveColor = (colorVal: ColorValue | undefined, cssVarFallback: string, defaultValue: string): string => {
+    // No color specified - use CSS variable fallback
+    if (!colorVal) return cssVarFallback;
+
+    // Custom color (user selected) - use the value directly
     if (colorVal.type === 'custom') return colorVal.value;
+
+    // Direct hex/rgb value - use it
     const val = colorVal.value;
     if (val && (val.startsWith('#') || val.startsWith('rgb'))) return val;
-    return resolve(val, fallback);
+
+    // Theme path - try to map to CSS variable, fallback to resolve
+    if (val) {
+      // Check if it's a component default that we have as CSS variable
+      if (val === 'components.heading.colors.default') {
+        return 'var(--component-heading-color-default, ' + defaultValue + ')';
+      }
+      // Otherwise resolve from theme
+      return resolve(val, defaultValue);
+    }
+
+    return defaultValue;
   };
 
-  // Level-based font weight defaults
-  const levelFontWeightMap: Record<string, string> = {
+  // Level-based font weight defaults - using CSS variables
+  const levelFontWeightCssVarMap: Record<string, string> = {
+    '1': 'var(--font-weight-bold, 700)',
+    '2': 'var(--font-weight-bold, 700)',
+    '3': 'var(--font-weight-semibold, 600)',
+    '4': 'var(--font-weight-semibold, 600)',
+    '5': 'var(--font-weight-medium, 500)',
+    '6': 'var(--font-weight-medium, 500)',
+  };
+
+  const levelFontWeightResolveMap: Record<string, string> = {
     '1': 'typography.fontWeight.bold',
     '2': 'typography.fontWeight.bold',
     '3': 'typography.fontWeight.semibold',
@@ -111,17 +136,24 @@ function HeadingComponent({
     '6': 'typography.fontWeight.medium',
   };
 
-  // Resolve font weight
+  // Resolve font weight - prefer CSS variables for theme defaults
   const resolvedFontWeight =
     fontWeight?.type === 'custom'
       ? fontWeight.value
       : fontWeight?.type === 'theme' && fontWeight.value
-        ? resolve(fontWeight.value)
-        : resolve(levelFontWeightMap[level], '700');
+        ? resolve(fontWeight.value) // User selected from theme - resolve
+        : levelFontWeightCssVarMap[level]; // Default - use CSS variable
 
-  // Resolve colors
-  const resolvedColor = resolveColor(color, resolve('components.heading.colors.default', 'inherit'));
-  const resolvedBgColor = resolveColor(backgroundColor, 'transparent');
+  // Resolve colors - use CSS variables for defaults
+  const resolvedColor = resolveColor(
+    color,
+    'var(--component-heading-color-default, inherit)',
+    'inherit'
+  );
+  const resolvedBgColor = resolveColor(backgroundColor, 'transparent', 'transparent');
+
+  // Detect if we're in edit mode
+  const isEditing = usePuckEditMode();
 
   // Generate CSS using centralized builder
   const css = buildTypographyCSS({
@@ -152,8 +184,9 @@ function HeadingComponent({
 
   return (
     <>
-      <style>{css}</style>
-      {fontSizeCss && <style>{fontSizeCss}</style>}
+      {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
+      {isEditing && <style>{css}</style>}
+      {isEditing && fontSizeCss && <style>{fontSizeCss}</style>}
       <Tag ref={puck?.dragRef} className={className}>
         {text}
       </Tag>

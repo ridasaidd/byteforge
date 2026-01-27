@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { Link, Unlink } from 'lucide-react';
 import { ColorPickerControlColorful } from './ColorPickerControlColorful';
 import type { ColorPickerValue } from './ColorPickerControl';

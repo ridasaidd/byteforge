@@ -1,13 +1,12 @@
-import type { ComponentConfig } from '@measured/puck';
+import type { ComponentConfig } from '@puckeditor/core';
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { useFormField } from './FormContext';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
-  generateDisplayCSS,
-  generateMarginCSS,
+  buildLayoutCSS,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
@@ -175,6 +174,7 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
   } = props;
 
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
   const { value, error, onChange, onBlur } = useFormField(name);
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -215,16 +215,16 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
   const selectedOption = options?.find(opt => opt.value === value);
 
   // Build all CSS - no inline styles
-  const buildCSS = (): string => {
+  const css = isEditing ? (() => {
     const rules: string[] = [];
 
-    // Display (responsive)
-    const displayCSS = generateDisplayCSS(className, display);
-    if (displayCSS) rules.push(displayCSS);
-
-    // Margin (responsive)
-    const marginCSS = generateMarginCSS(className, margin);
-    if (marginCSS) rules.push(marginCSS);
+    // Layout CSS with responsive properties
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      margin,
+    });
+    if (layoutCss) rules.push(layoutCss);
 
     // Container
     rules.push(`.${className} {
@@ -300,7 +300,7 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
 .${className}-help { margin-top: 4px; font-size: 13px; color: ${resolve('colors.muted', '#6b7280')}; }`);
 
     return rules.join('\n');
-  };
+  })() : '';
 
   // Close on outside click
   useEffect(() => {
@@ -317,7 +317,7 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
 
   return (
     <>
-      <style>{buildCSS()}</style>
+      {isEditing && css && <style>{css}</style>}
       <div ref={puck?.dragRef || containerRef} className={className}>
         {label && (
           <label className={`${className}-label`}>

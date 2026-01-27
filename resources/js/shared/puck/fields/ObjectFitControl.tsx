@@ -1,4 +1,4 @@
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 
 export type ObjectFitValue = 'fill' | 'contain' | 'cover' | 'scale-down';
 

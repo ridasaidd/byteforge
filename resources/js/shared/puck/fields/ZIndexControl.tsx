@@ -5,7 +5,7 @@
  * Used for controlling stacking order of elements.
  */
 
-import { FieldLabel } from '@measured/puck';
+import { FieldLabel } from '@puckeditor/core';
 import { useState, useEffect } from 'react';
 
 export type ZIndexValue = 'auto' | number;

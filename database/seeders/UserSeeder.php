@@ -9,6 +9,8 @@ class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        activity()->disableLogging();
+
         // Fixed Superadmin for Testing (Central Admin)
         $superadmin = User::create([
             'name' => 'Super Admin',
@@ -29,5 +31,7 @@ class UserSeeder extends Seeder
 
         // Customers
         User::factory()->count(10)->create(['type' => 'customer']);
+
+        activity()->enableLogging();
     }
 }

@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: January 22, 2026
+Last updated: January 25, 2026
 
 —
 
@@ -15,26 +15,59 @@ Last updated: January 22, 2026
 - ✅ Dashboard home page with real stats, recent tenants, activity, and permission-based visibility (Jan 21)
 - ✅ Public/dashboard blade template separation for performance (Jan 22)
 - ✅ Stats API service with permission-based data fetching (Jan 22)
+- ✅ Theme CSS Generation - Backend services, frontend aggregator, ThemeBuilder integration (Jan 24-25)
+- ✅ CSS files stored on disk at `/storage/themes/{id}/{id}.css` (Jan 25)
 
 —
 
 ## In flight / Priority Order
 
-### M1: Central Admin Completion (in progress - next)
-- ✅ Dashboard home page with stats & quick actions (Jan 22)
-- ✅ Public/dashboard blade separation (Jan 22)
-- **Theme CSS Architecture** (Feb 1-3, ~4-6 hours) ← **Starting now**
-  - Generate and save base theme CSS to disk
-  - Store customizations in database
-  - Link CSS in public blade template
-  - Convert 3-4 Puck components to use CSS variables (Hero, Card, Button, CTA)
-  - Create ThemeCssGeneratorService with full test coverage
-  - **Branch:** `feature/theme-css-architecture`
-  - **Tests required:** Unit + Feature tests for CSS generation and theme activation
-- Theme customization UI (live token editing, preview, reset) (Feb 4-5, ~6-8 hours)
-- Dashboard stats endpoint optimization (dedicated `/superadmin/dashboard/stats` with 5-10min cache) (~2 hours)
-- Settings management UI polish (if needed) (~2 hours)
-- **Est:** 12-18 hours remaining
+### M1: CSS Loading Validation & Architecture Refactor (in progress - next)
+
+**Phase 6: Validate CSS Loading (IMMEDIATE - 1-2 hrs)**
+- Load CSS from active theme to `<link>` tag in Blade head
+- Test on actual storefront to confirm concept works
+- Verify cache-busting and theme switching
+- **This is a validation step before continuing**
+
+**Phase 7: Architecture Refactor - Pivot Table (IF PHASE 6 WORKS - 3-4 hrs)**
+
+Current architecture clones entire theme records per tenant. New approach:
+
+```sql
+-- themes table (templates only)
+themes: id, name, slug, theme_data, is_system_theme
+
+-- NEW: tenant_themes pivot table
+tenant_themes:
+  - tenant_id, theme_id (composite key)
+  - is_active (boolean)
+  - custom_css (tenant overrides)
+  - activated_at
+```
+
+**Benefits:**
+- No data duplication (theme_data stored once)
+- Single DB query gets theme + customizations (JOIN)
+- Easier template updates (change once, all tenants get it)
+- Clean separation: templates vs activations
+
+**Actions to Create (using laravel-actions):**
+- `ActivateTheme` - Activate a theme for a tenant (insert/update pivot row)
+- `SaveThemeCustomCss` - Save tenant customizations to pivot table
+
+**Phase 8: Tenant Customization UI (4-6 hrs)**
+- Live token editing (colors, typography, spacing)
+- Save to `tenant_themes.custom_css`
+- Preview before applying
+
+**Phase 9: Puck Editor CSS (1-2 hrs)**
+- Ensure editor preview loads theme CSS
+
+**Phase 10: Extended Component Builders (2-3 hrs)**
+- Add Link, Image, Form CSS builders
+
+**Est:** 12-18 hours remaining
 
 ### M2: Analytics & Insights
 - Analytics dashboard (activity, usage, trends)
@@ -74,7 +107,7 @@ Last updated: January 22, 2026
 ## Development Standards
 
 **Branch Naming:**
-- `feature/` - New features (e.g., `feature/theme-css-architecture`)
+- `feature/` - New features (e.g., `feature/theme-css-v3`)
 - `fix/` - Bug fixes (e.g., `fix/modal-overflow`)
 - `refactor/` - Code improvements (e.g., `refactor/puck-components-ddd`)
 - `docs/` - Documentation only

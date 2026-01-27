@@ -1,5 +1,5 @@
-import { ComponentConfig } from '@measured/puck';
-import { useTheme } from '@/shared/hooks';
+import { ComponentConfig } from '@puckeditor/core';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorValue,
   BorderValue,
@@ -88,26 +88,49 @@ function TextComponent({
   const { resolve } = useTheme();
   const className = `text-${id}`;
 
-  // Resolve color helper
-  const resolveColor = (colorVal: ColorValue | undefined, fallback: string): string => {
-    if (!colorVal) return fallback;
+  // Resolve color helper - now uses CSS variables for theme values
+  const resolveColor = (colorVal: ColorValue | undefined, cssVarFallback: string, defaultValue: string): string => {
+    // No color specified - use CSS variable fallback
+    if (!colorVal) return cssVarFallback;
+
+    // Custom color (user selected) - use the value directly
     if (colorVal.type === 'custom') return colorVal.value;
+
+    // Direct hex/rgb value - use it
     const val = colorVal.value;
     if (val && (val.startsWith('#') || val.startsWith('rgb'))) return val;
-    return resolve(val, fallback);
+
+    // Theme path - try to map to CSS variable, fallback to resolve
+    if (val) {
+      // Check if it's a component default that we have as CSS variable
+      if (val === 'components.text.colors.default') {
+        return 'var(--component-text-color-default, ' + defaultValue + ')';
+      }
+      // Otherwise resolve from theme
+      return resolve(val, defaultValue);
+    }
+
+    return defaultValue;
   };
 
-  // Resolve font weight
+  // Resolve font weight - prefer CSS variables for theme defaults
   const resolvedFontWeight =
     fontWeight?.type === 'custom'
       ? fontWeight.value
       : fontWeight?.type === 'theme' && fontWeight.value
-        ? resolve(fontWeight.value)
-        : resolve('typography.fontWeight.normal', '400');
+        ? resolve(fontWeight.value) // User selected from theme - resolve
+        : 'var(--font-weight-normal, 400)'; // Default - use CSS variable
 
-  // Resolve colors
-  const resolvedColor = resolveColor(color, resolve('components.text.colors.default', 'inherit'));
-  const resolvedBgColor = resolveColor(backgroundColor, 'transparent');
+  // Resolve colors - use CSS variables for defaults
+  const resolvedColor = resolveColor(
+    color,
+    'var(--component-text-color-default, inherit)',
+    'inherit'
+  );
+  const resolvedBgColor = resolveColor(backgroundColor, 'transparent', 'transparent');
+
+  // Detect if we're in edit mode
+  const isEditing = usePuckEditMode();
 
   // Generate CSS using centralized builder
   const css = buildTypographyCSS({
@@ -138,8 +161,9 @@ function TextComponent({
 
   return (
     <>
-      <style>{css}</style>
-      {fontSizeCss && <style>{fontSizeCss}</style>}
+      {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
+      {isEditing && <style>{css}</style>}
+      {isEditing && fontSizeCss && <style>{fontSizeCss}</style>}
       <p ref={puck?.dragRef} className={className}>
         {content}
       </p>

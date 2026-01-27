@@ -1,6 +1,6 @@
-import { ComponentConfig, FieldLabel } from '@measured/puck';
+import { ComponentConfig, FieldLabel } from '@puckeditor/core';
 import { useQuery } from '@tanstack/react-query';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import { pages } from '@/shared/services/api/pages';
 import {
   type BorderValue,
@@ -8,6 +8,8 @@ import {
   type ShadowValue,
   type ColorValue,
   type ResponsiveWidthValue,
+  type ResponsiveMaxWidthValue,
+  type ResponsiveMaxHeightValue,
   type ResponsiveSpacingValue,
   type ResponsiveDisplayValue,
   type ResponsiveLineHeightValue,
@@ -25,14 +27,8 @@ import {
   advancedFields,
   // Utilities
   extractDefaults,
-  generateWidthCSS,
-  generateMaxWidthCSS,
-  generateMaxHeightCSS,
-  generatePaddingCSS,
-  generateMarginCSS,
-  generateDisplayCSS,
-  generateVisibilityCSS,
   ColorPickerControlColorful as ColorPickerControl,
+  buildLayoutCSS,
 } from '../../fields';
 
 export interface ButtonProps {
@@ -115,24 +111,35 @@ function PageSelectorField({ field, value, onChange }: { field: { label?: string
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
-function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType, internalPage, href, openInNewTab, width, maxWidth, maxHeight, display, margin, padding, border, shadow, visibility, customCss, lineHeight, letterSpacing, textTransform, textDecoration, textDecorationStyle, cursor, transition, hoverOpacity, hoverBackgroundColor, hoverTextColor, hoverTransform, puck }: ButtonProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
-  const { resolve } = useTheme();
-  const className = `button-${id}`;
+function ButtonComponent(props: ButtonProps & { puck?: { dragRef: ((element: Element | null) => void) | null } }) {
+  const {
+    id, text, backgroundColor, textColor, size, linkType, internalPage, href, openInNewTab,
+    // Layout & Spacing
+    width, maxWidth, maxHeight, display, margin, padding, visibility,
+    // Effects
+    border, borderRadius, shadow,
+    // Typography
+    lineHeight, letterSpacing, textTransform, textDecoration, textDecorationStyle,
+    // Interaction & Hover
+    cursor, transition, hoverOpacity, hoverBackgroundColor, hoverTextColor, hoverTransform,
+    // Advanced
+    customCss,
+    puck
+  } = props;
 
-  // Generate responsive CSS - all applied directly to button element
-  const widthCss = width ? generateWidthCSS(className, width) : '';
-  const maxWidthCss = maxWidth ? generateMaxWidthCSS(className, maxWidth) : '';
-  const maxHeightCss = maxHeight ? generateMaxHeightCSS(className, maxHeight) : '';
-  const marginCss = margin ? generateMarginCSS(className, margin) : '';
-  const displayCss = display ? generateDisplayCSS(className, display) : '';
-  const paddingCss = padding ? generatePaddingCSS(className, padding) : '';
-  const visibilityCss = visibility ? generateVisibilityCSS(className, visibility) : '';
+  const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
+  const className = `button-${id}`;
 
   // Resolve colors from theme if using theme color, otherwise use custom value
   // Always provide fallback to ensure colors are rendered
   // Handle case where "theme" type has a hex/rgb value instead of a theme path
+  // NOW: Use CSS variables for defaults, resolve for user-selected theme values
   const resolvedBackgroundColor = (() => {
-    if (!backgroundColor) return resolve('components.button.variants.primary.backgroundColor', '#3b82f6');
+    if (!backgroundColor) {
+      // No color specified - use CSS variable
+      return 'var(--component-button-variant-primary-background-color, var(--color-primary-500, #3b82f6))';
+    }
 
     const value = backgroundColor.value;
 
@@ -151,11 +158,14 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       return value;
     }
 
-    return resolve('components.button.variants.primary.backgroundColor', '#3b82f6');
+    return 'var(--component-button-variant-primary-background-color, var(--color-primary-500, #3b82f6))';
   })();
 
   const resolvedTextColor = (() => {
-    if (!textColor) return resolve('components.button.variants.primary.color', '#ffffff');
+    if (!textColor) {
+      // No color specified - use CSS variable
+      return 'var(--component-button-variant-primary-color, #ffffff)';
+    }
 
     const value = textColor.value;
 
@@ -174,176 +184,101 @@ function ButtonComponent({ id, text, backgroundColor, textColor, size, linkType,
       return value;
     }
 
-    return resolve('components.button.variants.primary.color', '#ffffff');
+    return 'var(--component-button-variant-primary-color, #ffffff)';
   })();
 
   const paddingX = resolve(`components.button.sizes.${size}.paddingX`, size === 'sm' ? '12px' : size === 'md' ? '16px' : '20px');
   const paddingY = resolve(`components.button.sizes.${size}.paddingY`, size === 'sm' ? '6px' : size === 'md' ? '10px' : '12px');
   const fontSize = resolve(`components.button.sizes.${size}.fontSize`, size === 'sm' ? '14px' : size === 'md' ? '16px' : '18px');
-  const borderRadius = resolve(`components.button.sizes.${size}.borderRadius`, '6px');
 
-  // Generate CSS for button (includes colors and layout)
-  const buttonCss = `
-    .${className} {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: ${resolve('typography.fontWeight.medium', '500')};
-      text-decoration: ${textDecoration && textDecoration !== 'none' ? textDecoration : 'none'};
-      ${textDecorationStyle && textDecoration !== 'none' ? `text-decoration-style: ${textDecorationStyle};` : ''}
-      background-color: ${resolvedBackgroundColor};
-      color: ${resolvedTextColor};
-      font-size: ${fontSize};
-      border-radius: ${borderRadius};
-      ${textTransform && textTransform !== 'none' ? `text-transform: ${textTransform};` : ''}
-      ${!padding ? `
-        padding: ${paddingY} ${paddingX};
-      ` : ''}
+  // Resolve hover colors for CSS generation
+  const resolvedHoverBg = (() => {
+    if (!hoverBackgroundColor) return '';
+    if (typeof hoverBackgroundColor === 'string') return hoverBackgroundColor;
+    if (hoverBackgroundColor.type === 'custom' && hoverBackgroundColor.value) return hoverBackgroundColor.value;
+    if (hoverBackgroundColor.type === 'theme' && hoverBackgroundColor.value) {
+      const val = hoverBackgroundColor.value;
+      return val.startsWith('#') || val.startsWith('rgb') ? val : resolve(val, '');
     }
-  `;
-  const cursorCss = cursor ? `.${className} { cursor: ${cursor}; }\n` : '';
-  const transitionCss = transition ? `.${className} { transition: ${transition.properties || 'all'} ${transition.duration || '300ms'} ${transition.easing || 'ease'}; }\n` : '';
-
-  // Generate hover state CSS
-  const hoverCss = (() => {
-    const hoverRules: string[] = [];
-
-    if (hoverOpacity !== undefined && hoverOpacity !== 100) {
-      hoverRules.push(`opacity: ${hoverOpacity / 100};`);
-    }
-
-    if (hoverBackgroundColor) {
-      const resolvedHoverBg = (() => {
-        if (typeof hoverBackgroundColor === 'string') return hoverBackgroundColor;
-        if (hoverBackgroundColor.type === 'custom' && hoverBackgroundColor.value) return hoverBackgroundColor.value;
-        if (hoverBackgroundColor.type === 'theme' && hoverBackgroundColor.value) {
-          const val = hoverBackgroundColor.value;
-          return val.startsWith('#') || val.startsWith('rgb') ? val : resolve(val, '');
-        }
-        return '';
-      })();
-      if (resolvedHoverBg) hoverRules.push(`background-color: ${resolvedHoverBg};`);
-    }
-
-    if (hoverTextColor) {
-      const resolvedHoverText = (() => {
-        if (typeof hoverTextColor === 'string') return hoverTextColor;
-        if (hoverTextColor.type === 'custom' && hoverTextColor.value) return hoverTextColor.value;
-        if (hoverTextColor.type === 'theme' && hoverTextColor.value) {
-          const val = hoverTextColor.value;
-          return val.startsWith('#') || val.startsWith('rgb') ? val : resolve(val, '');
-        }
-        return '';
-      })();
-      if (resolvedHoverText) hoverRules.push(`color: ${resolvedHoverText};`);
-    }
-
-    if (hoverTransform && hoverTransform !== 'none') {
-      hoverRules.push(`transform: ${hoverTransform};`);
-    }
-
-    return hoverRules.length > 0
-      ? `.${className}:hover {\n      ${hoverRules.join('\n      ')}\n    }\n`
-      : '';
+    return '';
   })();
 
-  const borderCss = border && border.top?.style !== 'none' ? `
-    .${className} {
-      border-top: ${border.top?.width || '0'}${border.unit || 'px'} ${border.top?.style || 'solid'} ${border.top?.color || 'currentColor'};
-      border-right: ${border.right?.width || '0'}${border.unit || 'px'} ${border.right?.style || 'solid'} ${border.right?.color || 'currentColor'};
-      border-bottom: ${border.bottom?.width || '0'}${border.unit || 'px'} ${border.bottom?.style || 'solid'} ${border.bottom?.color || 'currentColor'};
-      border-left: ${border.left?.width || '0'}${border.unit || 'px'} ${border.left?.style || 'solid'} ${border.left?.color || 'currentColor'};
+  const resolvedHoverText = (() => {
+    if (!hoverTextColor) return '';
+    if (typeof hoverTextColor === 'string') return hoverTextColor;
+    if (hoverTextColor.type === 'custom' && hoverTextColor.value) return hoverTextColor.value;
+    if (hoverTextColor.type === 'theme' && hoverTextColor.value) {
+      const val = hoverTextColor.value;
+      return val.startsWith('#') || val.startsWith('rgb') ? val : resolve(val, '');
     }
-  ` : '';
-
-  // Generate line-height and letter-spacing CSS
-  let typographyCss = '';
-  if (lineHeight && typeof lineHeight === 'object' && 'mobile' in lineHeight) {
-    const lh = lineHeight as Record<string, { value: string; unit?: string }>;
-    const mobileValue = lh.mobile?.value || '1.5';
-    const mobileUnit = lh.mobile?.unit || 'unitless';
-    typographyCss += `.${className} { line-height: ${mobileValue}${mobileUnit === 'unitless' ? '' : mobileUnit}; }\n`;
-    if (lh.tablet) {
-      typographyCss += `@media (min-width: 768px) { .${className} { line-height: ${lh.tablet.value}${lh.tablet.unit === 'unitless' ? '' : lh.tablet.unit}; } }\n`;
-    }
-    if (lh.desktop) {
-      typographyCss += `@media (min-width: 1024px) { .${className} { line-height: ${lh.desktop.value}${lh.desktop.unit === 'unitless' ? '' : lh.desktop.unit}; } }\n`;
-    }
-  }
-  if (letterSpacing && typeof letterSpacing === 'object' && 'mobile' in letterSpacing) {
-    const ls = letterSpacing as Record<string, { value: string; unit?: string }>;
-    const mobileValue = ls.mobile?.value || '0';
-    const mobileUnit = ls.mobile?.unit || 'em';
-    typographyCss += `.${className} { letter-spacing: ${mobileValue}${mobileUnit}; }\n`;
-    if (ls.tablet) {
-      typographyCss += `@media (min-width: 768px) { .${className} { letter-spacing: ${ls.tablet.value}${ls.tablet.unit}; } }\n`;
-    }
-    if (ls.desktop) {
-      typographyCss += `@media (min-width: 1024px) { .${className} { letter-spacing: ${ls.desktop.value}${ls.desktop.unit}; } }\n`;
-    }
-  }
-
-  const shadowCss = (() => {
-    if (!shadow || shadow.preset === 'none') return '';
-
-    const shadowValue = shadow.preset === 'custom' ? shadow.custom : {
-      sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-      md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-      lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-      xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-    }[shadow.preset];
-
-    return shadowValue ? `
-      .${className} {
-        box-shadow: ${shadowValue};
-      }
-    ` : '';
+    return '';
   })();
-
-  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>) => {
-    // Darken the background color on hover
-    const currentBg = resolvedBackgroundColor;
-    if (currentBg && currentBg.startsWith('#')) {
-      // Simple darkening for hex colors
-      e.currentTarget.style.opacity = resolve('components.button.hoverOpacity', '0.9');
-    }
-  };
-
-  const handleMouseLeave = (e: React.MouseEvent<HTMLElement>) => {
-    e.currentTarget.style.opacity = '1';
-  };
-
-  const handleFocus = () => {
-    // Could add focus ring styling here if needed
-  };
-
-  const handleBlur = (e: React.FocusEvent<HTMLElement>) => {
-    e.currentTarget.style.outline = 'none';
-  };
 
   // Determine the actual link based on linkType
   const finalHref = linkType === 'internal' ? internalPage : (linkType === 'external' ? href : undefined);
 
-  // Render button/link directly - no wrapper needed
-  // Parent components (Flex, Columns) handle alignment
+  // Generate comprehensive CSS using builder utilities
+  const buttonCss = isEditing ? (() => {
+    const rules: string[] = [];
+
+    // Layout CSS (handles display, width, maxWidth, maxHeight, margin, padding, visibility, border, borderRadius, shadow)
+    const layoutCss = buildLayoutCSS({
+      className,
+      display,
+      width,
+      maxWidth,
+      maxHeight,
+      margin,
+      padding,
+      visibility,
+      border,
+      borderRadius,
+      shadow,
+    });
+    if (layoutCss) rules.push(layoutCss);
+
+    // Determine which padding to use: custom if provided, otherwise size-based
+    const hasCustomPadding = padding && typeof padding === 'object' && (
+      'mobile' in padding || 'tablet' in padding || 'desktop' in padding
+    );
+    const buttonPadding = hasCustomPadding ? '' : `padding: ${paddingY} ${paddingX};`;
+
+    // Base button styles (background, color, size-specific, typography)
+    rules.push(`
+.${className} {
+  background-color: ${resolvedBackgroundColor};
+  color: ${resolvedTextColor};
+  ${buttonPadding}
+  font-size: ${fontSize};
+  cursor: ${cursor || 'pointer'};
+  transition: ${transition || 'all 0.2s ease'};
+  text-decoration: none;
+  ${lineHeight ? `line-height: ${typeof lineHeight === 'object' && 'mobile' in lineHeight ? lineHeight.mobile || 'normal' : lineHeight};` : ''}
+  ${letterSpacing ? `letter-spacing: ${typeof letterSpacing === 'object' && 'mobile' in letterSpacing ? letterSpacing.mobile || 'normal' : letterSpacing};` : ''}
+  ${textTransform ? `text-transform: ${textTransform};` : ''}
+  ${textDecoration && textDecoration !== 'none' ? `text-decoration: ${textDecoration};` : ''}
+  ${textDecorationStyle ? `text-decoration-style: ${textDecorationStyle};` : ''}
+}
+    `.trim());
+
+    // Hover state
+    if (hoverBackgroundColor || hoverTextColor || hoverOpacity !== undefined || hoverTransform) {
+      rules.push(`
+.${className}:hover {
+  ${resolvedHoverBg ? `background-color: ${resolvedHoverBg} !important;` : ''}
+  ${resolvedHoverText ? `color: ${resolvedHoverText} !important;` : ''}
+  ${hoverOpacity !== undefined ? `opacity: ${hoverOpacity} !important;` : ''}
+  ${hoverTransform ? `transform: ${hoverTransform};` : ''}
+}
+      `.trim());
+    }
+
+    return rules.join('\n');
+  })() : '';
+
   return (
     <>
-      <style>
-        {buttonCss}
-        {displayCss}
-        {visibilityCss}
-        {widthCss}
-        {maxWidthCss}
-        {maxHeightCss}
-        {marginCss}
-        {paddingCss}
-        {typographyCss}
-        {borderCss}
-        {shadowCss}
-        {cursorCss}
-        {transitionCss}
-        {hoverCss}
-      </style>
+      {isEditing && buttonCss && <style>{buttonCss}</style>}
       {finalHref ? (
         <a
           ref={puck?.dragRef}
