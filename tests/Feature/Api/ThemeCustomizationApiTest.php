@@ -13,12 +13,15 @@ use Tests\TestCase;
 /**
  * Phase 6 Step 2: Theme Customization API Tests
  *
- * Uses existing test fixtures from TestFixturesSeeder:
+ * Uses existing test fixtures from TestFixturesSeeder with pre-configured permissions:
  * - Tenants: tenant-one, tenant-two, tenant-three
- * - Users: superadmin, editor, manager, viewer (central)
- *         user.tenant-one, user.tenant-two, user.tenant-three (tenant-specific)
+ * - Central users: superadmin, editor, manager, viewer
+ * - Tenant users (with permissions already set):
+ *   * owner.tenant-one@byteforge.se (themes.manage, themes.view)
+ *   * editor.tenant-two@byteforge.se (themes.view only)
+ *   * admin.tenant-three@byteforge.se (themes.manage, themes.view)
  *
- * Tests authorization with various role/permission combinations
+ * Tests leverage pre-seeded users with realistic permission configurations
  */
 class ThemeCustomizationApiTest extends TestCase
 {
@@ -29,42 +32,32 @@ class ThemeCustomizationApiTest extends TestCase
     protected User $viewerUser;
     protected User $tenantOwnerUser;
     protected User $tenantEditorUser;
-    protected User $tenantViewerUser;
+    protected User $tenantAdminUser;
     protected Tenant $tenantOne;
     protected Tenant $tenantTwo;
+    protected Tenant $tenantThree;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Seed roles and permissions
-        $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
+        // Seed test fixtures (includes users with pre-configured permissions)
+        $this->artisan('db:seed', ['--class' => 'TestFixturesSeeder']);
 
-        // Get existing test fixtures created by TestFixturesSeeder
-        // Central users
+        // Get existing central users
         $this->superadminUser = User::where('email', 'superadmin@byteforge.se')->first();
         $this->editorUser = User::where('email', 'editor@byteforge.se')->first();
         $this->viewerUser = User::where('email', 'viewer@byteforge.se')->first();
 
-        // Tenant fixtures
+        // Get tenant fixtures
         $this->tenantOne = Tenant::where('slug', 'tenant-one')->first();
         $this->tenantTwo = Tenant::where('slug', 'tenant-two')->first();
+        $this->tenantThree = Tenant::where('slug', 'tenant-three')->first();
 
-        // Tenant users - get from central database first
-        $this->tenantOwnerUser = User::where('email', 'user.tenant-one@byteforge.se')->first();
-        $this->tenantEditorUser = User::where('email', 'user.tenant-two@byteforge.se')->first();
-        $this->tenantViewerUser = User::where('email', 'user.tenant-three@byteforge.se')->first();
-
-        // Assign permissions to tenant users WITHIN tenant context
-        tenancy()->initialize($this->tenantOne);
-        $tenantOneUser = User::where('email', 'user.tenant-one@byteforge.se')->first();
-        $tenantOneUser->syncPermissions(['themes.manage', 'themes.view']);
-        tenancy()->end();
-
-        tenancy()->initialize($this->tenantTwo);
-        $tenantTwoUser = User::where('email', 'user.tenant-two@byteforge.se')->first();
-        $tenantTwoUser->syncPermissions(['themes.view']);
-        tenancy()->end();
+        // Get tenant users (permissions already set by TestFixturesSeeder)
+        $this->tenantOwnerUser = User::where('email', 'owner.tenant-one@byteforge.se')->first();
+        $this->tenantEditorUser = User::where('email', 'editor.tenant-two@byteforge.se')->first();
+        $this->tenantAdminUser = User::where('email', 'admin.tenant-three@byteforge.se')->first();
     }
 
     /**

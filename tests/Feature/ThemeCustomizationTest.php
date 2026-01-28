@@ -12,7 +12,7 @@ class ThemeCustomizationTest extends TestCase
 
     /**
      * Test that themes table has customization CSS columns
-     * 
+     *
      * Phase 6 Step 1: Database Migration
      */
     public function test_themes_table_has_customization_columns(): void
@@ -27,13 +27,13 @@ class ThemeCustomizationTest extends TestCase
         // Assert: Verify columns are saved correctly
         $this->assertNotNull($theme->settings_css);
         $this->assertEquals(':root { --custom: red; }', $theme->settings_css);
-        
+
         $this->assertNotNull($theme->header_css);
         $this->assertEquals('.header { color: blue; }', $theme->header_css);
-        
+
         $this->assertNotNull($theme->footer_css);
         $this->assertEquals('.footer { color: green; }', $theme->footer_css);
-        
+
         // Assert: Verify columns exist in database
         $this->assertDatabaseHas('themes', [
             'id' => $theme->id,

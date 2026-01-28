@@ -139,25 +139,54 @@ class TestFixturesSeeder extends Seeder
         $viewer->syncRoles([$viewerRole]);
         $this->command->info('✓ Created viewer@byteforge.se (viewer role)');
 
-        echo "\nCreating tenant users...\n";
+        echo "\nCreating tenant users with different roles...\n";
 
-        // 4. Create tenant users for each tenant
-        foreach ([$tenantOne, $tenantTwo, $tenantThree] as $tenant) {
-            $tenantUser = User::firstOrCreate(
-                ['email' => "user.{$tenant->slug}@byteforge.se"],
-                [
-                    'name' => "User for {$tenant->name}",
-                    'password' => Hash::make('password'),
-                    'type' => 'tenant_user',
-                    'email_verified_at' => now(),
-                ]
-            );
+        // 4. Create tenant users with different roles/permissions within each tenant context
+        
+        // Tenant One: Create owner/admin user with full permissions
+        tenancy()->initialize($tenantOne);
+        $tenantOneOwner = User::firstOrCreate(
+            ['email' => 'owner.tenant-one@byteforge.se'],
+            [
+                'name' => 'Owner - Tenant One',
+                'password' => Hash::make('password'),
+                'type' => 'tenant_user',
+                'email_verified_at' => now(),
+            ]
+        );
+        $tenantOneOwner->syncPermissions(['themes.manage', 'themes.view']);
+        $this->command->info('✓ Created owner.tenant-one@byteforge.se (with themes.manage, themes.view)');
+        tenancy()->end();
 
-            // Assign superadmin role for tenant tests (they manage their own tenant)
-            $tenantUser->syncRoles([$superadminRole]);
+        // Tenant Two: Create editor user with limited permissions (view only)
+        tenancy()->initialize($tenantTwo);
+        $tenantTwoEditor = User::firstOrCreate(
+            ['email' => 'editor.tenant-two@byteforge.se'],
+            [
+                'name' => 'Editor - Tenant Two',
+                'password' => Hash::make('password'),
+                'type' => 'tenant_user',
+                'email_verified_at' => now(),
+            ]
+        );
+        $tenantTwoEditor->syncPermissions(['themes.view']);
+        $this->command->info('✓ Created editor.tenant-two@byteforge.se (with themes.view only)');
+        tenancy()->end();
 
-            $this->command->info("✓ Created user.{$tenant->slug}@byteforge.se");
-        }
+        // Tenant Three: Create admin user with full permissions
+        tenancy()->initialize($tenantThree);
+        $tenantThreeAdmin = User::firstOrCreate(
+            ['email' => 'admin.tenant-three@byteforge.se'],
+            [
+                'name' => 'Admin - Tenant Three',
+                'password' => Hash::make('password'),
+                'type' => 'tenant_user',
+                'email_verified_at' => now(),
+            ]
+        );
+        $tenantThreeAdmin->syncPermissions(['themes.manage', 'themes.view']);
+        $this->command->info('✓ Created admin.tenant-three@byteforge.se (with themes.manage, themes.view)');
+        tenancy()->end();
 
         echo "\n✅ Test fixtures created successfully!\n";
         echo "\nCentral App Users:\n";
@@ -165,10 +194,10 @@ class TestFixturesSeeder extends Seeder
         echo "  - editor@byteforge.se (admin role)\n";
         echo "  - manager@byteforge.se (support role)\n";
         echo "  - viewer@byteforge.se (viewer role)\n";
-        echo "\nTenant Users:\n";
-        echo "  - user.tenant-one@byteforge.se\n";
-        echo "  - user.tenant-two@byteforge.se\n";
-        echo "  - user.tenant-three@byteforge.se\n";
+        echo "\nTenant Users (with pre-configured permissions):\n";
+        echo "  - owner.tenant-one@byteforge.se (themes.manage, themes.view)\n";
+        echo "  - editor.tenant-two@byteforge.se (themes.view only)\n";
+        echo "  - admin.tenant-three@byteforge.se (themes.manage, themes.view)\n";
 
         // Re-enable activity logging
         activity()->enableLogging();

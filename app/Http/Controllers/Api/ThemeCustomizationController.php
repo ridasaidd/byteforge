@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 
 /**
  * Phase 6: Theme Customization Controller
- * 
+ *
  * Handles customization of theme instances (both central and tenant)
  * Saves CSS to database columns (not disk files)
  * Allows customization of: Settings, Header, Footer (NOT Info or Pages/Templates)
