@@ -10,13 +10,28 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
 
+/**
+ * Phase 6 Step 2: Theme Customization API Tests
+ *
+ * Uses existing test fixtures from TestFixturesSeeder:
+ * - Tenants: tenant-one, tenant-two, tenant-three
+ * - Users: superadmin, editor, manager, viewer (central)
+ *         user.tenant-one, user.tenant-two, user.tenant-three (tenant-specific)
+ *
+ * Tests authorization with various role/permission combinations
+ */
 class ThemeCustomizationApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected User $centralUser;
-    protected User $tenantUser;
-    protected Tenant $tenant;
+    protected User $superadminUser;
+    protected User $editorUser;
+    protected User $viewerUser;
+    protected User $tenantOwnerUser;
+    protected User $tenantEditorUser;
+    protected User $tenantViewerUser;
+    protected Tenant $tenantOne;
+    protected Tenant $tenantTwo;
 
     protected function setUp(): void
     {
@@ -25,31 +40,37 @@ class ThemeCustomizationApiTest extends TestCase
         // Seed roles and permissions
         $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
 
-        // Create central user (superadmin type, no tenant)
-        $this->centralUser = User::factory()->create([
-            'email' => 'central@test.com',
-            'type' => 'superadmin',
-        ]);
+        // Get existing test fixtures created by TestFixturesSeeder
+        // Central users
+        $this->superadminUser = User::where('email', 'superadmin@byteforge.se')->first();
+        $this->editorUser = User::where('email', 'editor@byteforge.se')->first();
+        $this->viewerUser = User::where('email', 'viewer@byteforge.se')->first();
 
-        // Create tenant and tenant user
-        $this->tenant = Tenant::factory()->create();
-        $this->tenantUser = User::factory()->create([
-            'email' => 'tenant@test.com',
-            'type' => 'tenant_user',
-        ]);
+        // Tenant fixtures
+        $this->tenantOne = Tenant::where('slug', 'tenant-one')->first();
+        $this->tenantTwo = Tenant::where('slug', 'tenant-two')->first();
 
-        // Create membership to link user to tenant
-        \App\Models\Membership::create([
-            'user_id' => $this->tenantUser->id,
-            'tenant_id' => $this->tenant->id,
-            'role' => 'owner',
-        ]);
+        // Tenant users - get from central database first
+        $this->tenantOwnerUser = User::where('email', 'user.tenant-one@byteforge.se')->first();
+        $this->tenantEditorUser = User::where('email', 'user.tenant-two@byteforge.se')->first();
+        $this->tenantViewerUser = User::where('email', 'user.tenant-three@byteforge.se')->first();
+
+        // Assign permissions to tenant users WITHIN tenant context
+        tenancy()->initialize($this->tenantOne);
+        $tenantOneUser = User::where('email', 'user.tenant-one@byteforge.se')->first();
+        $tenantOneUser->syncPermissions(['themes.manage', 'themes.view']);
+        tenancy()->end();
+
+        tenancy()->initialize($this->tenantTwo);
+        $tenantTwoUser = User::where('email', 'user.tenant-two@byteforge.se')->first();
+        $tenantTwoUser->syncPermissions(['themes.view']);
+        tenancy()->end();
     }
 
     /**
-     * Phase 6 Step 2: Test central can customize active theme
+     * Phase 6 Step 2: Test central superadmin can customize active theme
      */
-    public function test_central_can_customize_active_theme(): void
+    public function test_central_superadmin_can_customize_active_theme(): void
     {
         $theme = Theme::factory()->create([
             'tenant_id' => null,
@@ -57,7 +78,7 @@ class ThemeCustomizationApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        Passport::actingAs($this->centralUser);
+        Passport::actingAs($this->superadminUser);
 
         $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/settings", [
             'css' => ':root { --primary-500: #ff0000; }',
@@ -73,23 +94,22 @@ class ThemeCustomizationApiTest extends TestCase
     }
 
     /**
-     * Phase 6 Step 2: Test tenant can customize active theme
+     * Phase 6 Step 2: Test tenant owner can customize their theme
      */
-    public function test_tenant_can_customize_active_theme(): void
+    public function test_tenant_owner_can_customize_active_theme(): void
     {
         $theme = Theme::factory()->create([
-            'tenant_id' => $this->tenant->id,
+            'tenant_id' => $this->tenantOne->id,
             'is_system_theme' => false,
             'is_active' => true,
         ]);
 
         // Authenticate BEFORE tenant context initialization
-        Passport::actingAs($this->tenantUser);
+        Passport::actingAs($this->tenantOwnerUser);
 
         // Initialize tenant context
-        tenancy()->initialize($this->tenant);
-        $domain = 'tenant-customize.test';
-        $this->tenant->domains()->create(['domain' => $domain]);
+        tenancy()->initialize($this->tenantOne);
+        $domain = $this->tenantOne->domains()->first()->domain;
 
         $response = $this->postJson("https://{$domain}/api/themes/{$theme->id}/customization/settings", [
             'css' => ':root { --primary-500: #0000ff; }',
@@ -98,14 +118,33 @@ class ThemeCustomizationApiTest extends TestCase
             ],
         ]);
 
-        if ($response->status() !== 200) {
-            dump($response->json());
-        }
-
         $response->assertStatus(200);
 
         $theme->refresh();
         $this->assertEquals(':root { --primary-500: #0000ff; }', $theme->settings_css);
+    }
+
+    /**
+     * Phase 6 Step 2: Test tenant viewer cannot customize (no themes.manage permission)
+     */
+    public function test_tenant_viewer_cannot_customize_theme(): void
+    {
+        $theme = Theme::factory()->create([
+            'tenant_id' => $this->tenantTwo->id,
+            'is_system_theme' => false,
+            'is_active' => true,
+        ]);
+
+        Passport::actingAs($this->tenantEditorUser);
+        tenancy()->initialize($this->tenantTwo);
+        $domain = $this->tenantTwo->domains()->first()->domain;
+
+        $response = $this->postJson("https://{$domain}/api/themes/{$theme->id}/customization/settings", [
+            'css' => ':root { --hack: red; }',
+        ]);
+
+        // Should fail due to missing themes.manage permission
+        $response->assertStatus(403);
     }
 
     /**
@@ -119,7 +158,7 @@ class ThemeCustomizationApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        Passport::actingAs($this->centralUser);
+        Passport::actingAs($this->superadminUser);
 
         $response = $this->postJson("/api/superadmin/themes/{$systemTheme->id}/customization/settings", [
             'css' => ':root { --custom: red; }',
@@ -150,7 +189,7 @@ class ThemeCustomizationApiTest extends TestCase
             'puck_data_raw' => ['root' => ['props' => []], 'content' => []],
         ]);
 
-        Passport::actingAs($this->centralUser);
+        Passport::actingAs($this->superadminUser);
 
         $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/header", [
             'css' => '.header { background: blue; }',
@@ -186,7 +225,7 @@ class ThemeCustomizationApiTest extends TestCase
             'puck_data_raw' => ['root' => ['props' => []], 'content' => []],
         ]);
 
-        Passport::actingAs($this->centralUser);
+        Passport::actingAs($this->superadminUser);
 
         $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/footer", [
             'css' => '.footer { color: green; }',
@@ -214,7 +253,7 @@ class ThemeCustomizationApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        Passport::actingAs($this->centralUser);
+        Passport::actingAs($this->superadminUser);
 
         // Try to modify 'info' section (not allowed)
         $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/info", [
@@ -226,29 +265,25 @@ class ThemeCustomizationApiTest extends TestCase
     }
 
     /**
-     * Phase 6 Step 2: Test user can only customize their own tenant's theme
+     * Phase 6 Step 2: Test tenant user cannot customize other tenant's theme
      */
-    public function test_user_cannot_customize_other_tenant_theme(): void
+    public function test_tenant_user_cannot_customize_other_tenant_theme(): void
     {
-        $otherTenant = Tenant::factory()->create();
-        $otherTheme = Theme::factory()->create([
-            'tenant_id' => $otherTenant->id,
+        $tenantTwoTheme = Theme::factory()->create([
+            'tenant_id' => $this->tenantTwo->id,
             'is_system_theme' => false,
             'is_active' => true,
         ]);
 
-        // Authenticate BEFORE tenant context initialization
-        Passport::actingAs($this->tenantUser);
+        Passport::actingAs($this->tenantOwnerUser);
+        tenancy()->initialize($this->tenantOne);
+        $domain = $this->tenantOne->domains()->first()->domain;
 
-        // Initialize with user's tenant (not the other tenant)
-        tenancy()->initialize($this->tenant);
-        $domain = 'tenant-cross-access.test';
-        $this->tenant->domains()->create(['domain' => $domain]);
-
-        $response = $this->postJson("https://{$domain}/api/themes/{$otherTheme->id}/customization/settings", [
+        $response = $this->postJson("https://{$domain}/api/themes/{$tenantTwoTheme->id}/customization/settings", [
             'css' => ':root { --hack: red; }',
         ]);
 
+        // Should be denied at controller level (403) not middleware
         $response->assertStatus(403);
     }
 
@@ -266,7 +301,7 @@ class ThemeCustomizationApiTest extends TestCase
             'footer_css' => '.footer { color: green; }',
         ]);
 
-        Passport::actingAs($this->centralUser);
+        Passport::actingAs($this->superadminUser);
 
         $response = $this->getJson("/api/superadmin/themes/{$theme->id}/customization");
 
@@ -278,5 +313,25 @@ class ThemeCustomizationApiTest extends TestCase
                 'footer_css' => '.footer { color: green; }',
             ],
         ]);
+    }
+
+    /**
+     * Phase 6 Step 2: Test central viewer cannot customize (no themes.manage)
+     */
+    public function test_central_viewer_cannot_customize(): void
+    {
+        $theme = Theme::factory()->create([
+            'tenant_id' => null,
+            'is_system_theme' => false,
+            'is_active' => true,
+        ]);
+
+        Passport::actingAs($this->viewerUser);
+
+        $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/settings", [
+            'css' => ':root { --hack: red; }',
+        ]);
+
+        $response->assertStatus(403);
     }
 }
