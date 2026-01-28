@@ -62,6 +62,13 @@ Route::middleware([
             ->middleware('permission:themes.view|themes.manage');
         Route::apiResource('layouts', LayoutController::class)
             ->middleware('permission:layouts.view|layouts.manage');
+
+        // Theme Customization (Phase 6) - Tenant
+        Route::get('themes/{theme}/customization', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'getCustomization'])
+            ->middleware('permission:themes.view');
+        Route::post('themes/{theme}/customization/{section}', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'saveSection'])
+            ->middleware('permission:themes.manage');
+
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy'])
             ->middleware('permission:view users');
 

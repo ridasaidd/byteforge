@@ -92,6 +92,12 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::post('themes/{theme}/publish', [ThemeCssController::class, 'publish'])
                 ->middleware('permission:themes.manage');
 
+            // Theme Customization (Phase 6) - Central
+            Route::get('themes/{theme}/customization', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'getCustomization'])
+                ->middleware('permission:themes.view');
+            Route::post('themes/{theme}/customization/{section}', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'saveSection'])
+                ->middleware('permission:themes.manage');
+
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
 

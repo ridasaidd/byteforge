@@ -174,5 +174,3 @@ class TestFixturesSeeder extends Seeder
         activity()->enableLogging();
     }
 }
-    }
-}

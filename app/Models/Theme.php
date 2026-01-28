@@ -24,6 +24,10 @@ class Theme extends Model
         'preview_image',
         'author',
         'version',
+        'custom_css',
+        'settings_css',
+        'header_css',
+        'footer_css',
     ];
 
     protected $casts = [
