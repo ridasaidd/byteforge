@@ -36,7 +36,6 @@ export function PublicPage() {
   const [page, setPage] = useState<Page | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isRendered, setIsRendered] = useState(false);
 
   useEffect(() => {
     const fetchPage = async () => {
@@ -84,38 +83,29 @@ export function PublicPage() {
     }
   }, [page]);
 
-  // Delay rendering to allow styles to apply
-  useEffect(() => {
-    if (!isLoading && page) {
-      // Use requestAnimationFrame to ensure styles are applied
-      requestAnimationFrame(() => {
-        setIsRendered(true);
-      });
-    } else {
-      setIsRendered(false);
-    }
-  }, [isLoading, page]);
-
-  if (isLoading || !isRendered) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-          <p className="text-gray-600">Loading page...</p>
-        </div>
-      </div>
-    );
+  // TODO: Future - Replace with Puck-built splash screen (tenant customizable)
+  // Puck can generate static HTML for loading states, removing Tailwind dependency
+  if (isLoading) {
+    return null; // Blank while loading - CSS already in <head> from blade
   }
 
+  // TODO: Future - Replace with Puck-built 404 page (tenant customizable)
   if (error || !page) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-          <p className="text-xl text-gray-600 mb-8">{error || 'Page not found'}</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '1rem' }}>404</h1>
+          <p style={{ fontSize: '1.25rem', marginBottom: '2rem' }}>{error || 'Page not found'}</p>
           <a
             href="/"
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            style={{
+              display: 'inline-block',
+              padding: '0.75rem 1.5rem',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              borderRadius: '0.5rem',
+              textDecoration: 'none'
+            }}
           >
             Go Home
           </a>
@@ -125,9 +115,9 @@ export function PublicPage() {
   }
 
   // Extract metadata from compiled page data
-  const pageData = (page.puck_data_compiled || page.puck_data) as { 
-    content?: unknown[]; 
-    root?: unknown; 
+  const pageData = (page.puck_data_compiled || page.puck_data) as {
+    content?: unknown[];
+    root?: unknown;
     metadata?: {
       navigations?: unknown[];
       settings?: Record<string, unknown>;
@@ -151,17 +141,15 @@ export function PublicPage() {
   return (
     <ThemeProvider initialTheme={themeFromMetadata}>
       {pageData && pageData.content ? (
-        <Render 
-          config={config} 
+        <Render
+          config={config}
           data={pageData as Data}
           metadata={pageData.metadata || {}} // Puck propagates this to all components!
         />
         ) : (
-          <div className="min-h-screen bg-white">
-            <div className="container mx-auto px-4 py-16">
-              <h1 className="text-4xl font-bold mb-4">{page.title}</h1>
-              <p className="text-gray-600">This page is empty. Please edit it in the dashboard.</p>
-            </div>
+          <div style={{ minHeight: '100vh', padding: '4rem 1rem' }}>
+            <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{page.title}</h1>
+            <p>This page is empty. Please edit it in the dashboard.</p>
           </div>
         )}
     </ThemeProvider>

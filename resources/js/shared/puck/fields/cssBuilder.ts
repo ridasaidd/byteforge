@@ -18,7 +18,7 @@ import {
   BorderValue,
   BorderRadiusValue,
   ShadowValue,
-  GapValue,
+  //GapValue,
   generateDisplayCSS,
   generateWidthCSS,
   generateHeightCSS,

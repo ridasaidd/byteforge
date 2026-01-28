@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: January 25, 2026 (Updated: Architecture Simplified - Pivot Table Approach)  
-Current branch: feature/theme-css-v2
+Last updated: January 27, 2026 (Theme CSS Generation Complete)  
+Current branch: main
 
 —
 
@@ -14,12 +14,13 @@ Current branch: feature/theme-css-v2
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
-- **Theme CSS Generation:** ✅ Phase 3, 4, 5a, 5b, **5c, 5d** COMPLETE (Backend services, Frontend aggregator, ThemeBuilderPage integration, CSS extraction fixes, Editor CSS loading, CSS builder migration)
+- **Theme CSS Generation:** ✅ **COMPLETE** - Phases 3, 4, 5a, 5b, 5c, 5d merged to main (Backend services, Frontend aggregator, All 15 components migrated, CSS validation complete)
 
-Testing status (Jan 26, 2026):
-- ✅ **Frontend:** 624+ tests passing (includes 143 Puck component tests from Phase 5d)
-- ✅ **Backend:** 140+ tests passing (includes Phase 3 CSS services)
+Testing status (Jan 27, 2026):
+- ✅ **Frontend:** 624+ tests passing (includes 143 Puck component tests)
+- ✅ **Backend:** 140+ tests passing (includes CSS services)
 - ✅ **Total:** 770+ tests/assertions passing, 0 failures, 0 errors
+- ✅ **CSS Files:** All sections generating valid CSS (settings, header, footer, templates)
 
 —
 
@@ -60,62 +61,56 @@ Testing status (Jan 26, 2026):
 
 —
 
-## What's RemaininEnd-to-End Testing & Validation**
+## What's Remaining
 
-Now that all components are migrated to use centralized CSS builders with dual-mode rendering, we need to validate the complete system works end-to-end.
+### **Phase 6: Theme Customization System - Central + Tenants (NEXT - 5-6 hrs)**
 
-**Immediate Tasks (2-4 hrs):**
+> **Detailed plan:** See [PHASE6_TENANT_CUSTOMIZATION_PLAN.md](./PHASE6_TENANT_CUSTOMIZATION_PLAN.md)
 
-1. **Integrate CSS Loading into PageEditorPage (Tenant App)**
-   - Add `useEditorCssLoader` to tenant page editor
-   - Follow same pattern as ThemeBuilderPage
-   - Test live preview works in tenant context
+**Summary:**
+- Unified customization flow for both central storefront and tenant storefronts
+- Central dogfoods customization feature on its own storefront
+- Reuse ThemeBuilderPage with `mode="customize"` prop (hide Info/Pages tabs)
+- Add CSS columns to themes table: `settings_css`, `header_css`, `footer_css`
+- CSS cascade: base theme files (disk) + customization CSS (database)
+- Fix templates endpoint (use `page_templates` table, not `theme_data['templates']`)
 
-2. **Browser Testing - Editor**
-   - Test all 15 components in Puck editor (central & tenant)
-   - Verify live preview for all property controls
-   - Test responsive properties (mobile/tablet/desktop)
-   - Verify specific fixes:
-     - Button: spacing, visibility, line-height, borders, shadows
-     - Card: all layout properties
-     - Image: all responsive layout properties
-     - Form components: display, margin controls
+**Architecture:**
+- System themes (is_system_theme=true): Created by central, immutable, disk files
+- Theme instances (is_system_theme=false): Activated by central/tenants, customizable, DB storage
 
-3. **Browser Testing - Storefront**
-   - Verify NO `<style>` tags injected in storefront pages
-   - Confirm only pre-generated CSS files loaded
-   - Test theme styling applies correctly
-   - Verify cache-busting (change theme → new CSS loads)
+**Task Breakdown (TDD):**
 
-4. **Performance Validation**
-   - Measure storefront page load time
-   - Confirm no runtime CSS compilation overhead
-   - Verify components render with correct styles from files
+| Step | Task | Est. |
+|------|------|------|
+| 1 | Migration: Add CSS columns | 30 min |
+| 2 | Backend: Customization API | 1 hr |
+| 3 | Frontend: ThemeBuilderPage mode prop | 1 hr |
+| 4 | Frontend: API client | 30 min |
+| 5 | Blade: CSS cascade loading | 30 min |
+| 6 | Tenant: Routes & page | 30 min |
+| 7 | Fix: Templates endpoint | 30 min |
 
-**Files to Update:**
-- `resources/js/apps/tenant/components/pages/PageEditorPage.tsx` - Add useEditorCssLoader
-- Create browser test checklist for all 15 components
+**Files to Create/Update:**
+- Backend: TenantThemeCustomizationController, service, migration
+- Frontend: PageEditorPage CSS loading, customization API client
+- Tests: Tenant customization isolation, page template usage
 
 ---
 
-**Future: Phase 7 - Architecture Refactor (IF VALIDATION SUCCEEDS
+### **Phase 7: Architecture Refactor (FUTURE - OPTIONAL
 
-**Architecture Refactor: Pivot Table Approach (Simplified)**
+**Architecture Refactor: Consider After Phase 6 (Optional Optimization)**
 
-Current architecture clones entire theme records per tenant. This is inefficient.
+If current theme cloning approach becomes a bottleneck, consider pivot table refactor:
 
-**New Approach:**
-- System themes remain as templates (one row per theme in `themes` table)
-- Tenant activations + customizations stored in `tenant_themes` pivot table
-- Single query gets both theme template + tenant customizations
-- No data duplication
+**Current:** Each tenant has full theme clone in database
+**Proposed:** System themes as templates + pivot table for customizations
 
 **Benefits:**
-- ✅ No theme_data duplication (stored once in system theme)
-- ✅ Still one DB hit (JOIN query)
-- ✅ Easier updates (update template once, all tenants get it)
-- ✅ Customizations isolated per tenant (in pivot table)
-- ✅ Simpler to understand and maintain
+- Reduced data duplication
+- Easier template updates
+- Still performant (single JOIN query)
 
 **Schema:**
 ```sql

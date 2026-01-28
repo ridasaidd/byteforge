@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FieldLabel } from '@puckeditor/core';
 import { Link, Unlink } from 'lucide-react';
+import { useTheme } from '@/shared/hooks';
 
 export interface SpacingValue {
   top: string;
@@ -31,6 +32,18 @@ export function SpacingControl({
   useSliders = false,
 }: SpacingControlProps) {
   const [isLinked, setIsLinked] = useState(value.linked || false);
+  const { theme } = useTheme();
+
+  // Get theme spacing presets
+  const spacingPresets = theme?.theme_data?.spacing || { '0': '0', '4': '1rem', '8': '2rem', '16': '4rem' };
+
+  // Mapping for readable labels
+  const spacingLabels: Record<string, string> = {
+    '0': 'None',
+    '4': 'Small',
+    '8': 'Medium',
+    '16': 'Large',
+  };
 
   const handleValueChange = (side: 'top' | 'right' | 'bottom' | 'left', newValue: string) => {
     const trimmedValue = newValue.trim();
@@ -199,6 +212,60 @@ export function SpacingControl({
           {isLinked ? <Link size={14} /> : <Unlink size={14} />}
           {isLinked ? 'Linked' : 'Unlinked'}
         </button>
+
+        {/* Theme Spacing Presets */}
+        {spacingPresets && Object.keys(spacingPresets).length > 0 && (
+          <div>
+            <label style={{ ...labelStyle, marginBottom: '6px' }}>Theme Presets</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))', gap: '6px' }}>
+              {Object.entries(spacingPresets).map(([key, presetValue]) => {
+                const isActive = isLinked && value.top === presetValue;
+                const label = spacingLabels[key] || key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      if (isLinked) {
+                        onChange({
+                          ...value,
+                          top: presetValue as string,
+                          right: presetValue as string,
+                          bottom: presetValue as string,
+                          left: presetValue as string,
+                        });
+                      } else {
+                        // Apply to all sides even when unlinked for preset selection
+                        onChange({
+                          ...value,
+                          top: presetValue as string,
+                          right: presetValue as string,
+                          bottom: presetValue as string,
+                          left: presetValue as string,
+                        });
+                      }
+                    }}
+                    style={{
+                      padding: '8px',
+                      border: `2px solid ${isActive ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-04)'}`,
+                      borderRadius: '4px',
+                      backgroundColor: isActive ? 'var(--puck-color-azure-01)' : 'var(--puck-color-white)',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      textAlign: 'center',
+                      fontWeight: isActive ? '600' : '400',
+                      color: isActive ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-05)',
+                    }}
+                    title={`${label}: ${presetValue}`}
+                  >
+                    <div style={{ fontSize: '10px', opacity: 0.7 }}>{label}</div>
+                    <div style={{ fontSize: '9px', marginTop: '2px' }}>{presetValue}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Linked Mode - All Sides */}
         {isLinked && (

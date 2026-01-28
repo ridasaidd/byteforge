@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { FieldLabel } from '@puckeditor/core';
 import { Link, Unlink } from 'lucide-react';
+import { useTheme } from '@/shared/hooks';
 
 export interface BorderRadiusValue {
   topLeft: string;
@@ -34,6 +35,10 @@ export function BorderRadiusControl({
 }: BorderRadiusControlProps) {
   const [isLinked, setIsLinked] = useState(value.linked ?? true);
   const useSliders = value.useSliders ?? true;
+  const { theme } = useTheme();
+
+  // Get theme borderRadius presets
+  const borderRadiusPresets = theme?.theme_data?.borderRadius || { base: '0.25rem', full: '9999px' };
 
   const handleValueChange = (corner: keyof Pick<BorderRadiusValue, 'topLeft' | 'topRight' | 'bottomRight' | 'bottomLeft'>, newValue: string) => {
     if (isLinked) {
@@ -173,6 +178,50 @@ export function BorderRadiusControl({
           {isLinked ? <Link size={14} /> : <Unlink size={14} />}
           {isLinked ? 'Linked' : 'Unlinked'}
         </button>
+
+        {/* Theme Border Radius Presets */}
+        {borderRadiusPresets && Object.keys(borderRadiusPresets).length > 0 && (
+          <div>
+            <label style={{ ...labelStyle, marginBottom: '6px' }}>Theme Presets</label>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))', gap: '6px' }}>
+              {Object.entries(borderRadiusPresets).map(([key, presetValue]) => {
+                const isActive = isLinked && value.topLeft === presetValue;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => {
+                      onChange({
+                        ...value,
+                        topLeft: presetValue as string,
+                        topRight: presetValue as string,
+                        bottomRight: presetValue as string,
+                        bottomLeft: presetValue as string,
+                        linked: isLinked,
+                        useSliders,
+                      });
+                    }}
+                    style={{
+                      padding: '8px',
+                      border: `2px solid ${isActive ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-04)'}`,
+                      borderRadius: presetValue as string,
+                      backgroundColor: isActive ? 'var(--puck-color-azure-01)' : 'var(--puck-color-white)',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      textAlign: 'center',
+                      fontWeight: isActive ? '600' : '400',
+                      color: isActive ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-05)',
+                    }}
+                    title={`${key}: ${presetValue}`}
+                  >
+                    <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{key}</div>
+                    <div style={{ fontSize: '9px', marginTop: '2px' }}>{presetValue}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Individual corners grid - only show when unlinked */}
         {!isLinked && (

@@ -6,9 +6,10 @@ import type { Theme } from '@/shared/services/api/types';
 interface ThemeProviderProps {
   children: React.ReactNode;
   initialTheme?: Theme | null; // Accept pre-loaded theme from metadata
+  injectCss?: boolean; // Whether to inject CSS dynamically (for editor/builder only)
 }
 
-export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
+export function ThemeProvider({ children, initialTheme, injectCss = false }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme | null>(initialTheme || null);
   const [isLoading, setIsLoading] = useState(!initialTheme); // Skip loading if theme provided
   const [error, setError] = useState<Error | null>(null);
@@ -38,31 +39,34 @@ export function ThemeProvider({ children, initialTheme }: ThemeProviderProps) {
    * Inject theme CSS file into the document head.
    * This is called whenever the active theme changes.
    * Uses cache-busting version parameter to ensure latest CSS is loaded.
+   * Only runs when injectCss=true (for editor/builder pages where theme can change dynamically).
+   * Public storefront should have CSS hardcoded in blade template.
    */
   useEffect(() => {
-    if (theme?.id) {
-      // Prefer backend-provided URL if present; fallback to nested path
-      const baseUrl = (theme as any).css_url || `/storage/themes/${theme.id}/${theme.id}.css`;
-      const version = (theme as any).css_version || new Date().getTime();
-      // Remove existing query params to avoid double version parameter
-      const cleanUrl = baseUrl.split('?')[0];
-      const cssUrl = `${cleanUrl}?v=${version}`;
+    // Skip CSS injection on public pages (blade template already has <link> tag)
+    if (!injectCss || !theme?.id) return;
 
-      // Find or create a link element for theme CSS
-      let themeLink = document.getElementById('theme-css-link') as HTMLLinkElement | null;
+    // Prefer backend-provided URL if present; fallback to nested path
+    const baseUrl = (theme as any).css_url || `/storage/themes/${theme.id}/${theme.id}.css`;
+    const version = (theme as any).css_version || new Date().getTime();
+    // Remove existing query params to avoid double version parameter
+    const cleanUrl = baseUrl.split('?')[0];
+    const cssUrl = `${cleanUrl}?v=${version}`;
 
-      if (!themeLink) {
-        // Create new link element
-        themeLink = document.createElement('link');
-        themeLink.id = 'theme-css-link';
-        themeLink.rel = 'stylesheet';
-        document.head.appendChild(themeLink);
-      }
+    // Find or create a link element for theme CSS
+    let themeLink = document.getElementById('theme-css-link') as HTMLLinkElement | null;
 
-      // Update the href to the theme CSS file
-      themeLink.href = cssUrl;
+    if (!themeLink) {
+      // Create new link element
+      themeLink = document.createElement('link');
+      themeLink.id = 'theme-css-link';
+      themeLink.rel = 'stylesheet';
+      document.head.appendChild(themeLink);
     }
-  }, [theme?.id]);
+
+    // Update the href to the theme CSS file
+    themeLink.href = cssUrl;
+  }, [injectCss, theme?.id]);
 
   /**
    * Resolve a theme value using dot notation.

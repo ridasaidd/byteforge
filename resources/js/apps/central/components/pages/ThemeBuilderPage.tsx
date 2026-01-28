@@ -1,10 +1,11 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Puck, Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
 import { Loader2, Save, ArrowLeft, Plus, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import { useToast, useEditorCssLoader } from '@/shared/hooks';
 import { useSettingsRuntimeCss } from '@/shared/hooks/useSettingsRuntimeCss';
 import { themes } from '@/shared/services/api/themes';
@@ -13,7 +14,7 @@ import { pageTemplates } from '@/shared/services/api/pageTemplates';
 import { themeCssApi } from '@/shared/services/api/themeCss';
 import { useThemeCssSectionSave } from '@/shared/hooks/useThemeCssSectionSave';
 import { generateThemeStepCss } from '@/shared/puck/services/ThemeStepCssGenerator';
-import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData } from '@/shared/services/api/types';
+import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData, Theme } from '@/shared/services/api/types';
 import { config } from './puck-components';
 
 export function ThemeBuilderPage() {
@@ -72,6 +73,20 @@ export function ThemeBuilderPage() {
   const footerDataRef = useRef<Data>({ content: [], root: {} });
   const [settingsRefreshTrigger, setSettingsRefreshTrigger] = useState(0);
 
+  // Create dynamic theme object for ThemeProvider
+  // This ensures color picker and all components see live updates from Settings tab
+  const dynamicTheme = useMemo<Theme | null>(() => {
+    if (isNew) return null;
+    return {
+      id: Number(id),
+      name: themeName,
+      slug: themeName.toLowerCase().replace(/\s+/g, '-'),
+      theme_data: themeData,
+      is_active: true,
+      tenant_id: null,
+    } as Theme;
+  }, [id, themeName, themeData, isNew]);
+
   // Load pre-generated CSS files for live preview in editor
   // CSS from files provides base styles, component runtime CSS cascades over it
   // Load CSS when theme is loaded (independent of active tab)
@@ -94,10 +109,11 @@ export function ThemeBuilderPage() {
     enabled: !isNew && !isLoading,
   });
 
-  // Inject runtime CSS variables for live preview (settings only active when on settings tab)
+  // Inject runtime CSS variables for live preview (always enabled when editing theme)
+  // This makes variables from Settings tab immediately available in Header/Footer tabs
   useSettingsRuntimeCss({
     themeData,
-    enabled: !isNew && activeTab === 'settings',
+    enabled: !isNew,
   });
 
   useEffect(() => {
@@ -890,20 +906,24 @@ export function ThemeBuilderPage() {
 
         {/* Header Tab */}
         <TabsContent value="header" className="flex-1 overflow-hidden">
-          <Puck
-            config={config}
-            data={headerData}
-            onChange={handleHeaderChange}
-          />
+          <ThemeProvider initialTheme={dynamicTheme} injectCss={false}>
+            <Puck
+              config={config}
+              data={headerData}
+              onChange={handleHeaderChange}
+            />
+          </ThemeProvider>
         </TabsContent>
 
         {/* Footer Tab */}
         <TabsContent value="footer" className="flex-1 overflow-hidden">
-          <Puck
-            config={config}
-            data={footerData}
-            onChange={handleFooterChange}
-          />
+          <ThemeProvider initialTheme={dynamicTheme} injectCss={false}>
+            <Puck
+              config={config}
+              data={footerData}
+              onChange={handleFooterChange}
+            />
+          </ThemeProvider>
         </TabsContent>
 
         {/* Pages Tab */}
@@ -982,11 +1002,13 @@ export function ThemeBuilderPage() {
 
               {/* Puck Editor */}
               <div className="flex-1 overflow-hidden">
-                <Puck
-                  config={config}
-                  data={templateData}
-                  onChange={setTemplateData}
-                />
+                <ThemeProvider initialTheme={dynamicTheme} injectCss={false}>
+                  <Puck
+                    config={config}
+                    data={templateData}
+                    onChange={setTemplateData}
+                  />
+                </ThemeProvider>
               </div>
             </div>
           ) : (
