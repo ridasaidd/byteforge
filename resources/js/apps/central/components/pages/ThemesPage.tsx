@@ -6,7 +6,7 @@ import { Button } from '@/shared/components/ui/button';
 import { useToast } from '@/shared/hooks';
 import { themes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
-import { Download, Copy, RotateCcw, Trash2, Check, Plus, Edit } from 'lucide-react';
+import { Copy, RotateCcw, Trash2, Check, Plus, Edit } from 'lucide-react';
 
 export function ThemesPage() {
   const navigate = useNavigate();
@@ -114,28 +114,7 @@ export function ThemesPage() {
     }
   };
 
-  const handleExport = async (id: number) => {
-    try {
-      const data = await themes.export(id);
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `theme-export.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({
-        title: 'Success',
-        description: 'Theme exported successfully',
-      });
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to export theme',
-        variant: 'destructive',
-      });
-    }
-  };
+
 
   const handleCreateTheme = () => {
     navigate('/dashboard/themes/new/builder');
@@ -143,6 +122,10 @@ export function ThemesPage() {
 
   const handleEditTheme = (themeId: number) => {
     navigate(`/dashboard/themes/${themeId}/builder`);
+  };
+
+  const handleCustomizeTheme = (themeId: number) => {
+    navigate(`/dashboard/themes/${themeId}/customize`);
   };
 
   const isThemeActive = (slug: string) => {
@@ -220,6 +203,17 @@ export function ThemesPage() {
                     </Button>
                   )}
 
+                  {isThemeActive(theme.slug) && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleCustomizeTheme(theme.id)}
+                      className="flex-1 min-w-[120px]"
+                    >
+                      Customize
+                    </Button>
+                  )}
+
                   <Button
                     variant="outline"
                     size="sm"
@@ -245,15 +239,6 @@ export function ThemesPage() {
                     title="Duplicate"
                   >
                     <Copy className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleExport(theme.id)}
-                    title="Export"
-                  >
-                    <Download className="w-4 h-4" />
                   </Button>
 
                   {!isThemeActive(theme.slug) && (

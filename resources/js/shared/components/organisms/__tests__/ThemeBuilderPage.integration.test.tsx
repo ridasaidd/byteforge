@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, useParams } from 'react-router-dom';
-import { ThemeBuilderPage } from '@/shared/components/organisms/ThemeBuilderPage';
+import { ThemeBuilderPage } from '../ThemeBuilderPage';
 import { themes } from '@/shared/services/api/themes';
 import { themeParts } from '@/shared/services/api/themeParts';
+import { themePlaceholders } from '@/shared/services/api/themePlaceholders';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
 import { themeCssApi } from '@/shared/services/api/themeCss';
 import type { Data } from '@puckeditor/core';
@@ -12,6 +13,7 @@ import type { Data } from '@puckeditor/core';
 // Mock dependencies
 vi.mock('@/shared/services/api/themes');
 vi.mock('@/shared/services/api/themeParts');
+vi.mock('@/shared/services/api/themePlaceholders');
 vi.mock('@/shared/services/api/pageTemplates');
 vi.mock('@/shared/services/api/themeCss');
 vi.mock('react-router-dom', async () => {
@@ -116,6 +118,10 @@ describe('ThemeBuilderPage - CSS Integration', () => {
     });
 
     (themeParts.update as any).mockResolvedValue({
+      data: { id: 1 },
+    });
+
+    (themePlaceholders.save as any).mockResolvedValue({
       data: { id: 1 },
     });
 

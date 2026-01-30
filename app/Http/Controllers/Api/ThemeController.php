@@ -68,6 +68,9 @@ class ThemeController extends Controller
     {
         $tenantId = $this->getTenantId();
 
+        // Return all themes for this tenant/central scope
+        // For central (superadmin), show all themes (is_system_theme = true)
+        // For tenants, show themes available to them
         $themes = Theme::forTenant($tenantId)
             ->orderBy('is_active', 'desc')
             ->orderBy('created_at', 'desc')
@@ -136,6 +139,13 @@ class ThemeController extends Controller
         if (!$request->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',
+            ], 403);
+        }
+
+        // Only allow theme creation in central context
+        if ($this->getTenantId() !== null) {
+            return response()->json([
+                'message' => 'Theme creation is only available in the central app.',
             ], 403);
         }
 
@@ -228,6 +238,13 @@ class ThemeController extends Controller
         if (!$request->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',
+            ], 403);
+        }
+
+        // Only allow theme editing in central context
+        if ($this->getTenantId() !== null) {
+            return response()->json([
+                'message' => 'Theme editing is only available in the central app.',
             ], 403);
         }
 

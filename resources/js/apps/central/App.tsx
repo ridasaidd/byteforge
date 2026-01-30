@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { DashboardPage } from './components/pages/DashboardPage';
 import { LoginPage } from './components/pages/LoginPage';
-import { PagesPage, PageEditorPage, ThemesPage, ThemeBuilderPage, ThemePartsPage, ThemePartEditorPage } from './components/pages';
+import { PagesPage, PageEditorPage, ThemesPage, ThemeBuilderPage } from './components/pages';
 import { PublicPage } from './components/pages/PublicPage';
 import { NavigationsPage } from './components/pages/NavigationsPage';
 import { TenantsPage } from './components/pages/TenantsPage';
@@ -44,7 +44,7 @@ function ProtectedRoutes() {
         <Route path="pages/:id/edit" element={<PageEditorPage />} />
         <Route path="themes/new/builder" element={<ThemeBuilderPage />} />
         <Route path="themes/:id/builder" element={<ThemeBuilderPage />} />
-        <Route path="theme-parts/:id/edit" element={<ThemePartEditorPage />} />
+        <Route path="themes/:id/customize" element={<ThemeBuilderPage mode="customize" />} />
 
         {/* All other routes with Dashboard Layout */}
         <Route path="/*" element={
@@ -56,7 +56,6 @@ function ProtectedRoutes() {
             <Routes>
               <Route path="/" element={<DashboardPage />} />
               <Route path="pages" element={<PagesPage />} />
-              <Route path="theme-parts" element={<ThemePartsPage />} />
               <Route path="navigations" element={<NavigationsPage />} />
               <Route path="themes" element={<ThemesPage />} />
               <Route path="tenants" element={<TenantsPage />} />

@@ -4,6 +4,7 @@ import {
   ResponsiveSpacingControl, ResponsiveFontSizeControl, ResponsiveWidthControl,
   ResponsiveDisplayControl
 } from './fields';
+import { DEFAULT_BORDER } from './fields/fieldGroups';
 
 /**
  * Control Presets for Puck Components
@@ -46,7 +47,7 @@ export const borderControl = {
   type: 'custom' as const,
   label: 'Border',
   render: (props: any) => {
-    const { value = { width: '0', style: 'none', color: '#000000', radius: '0', unit: 'px' }, onChange } = props;
+    const { value = DEFAULT_BORDER, onChange } = props;
     return <BorderControl field={{ label: 'Border' }} value={value} onChange={onChange} />;
   },
 };

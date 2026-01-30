@@ -37,6 +37,9 @@ export function BorderRadiusControl({
   const useSliders = value.useSliders ?? true;
   const { theme } = useTheme();
 
+  // Helper to strip units from display values
+  const stripUnits = (val: string): string => val.replace(/[a-z%]+$/i, '');
+
   // Get theme borderRadius presets
   const borderRadiusPresets = theme?.theme_data?.borderRadius || { base: '0.25rem', full: '9999px' };
 
@@ -138,7 +141,7 @@ export function BorderRadiusControl({
                 />
                 <input
                   type="text"
-                  value={value.topLeft}
+                  value={stripUnits(value.topLeft)}
                   onChange={(e) => handleValueChange('topLeft', e.target.value)}
                   placeholder="0"
                   style={inputStyle}
@@ -147,7 +150,7 @@ export function BorderRadiusControl({
             ) : (
               <input
                 type="text"
-                value={value.topLeft}
+                value={stripUnits(value.topLeft)}
                 onChange={(e) => handleValueChange('topLeft', e.target.value)}
                 placeholder="0"
                 style={inputStyle}
@@ -185,7 +188,9 @@ export function BorderRadiusControl({
             <label style={{ ...labelStyle, marginBottom: '6px' }}>Theme Presets</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(60px, 1fr))', gap: '6px' }}>
               {Object.entries(borderRadiusPresets).map(([key, presetValue]) => {
-                const isActive = isLinked && value.topLeft === presetValue;
+                // Strip units from preset values (e.g., '9999px' -> '9999') since CSS builder adds units
+                const numericValue = typeof presetValue === 'string' ? presetValue.replace(/[a-z%]+$/i, '') : String(presetValue);
+                const isActive = isLinked && value.topLeft === numericValue;
                 return (
                   <button
                     key={key}
@@ -193,10 +198,10 @@ export function BorderRadiusControl({
                     onClick={() => {
                       onChange({
                         ...value,
-                        topLeft: presetValue as string,
-                        topRight: presetValue as string,
-                        bottomRight: presetValue as string,
-                        bottomLeft: presetValue as string,
+                        topLeft: numericValue,
+                        topRight: numericValue,
+                        bottomRight: numericValue,
+                        bottomLeft: numericValue,
                         linked: isLinked,
                         useSliders,
                       });
@@ -240,7 +245,7 @@ export function BorderRadiusControl({
                   />
                   <input
                     type="text"
-                    value={value.topLeft}
+                    value={stripUnits(value.topLeft)}
                     onChange={(e) => handleValueChange('topLeft', e.target.value)}
                     placeholder="0"
                     style={inputStyle}
@@ -249,7 +254,7 @@ export function BorderRadiusControl({
               ) : (
                 <input
                   type="text"
-                  value={value.topLeft}
+                  value={stripUnits(value.topLeft)}
                   onChange={(e) => handleValueChange('topLeft', e.target.value)}
                   placeholder="0"
                   style={inputStyle}
@@ -271,7 +276,7 @@ export function BorderRadiusControl({
                   />
                   <input
                     type="text"
-                    value={value.topRight}
+                    value={stripUnits(value.topRight)}
                     onChange={(e) => handleValueChange('topRight', e.target.value)}
                     placeholder="0"
                     style={inputStyle}
@@ -280,7 +285,7 @@ export function BorderRadiusControl({
               ) : (
                 <input
                   type="text"
-                  value={value.topRight}
+                  value={stripUnits(value.topRight)}
                   onChange={(e) => handleValueChange('topRight', e.target.value)}
                   placeholder="0"
                   style={inputStyle}
@@ -302,7 +307,7 @@ export function BorderRadiusControl({
                   />
                   <input
                     type="text"
-                    value={value.bottomLeft}
+                    value={stripUnits(value.bottomLeft)}
                     onChange={(e) => handleValueChange('bottomLeft', e.target.value)}
                     placeholder="0"
                     style={inputStyle}
@@ -311,7 +316,7 @@ export function BorderRadiusControl({
               ) : (
                 <input
                   type="text"
-                  value={value.bottomLeft}
+                  value={stripUnits(value.bottomLeft)}
                   onChange={(e) => handleValueChange('bottomLeft', e.target.value)}
                   placeholder="0"
                   style={inputStyle}
@@ -333,7 +338,7 @@ export function BorderRadiusControl({
                   />
                   <input
                     type="text"
-                    value={value.bottomRight}
+                    value={stripUnits(value.bottomRight)}
                     onChange={(e) => handleValueChange('bottomRight', e.target.value)}
                     placeholder="0"
                     style={inputStyle}
@@ -342,7 +347,7 @@ export function BorderRadiusControl({
               ) : (
                 <input
                   type="text"
-                  value={value.bottomRight}
+                  value={stripUnits(value.bottomRight)}
                   onChange={(e) => handleValueChange('bottomRight', e.target.value)}
                   placeholder="0"
                   style={inputStyle}

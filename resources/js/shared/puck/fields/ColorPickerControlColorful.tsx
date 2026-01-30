@@ -114,7 +114,8 @@ export function ColorPickerControlColorful({
     lastSetValueRef.current = swatchValue;
     setCustomColor(swatchValue);
     setRgbaColor(toRgba(swatchValue));
-    onChange({ type: 'theme', value: token });
+    // Pass the resolved color value instead of the token path for immediate CSS generation
+    onChange({ type: 'custom', value: swatchValue });
   };
 
   const handleCustomColorChange = (color: string) => {

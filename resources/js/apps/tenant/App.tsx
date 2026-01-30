@@ -1,7 +1,9 @@
 import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import { DashboardPage, PagesPage } from './components/pages';
+import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { tenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 
@@ -29,18 +31,24 @@ function ProtectedRoutes() {
   };
 
   return (
-    <DashboardLayout
-      siteName="CMS"
-      menuItems={tenantMenuItems}
-      onSearch={handleSearch}
-    >
-      <Routes>
-        <Route path="/cms" element={<DashboardPage />} />
-        <Route path="/cms/pages" element={<PagesPage />} />
-        {/* TODO: Add other routes */}
-        <Route path="/" element={<Navigate to="/cms" replace />} />
-      </Routes>
-    </DashboardLayout>
+    <ThemeProvider>
+      <DashboardLayout
+        siteName="CMS"
+        menuItems={tenantMenuItems}
+        onSearch={handleSearch}
+      >
+        <Routes>
+          {/* Full Screen Editors - Without Layout */}
+          <Route path="/cms/theme/customize" element={<ThemeCustomizePage />} />
+
+          {/* All other routes with Dashboard Layout */}
+          <Route path="/cms" element={<DashboardPage />} />
+          <Route path="/cms/pages" element={<PagesPage />} />
+          {/* TODO: Add other routes */}
+          <Route path="/" element={<Navigate to="/cms" replace />} />
+        </Routes>
+      </DashboardLayout>
+    </ThemeProvider>
   );
 }
 

@@ -22,6 +22,14 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::delete('avatar', [AuthController::class, 'deleteAvatar'])->middleware('auth:api');
         });
 
+        // Theme Customization - Central (dogfooding - central uses same theme system as tenants)
+        Route::middleware(['auth:api'])->group(function () {
+            Route::get('themes/{theme}/customization', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'getCustomization'])
+                ->middleware('permission:themes.view');
+            Route::post('themes/{theme}/customization/{section}', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'saveSection'])
+                ->middleware('permission:themes.manage');
+        });
+
         // Superadmin routes - require superadmin role
         Route::prefix('superadmin')->middleware(['auth:api'])->group(function () {
             // Dashboard stats (aggregated, cached)
@@ -90,6 +98,16 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::get('themes/{theme}/publish/validate', [ThemeCssController::class, 'validatePublish'])
                 ->middleware('permission:themes.manage');
             Route::post('themes/{theme}/publish', [ThemeCssController::class, 'publish'])
+                ->middleware('permission:themes.manage');
+
+            // Theme Placeholder management (blueprint content: header, footer, sidebars, etc.)
+            Route::get('themes/{theme}/placeholders', [\App\Http\Controllers\Api\ThemePlaceholderController::class, 'index'])
+                ->middleware('permission:themes.view');
+            Route::get('themes/{theme}/placeholders/{section}', [\App\Http\Controllers\Api\ThemePlaceholderController::class, 'show'])
+                ->middleware('permission:themes.view');
+            Route::post('themes/{theme}/placeholders/{section}', [\App\Http\Controllers\Api\ThemePlaceholderController::class, 'store'])
+                ->middleware('permission:themes.manage');
+            Route::delete('themes/{theme}/placeholders/{section}', [\App\Http\Controllers\Api\ThemePlaceholderController::class, 'destroy'])
                 ->middleware('permission:themes.manage');
 
             // Activity logs (central)

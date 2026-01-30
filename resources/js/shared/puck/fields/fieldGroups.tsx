@@ -77,7 +77,7 @@ import {
 // Default Values - Single source of truth
 // ============================================================================
 
-const DEFAULT_BORDER_SIDE = { width: '0', style: 'none' as const, color: 'var(--puck-color-grey-04)' };
+const DEFAULT_BORDER_SIDE = { width: '0', style: 'none' as const, color: { type: 'custom' as const, value: '#e5e7eb' } };
 
 export const DEFAULT_BORDER: BorderValue = {
   top: DEFAULT_BORDER_SIDE,

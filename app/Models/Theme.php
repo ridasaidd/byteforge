@@ -24,6 +24,10 @@ class Theme extends Model
         'preview_image',
         'author',
         'version',
+        'custom_css',
+        'settings_css',
+        'header_css',
+        'footer_css',
     ];
 
     protected $casts = [
@@ -53,7 +57,18 @@ class Theme extends Model
     }
 
     /**
+     * Get the placeholder content for this theme (blueprint placeholders).
+     * Only relevant for system themes (is_system_theme = true, tenant_id = NULL).
+     */
+    public function placeholders()
+    {
+        return $this->hasMany(ThemePlaceholder::class);
+    }
+
+    /**
      * Get the theme parts associated with this theme.
+     * Note: For instances (tenant_id set), theme_id is NULL.
+     * For old blueprint data still in theme_parts, theme_id is set.
      */
     public function parts()
     {
@@ -88,12 +103,17 @@ class Theme extends Model
     }
 
     /**
-     * Activate this theme and deactivate others for the same tenant.
+     * Activate this theme and deactivate others for the same scope.
+     * For central (null), deactivates other themes with tenant_id = null.
+     * For tenants, deactivates other themes for that tenant.
+     * 
+     * Note: In simplified architecture, themes are global blueprints.
+     * The tenant_id parameter controls which scope is being activated.
      */
-    public function activate(): bool
+    public function activate(?string $tenantId = null): bool
     {
-        // Deactivate all other themes for this tenant
-        static::forTenant($this->tenant_id)
+        // Deactivate all other themes for this scope
+        static::forTenant($tenantId)
             ->where('id', '!=', $this->id)
             ->update(['is_active' => false]);
 

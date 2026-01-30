@@ -9,6 +9,7 @@ export * from './pages';
 export * from './navigations';
 export * from './mediaFolders';
 export * from './themeParts';
+export * from './themePlaceholders';
 export * from './pageTemplates';
 export * from './layouts';
 export * from './stats';

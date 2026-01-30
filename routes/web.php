@@ -25,6 +25,7 @@ foreach (config('tenancy.central_domains') as $domain) {
                 // If homepage exists, render it using the public React app
                 return view('public-central', [
                     'themeCssUrl' => $themeCssUrl,
+                    'activeTheme' => $theme,
                 ]);
             }
 
@@ -42,6 +43,7 @@ foreach (config('tenancy.central_domains') as $domain) {
 
             return view('public-central', [
                 'themeCssUrl' => $theme?->getCssUrl(),
+                'activeTheme' => $theme,
             ]);
         })->where('slug', '[a-z0-9\-]+');
 
