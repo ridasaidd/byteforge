@@ -152,7 +152,17 @@ $table->json('customization_css')->nullable();
 
 ## Implementation Plan (TDD)
 
-### Step 1: Database Migration (30 min)
+### Step 1: Database Migration (30 min) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- Migration created: `2026_01_30_150515_add_settings_css_to_theme_parts_table`
+- `settings_css` column added to `theme_parts` table
+- Migration created: `2026_01_30_152641_add_settings_type_to_theme_parts_type_enum`
+- `settings` enum type added to `theme_parts.type` column
+
+**Test Results:**
+- ✅ Column exists and accepts longText data
+- ✅ Theme model fillable updated
 
 **Test First:**
 ```php
@@ -185,7 +195,99 @@ Schema::table('themes', function (Blueprint $table) {
 
 ---
 
-### Step 2: Backend API for Tenant Customization (1 hr)
+### Step 2: Backend API for Tenant Customization (1 hr) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- `ThemeCustomizationController` created with full API
+- Routes configured for both central (`/superadmin`) and tenant paths
+- `getCustomization()` returns merged blueprint + customization data
+- `saveSection()` creates/updates settings in `theme_parts` table
+- Tests: 8 tests covering permissions, validation, data merging
+
+**Test Results:**
+- ✅ Central can customize active theme
+- ✅ Tenants can customize active theme
+- ✅ Blueprint data never modified
+- ✅ Customizations saved to theme_parts (scoped by tenant_id)
+
+---
+
+### Step 3: Frontend - ThemeBuilderPage Mode Prop (1 hr) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- ThemeBuilderPage updated with `mode` prop ('create' | 'customize')
+- Settings tab shows for both modes
+- Header/Footer tabs show for both modes
+- Info/Pages tabs hidden in customize mode
+- Default active tab: 'info' for create, 'settings' for customize
+- Tests: 4 tests covering tab visibility and default states
+
+**Test Results:**
+- ✅ All tabs visible in create mode
+- ✅ Settings/Header/Footer visible in customize mode
+- ✅ Info/Pages hidden in customize mode
+- ✅ Settings tab active by default in customize mode
+
+---
+
+### Step 4: Frontend API Client for Customization (30 min) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- `themeCustomization.ts` API client created
+- `getCustomization()` endpoint implemented
+- `saveSection()` endpoint implemented
+- Types: `CustomizationData` interface with theme_data, header_data, footer_data
+- Tests: API calls verified with correct paths and payloads
+
+**Test Results:**
+- ✅ GET /api/customization/{id} returns merged data
+- ✅ POST /api/customization/{id}/section/{type} saves and returns updated data
+
+---
+
+### Step 5: Blade CSS Loading with Customization (30 min) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- Base theme CSS loaded from disk (blueprint files)
+- Customization CSS loaded from database (theme_parts.settings_css)
+- CSS cascade working correctly (base + overrides)
+- Central storefront loads correct CSS
+- Tenants load correct scoped CSS
+
+**Test Results:**
+- ✅ Variables CSS loads from disk
+- ✅ Customization CSS inlined from database
+- ✅ CSS cascade correct (disk first, database overrides)
+
+---
+
+### Step 6: Tenant Routes & Page (30 min) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- ThemeBuilderPage moved to shared components
+- `ThemeCustomizePage` wrapper created for both central and tenant
+- Routes configured: `/superadmin/themes/customize` (central), `/themes/customize` (tenant)
+- Same UI for both, difference is in API scope (tenant_id filtering)
+
+**Test Results:**
+- ✅ Central customization route works
+- ✅ Tenant customization route works
+- ✅ Mode prop correctly set to 'customize'
+
+---
+
+### Step 7: Fix Templates Endpoint (30 min) ✅ DONE
+
+**Status: COMPLETE (Jan 30, 2026)**
+- `getTemplatesFromActiveTheme()` fixed to query `page_templates` table
+- Returns array of active templates for theme
+- Scoped by tenant_id correctly
+- No longer depends on non-existent `theme_data['templates']`
+
+**Test Results:**
+- ✅ Returns all active page templates for theme
+- ✅ Scoped by tenant_id correctly
+- ✅ Used in PageCreationWizard for template selection
 
 **Test First:**
 ```php

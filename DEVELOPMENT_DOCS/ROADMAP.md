@@ -25,78 +25,95 @@ Last updated: January 28, 2026
 
 ## In flight / Priority Order
 
-### M1: Theme Customization System (NEXT - 5-6 hrs)
+### M1: Theme Customization System ✅ COMPLETE (Jan 30, 2026)
 
-**Phase 6: Theme Customization - Central + Tenants**
+**Phase 6: Theme Customization - Central + Tenants - DONE**
 
-> **Detailed plan:** See [PHASE6_TENANT_CUSTOMIZATION_PLAN.md](./PHASE6_TENANT_CUSTOMIZATION_PLAN.md)
+All steps complete:
+- ✅ Database schema (settings_css column, settings enum)
+- ✅ Backend API (ThemeCustomizationController)
+- ✅ Frontend (ThemeBuilderPage with mode prop)
+- ✅ API client (themeCustomization.ts)
+- ✅ CSS loading cascade (disk + database)
+- ✅ Tenant routes and pages
+- ✅ Templates endpoint fixed
 
-**Goal:** Enable both central (storefront) and tenants to customize activated themes (Settings, Header, Footer only). Central dogfoods the feature.
-
-**Key Decisions:**
-- Unified flow: Same customization for central storefront + tenant storefronts
-- Reuse `ThemeBuilderPage` with `mode="customize"` prop
-- Hide Info/Pages tabs in customize mode (both central and tenants)
-- Store customization CSS in database columns (not files)
-- CSS cascade: disk files (base) + database (overrides)
-- System themes immutable, only theme instances can be customized
-
-**TDD Task Breakdown:**
-
-| # | Task | Est. |
-|---|------|------|
-| 1 | Migration: Add `settings_css`, `header_css`, `footer_css` columns | 30 min |
-| 2 | Backend: `ThemeCustomizationController` API | 1 hr |
-| 3 | Frontend: `ThemeBuilderPage` mode prop | 1 hr |
-| 4 | Frontend: `themeCustomization` API client | 30 min |
-| 5 | Blade: Cascade CSS loading (disk + DB) | 30 min |
-| 6 | Tenant: Routes & `ThemeCustomizePage` | 30 min |
-| 7 | Fix: Templates endpoint (use `page_templates` table) | 30 min |
-
-**Est:** 5-6 hours
-
-**Status**: Ready to implement. This closes the page builder.
+**Status:** Merged to main. Theme customization working end-to-end.
 
 ---
 
-### M2: Font System (Future - After Phase 6)
+### M2: Theme Manager Refinements (NEXT PRIORITY - 2-3 days)
+
+**Phase 6.1: Theme Manager Polish**
+
+> **Detailed plan:** See [CURRENT_STATUS.md](./CURRENT_STATUS.md#theme-manager---refinements--critical-features)
+
+**Critical Issues (Safety & UX):**
+1. **Deletion Protection** - Prevent deleting active themes
+2. **Theme Switch Warning** - Alert about customization data loss
+3. **Theme Rollback** - Reset customizations to blueprint defaults
+
+**Settings Tab Enhancements:**
+4. **Color Preview Panel** - Visual palette display
+5. **Typography Preview** - Live text preview
+6. **Spacing & Border Radius Tokens** - Visual grids
+7. **CSS Variables Export** - Download theme as CSS
+8. **Theme Metadata UI** - Author, version, license, preview image
+
+**Est:** 2-3 days
+
+**Status:** Ready to implement after Phase 7 fonts (or in parallel)
+
+---
+
+### M3: Font System (NEXT - 5-7 days)
 
 **Phase 7: Font System Architecture**
 
 > **Detailed plan:** See [PHASE7_FONT_SYSTEM.md](./PHASE7_FONT_SYSTEM.md)
 
-**Goal:** Build comprehensive font management for sans, serif, and mono families with preview and component-level selection.
+**Goal:** Multi-font support (sans, serif, mono) with Google Fonts + FontBunny integration.
 
 **Key Features:**
-- Multi-font support (sans, serif, mono)
-- Font sources: System fonts, Google Fonts, FontBunny
-- Font preview in theme builder and components
-- Component font selection controls
-- CSS variables and `@import` generation
+- Font family selection in Settings tab (central only)
+- Google Fonts + FontBunny integration (API)
+- Font preview with live rendering
+- CSS variables + @import generation
+- Component-level font usage
+- Tenants inherit fonts from central (no custom uploads)
 
-**Est:** 7-11 hours (after Phase 6)
+**Timeline:**
+- 7a: Font Data & Backend API - 2-3 hrs
+- 7b: UI & Preview Components - 2-3 hrs
+- 7c: CSS Generation & Loading - 1.5-2 hrs
+- 7d: Component Integration & Testing - 2 hrs
+- **Total:** ~9 hours
 
-**Status**: Architecture designed, ready for implementation post-Phase 6.
+**Parallel Enhancements:** Settings tab improvements (color picker, typography preview, spacing grid, CSS export, metadata)
 
----
+**Est:** 5-7 days (full week)
 
-### M3: Booking Integration (NEXT MAJOR PHASE - After Phase 6)
-
-**Goal:** Integrate existing booking system (from booking-manager) into ByteForge multi-tenant architecture.
-
-**Scope**: 
-- Port appointment/scheduling models to multi-tenant context
-- Adapt existing payment processing (Stripe + Swish) for multiple tenants
-- Create booking management dashboard for tenants
-- Build `<BookingWidget>` Puck component for embedding bookings in pages
-
-**Est:** 6-8 weeks (booking logic already exists, this is integration + multi-tenancy)
-
-See [SCOPE_CLARITY.md](./SCOPE_CLARITY.md) for details.
+**Status:** Architecture designed, ready for implementation
 
 ---
 
-### M3: Analytics & Insights (Future)
+### M4: Booking Integration (FUTURE - After Theme System Complete)
+
+**Goal:** Integrate existing booking system into ByteForge multi-tenant CMS
+
+**Scope:**
+- Port appointment/scheduling models to multi-tenant
+- Adapt payment processing (Stripe + Swish)
+- Create booking management dashboard
+- Build `<BookingWidget>` Puck component
+
+**Est:** 6-8 weeks (booking logic exists, integration focus)
+
+**Status:** Scoped, waiting for theme system completion
+
+---
+
+### M5: Analytics & Insights (FUTURE)
 - Analytics dashboard (activity, usage, trends)
 - Booking analytics (revenue, popular times, cancellations)
 - Performance monitoring

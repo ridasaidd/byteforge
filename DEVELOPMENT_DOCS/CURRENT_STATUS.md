@@ -74,18 +74,84 @@ Testing status (Jan 30, 2026):
 
 ## What's Remaining
 
-### **Phase 7: Font System (NEXT - 3-4 hrs)**
+### **Theme Manager - Refinements & Critical Features**
+
+**Phase 6.1: Theme Manager Polish (2-3 days)**
+
+> **Detailed plan:** See [THEME_MANAGER_REFINEMENTS.md](./THEME_MANAGER_REFINEMENTS.md)
+
+**Critical Issues (Safety & UX):**
+1. **Deletion Protection**
+   - [ ] Prevent central from deleting themes active by central/tenants
+   - [ ] Show which tenants are using a theme before deletion
+   - [ ] API validation to block deletion of active themes
+   - [ ] Status: Not started
+
+2. **Theme Switch Warning Dialog**
+   - [ ] Alert user about customization data loss when switching themes
+   - [ ] Show data that will be lost (header/footer/settings edits)
+   - [ ] Option to export customizations before switch
+   - [ ] Status: Not started
+
+3. **Theme Rollback to Blueprint**
+   - [ ] Reset customizations to theme's blueprint defaults
+   - [ ] Clear customization CSS and puck_data
+   - [ ] Confirmation dialog
+   - [ ] Status: Not started
+
+**Settings Tab Enhancements (UX Improvements):**
+4. **Color Preview Panel**
+   - [ ] Visual palette display (all theme colors)
+   - [ ] Copy hex/rgb on click
+   - [ ] Status: Not started
+
+5. **Typography Preview**
+   - [ ] Live preview text with current fonts/sizes/spacing
+   - [ ] Interactive preview with different screen sizes
+   - [ ] Status: Partially done (placeholder exists)
+
+6. **Spacing & Border Radius Tokens**
+   - [ ] Visual grid showing spacing scale
+   - [ ] Interactive border-radius preview
+   - [ ] Copy token values to clipboard
+   - [ ] Status: Not started
+
+7. **CSS Variables Export**
+   - [ ] Download theme as CSS file with all variables
+   - [ ] Option to import theme from CSS
+   - [ ] Status: Not started
+
+8. **Theme Metadata**
+   - [ ] Author name & email
+   - [ ] Version with changelog
+   - [ ] License information
+   - [ ] Preview image upload/editor
+   - [ ] Status: Partial (fields exist, no UI)
+
+**Optional Future Enhancements:**
+- Theme versioning (multiple versions of same theme)
+- Theme marketplace/discovery
+- Theme permissions (who can edit/customize/activate)
+- Theme analytics (usage tracking by tenant)
+- Automatic migration for breaking changes
+- Theme dependency management
+
+---
+
+### **Phase 7: Font System (NEXT - 5-7 days)**
 
 > **Detailed plan:** See [PHASE7_FONT_SYSTEM.md](./PHASE7_FONT_SYSTEM.md)
 
 **Summary:**
-- Add custom font support (Google Fonts, uploaded fonts)
-- Font picker UI in Theme Builder Settings tab
-- Font loading optimization (preload, font-display)
+- Multi-font support (sans, serif, mono families)
+- Google Fonts + FontBunny integration (central only, tenants use central's fonts)
+- Font picker UI with live preview in Theme Builder Settings tab
+- Font loading optimization (`font-display: swap`, `@import` preload)
+- Component-level font family selection
+
+**Status**: Architecture designed, ready for implementation
 
 ---
-
-### **Future Phases (Optional Optimizations)**
 
 ### **Future Phases (Optional Optimizations)**
 
