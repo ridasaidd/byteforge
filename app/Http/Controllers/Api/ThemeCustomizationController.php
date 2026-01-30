@@ -111,7 +111,7 @@ class ThemeCustomizationController extends Controller
 
         // All customizations are stored in theme_parts (scoped by tenant)
         // This keeps the blueprint (Theme) immutable
-        
+
         if ($section === 'settings') {
             // Settings: store theme_data override and CSS in theme_parts
             $settingsPart = ThemePart::firstOrCreate(

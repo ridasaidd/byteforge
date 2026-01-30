@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Theme;
 use Illuminate\Support\Str;
-
+use Illuminate\Support\Facades\Auth;
 class ThemeService
 {
     protected ThemeCssGeneratorService $cssGenerator;
@@ -66,7 +66,7 @@ class ThemeService
                 'puck_data_compiled' => null,
                 'status' => 'published',
                 'sort_order' => 0,
-                'created_by' => auth()->user()?->id ?? 1,
+                'created_by' => Auth::id() ?? 1,
             ]);
         }
     }
@@ -106,7 +106,7 @@ class ThemeService
                 'puck_data_compiled' => null,
                 'status' => 'published',
                 'sort_order' => 0,
-                'created_by' => auth()->user()?->id ?? 1,
+                'created_by' => Auth::id() ?? 1,
             ]);
         }
 

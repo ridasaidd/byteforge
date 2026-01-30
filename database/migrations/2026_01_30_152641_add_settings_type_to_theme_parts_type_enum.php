@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Adds 'settings' to the type enum for storing scoped theme settings customizations.
      */
     public function up(): void
@@ -29,7 +29,7 @@ return new class extends Migration
         if (DB::connection()->getDriverName() === 'mysql') {
             // First delete any 'settings' type records
             DB::table('theme_parts')->where('type', 'settings')->delete();
-            
+
             // Then revert the enum
             DB::statement("ALTER TABLE theme_parts MODIFY COLUMN type ENUM('header', 'footer', 'sidebar_left', 'sidebar_right', 'section') DEFAULT 'section'");
         }

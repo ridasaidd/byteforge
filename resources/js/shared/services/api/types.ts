@@ -213,17 +213,18 @@ export interface UpdatePageData {
   footer_id?: number | null;
 }
 export interface ThemeData {
-  name: string;
-  version: string;
-  author: string;
-  description: string;
-  colors: Record<string, unknown>;
-  typography: Record<string, unknown>;
-  spacing: Record<string, unknown>;
-  borderRadius: Record<string, unknown>;
-  shadows: Record<string, unknown>;
-  breakpoints: Record<string, unknown>;
-  components: Record<string, unknown>;
+  name?: string;
+  version?: string;
+  author?: string;
+  description?: string;
+  colors?: Record<string, unknown>;
+  typography?: Record<string, unknown>;
+  spacing?: Record<string, unknown>;
+  borderRadius?: Record<string, unknown>;
+  shadows?: Record<string, unknown>;
+  breakpoints?: Record<string, unknown>;
+  components?: Record<string, unknown>;
+  [key: string]: unknown; // Allow index access for compatibility with PuckCssAggregator
 }
 
 export interface Theme {

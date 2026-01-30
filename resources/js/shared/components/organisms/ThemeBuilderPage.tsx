@@ -9,7 +9,6 @@ import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import { useToast, useEditorCssLoader } from '@/shared/hooks';
 import { useSettingsRuntimeCss } from '@/shared/hooks/useSettingsRuntimeCss';
 import { themes } from '@/shared/services/api/themes';
-import { themeParts } from '@/shared/services/api/themeParts';
 import { themePlaceholders } from '@/shared/services/api/themePlaceholders';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
 import { themeCssApi } from '@/shared/services/api/themeCss';
@@ -66,10 +65,6 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   // Puck data for different parts
   const [headerData, setHeaderData] = useState<Data>({ content: [], root: {} });
   const [footerData, setFooterData] = useState<Data>({ content: [], root: {} });
-
-  // Store theme part IDs
-  const [headerPartId, setHeaderPartId] = useState<number | null>(null);
-  const [footerPartId, setFooterPartId] = useState<number | null>(null);
 
   // Page templates state
   const [templates, setTemplates] = useState<PageTemplate[]>([]);
@@ -150,27 +145,26 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       if (!isCustomizeMode) {
         // BLUEPRINT MODE: Load theme_data from theme, placeholders for header/footer
         setThemeData(theme.theme_data || themeData);
-        
+
         try {
           const placeholdersResponse = await themePlaceholders.list(id as string);
           const rawPlaceholders = placeholdersResponse.data || [];
 
-          const placeholders = Array.isArray(rawPlaceholders)
-            ? rawPlaceholders
-            : Object.values(rawPlaceholders).flat();
+          type PlaceholderItem = { type: string; content?: Data };
+          const placeholders: PlaceholderItem[] = Array.isArray(rawPlaceholders)
+            ? (rawPlaceholders as PlaceholderItem[])
+            : (Object.values(rawPlaceholders).flat() as PlaceholderItem[]);
 
-          const header = placeholders.find((p: any) => p.type === 'header');
-          const footer = placeholders.find((p: any) => p.type === 'footer');
+          const header = placeholders.find((p) => p.type === 'header');
+          const footer = placeholders.find((p) => p.type === 'footer');
 
-          if (header) {
-            const data = header.content || { content: [], root: {} };
-            setHeaderData(data);
-            headerDataRef.current = data;
+          if (header?.content) {
+            setHeaderData(header.content);
+            headerDataRef.current = header.content;
           }
-          if (footer) {
-            const data = footer.content || { content: [], root: {} };
-            setFooterData(data);
-            footerDataRef.current = data;
+          if (footer?.content) {
+            setFooterData(footer.content);
+            footerDataRef.current = footer.content;
           }
         } catch (error) {
           console.error('Failed to load placeholders:', error);

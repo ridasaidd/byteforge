@@ -8,7 +8,7 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
-     * 
+     *
      * Adds settings_css column to theme_parts table for storing
      * scoped CSS customizations (per tenant/central).
      */

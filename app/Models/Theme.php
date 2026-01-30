@@ -106,7 +106,7 @@ class Theme extends Model
      * Activate this theme and deactivate others for the same scope.
      * For central (null), deactivates other themes with tenant_id = null.
      * For tenants, deactivates other themes for that tenant.
-     * 
+     *
      * Note: In simplified architecture, themes are global blueprints.
      * The tenant_id parameter controls which scope is being activated.
      */
