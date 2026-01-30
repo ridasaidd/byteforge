@@ -2,59 +2,91 @@
 
 ## Overview
 
-The theme system provides a flexible, customizable design token system where themes are:
-- Stored as JSON files in `resources/js/shared/themes/`
-- Synced to the database for tenant-specific activation and customization
-- Accessed globally via React Context with a token resolver
+The theme system provides a flexible, customizable design token system with a **three-layer architecture** that separates blueprints from customizations:
 
-## Architecture Flow
+1. **Blueprints (themes table)**: Immutable theme definitions with styling
+2. **Placeholders (theme_placeholders table)**: Blueprint header/footer/sidebar content
+3. **Theme Parts (theme_parts table)**: Scoped instances per tenant/central with customizations
+
+This architecture ensures:
+- ✅ Blueprint styling and content remain pristine
+- ✅ Each scope (central/tenant) gets isolated customizations
+- ✅ No cross-contamination between users or scopes
+
+## Architecture Flow (Phase 6 - Updated Jan 30, 2026)
 
 ```
-1. DISK (Original Themes - Read Only)
-   resources/js/shared/themes/
-   ├── minimal/theme.json
-   ├── modern/theme.json
-   └── ...
-           ↓
-2. USER ACTIVATES THEME
-   - Theme synced from disk → database
-   - Set is_active = true for tenant
-   - base_theme references original slug
-           ↓
-3. DATABASE (Active Theme - Customizable)
+1. BLUEPRINTS (Read-Only Templates)
    themes table:
-   - theme_data (JSON copy, can be modified)
-   - is_active = true
+   - is_system_theme = true
+   - theme_data (JSON - colors, typography, spacing)
+   - Generated CSS files on disk (/storage/themes/{id}/)
+   
+   theme_placeholders table:
+   - theme_id → themes.id
+   - type ('header', 'footer', 'sidebar_left', 'sidebar_right')
+   - content (JSON - Puck editor data)
            ↓
-4. THEME PROVIDER (React Context)
-   - Loads active theme from API
-   - Provides theme values to components
-   - Resolves dot notation paths (e.g., "colors.primary.600")
+2. THEME ACTIVATION
+   - User activates a theme for their scope (central or tenant)
+   - Placeholders copied to theme_parts with scope (tenant_id = null or UUID)
+   - Same theme can be activated by multiple scopes independently
            ↓
-5. COMPONENTS (Consume Theme)
-   - Use useTheme() hook
-   - Access values: theme.resolve('colors.primary.600')
-   - Render with theme styles
+3. SCOPED INSTANCES (Customizable)
+   theme_parts table:
+   - tenant_id (NULL for central, UUID for tenant)
+   - theme_id → themes.id (references which theme is active)
+   - type ('header', 'footer', 'settings')
+   - puck_data_raw (JSON - customized Puck content)
+   - settings_css (CSS for type='settings')
+           ↓
+4. CUSTOMIZATION MODE
+   - User edits Settings/Header/Footer in Customize mode
+   - Changes saved to theme_parts (NOT themes table)
+   - Blueprint remains untouched
+           ↓
+5. CSS CASCADE (Public Rendering)
+   - Base CSS from disk (blueprint files)
+   - Override CSS from theme_parts.settings_css (customization)
 ```
 
-## Database Schema
+## Database Schema (Updated)
 
-### themes table
+### themes table (Blueprints)
 ```sql
 - id (bigint)
-- tenant_id (bigint, nullable) - NULL for central, tenant_id for tenants
-- name (string) - Display name: "Minimal Theme"
-- slug (string, unique) - URL-safe: "minimal"
-- base_theme (string, nullable) - References theme folder slug
-- theme_data (json) - Actual theme values (customizable)
-- is_active (boolean) - Only one active per tenant
-- description (text, nullable)
-- author (string, nullable)
-- version (string) - "1.0.0"
-- created_at, updated_at
+- tenant_id (bigint, nullable) - Always NULL for blueprints
+- name (string) - Display name: "Modern Store"
+- slug (string, unique) - URL-safe: "modern-store"
+- theme_data (json) - Design tokens (colors, typography, spacing)
+- is_system_theme (boolean) - TRUE for blueprints
+- is_active (boolean) - Active status
+- settings_css, header_css, footer_css (longtext) - Blueprint CSS files
 ```
 
-**Index**: `(tenant_id, is_active)` for fast active theme lookup.
+### theme_placeholders table (Blueprint Content)
+```sql
+- id (bigint)
+- theme_id (bigint, FK) - References themes.id
+- type (string) - 'header', 'footer', 'sidebar_left', 'sidebar_right', 'section'
+- content (json) - Puck editor data for placeholder
+- UNIQUE (theme_id, type)
+```
+
+### theme_parts table (Scoped Instances)
+```sql
+- id (bigint)
+- tenant_id (varchar, nullable) - NULL = central, UUID = tenant
+- theme_id (bigint, FK, nullable) - References active theme
+- type (enum) - 'header', 'footer', 'sidebar_left', 'sidebar_right', 'section', 'settings'
+- puck_data_raw (json) - Customized Puck content
+- settings_css (longtext) - CSS for type='settings'
+```
+
+**Key Constraints:**
+- Blueprints: `is_system_theme = true`, `tenant_id = NULL`
+- Instances: `tenant_id` set (NULL for central, UUID for tenant)
+- Settings: `type = 'settings'` stores theme_data overrides in `puck_data_raw`
 
 ## Theme JSON Structure
 
@@ -180,72 +212,47 @@ function MyComponent() {
 ✅ **Flexibility**: Deep customization without affecting originals  
 ✅ **Scalability**: Add new themes by dropping JSON files in `shared/themes/`
 
-## Theme Builder vs Theme Customizer
+## Theme Builder vs Theme Customizer (Phase 6 - Implemented)
 
-### ThemeBuilderPage (`/dashboard/themes/:id/builder`)
-**Purpose**: Create entirely new themes from scratch
+### ThemeBuilderPage - mode='create' (`/dashboard/themes/:id/builder`)
+**Purpose**: Create entirely new theme blueprints
 
 **Features**:
 - ✅ Create/edit theme metadata (name, description, preview image)
 - ✅ Edit theme tokens in Settings tab (colors, typography, spacing, borderRadius)
-- ✅ Design header with Puck editor (full drag-and-drop)
-- ✅ Design footer with Puck editor (full drag-and-drop)
+- ✅ Design header with Puck editor (full drag-and-drop) → saves to theme_placeholders
+- ✅ Design footer with Puck editor (full drag-and-drop) → saves to theme_placeholders
 - ✅ Create page templates with Puck editor
-- ✅ Save all changes to database (`theme_data`, theme parts, templates)
+- ✅ Generate CSS files on disk
 
-**Location**: `resources/js/apps/central/components/pages/ThemeBuilderPage.tsx`
+**Location**: `resources/js/shared/components/organisms/ThemeBuilderPage.tsx`
 
-**Tabs**:
+**Tabs (mode='create')**:
 1. **Info** - Theme name, description, preview image
 2. **Settings** - Token editor (colors, typography, spacing)
-3. **Header** - Puck editor for header design
-4. **Footer** - Puck editor for footer design
+3. **Header** - Puck editor for header design → theme_placeholders
+4. **Footer** - Puck editor for footer design → theme_placeholders
 5. **Pages** - Page template management
-
-**Use Cases**:
-- Creating a brand new theme
-- Editing all aspects of a theme (tokens + layout parts)
-- Building theme parts (header/footer) from scratch
 
 ---
 
-### ThemeCustomizerPage (Future - Recommended Architecture)
-**Purpose**: Customize an activated theme's tokens with live preview
+### ThemeBuilderPage - mode='customize' (`/dashboard/themes/:id/customize`)
+**Purpose**: Customize an activated theme's tokens and content with scoped isolation
 
-**Recommended Features**:
-- Edit theme tokens (colors, typography, spacing) ← Focus here
-- Live preview with actual header/footer injected
-- Read-only header/footer (no editing, just preview)
-- Auto-save with debounce
-- Reset to defaults button
-- No template/page creation
+**Features** (IMPLEMENTED Jan 30, 2026):
+- ✅ Edit theme tokens (colors, typography, spacing) → saves to theme_parts (type='settings')
+- ✅ Edit header content → saves to theme_parts (type='header')
+- ✅ Edit footer content → saves to theme_parts (type='footer')
+- ✅ Scoped by tenant_id (null for central, UUID for tenant)
+- ✅ Blueprint's theme_data stays untouched
+- ✅ CSS generated and saved to theme_parts.settings_css
 
-**Recommended Location**: `resources/js/apps/central/components/pages/ThemeCustomizerPage.tsx`
+**Location**: `resources/js/shared/components/organisms/ThemeCustomizePage.tsx` (wrapper)
 
-**Recommended Layout**:
-```
-┌─────────────────────────────────────────────────────┐
-│ [Back] Theme Name              [Reset] [Save]       │
-├─────────────────┬───────────────────────────────────┤
-│                 │                                   │
-│  TOKEN EDITOR   │      LIVE PREVIEW                 │
-│  (Left Panel)   │      (Right Panel)                │
-│                 │                                   │
-│  Colors         │      [Header from theme part]     │
-│  - Primary      │                                   │
-│  - Secondary    │      Sample Page Content          │
-│  - Semantic     │      Lorem ipsum...               │
-│                 │                                   │
-│  Typography     │      [Footer from theme part]     │
-│  - Font Family  │                                   │
-│  - Font Sizes   │                                   │
-│                 │                                   │
-│  Spacing        │                                   │
-│  - Border Radius│                                   │
-│  - Gaps         │                                   │
-│                 │                                   │
-└─────────────────┴───────────────────────────────────┘
-```
+**Tabs (mode='customize')**:
+1. **Settings** - Token editor (colors, typography, spacing)
+2. **Header** - Puck editor for header content
+3. **Footer** - Puck editor for footer content
 
 **Key Differences from Builder**:
 - No tab system (single split-view layout)

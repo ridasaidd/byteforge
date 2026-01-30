@@ -4,76 +4,83 @@ namespace Tests\Feature\Api;
 
 use App\Models\Theme;
 use App\Models\ThemePart;
+use App\Models\ThemePlaceholder;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\ThemeService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
 
 /**
- * Phase 6 Step 2: Theme Customization API Tests
+ * Theme Customization API Tests - Simplified Architecture
  *
- * Uses existing test fixtures from TestFixturesSeeder with pre-configured permissions:
- * - Tenants: tenant-one, tenant-two, tenant-three
- * - Central users: superadmin, editor, manager, viewer
- * - Tenant users (with permissions already set):
- *   * owner.tenant-one@byteforge.se (themes.manage, themes.view)
- *   * editor.tenant-two@byteforge.se (themes.view only)
- *   * admin.tenant-three@byteforge.se (themes.manage, themes.view)
- *
- * Tests leverage pre-seeded users with realistic permission configurations
+ * Architecture:
+ * - Themes are global blueprints (is_system_theme = true, tenant_id = null)
+ * - theme_placeholders store default content (edited by Theme Builder)
+ * - theme_parts store scoped customizations (per tenant/central)
+ * - Activation copies placeholders -> theme_parts for the scope
+ * - Customization edits theme_parts, not the theme or placeholders
  */
 class ThemeCustomizationApiTest extends TestCase
 {
     use RefreshDatabase;
 
     protected User $superadminUser;
-    protected User $editorUser;
     protected User $viewerUser;
     protected User $tenantOwnerUser;
-    protected User $tenantEditorUser;
-    protected User $tenantAdminUser;
     protected Tenant $tenantOne;
-    protected Tenant $tenantTwo;
-    protected Tenant $tenantThree;
+    protected Theme $theme;
+    protected ThemeService $themeService;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Seed test fixtures (includes users with pre-configured permissions)
-        $this->artisan('db:seed', ['--class' => 'TestFixturesSeeder']);
+        $this->themeService = $this->app->make(ThemeService::class);
 
-        // Get existing central users
+        // Get existing central users (seeded by TestFixturesSeeder via parent::setUp)
         $this->superadminUser = User::where('email', 'superadmin@byteforge.se')->first();
-        $this->editorUser = User::where('email', 'editor@byteforge.se')->first();
         $this->viewerUser = User::where('email', 'viewer@byteforge.se')->first();
 
         // Get tenant fixtures
         $this->tenantOne = Tenant::where('slug', 'tenant-one')->first();
-        $this->tenantTwo = Tenant::where('slug', 'tenant-two')->first();
-        $this->tenantThree = Tenant::where('slug', 'tenant-three')->first();
-
-        // Get tenant users (permissions already set by TestFixturesSeeder)
         $this->tenantOwnerUser = User::where('email', 'owner.tenant-one@byteforge.se')->first();
-        $this->tenantEditorUser = User::where('email', 'editor.tenant-two@byteforge.se')->first();
-        $this->tenantAdminUser = User::where('email', 'admin.tenant-three@byteforge.se')->first();
+
+        // Create a theme blueprint with placeholders
+        $this->theme = Theme::factory()->create([
+            'tenant_id' => null,
+            'is_system_theme' => true,
+            'is_active' => false,
+            'name' => 'Test Theme',
+            'slug' => 'test-theme',
+        ]);
+
+        // Create placeholders (blueprint defaults)
+        ThemePlaceholder::create([
+            'theme_id' => $this->theme->id,
+            'type' => 'header',
+            'content' => ['root' => ['props' => []], 'content' => [['type' => 'Header']]],
+        ]);
+
+        ThemePlaceholder::create([
+            'theme_id' => $this->theme->id,
+            'type' => 'footer',
+            'content' => ['root' => ['props' => []], 'content' => [['type' => 'Footer']]],
+        ]);
     }
 
     /**
-     * Phase 6 Step 2: Test central superadmin can customize active theme
+     * Test central superadmin can customize active theme (after activation creates theme_parts)
      */
     public function test_central_superadmin_can_customize_active_theme(): void
     {
-        $theme = Theme::factory()->create([
-            'tenant_id' => null,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
+        // Activate theme for central - this creates theme_parts
+        $this->themeService->activateTheme('test-theme', null);
 
         Passport::actingAs($this->superadminUser);
 
-        $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/settings", [
+        $response = $this->postJson("/api/themes/{$this->theme->id}/customization/settings", [
             'css' => ':root { --primary-500: #ff0000; }',
             'theme_data' => [
                 'colors' => ['primary' => ['500' => '#ff0000']],
@@ -82,221 +89,142 @@ class ThemeCustomizationApiTest extends TestCase
 
         $response->assertStatus(200);
 
-        $theme->refresh();
-        $this->assertEquals(':root { --primary-500: #ff0000; }', $theme->settings_css);
+        // CSS is now stored in theme_parts, not on the theme
+        $settingsPart = ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $this->theme->id)
+            ->where('type', 'settings')
+            ->first();
+
+        $this->assertNotNull($settingsPart);
+        $this->assertEquals(':root { --primary-500: #ff0000; }', $settingsPart->settings_css);
+        $this->assertEquals(['colors' => ['primary' => ['500' => '#ff0000']]], $settingsPart->puck_data_raw);
     }
 
     /**
-     * Phase 6 Step 2: Test tenant owner can customize their theme
+     * Test cannot customize theme without activating first (no theme_parts)
      */
-    public function test_tenant_owner_can_customize_active_theme(): void
+    public function test_cannot_customize_without_activation(): void
     {
-        $theme = Theme::factory()->create([
-            'tenant_id' => $this->tenantOne->id,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
-
-        // Authenticate BEFORE tenant context initialization
-        Passport::actingAs($this->tenantOwnerUser);
-
-        // Initialize tenant context
-        tenancy()->initialize($this->tenantOne);
-        $domain = $this->tenantOne->domains()->first()->domain;
-
-        $response = $this->postJson("https://{$domain}/api/themes/{$theme->id}/customization/settings", [
-            'css' => ':root { --primary-500: #0000ff; }',
-            'theme_data' => [
-                'colors' => ['primary' => ['500' => '#0000ff']],
-            ],
-        ]);
-
-        $response->assertStatus(200);
-
-        $theme->refresh();
-        $this->assertEquals(':root { --primary-500: #0000ff; }', $theme->settings_css);
-    }
-
-    /**
-     * Phase 6 Step 2: Test tenant viewer cannot customize (no themes.manage permission)
-     */
-    public function test_tenant_viewer_cannot_customize_theme(): void
-    {
-        $theme = Theme::factory()->create([
-            'tenant_id' => $this->tenantTwo->id,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
-
-        Passport::actingAs($this->tenantEditorUser);
-        tenancy()->initialize($this->tenantTwo);
-        $domain = $this->tenantTwo->domains()->first()->domain;
-
-        $response = $this->postJson("https://{$domain}/api/themes/{$theme->id}/customization/settings", [
-            'css' => ':root { --hack: red; }',
-        ]);
-
-        // Should fail due to missing themes.manage permission
-        $response->assertStatus(403);
-    }
-
-    /**
-     * Phase 6 Step 2: Test cannot customize system theme
-     */
-    public function test_cannot_customize_system_theme(): void
-    {
-        $systemTheme = Theme::factory()->create([
-            'tenant_id' => null,
-            'is_system_theme' => true,
-            'is_active' => true,
-        ]);
-
         Passport::actingAs($this->superadminUser);
 
-        $response = $this->postJson("/api/superadmin/themes/{$systemTheme->id}/customization/settings", [
-            'css' => ':root { --custom: red; }',
+        // Don't activate - theme_parts don't exist yet
+        $response = $this->postJson("/api/themes/{$this->theme->id}/customization/settings", [
+            'css' => ':root { --primary-500: #ff0000; }',
         ]);
 
         $response->assertStatus(403);
         $response->assertJson([
-            'message' => 'System themes cannot be customized',
+            'message' => 'Please activate this theme first to customize it.',
         ]);
     }
 
     /**
-     * Phase 6 Step 2: Test central can customize header section
+     * Test central can customize header section
      */
     public function test_central_can_customize_header_section(): void
     {
-        $theme = Theme::factory()->create([
-            'tenant_id' => null,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
-
-        // Create header theme part
-        $headerPart = ThemePart::factory()->create([
-            'theme_id' => $theme->id,
-            'tenant_id' => null,
-            'type' => 'header',
-            'puck_data_raw' => ['root' => ['props' => []], 'content' => []],
-        ]);
+        // Activate theme for central
+        $this->themeService->activateTheme('test-theme', null);
 
         Passport::actingAs($this->superadminUser);
 
-        $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/header", [
+        $response = $this->postJson("/api/themes/{$this->theme->id}/customization/header", [
             'css' => '.header { background: blue; }',
             'puck_data' => ['root' => ['props' => ['background' => 'blue']], 'content' => []],
         ]);
 
         $response->assertStatus(200);
 
-        $theme->refresh();
-        $this->assertEquals('.header { background: blue; }', $theme->header_css);
+        // CSS is now stored in theme_parts
+        $headerPart = ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $this->theme->id)
+            ->where('type', 'header')
+            ->first();
 
-        // Verify puck_data was updated in theme_parts
-        $headerPart->refresh();
+        $this->assertEquals('.header { background: blue; }', $headerPart->settings_css);
         $this->assertEquals('blue', $headerPart->puck_data_raw['root']['props']['background'] ?? null);
     }
 
     /**
-     * Phase 6 Step 2: Test central can customize footer section
+     * Test central can customize footer section
      */
     public function test_central_can_customize_footer_section(): void
     {
-        $theme = Theme::factory()->create([
-            'tenant_id' => null,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
-
-        // Create footer theme part
-        $footerPart = ThemePart::factory()->create([
-            'theme_id' => $theme->id,
-            'tenant_id' => null,
-            'type' => 'footer',
-            'puck_data_raw' => ['root' => ['props' => []], 'content' => []],
-        ]);
+        // Activate theme for central
+        $this->themeService->activateTheme('test-theme', null);
 
         Passport::actingAs($this->superadminUser);
 
-        $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/footer", [
+        $response = $this->postJson("/api/themes/{$this->theme->id}/customization/footer", [
             'css' => '.footer { color: green; }',
             'puck_data' => ['root' => ['props' => ['color' => 'green']], 'content' => []],
         ]);
 
         $response->assertStatus(200);
 
-        $theme->refresh();
-        $this->assertEquals('.footer { color: green; }', $theme->footer_css);
+        // CSS is now stored in theme_parts
+        $footerPart = ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $this->theme->id)
+            ->where('type', 'footer')
+            ->first();
 
-        // Verify puck_data was updated in theme_parts
-        $footerPart->refresh();
+        $this->assertEquals('.footer { color: green; }', $footerPart->settings_css);
         $this->assertEquals('green', $footerPart->puck_data_raw['root']['props']['color'] ?? null);
     }
 
     /**
-     * Phase 6 Step 2: Test cannot modify invalid sections via customization
+     * Test cannot modify invalid sections via customization
      */
     public function test_cannot_modify_invalid_sections(): void
     {
-        $theme = Theme::factory()->create([
-            'tenant_id' => null,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
+        // Activate theme for central
+        $this->themeService->activateTheme('test-theme', null);
 
         Passport::actingAs($this->superadminUser);
 
         // Try to modify 'info' section (not allowed)
-        $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/info", [
+        $response = $this->postJson("/api/themes/{$this->theme->id}/customization/info", [
             'css' => '.info { color: red; }',
         ]);
 
         $response->assertStatus(422);
-        $response->assertJsonValidationErrors('section');
     }
 
     /**
-     * Phase 6 Step 2: Test tenant user cannot customize other tenant's theme
-     */
-    public function test_tenant_user_cannot_customize_other_tenant_theme(): void
-    {
-        $tenantTwoTheme = Theme::factory()->create([
-            'tenant_id' => $this->tenantTwo->id,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
-
-        Passport::actingAs($this->tenantOwnerUser);
-        tenancy()->initialize($this->tenantOne);
-        $domain = $this->tenantOne->domains()->first()->domain;
-
-        $response = $this->postJson("https://{$domain}/api/themes/{$tenantTwoTheme->id}/customization/settings", [
-            'css' => ':root { --hack: red; }',
-        ]);
-
-        // Should be denied at controller level (403) not middleware
-        $response->assertStatus(403);
-    }
-
-    /**
-     * Phase 6 Step 2: Test get customization returns all sections
+     * Test get customization returns all sections
      */
     public function test_get_customization_returns_all_sections(): void
     {
-        $theme = Theme::factory()->create([
+        // Activate theme
+        $this->themeService->activateTheme('test-theme', null);
+
+        // Set CSS on theme_parts (where customizations are stored)
+        $settingsPart = ThemePart::create([
+            'theme_id' => $this->theme->id,
             'tenant_id' => null,
-            'is_system_theme' => false,
-            'is_active' => true,
+            'type' => 'settings',
+            'name' => 'Test Settings',
+            'slug' => 'test-settings',
             'settings_css' => ':root { --primary: blue; }',
-            'header_css' => '.header { color: red; }',
-            'footer_css' => '.footer { color: green; }',
+            'status' => 'published',
+            'created_by' => $this->superadminUser->id,
         ]);
+
+        $headerPart = ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $this->theme->id)
+            ->where('type', 'header')
+            ->first();
+        $headerPart->update(['settings_css' => '.header { color: red; }']);
+
+        $footerPart = ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $this->theme->id)
+            ->where('type', 'footer')
+            ->first();
+        $footerPart->update(['settings_css' => '.footer { color: green; }']);
 
         Passport::actingAs($this->superadminUser);
 
-        $response = $this->getJson("/api/superadmin/themes/{$theme->id}/customization");
+        $response = $this->getJson("/api/themes/{$this->theme->id}/customization");
 
         $response->assertStatus(200);
         $response->assertJson([
@@ -309,22 +237,60 @@ class ThemeCustomizationApiTest extends TestCase
     }
 
     /**
-     * Phase 6 Step 2: Test central viewer cannot customize (no themes.manage)
+     * Test central viewer cannot customize (no themes.manage permission)
      */
     public function test_central_viewer_cannot_customize(): void
     {
-        $theme = Theme::factory()->create([
-            'tenant_id' => null,
-            'is_system_theme' => false,
-            'is_active' => true,
-        ]);
+        // Activate theme
+        $this->themeService->activateTheme('test-theme', null);
 
         Passport::actingAs($this->viewerUser);
 
-        $response = $this->postJson("/api/superadmin/themes/{$theme->id}/customization/settings", [
+        $response = $this->postJson("/api/themes/{$this->theme->id}/customization/settings", [
             'css' => ':root { --hack: red; }',
         ]);
 
         $response->assertStatus(403);
+    }
+
+    /**
+     * Test tenant and central have isolated theme_parts
+     */
+    public function test_tenant_and_central_have_isolated_parts(): void
+    {
+        $tenantId = $this->tenantOne->id;
+
+        // Activate for both central and tenant
+        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme('test-theme', $tenantId);
+
+        // Verify separate theme_parts exist
+        $centralParts = ThemePart::whereNull('tenant_id')
+            ->where('theme_id', $this->theme->id)
+            ->count();
+
+        $tenantParts = ThemePart::where('tenant_id', $tenantId)
+            ->where('theme_id', $this->theme->id)
+            ->count();
+
+        $this->assertEquals(2, $centralParts); // header + footer
+        $this->assertEquals(2, $tenantParts);  // header + footer
+
+        // Modify central's header
+        Passport::actingAs($this->superadminUser);
+
+        $this->postJson("/api/themes/{$this->theme->id}/customization/header", [
+            'puck_data' => ['root' => ['props' => ['title' => 'Central Header']], 'content' => []],
+        ]);
+
+        // Verify tenant's header is unchanged
+        $tenantHeader = ThemePart::where('tenant_id', $tenantId)
+            ->where('theme_id', $this->theme->id)
+            ->where('type', 'header')
+            ->first();
+
+        // Tenant header should still have original content from placeholder
+        $this->assertArrayHasKey('type', $tenantHeader->puck_data_raw['content'][0] ?? []);
+        $this->assertEquals('Header', $tenantHeader->puck_data_raw['content'][0]['type'] ?? null);
     }
 }

@@ -142,7 +142,7 @@ class TestFixturesSeeder extends Seeder
         echo "\nCreating tenant users with different roles...\n";
 
         // 4. Create tenant users with different roles/permissions within each tenant context
-        
+
         // Tenant One: Create owner/admin user with full permissions
         tenancy()->initialize($tenantOne);
         $tenantOneOwner = User::firstOrCreate(

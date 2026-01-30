@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: January 27, 2026 (Theme CSS Generation Complete)  
-Current branch: main
+Last updated: January 30, 2026 (Phase 6 Theme Customization Complete)  
+Current branch: feature/phase6-theme-customization (ready to merge to main)
 
 —
 
@@ -9,18 +9,19 @@ Current branch: main
 
 - **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
 - **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** ✅ All tests passing (624 frontend + 140+ backend = 770+)
-- **Page Builder:** 100% complete and merged to main (metadata injection, caching, editor, pages list, tests)
+- **Testing:** ✅ All tests passing (700+ frontend + 150+ backend)
+- **Page Builder:** 100% complete and merged to main
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
-- **Theme system:** Disk sync, active theme, duplicate/reset/export, ThemeProvider with token resolver
+- **Theme system:** ✅ **COMPLETE** - Blueprints, placeholders, customization, CSS generation
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
-- **Theme CSS Generation:** ✅ **COMPLETE** - Phases 3, 4, 5a, 5b, 5c, 5d merged to main (Backend services, Frontend aggregator, All 15 components migrated, CSS validation complete)
+- **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
+- **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
 
-Testing status (Jan 27, 2026):
-- ✅ **Frontend:** 624+ tests passing (includes 143 Puck component tests)
-- ✅ **Backend:** 140+ tests passing (includes CSS services)
-- ✅ **Total:** 770+ tests/assertions passing, 0 failures, 0 errors
+Testing status (Jan 30, 2026):
+- ✅ **Frontend:** 700+ tests passing
+- ✅ **Backend:** 150+ tests passing (includes theme customization, placeholders)
 - ✅ **CSS Files:** All sections generating valid CSS (settings, header, footer, templates)
+- ✅ **Theme Architecture:** Blueprint styling + placeholder content persistent, customization isolated per scope
 
 —
 
@@ -32,7 +33,8 @@ Testing status (Jan 27, 2026):
 - NavigationObserver for automatic page recompilation
 - HTTP caching (ETag, Cache-Control) on public page endpoints
 - APIs: users, tenants, pages, navigation, media, settings, themes
-- **NEW (Phase 3)**: ThemeCssSectionService (section file management), ThemeCssPublishService (validation & publishing), ThemeCssController (REST API)
+- **Phase 3**: ThemeCssSectionService (section file management), ThemeCssPublishService (validation & publishing), ThemeCssController (REST API)
+- **Phase 6 NEW**: ThemePlaceholderController (blueprint placeholder management), ThemeCustomizationController (scoped customizations), ThemeService refactored (no theme cloning, placeholder copying)
 
 **Frontend:**
 - PageEditorPage with Puck visual editor (viewport switcher)
@@ -46,10 +48,19 @@ Testing status (Jan 27, 2026):
 - Media library with folders
 - Dashboard pages: Themes, Users, Tenants, Settings, Activity, Roles/Permissions
 - Dashboard home with real stats, recent tenants/activity, permission-based visibility
-- **NEW (Phase 4)**: PuckCssAggregator (extract CSS from Puck data), themeCssApi client
-- **NEW (Phase 5a-b)**: ThemeStepCssGenerator (step-based CSS generation), useThemeCssSectionSave hook, ThemeBuilderPage CSS integration, CSS extraction bug fixes
-- **NEW (Phase 5c)**: useEditorCssLoader hook (loads pre-generated CSS into editor head tag), integrated into ThemeBuilderPage
-- **NEW (Phase 5d)**: usePuckEditMode hook, migrated all 15 Puck components to buildLayoutCSS/buildTypographyCSS, dual-mode rendering (CSS only in editor)
+- **Phase 4**: PuckCssAggregator (extract CSS from Puck data), themeCssApi client
+- **Phase 5a-d**: ThemeStepCssGenerator, useEditorCssLoader, all 15 Puck components migrated
+- **Phase 6 NEW**: ThemeBuilderPage with mode prop ('create' | 'customize'), ThemeCustomizePage wrapper, themeCustomization API client, themePlaceholders API client
+
+**Phase 6: Theme Customization System (COMPLETE):**
+- ✅ Three-layer architecture: Blueprints → Placeholders → Theme Parts (scoped instances)
+- ✅ Blueprint styling (theme_data, CSS files) is immutable for tenants
+- ✅ Placeholder content (header/footer/sidebar) copied to theme_parts on activation
+- ✅ Customizations saved to theme_parts (scoped by tenant_id)
+- ✅ Settings saved with type='settings' in theme_parts (CSS + theme_data overrides)
+- ✅ ThemeBuilderPage: mode='create' shows all tabs, mode='customize' shows Settings/Header/Footer only
+- ✅ Customize mode loads/saves from customization endpoint (not blueprint data)
+- ✅ 18+ new tests (ThemeServiceTest, ThemePlaceholderApiTest, ThemeCustomizationApiTest, ThemeBuilderPage.mode.test)
 
 **Performance:**
 - Metadata injection eliminates 3+ API calls
@@ -63,119 +74,23 @@ Testing status (Jan 27, 2026):
 
 ## What's Remaining
 
-### **Phase 6: Theme Customization System - Central + Tenants (NEXT - 5-6 hrs)**
+### **Phase 7: Font System (NEXT - 3-4 hrs)**
 
-> **Detailed plan:** See [PHASE6_TENANT_CUSTOMIZATION_PLAN.md](./PHASE6_TENANT_CUSTOMIZATION_PLAN.md)
+> **Detailed plan:** See [PHASE7_FONT_SYSTEM.md](./PHASE7_FONT_SYSTEM.md)
 
 **Summary:**
-- Unified customization flow for both central storefront and tenant storefronts
-- Central dogfoods customization feature on its own storefront
-- Reuse ThemeBuilderPage with `mode="customize"` prop (hide Info/Pages tabs)
-- Add CSS columns to themes table: `settings_css`, `header_css`, `footer_css`
-- CSS cascade: base theme files (disk) + customization CSS (database)
-- Fix templates endpoint (use `page_templates` table, not `theme_data['templates']`)
-
-**Architecture:**
-- System themes (is_system_theme=true): Created by central, immutable, disk files
-- Theme instances (is_system_theme=false): Activated by central/tenants, customizable, DB storage
-
-**Task Breakdown (TDD):**
-
-| Step | Task | Est. |
-|------|------|------|
-| 1 | Migration: Add CSS columns | 30 min |
-| 2 | Backend: Customization API | 1 hr |
-| 3 | Frontend: ThemeBuilderPage mode prop | 1 hr |
-| 4 | Frontend: API client | 30 min |
-| 5 | Blade: CSS cascade loading | 30 min |
-| 6 | Tenant: Routes & page | 30 min |
-| 7 | Fix: Templates endpoint | 30 min |
-
-**Files to Create/Update:**
-- Backend: TenantThemeCustomizationController, service, migration
-- Frontend: PageEditorPage CSS loading, customization API client
-- Tests: Tenant customization isolation, page template usage
+- Add custom font support (Google Fonts, uploaded fonts)
+- Font picker UI in Theme Builder Settings tab
+- Font loading optimization (preload, font-display)
 
 ---
 
-### **Phase 7: Architecture Refactor (FUTURE - OPTIONAL
+### **Future Phases (Optional Optimizations)**
 
-**Architecture Refactor: Consider After Phase 6 (Optional Optimization)**
+### **Future Phases (Optional Optimizations)**
 
-If current theme cloning approach becomes a bottleneck, consider pivot table refactor:
-
-**Current:** Each tenant has full theme clone in database
-**Proposed:** System themes as templates + pivot table for customizations
-
-**Benefits:**
-- Reduced data duplication
-- Easier template updates
-- Still performant (single JOIN query)
-
-**Schema:**
-```sql
--- themes table (unchanged - stores templates)
-themes:
-  - id
-  - name, slug
-  - theme_data (JSON - the template)
-  - is_system_theme (true for templates)
-
--- NEW: tenant_themes pivot table
-tenant_themes:
-  - tenant_End-to-End Testing & Validation (NEXT - 2-4 hrs)**
-- [ ] Integrate useEditorCssLoader into PageEditorPage (tenant app)
-- [ ] Browser test all 15 components in editor (live preview)
-- [ ] Browser test storefront (no runtime CSS, only pre-generated files)
-- [ ] Verify Button, Card, Image fixes work in real browser
-- [ ] Performance validation (page load time, no CSS compilation overhead)
-- [ ] Create test checklist for all component properties
-
-**Phase 7: Architecture Refactor (AFTER VALIDATION
-**Query to get active theme + customizations:**
-```php
-// Using Eloquent (efficient, same as raw SQL)
-$theme = Theme::with(['tenants' => function($query) use ($tenantId) {
-    $query->where('tenant_id', $tenantId)
-          ->wherePivot('is_active', true);
-}])->first();
-
-$customCss = $theme->tenants->first()?->pivot->custom_css;
-```
-
----
-
-**Phase 6: Validate CSS Loading (IMMEDIATE - 1-2 hrs)**
-- [ ] Update `public-central.blade.php` to add `<link>` tag for theme CSS
-- [ ] Test storefront loads theme CSS correctly
-- [ ] Verify styles apply to page content
-- [ ] Confirm cache-busting works (update theme → new CSS loads)
-
-**Phase 7: Architecture Refactor (IF VALIDATION SUCCEEDS - 3-4 hrs)**
-- [ ] Create `tenant_themes` migration (pivot table)
-- [ ] Add `BelongsToMany` relationship to Theme model
-- [ ] Create `ActivateTheme` Action (using laravel-actions)
-- [ ] Create `SaveThemeCustomCss` Action
-- [ ] Update `ThemeService` to use pivot table instead of cloning
-- [ ] Update tenant theme queries to use new relationship
-- [ ] Remove old cloning logic
-- [ ] Tests for new Actions
-
-**Phase 8: Tenant Customization UI (4-6 hrs)**
-- [ ] Live token editing (colors, typography, spacing)
-- [ ] Save customizations to `tenant_themes.custom_css`
-- [ ] Preview before applying
-- [ ] Reset to theme defaults
-
-**Phase 9: Puck Editor CSS Loading (1-2 hrs)**
-- [ ] Ensure editor preview loads theme CSS
-- [ ] Hot-reload CSS on theme changes
-
-**Phase 10: Extended Component CSS Builders (2-3 hrs)**
-- [ ] Add Link, Image, Form CSS builders
-- [ ] Currently have: Box, Card, Button, Heading, Text
-
----
+**Architecture Refactor (OPTIONAL):**
+If current approach becomes a bottleneck, consider pivot table refactor (see old Phase 7 notes).
 
 **Priority 2 - Central Admin Features:**
 - [ ] Settings management UI (email, SMTP, general config)
@@ -198,6 +113,34 @@ $customCss = $theme->tenants->first()?->pivot->custom_css;
 —
 
 ## Key Implementations (Recent)
+
+**January 30, 2026 (Phase 6 - Theme Customization Complete):**
+- ✅ Implemented three-layer theme architecture:
+  - **Blueprints (themes table)**: Immutable theme definitions with styling (theme_data)
+  - **Placeholders (theme_placeholders table)**: Blueprint header/footer/sidebar content
+  - **Theme Parts (theme_parts table)**: Scoped instances per tenant/central with customizations
+- ✅ ThemeService refactored:
+  - `activateTheme()` no longer clones themes - just copies placeholders to theme_parts
+  - `ensureThemePartsExist()` creates scoped header/footer/settings parts from placeholders
+  - Settings part uses type='settings' with settings_css and puck_data_raw (theme_data override)
+- ✅ ThemeCustomizationController rewritten:
+  - `getCustomization()` returns merged theme_data + header_data + footer_data
+  - `saveSection()` saves to theme_parts (not themes table) for settings/header/footer
+  - Blueprint's theme_data stays untouched when customizing
+- ✅ ThemePlaceholderController created:
+  - CRUD for blueprint placeholder content (header, footer, sidebar_left, etc.)
+  - Only allowed for system themes (is_system_theme=true)
+- ✅ Frontend ThemeBuilderPage updated:
+  - mode='create': Full builder with Info, Settings, Header, Footer, Pages tabs
+  - mode='customize': Settings, Header, Footer tabs only
+  - Customize mode loads from customization endpoint, saves to theme_parts
+- ✅ Database migrations:
+  - `theme_placeholders` table for blueprint content
+  - `settings_css` column on theme_parts for CSS customizations
+  - `settings` added to theme_parts type ENUM
+  - Migration to move blueprint parts to placeholders table
+- ✅ Tests: ThemeServiceTest, ThemePlaceholderApiTest, ThemeCustomizationApiTest, ThemeBuilderPage.mode.test
+- **Verified**: Blueprint styling and placeholder content persistent, customization isolated per scope
 
 **January 25, 2026 (Phase 5b - PuckCssAggregator Fixes):**
 - ✅ Fixed recursive component collection in PuckCssAggregator

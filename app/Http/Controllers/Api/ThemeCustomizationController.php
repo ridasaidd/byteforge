@@ -26,19 +26,45 @@ class ThemeCustomizationController extends Controller
         $this->cssGenerator = $cssGenerator;
     }
 
-    /**
-     * Get customization CSS for all sections
-     */
     public function getCustomization(Theme $theme)
     {
-        // Authorize: user must own this theme
-        $this->authorizeThemeAccess($theme);
+        // Get current tenant context
+        $tenantId = $this->getTenantId();
+
+        // Load header/footer content from theme_parts for this tenant/central scope
+        $headerPart = ThemePart::where('theme_id', $theme->id)
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'header')
+            ->first();
+
+        $footerPart = ThemePart::where('theme_id', $theme->id)
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'footer')
+            ->first();
+
+        // Load customized settings (theme_data override) from theme_parts
+        $settingsPart = ThemePart::where('theme_id', $theme->id)
+            ->where('tenant_id', $tenantId)
+            ->where('type', 'settings')
+            ->first();
+
+        // Merge blueprint theme_data with customized overrides
+        $customizedThemeData = $theme->theme_data;
+        if ($settingsPart && $settingsPart->puck_data_raw) {
+            $customizedThemeData = array_replace_recursive(
+                $theme->theme_data ?? [],
+                $settingsPart->puck_data_raw
+            );
+        }
 
         return response()->json([
             'data' => [
-                'settings_css' => $theme->settings_css,
-                'header_css' => $theme->header_css,
-                'footer_css' => $theme->footer_css,
+                'theme_data' => $customizedThemeData,
+                'settings_css' => $settingsPart->settings_css ?? null,
+                'header_css' => $headerPart->settings_css ?? null,
+                'footer_css' => $footerPart->settings_css ?? null,
+                'header_data' => $headerPart?->puck_data_raw,
+                'footer_data' => $footerPart?->puck_data_raw,
             ],
         ]);
     }
@@ -61,48 +87,73 @@ class ThemeCustomizationController extends Controller
             ], 422);
         }
 
-        // Authorize: user must own this theme
-        $this->authorizeThemeAccess($theme);
+        // Get current tenant context
+        $tenantId = $this->getTenantId();
 
-        // Validate: cannot customize system themes
-        if ($theme->is_system_theme) {
+        // Validate: theme_parts must exist for this theme + tenant scope
+        // (created when theme is activated)
+        $hasThemeParts = ThemePart::where('theme_id', $theme->id)
+            ->where('tenant_id', $tenantId)
+            ->exists();
+
+        if (!$hasThemeParts) {
             return response()->json([
-                'message' => 'System themes cannot be customized',
+                'message' => 'Please activate this theme first to customize it.',
             ], 403);
         }
 
         // Validate request data
         $data = $request->validate([
             'css' => 'nullable|string',
-            'puck_data' => 'nullable|array',
-            'theme_data' => 'nullable|array', // For settings section only
+            'theme_data' => 'nullable|array', // For settings section
+            'puck_data' => 'nullable|array', // For header/footer sections
         ]);
 
-        // Save CSS to database column
-        $columnName = "{$section}_css";
-        $theme->$columnName = $data['css'] ?? null;
-
-        // Save puck_data or theme_data depending on section
+        // All customizations are stored in theme_parts (scoped by tenant)
+        // This keeps the blueprint (Theme) immutable
+        
         if ($section === 'settings') {
-            // Settings: update theme_data in themes table
-            if (isset($data['theme_data'])) {
-                $theme->theme_data = array_merge($theme->theme_data ?? [], $data['theme_data']);
-            }
-        } else {
-            // Header/Footer: update puck_data in theme_parts table
-            if (isset($data['puck_data'])) {
-                $themePart = ThemePart::where('theme_id', $theme->id)
-                    ->where('type', $section)
-                    ->first();
+            // Settings: store theme_data override and CSS in theme_parts
+            $settingsPart = ThemePart::firstOrCreate(
+                [
+                    'theme_id' => $theme->id,
+                    'tenant_id' => $tenantId,
+                    'type' => 'settings',
+                ],
+                [
+                    'name' => $theme->name . ' Settings',
+                    'slug' => $theme->slug . '-settings-' . ($tenantId ?? 'central'),
+                    'status' => 'published',
+                    'created_by' => $request->user()->id,
+                ]
+            );
 
-                if ($themePart) {
-                    $themePart->puck_data_raw = $data['puck_data'];
-                    $themePart->save();
-                }
+            if (isset($data['theme_data'])) {
+                $settingsPart->puck_data_raw = $data['theme_data'];
             }
+            if (isset($data['css'])) {
+                $settingsPart->settings_css = $data['css'];
+            }
+            $settingsPart->save();
         }
 
-        $theme->save();
+        // Header/Footer sections: update theme_part content (puck_data) and CSS
+        if (in_array($section, ['header', 'footer'])) {
+            $themePart = ThemePart::where('theme_id', $theme->id)
+                ->where('tenant_id', $tenantId)
+                ->where('type', $section)
+                ->first();
+
+            if ($themePart) {
+                if (isset($data['puck_data'])) {
+                    $themePart->puck_data_raw = $data['puck_data'];
+                }
+                if (isset($data['css'])) {
+                    $themePart->settings_css = $data['css'];
+                }
+                $themePart->save();
+            }
+        }
 
         return response()->json([
             'message' => ucfirst($section) . ' customization saved successfully',
@@ -113,29 +164,12 @@ class ThemeCustomizationController extends Controller
     }
 
     /**
-     * Authorize theme access based on tenant context
-     */
-    protected function authorizeThemeAccess(Theme $theme): void
-    {
-        $tenantId = $this->getTenantId();
-
-        // Check if theme belongs to the current tenant/central
-        if ($theme->tenant_id !== $tenantId) {
-            abort(403, 'Unauthorized to customize this theme');
-        }
-    }
-
-    /**
      * Get tenant ID based on context (central vs tenant)
      */
     protected function getTenantId(): ?string
     {
-        // For central context (superadmin routes), return null
-        if (request()->is('api/superadmin/*')) {
-            return null;
-        }
-
         // For tenant context, return current tenant ID
+        // For central context, tenant() returns null
         return tenant()?->id;
     }
 }

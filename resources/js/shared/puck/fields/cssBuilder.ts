@@ -56,9 +56,10 @@ function resolveColorValue(color: ColorPickerValue | string | undefined, resolve
   // If it's a string, return as-is (legacy format)
   if (typeof color === 'string') {
     // If it's an actual value (hex/rgba), use directly
-    if (color.startsWith('#') || color.startsWith('rgb')) return color;
+    if (color.startsWith('#') || color.startsWith('rgb') || color.startsWith('var(')) return color;
     // Otherwise, attempt to resolve via theme if available
-    return resolver ? (resolver(color) || color) : color;
+    const resolved = resolver?.(color);
+    return resolved || 'transparent';
   }
 
   // If it's a ColorPickerValue object, extract the actual color value
@@ -67,8 +68,10 @@ function resolveColorValue(color: ColorPickerValue | string | undefined, resolve
     // Custom values pass through; theme tokens should be resolved when possible
     if (color.type === 'custom') return val;
     if (color.type === 'theme') {
-      if (val.startsWith('#') || val.startsWith('rgb')) return val;
-      return resolver ? (resolver(val) || val) : val;
+      if (val.startsWith('#') || val.startsWith('rgb') || val.startsWith('var(')) return val;
+      // For theme tokens, resolve via resolver
+      const resolved = val ? resolver?.(val) : undefined;
+      return resolved || 'transparent';
     }
     return val;
   }
@@ -416,6 +419,9 @@ function buildBorderCSS(className: string, border: BorderValue, resolver?: Theme
 function buildBorderRadiusCSS(className: string, radius: BorderRadiusValue): string {
   const { topLeft, topRight, bottomRight, bottomLeft, unit = 'px' } = radius;
 
+  // Helper to strip existing units from values
+  const stripUnits = (value: string): string => value.replace(/[a-z%]+$/i, '');
+
   // Skip if all are 0
   if (topLeft === '0' && topRight === '0' && bottomRight === '0' && bottomLeft === '0') {
     return '';
@@ -425,7 +431,7 @@ function buildBorderRadiusCSS(className: string, radius: BorderRadiusValue): str
   if (topLeft === topRight && topRight === bottomRight && bottomRight === bottomLeft) {
     return `
     .${className} {
-      border-radius: ${topLeft}${unit};
+      border-radius: ${stripUnits(topLeft)}${unit};
     }
   `;
   }
@@ -433,7 +439,7 @@ function buildBorderRadiusCSS(className: string, radius: BorderRadiusValue): str
   // Otherwise, use full border-radius (clockwise: TL TR BR BL)
   return `
     .${className} {
-      border-radius: ${topLeft}${unit} ${topRight}${unit} ${bottomRight}${unit} ${bottomLeft}${unit};
+      border-radius: ${stripUnits(topLeft)}${unit} ${stripUnits(topRight)}${unit} ${stripUnits(bottomRight)}${unit} ${stripUnits(bottomLeft)}${unit};
     }
   `;
 }

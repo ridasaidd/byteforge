@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image, FileText, Palette, Menu, Layers } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image, FileText, Palette, Menu } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 
 export const centralMenuItems: MenuItem[] = [
@@ -13,12 +13,6 @@ export const centralMenuItems: MenuItem[] = [
     path: '/dashboard/pages',
     icon: FileText,
     // Pages accessible to all authenticated users for now
-  },
-  {
-    label: 'Theme Parts',
-    path: '/dashboard/theme-parts',
-    icon: Layers,
-    // Theme parts accessible to all authenticated users for now
   },
   {
     label: 'Navigation',

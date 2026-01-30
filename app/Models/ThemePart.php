@@ -19,6 +19,7 @@ class ThemePart extends Model
         'type',
         'puck_data_raw',
         'puck_data_compiled',
+        'settings_css',
         'status',
         'sort_order',
         'created_by',

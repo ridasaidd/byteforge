@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
-import { ThemeBuilderPage } from '@/shared/components/organisms/ThemeBuilderPage';
+import { ThemeBuilderPage } from '../ThemeBuilderPage';
 import { BrowserRouter } from 'react-router-dom';
 import type { Theme } from '@/shared/services/api/types';
 

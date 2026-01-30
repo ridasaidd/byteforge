@@ -16,38 +16,59 @@ class ThemeService
     /**
      * Activate a theme for a tenant.
      * If theme doesn't exist in DB, return null.
-     * If activating a system theme, clone theme parts and page templates.
+     * Copies placeholder content to theme_parts for the tenant/central scope.
      */
     public function activateTheme(string $themeSlug, ?string $tenantId = null): ?Theme
     {
-        // Check if this is a system theme (from central app)
-        $systemTheme = Theme::whereNull('tenant_id')
-            ->where('slug', $themeSlug)
-            ->where('is_system_theme', true)
-            ->first();
-
-        // Check if theme already exists in database for this tenant
-        $theme = Theme::forTenant($tenantId)
-            ->where('slug', $themeSlug)
-            ->first();
+        // Find the theme by slug
+        $theme = Theme::where('slug', $themeSlug)->first();
 
         if (!$theme) {
-            if ($systemTheme) {
-                // Clone system theme with its bundle (parts + templates)
-                $theme = $this->cloneSystemTheme($systemTheme, $tenantId);
-            } else {
-                // Theme not found in database
-                return null;
-            }
+            return null;
         }
 
-        // Activate the theme
-        $theme->activate();
+        // Copy placeholder content to theme_parts for this tenant/central
+        // Only if theme_parts don't already exist for this scope
+        $this->ensureThemePartsExist($theme, $tenantId);
 
-        // Note: CSS generation now handled by section-based approach (ThemeCssPublishService)
-        // No longer generating monolithic CSS file here
+        // Activate the theme for this tenant/central
+        $theme->activate($tenantId);
 
         return $theme;
+    }
+
+    /**
+     * Ensure theme_parts exist for a theme in the given tenant scope.
+     * Copies from placeholders if they don't exist yet.
+     */
+    private function ensureThemePartsExist(Theme $theme, ?string $tenantId): void
+    {
+        // Check if theme_parts already exist for this tenant/central
+        $existingParts = \App\Models\ThemePart::where('theme_id', $theme->id)
+            ->where('tenant_id', $tenantId)
+            ->exists();
+
+        if ($existingParts) {
+            return; // Already have customized parts, don't overwrite
+        }
+
+        // Copy placeholders to theme_parts for this tenant/central scope
+        $placeholders = \App\Models\ThemePlaceholder::where('theme_id', $theme->id)->get();
+
+        foreach ($placeholders as $placeholder) {
+            \App\Models\ThemePart::create([
+                'tenant_id' => $tenantId,
+                'theme_id' => $theme->id,
+                'name' => $theme->name . ' ' . ucfirst($placeholder->type),
+                'slug' => $theme->slug . '-' . $placeholder->type . '-' . ($tenantId ?? 'central'),
+                'type' => $placeholder->type,
+                'puck_data_raw' => $placeholder->content,
+                'puck_data_compiled' => null,
+                'status' => 'published',
+                'sort_order' => 0,
+                'created_by' => auth()->user()?->id ?? 1,
+            ]);
+        }
     }
 
     /**
@@ -70,23 +91,22 @@ class ThemeService
             'is_system_theme' => false, // Tenant copy is not a system theme
         ]);
 
-        // Clone theme parts (header, footer, etc.)
-        $parts = \App\Models\ThemePart::whereNull('tenant_id')
-            ->where('theme_id', $systemTheme->id)
-            ->get();
+        // Clone theme placeholders to theme_parts instances
+        // This creates a hard wall: blueprint placeholders → theme_parts instances
+        $placeholders = \App\Models\ThemePlaceholder::where('theme_id', $systemTheme->id)->get();
 
-        foreach ($parts as $part) {
+        foreach ($placeholders as $placeholder) {
             \App\Models\ThemePart::create([
                 'tenant_id' => $tenantId,
                 'theme_id' => $theme->id,
-                'name' => $part->name,
-                'slug' => $part->slug,
-                'type' => $part->type,
-                'puck_data_raw' => $part->puck_data_raw,
-                'puck_data_compiled' => $part->puck_data_compiled,
-                'status' => $part->status,
-                'sort_order' => $part->sort_order,
-                'created_by' => $part->created_by,
+                'name' => $theme->name . ' ' . ucfirst($placeholder->type),
+                'slug' => $theme->slug . '-' . $placeholder->type,
+                'type' => $placeholder->type,
+                'puck_data_raw' => $placeholder->content, // Copy placeholder content
+                'puck_data_compiled' => null,
+                'status' => 'published',
+                'sort_order' => 0,
+                'created_by' => auth()->user()?->id ?? 1,
             ]);
         }
 
@@ -280,12 +300,25 @@ class ThemeService
 
     /**
      * Get templates from active theme
+     *
+     * Phase 6 Step 7: Fixed to query page_templates table instead of theme_data
      */
     public function getTemplatesFromActiveTheme(?string $tenantId = null): array
     {
         $theme = $this->getOrCreateDefaultTheme($tenantId);
 
-        return $theme->theme_data['templates'] ?? [];
+        // Get from page_templates table, not theme_data
+        $templates = \App\Models\PageTemplate::where('theme_id', $theme->id)
+            ->where('is_active', true);
+
+        // Scope to tenant if provided
+        if ($tenantId !== null) {
+            $templates->where('tenant_id', $tenantId);
+        } else {
+            $templates->whereNull('tenant_id');
+        }
+
+        return $templates->get()->toArray();
     }
 }
 
