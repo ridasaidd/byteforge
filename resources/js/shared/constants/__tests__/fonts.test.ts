@@ -75,7 +75,7 @@ describe('Font Constants', () => {
   describe('getFontsForCategory', () => {
     it('should return system font first, then bundled', () => {
       const sansFonts = getFontsForCategory('sans');
-      
+
       expect(sansFonts[0].name).toBe('System Default');
       expect(sansFonts.length).toBe(BUNDLED_FONTS.sans.length + 1);
     });
@@ -102,7 +102,7 @@ describe('Font Constants', () => {
   describe('findFont', () => {
     it('should find bundled fonts by name', () => {
       const inter = findFont('Inter');
-      
+
       expect(inter).toBeDefined();
       expect(inter?.category).toBe('sans');
       expect(inter?.file).toBe('Inter-Variable.woff2');
@@ -110,21 +110,21 @@ describe('Font Constants', () => {
 
     it('should find serif fonts', () => {
       const playfair = findFont('Playfair Display');
-      
+
       expect(playfair).toBeDefined();
       expect(playfair?.category).toBe('serif');
     });
 
     it('should find mono fonts', () => {
       const jetbrains = findFont('JetBrains Mono');
-      
+
       expect(jetbrains).toBeDefined();
       expect(jetbrains?.category).toBe('mono');
     });
 
     it('should find system fonts', () => {
       const system = findFont('System Default');
-      
+
       expect(system).toBeDefined();
       expect(system?.category).toBe('sans');
       expect(system?.file).toBe('');
@@ -132,7 +132,7 @@ describe('Font Constants', () => {
 
     it('should return undefined for non-existent font', () => {
       const notFound = findFont('Non Existent Font');
-      
+
       expect(notFound).toBeUndefined();
     });
 

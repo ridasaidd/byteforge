@@ -1,18 +1,17 @@
 /**
  * Font Family Field Configuration
- * 
+ *
  * Shared Puck field definition for font family selection
  * Used in theme builder and other components that need font selection
  */
 
-import { ReactNode } from 'react';
 import { BUNDLED_FONTS, SYSTEM_FONTS, getFontsForCategory } from '@/shared/constants/fonts';
 
 export type FontCategory = 'sans' | 'serif' | 'mono';
 
 /**
  * FontFamilyField Configuration
- * 
+ *
  * Provides a standardized font selection field for Puck editor
  * with support for bundled and system fonts
  */
@@ -26,10 +25,10 @@ export const fontFamilyFieldConfig = {
 
   /**
    * Create Puck field config for font selection
-   * 
+   *
    * @example
    * const field = createFontFamilyField('sans');
-   * 
+   *
    * Used in Puck config like:
    * fontFamily: {
    *   type: 'select',

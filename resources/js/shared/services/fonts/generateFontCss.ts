@@ -1,6 +1,6 @@
 /**
  * Font CSS Generator
- * 
+ *
  * Generates @font-face declarations and CSS variables for font system
  */
 
@@ -19,7 +19,7 @@ export interface FontSelection {
 export function generateFontFaceCSS(selection: FontSelection): string {
   const declarations: string[] = [];
 
-  for (const [_category, fontName] of Object.entries(selection)) {
+  for (const fontName of Object.values(selection)) {
     if (!fontName) continue;
 
     const font = findFont(fontName);

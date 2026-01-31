@@ -27,6 +27,7 @@ import { puckConfig as config } from '@/shared/puck/config';
 import { ColorPickerControlColorful } from '@/shared/puck/fields/ColorPickerControlColorful';
 import type { ColorPickerValue } from '@/shared/puck/fields/ColorPickerControl';
 import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData, Theme } from '@/shared/services/api/types';
+import { FontFamilyPicker, FontPreview } from '@/shared/components/organisms/fonts';
 
 /**
  * Phase 6: Theme Builder Page
@@ -903,28 +904,83 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
             {/* Typography Section */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Typography</h2>
-              <div className="space-y-4">
-                {/* Font Family */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">Font Family (Sans)</label>
-                  <input
-                    type="text"
-                    value={((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string || 'Inter, system-ui, sans-serif'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      typography: {
-                        ...(themeData.typography as Record<string, unknown>),
-                        fontFamily: {
-                          ...((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>),
-                          sans: e.target.value.split(',').map(f => f.trim()),
+              <div className="space-y-6">
+                {/* Font Family Pickers */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Sans Font */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Sans Font</label>
+                    <FontFamilyPicker
+                      category="sans"
+                      selectedFont={
+                        ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string
+                      }
+                      onSelect={(fontName) => setThemeData({
+                        ...themeData,
+                        typography: {
+                          ...(themeData.typography as Record<string, unknown>),
+                          fontFamily: {
+                            ...((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>),
+                            sans: fontName,
+                          },
                         },
-                      },
-                    })}
-                    placeholder="Inter, system-ui, sans-serif"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                  <p className="mt-1 text-xs text-muted-foreground">Comma-separated list of fonts</p>
+                      })}
+                    />
+                  </div>
+
+                  {/* Serif Font */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Serif Font</label>
+                    <FontFamilyPicker
+                      category="serif"
+                      selectedFont={
+                        ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('serif')] as string
+                      }
+                      onSelect={(fontName) => setThemeData({
+                        ...themeData,
+                        typography: {
+                          ...(themeData.typography as Record<string, unknown>),
+                          fontFamily: {
+                            ...((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>),
+                            serif: fontName,
+                          },
+                        },
+                      })}
+                    />
+                  </div>
+
+                  {/* Mono Font */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Mono Font</label>
+                    <FontFamilyPicker
+                      category="mono"
+                      selectedFont={
+                        ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('mono')] as string
+                      }
+                      onSelect={(fontName) => setThemeData({
+                        ...themeData,
+                        typography: {
+                          ...(themeData.typography as Record<string, unknown>),
+                          fontFamily: {
+                            ...((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>),
+                            mono: fontName,
+                          },
+                        },
+                      })}
+                    />
+                  </div>
                 </div>
+
+                {/* Font Preview */}
+                {(((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string | undefined) && (
+                  <div className="border-t pt-4">
+                    <h3 className="text-sm font-medium mb-3">Sans Font Preview</h3>
+                    <FontPreview
+                      fontName={(((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string)}
+                      category="sans"
+                    />
+                  </div>
+                )}
 
                 {/* Font Sizes */}
                 <div className="grid grid-cols-3 gap-4">

@@ -1,6 +1,6 @@
 /**
  * Font Preview Component
- * 
+ *
  * Displays preview of selected fonts with various weights and styles
  * Shows how fonts will appear in the theme
  */
@@ -10,11 +10,11 @@ import { findFont } from '@/shared/constants/fonts';
 
 export interface FontPreviewProps {
   fontName: string;
-  category: 'sans' | 'serif' | 'mono';
+  category?: 'sans' | 'serif' | 'mono';
   className?: string;
 }
 
-export function FontPreview({ fontName, category, className = '' }: FontPreviewProps) {
+export function FontPreview({ fontName, className = '' }: FontPreviewProps) {
   const font = useMemo(() => {
     return findFont(fontName);
   }, [fontName]);
