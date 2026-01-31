@@ -133,7 +133,11 @@ export interface Media extends Record<string, unknown> {
   model_type: string | null;
   model_id: number | null;
   url: string;
-  thumbnail_url?: string | null;
+  thumbnail_url?: string | null;  // 150x150
+  small_url?: string | null;      // 300x300
+  medium_url?: string | null;     // 800x800
+  large_url?: string | null;      // 1920x1920
+  webp_url?: string | null;       // webp format, 1920x1920
   created_at: string;
   updated_at: string;
 }

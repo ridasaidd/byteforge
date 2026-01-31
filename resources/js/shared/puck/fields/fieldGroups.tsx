@@ -453,7 +453,8 @@ function BackgroundImageField({ field, value, onChange }: { field: { label?: str
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
 
   const handleMediaSelect = (media: Media) => {
-    onChange(media.url);
+    // Use large conversion for backgrounds (full-width) with fallbacks
+    onChange(media.large_url || media.medium_url || media.url);
   };
 
   return (

@@ -26,9 +26,19 @@ import {
   ResponsiveSpacingControl,
 } from '../../fields';
 
+// Responsive image sources for srcset
+export interface ImageSrcSet {
+  original: string;
+  small?: string;   // 300px
+  medium?: string;  // 800px
+  large?: string;   // 1920px
+  webp?: string;    // WebP format
+}
+
 export interface ImageProps {
   id?: string;
   src: string;
+  srcSet?: ImageSrcSet; // Optional responsive sources
   alt: string;
   width?: ResponsiveWidthValue;
   maxWidth?: ResponsiveMaxWidthValue;
@@ -50,6 +60,7 @@ export interface ImageProps {
 function ImageComponent({
   id,
   src,
+  srcSet,
   alt,
   width,
   maxWidth,
@@ -123,6 +134,47 @@ function ImageComponent({
     return rules.join('\n');
   })() : '';
 
+  // Derive responsive srcset from media library URL pattern
+  // Pattern: /storage/.../medialibrary/X/Y/filename.ext
+  // Converts to: /storage/.../medialibrary/X/Y/conversions/filename-{size}.jpg
+  const deriveSrcSet = (url: string | undefined): string | undefined => {
+    if (!url) return undefined;
+
+    // Check if this is a media library URL (contains /medialibrary/)
+    const mediaLibraryPattern = /^(.*\/medialibrary\/\d+\/\d+\/)([^/]+)\.(\w+)$/;
+    const match = url.match(mediaLibraryPattern);
+
+    if (!match) return undefined;
+
+    const [, basePath, fileName, ] = match;
+    const conversionsPath = `${basePath}conversions/`;
+
+    // Build srcset with our standard conversion sizes
+    // small: 300px, medium: 800px, large: 1920px (all converted to jpg)
+    const srcSetParts = [
+      `${conversionsPath}${fileName}-small.jpg 300w`,
+      `${conversionsPath}${fileName}-medium.jpg 800w`,
+      `${conversionsPath}${fileName}-large.jpg 1920w`,
+    ];
+
+    return srcSetParts.join(', ');
+  };
+
+  // Build srcset - prefer explicit srcSet prop, otherwise derive from URL
+  const srcSetString = srcSet
+    ? [
+        srcSet.small && `${srcSet.small} 300w`,
+        srcSet.medium && `${srcSet.medium} 800w`,
+        srcSet.large && `${srcSet.large} 1920w`,
+      ].filter(Boolean).join(', ')
+    : deriveSrcSet(src);
+
+  // Define sizes for browser to choose appropriate image
+  // Mobile: full width, Tablet: 75% viewport, Desktop: 50% viewport
+  const sizesString = srcSetString
+    ? '(max-width: 640px) 100vw, (max-width: 1024px) 75vw, 50vw'
+    : undefined;
+
   return (
     <>
       {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
@@ -131,6 +183,8 @@ function ImageComponent({
         ref={puck?.dragRef}
         className={className}
         src={src || 'https://placehold.co/800x600?text=Add+Image'}
+        srcSet={srcSetString}
+        sizes={sizesString}
         alt={alt || 'Image'}
       />
       {customCss && <style>{customCss}</style>}
@@ -138,11 +192,22 @@ function ImageComponent({
   );
 }
 
-// Custom field component for image URL with Media Library integration
-function ImageUrlField({ field, value, onChange }: { field: { label?: string }; value: string; onChange: (value: string) => void }) {
+// Combined custom field component for image URL with responsive srcSet support
+function ImageUrlField({
+  field,
+  value,
+  onChange,
+}: {
+  field: { label?: string };
+  value: string;
+  onChange: (value: string) => void;
+}) {
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
 
   const handleMediaSelect = (media: Media) => {
+    // Store the original URL - the component will handle responsive variants
+    // We prefer to store the original so we have the best quality source
+    // and can derive conversion URLs from the pattern
     onChange(media.url);
   };
 

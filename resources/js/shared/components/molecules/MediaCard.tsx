@@ -42,9 +42,7 @@ export function MediaCard({ media, isSelected = false, onSelect, onClick, onDele
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (confirm(`Delete "${media.name}"?`)) {
-      onDelete?.(media);
-    }
+    onDelete?.(media);
   };
 
   return (

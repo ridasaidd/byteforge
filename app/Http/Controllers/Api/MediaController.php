@@ -14,6 +14,29 @@ use Illuminate\Http\Request;
 class MediaController extends Controller
 {
     /**
+     * Get all available conversion URLs for a media item.
+     */
+    private function getConversionUrls(Media $media): array
+    {
+        $conversions = [];
+
+        // Only images have conversions
+        if (!str_starts_with($media->mime_type ?? '', 'image/')) {
+            return $conversions;
+        }
+
+        $availableConversions = ['thumb', 'small', 'medium', 'large', 'webp'];
+
+        foreach ($availableConversions as $conversion) {
+            if ($media->hasGeneratedConversion($conversion)) {
+                $conversions[$conversion] = $media->getUrl($conversion);
+            }
+        }
+
+        return $conversions;
+    }
+
+    /**
      * List all media for the current tenant.
      */
     public function index(Request $request, ListMediaAction $action): JsonResponse
@@ -23,6 +46,8 @@ class MediaController extends Controller
 
         // Transform media items to include URLs
         $items = $paginated->getCollection()->map(function ($media) {
+            $conversions = $this->getConversionUrls($media);
+
             return [
                 'id' => $media->id,
                 'uuid' => $media->uuid,
@@ -36,7 +61,11 @@ class MediaController extends Controller
                 'model_type' => $media->model_type,
                 'model_id' => $media->model_id,
                 'url' => $media->getUrl(),
-                'thumbnail_url' => $media->hasGeneratedConversion('thumb') ? $media->getUrl('thumb') : null,
+                'thumbnail_url' => $conversions['thumb'] ?? null,
+                'small_url' => $conversions['small'] ?? null,
+                'medium_url' => $conversions['medium'] ?? null,
+                'large_url' => $conversions['large'] ?? null,
+                'webp_url' => $conversions['webp'] ?? null,
                 'created_at' => $media->created_at?->toISOString(),
                 'updated_at' => $media->updated_at?->toISOString(),
             ];
@@ -74,6 +103,8 @@ class MediaController extends Controller
                 $request->input('folder_id')
             );
 
+            $conversions = $this->getConversionUrls($media);
+
             return response()->json([
                 'message' => 'Media uploaded successfully',
                 'data' => [
@@ -85,11 +116,23 @@ class MediaController extends Controller
                     'size' => $media->size,
                     'collection_name' => $media->collection_name,
                     'url' => $media->getUrl(),
+                    'thumbnail_url' => $conversions['thumb'] ?? null,
+                    'small_url' => $conversions['small'] ?? null,
+                    'medium_url' => $conversions['medium'] ?? null,
+                    'large_url' => $conversions['large'] ?? null,
+                    'webp_url' => $conversions['webp'] ?? null,
                     'custom_properties' => $media->custom_properties,
                     'created_at' => $media->created_at?->toISOString(),
                 ],
             ], 201);
         } catch (\Exception $e) {
+            \Log::error('Media upload failed', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'message' => 'Failed to upload media',
                 'error' => $e->getMessage(),
@@ -123,8 +166,13 @@ class MediaController extends Controller
 
         // Only include URL if disk is set (to avoid errors in tests with fake storage)
         if ($media->disk) {
+            $conversions = $this->getConversionUrls($media);
             $data['url'] = $media->getUrl();
-            $data['thumbnail_url'] = $media->hasGeneratedConversion('thumb') ? $media->getUrl('thumb') : null;
+            $data['thumbnail_url'] = $conversions['thumb'] ?? null;
+            $data['small_url'] = $conversions['small'] ?? null;
+            $data['medium_url'] = $conversions['medium'] ?? null;
+            $data['large_url'] = $conversions['large'] ?? null;
+            $data['webp_url'] = $conversions['webp'] ?? null;
         }
 
         return response()->json(['data' => $data]);

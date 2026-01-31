@@ -16,6 +16,18 @@ import { themes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
 import { Copy, RotateCcw, Trash2, Check, Plus, Edit } from 'lucide-react';
 
+const getMediumPreviewUrl = (url?: string | null) => {
+  if (!url) return null;
+
+  const mediaLibraryPattern = /^(.*\/medialibrary\/\d+\/\d+\/)([^/]+)\.(\w+)$/;
+  const match = url.match(mediaLibraryPattern);
+
+  if (!match) return url;
+
+  const [, basePath, fileName] = match;
+  return `${basePath}conversions/${fileName}-medium.jpg`;
+};
+
 export function ThemesPage() {
   const navigate = useNavigate();
   const [allThemes, setAllThemes] = useState<Theme[]>([]);
@@ -246,6 +258,21 @@ export function ThemesPage() {
                       <span>{theme.author}</span>
                     </div>
                   </div>
+                </div>
+
+                <div className="mb-4">
+                  {theme.preview_image ? (
+                    <img
+                      src={getMediumPreviewUrl(theme.preview_image) || theme.preview_image}
+                      alt={`${theme.name} preview`}
+                      className="w-full h-40 object-cover rounded-md border"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="w-full h-40 rounded-md border border-dashed flex items-center justify-center text-sm text-gray-500">
+                      No preview image
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2 flex-wrap">

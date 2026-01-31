@@ -780,7 +780,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
               isOpen={isMediaPickerOpen}
               onClose={() => setIsMediaPickerOpen(false)}
               onSelect={(media) => {
-                setThemePreviewImage(media.url);
+                setThemePreviewImage(media.medium_url || media.url);
                 setIsMediaPickerOpen(false);
               }}
               title="Select Theme Preview"
