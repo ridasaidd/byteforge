@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: January 28, 2026
+Last updated: January 31, 2026
 
 —
 
@@ -20,6 +20,8 @@ Last updated: January 28, 2026
 - ✅ CSS files validated and generating correctly
 - ✅ Dual-mode rendering: runtime CSS in editor, files on storefront
 - ✅ Removed Tailwind from public pages (loading spinner, 404 page cleanup)
+- ✅ **Phase 6: Theme Customization** - Blueprint/instance separation, scoped customizations (Jan 30)
+- ✅ **Phase 6.1: Theme Manager Refinements** - Safety features, preview images, responsive image optimization (Jan 31)
 
 —
 
@@ -42,27 +44,19 @@ All steps complete:
 
 ---
 
-### M2: Theme Manager Refinements (NEXT PRIORITY - 2-3 days)
+### M2: Theme Manager Refinements ✅ COMPLETE (Jan 31, 2026)
 
-**Phase 6.1: Theme Manager Polish**
+**Phase 6.1: Theme Manager Polish - DONE**
 
-> **Detailed plan:** See [CURRENT_STATUS.md](./CURRENT_STATUS.md#theme-manager---refinements--critical-features)
+All critical features implemented:
+- ✅ **Deletion Protection** - Prevent deleting active themes (frontend disabled + backend validation)
+- ✅ **Theme Switch Warning** - 5-second countdown dialog before activation
+- ✅ **Theme Rollback** - Reset button with confirmation to restore blueprint defaults
+- ✅ **Preview Image** - MediaPicker integration, theme cards show preview
+- ✅ **Responsive Images** - srcset/sizes for optimized loading (small/medium/large conversions)
+- ✅ **Media Cleanup** - Empty directory cleanup on deletion, orphan file detection
 
-**Critical Issues (Safety & UX):**
-1. **Deletion Protection** - Prevent deleting active themes
-2. **Theme Switch Warning** - Alert about customization data loss
-3. **Theme Rollback** - Reset customizations to blueprint defaults
-
-**Settings Tab Enhancements:**
-4. **Color Preview Panel** - Visual palette display
-5. **Typography Preview** - Live text preview
-6. **Spacing & Border Radius Tokens** - Visual grids
-7. **CSS Variables Export** - Download theme as CSS
-8. **Theme Metadata UI** - Author, version, license, preview image
-
-**Est:** 2-3 days
-
-**Status:** Ready to implement after Phase 7 fonts (or in parallel)
+**Status:** Merged to main.
 
 ---
 

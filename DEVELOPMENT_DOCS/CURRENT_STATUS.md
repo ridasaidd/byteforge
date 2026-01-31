@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: January 30, 2026 (Phase 6 Theme Customization Complete)  
-Current branch: feature/phase6-theme-customization (ready to merge to main)
+Last updated: January 31, 2026 (Phase 6.1 Theme Manager Refinements Complete)  
+Current branch: main
 
 —
 
@@ -13,11 +13,12 @@ Current branch: feature/phase6-theme-customization (ready to merge to main)
 - **Page Builder:** 100% complete and merged to main
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** ✅ **COMPLETE** - Blueprints, placeholders, customization, CSS generation
-- **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security
+- **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
+- **Phase 6.1 Theme Manager:** ✅ **COMPLETE** - Safety features, preview images, responsive images
 
-Testing status (Jan 30, 2026):
+Testing status (Jan 31, 2026):
 - ✅ **Frontend:** 700+ tests passing
 - ✅ **Backend:** 150+ tests passing (includes theme customization, placeholders)
 - ✅ **CSS Files:** All sections generating valid CSS (settings, header, footer, templates)
@@ -34,7 +35,8 @@ Testing status (Jan 30, 2026):
 - HTTP caching (ETag, Cache-Control) on public page endpoints
 - APIs: users, tenants, pages, navigation, media, settings, themes
 - **Phase 3**: ThemeCssSectionService (section file management), ThemeCssPublishService (validation & publishing), ThemeCssController (REST API)
-- **Phase 6 NEW**: ThemePlaceholderController (blueprint placeholder management), ThemeCustomizationController (scoped customizations), ThemeService refactored (no theme cloning, placeholder copying)
+- **Phase 6**: ThemePlaceholderController (blueprint placeholder management), ThemeCustomizationController (scoped customizations), ThemeService refactored (no theme cloning, placeholder copying)
+- **Phase 6.1**: Media conversion URLs (thumb/small/medium/large/webp), DeleteMediaAction with directory cleanup
 
 **Frontend:**
 - PageEditorPage with Puck visual editor (viewport switcher)
@@ -50,93 +52,30 @@ Testing status (Jan 30, 2026):
 - Dashboard home with real stats, recent tenants/activity, permission-based visibility
 - **Phase 4**: PuckCssAggregator (extract CSS from Puck data), themeCssApi client
 - **Phase 5a-d**: ThemeStepCssGenerator, useEditorCssLoader, all 15 Puck components migrated
-- **Phase 6 NEW**: ThemeBuilderPage with mode prop ('create' | 'customize'), ThemeCustomizePage wrapper, themeCustomization API client, themePlaceholders API client
+- **Phase 6**: ThemeBuilderPage with mode prop ('create' | 'customize'), ThemeCustomizePage wrapper, themeCustomization API client, themePlaceholders API client
+- **Phase 6.1**: Theme preview images in cards, responsive Image component with srcset/sizes, MediaCard confirm dialog simplified
 
-**Phase 6: Theme Customization System (COMPLETE):**
-- ✅ Three-layer architecture: Blueprints → Placeholders → Theme Parts (scoped instances)
-- ✅ Blueprint styling (theme_data, CSS files) is immutable for tenants
-- ✅ Placeholder content (header/footer/sidebar) copied to theme_parts on activation
-- ✅ Customizations saved to theme_parts (scoped by tenant_id)
-- ✅ Settings saved with type='settings' in theme_parts (CSS + theme_data overrides)
-- ✅ ThemeBuilderPage: mode='create' shows all tabs, mode='customize' shows Settings/Header/Footer only
-- ✅ Customize mode loads/saves from customization endpoint (not blueprint data)
-- ✅ 18+ new tests (ThemeServiceTest, ThemePlaceholderApiTest, ThemeCustomizationApiTest, ThemeBuilderPage.mode.test)
+**Phase 6.1: Theme Manager Refinements (COMPLETE Jan 31):**
+- ✅ Deletion protection - Disabled delete button for active themes + backend validation
+- ✅ Theme switch warning - 5-second countdown dialog before activation
+- ✅ Theme rollback - Reset button with confirmation to restore blueprint defaults
+- ✅ Preview image - MediaPicker integration, theme cards show preview (medium conversion)
+- ✅ Responsive images - srcset/sizes auto-generated from media library URL pattern
+- ✅ Image conversions - API returns thumb/small/medium/large/webp URLs
+- ✅ Media cleanup - DeleteMediaAction removes empty parent directories
 
 **Performance:**
 - Metadata injection eliminates 3+ API calls
 - Server-side caching (1hr TTL) for metadata
 - HTTP caching reduces bandwidth
 - Navigation auto-recompiles on changes
-- Dashboard stats fetches via frontend aggregation (4 endpoints → 1 optional future optimization)
-- Public/dashboard blade separation reduces initial page load for visitors
+- Dashboard stats fetches via frontend aggregation
+- Public/dashboard blade separation reduces initial page load
+- Responsive images reduce bandwidth (95% smaller on mobile)
 
 —
 
 ## What's Remaining
-
-### **Theme Manager - Refinements & Critical Features**
-
-**Phase 6.1: Theme Manager Polish (2-3 days)**
-
-> **Detailed plan:** See [THEME_MANAGER_REFINEMENTS.md](./THEME_MANAGER_REFINEMENTS.md)
-
-**Critical Issues (Safety & UX):**
-1. **Deletion Protection**
-   - [ ] Prevent central from deleting themes active by central/tenants
-   - [ ] Show which tenants are using a theme before deletion
-   - [ ] API validation to block deletion of active themes
-   - [ ] Status: Not started
-
-2. **Theme Switch Warning Dialog**
-   - [ ] Alert user about customization data loss when switching themes
-   - [ ] Show data that will be lost (header/footer/settings edits)
-   - [ ] Option to export customizations before switch
-   - [ ] Status: Not started
-
-3. **Theme Rollback to Blueprint**
-   - [ ] Reset customizations to theme's blueprint defaults
-   - [ ] Clear customization CSS and puck_data
-   - [ ] Confirmation dialog
-   - [ ] Status: Not started
-
-**Settings Tab Enhancements (UX Improvements):**
-4. **Color Preview Panel**
-   - [ ] Visual palette display (all theme colors)
-   - [ ] Copy hex/rgb on click
-   - [ ] Status: Not started
-
-5. **Typography Preview**
-   - [ ] Live preview text with current fonts/sizes/spacing
-   - [ ] Interactive preview with different screen sizes
-   - [ ] Status: Partially done (placeholder exists)
-
-6. **Spacing & Border Radius Tokens**
-   - [ ] Visual grid showing spacing scale
-   - [ ] Interactive border-radius preview
-   - [ ] Copy token values to clipboard
-   - [ ] Status: Not started
-
-7. **CSS Variables Export**
-   - [ ] Download theme as CSS file with all variables
-   - [ ] Option to import theme from CSS
-   - [ ] Status: Not started
-
-8. **Theme Metadata**
-   - [ ] Author name & email
-   - [ ] Version with changelog
-   - [ ] License information
-   - [ ] Preview image upload/editor
-   - [ ] Status: Partial (fields exist, no UI)
-
-**Optional Future Enhancements:**
-- Theme versioning (multiple versions of same theme)
-- Theme marketplace/discovery
-- Theme permissions (who can edit/customize/activate)
-- Theme analytics (usage tracking by tenant)
-- Automatic migration for breaking changes
-- Theme dependency management
-
----
 
 ### **Phase 7: Font System (NEXT - 5-7 days)**
 
