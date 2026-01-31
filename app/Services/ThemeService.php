@@ -217,8 +217,20 @@ class ThemeService
     /**
      * Reset theme to base theme.
      */
-    public function resetTheme(Theme $theme): bool
+    public function resetTheme(Theme $theme, ?string $tenantId = null): bool
     {
+        $hasPlaceholders = \App\Models\ThemePlaceholder::where('theme_id', $theme->id)->exists();
+
+        if ($hasPlaceholders) {
+            \App\Models\ThemePart::where('theme_id', $theme->id)
+                ->where('tenant_id', $tenantId)
+                ->delete();
+
+            $this->ensureThemePartsExist($theme, $tenantId);
+
+            return true;
+        }
+
         return $theme->resetToBase();
     }
 

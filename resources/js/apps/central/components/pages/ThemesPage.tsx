@@ -3,6 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Card } from '@/shared/components/molecules/Card';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
 import { useToast } from '@/shared/hooks';
 import { themes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
@@ -13,6 +21,8 @@ export function ThemesPage() {
   const [allThemes, setAllThemes] = useState<Theme[]>([]);
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'activate' | 'reset'; theme: Theme } | null>(null);
+  const [confirmCountdown, setConfirmCountdown] = useState(5);
   const { toast } = useToast();
 
   const loadThemes = async () => {
@@ -41,35 +51,53 @@ export function ThemesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleActivate = async (slug: string) => {
-    try {
-      await themes.activate({ slug });
-      toast({
-        title: 'Success',
-        description: 'Theme activated successfully',
-      });
-      await loadThemes();
-    } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to activate theme',
-        variant: 'destructive',
-      });
-    }
+  useEffect(() => {
+    if (!confirmAction) return;
+
+    setConfirmCountdown(5);
+    const interval = setInterval(() => {
+      setConfirmCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [confirmAction]);
+
+  const handleActivate = (theme: Theme) => {
+    setConfirmAction({ type: 'activate', theme });
   };
 
-  const handleReset = async (id: number) => {
+  const handleReset = (theme: Theme) => {
+    setConfirmAction({ type: 'reset', theme });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+
     try {
-      await themes.reset(id);
-      toast({
-        title: 'Success',
-        description: 'Theme reset to default',
-      });
+      if (confirmAction.type === 'activate') {
+        await themes.activate({ slug: confirmAction.theme.slug });
+        toast({
+          title: 'Success',
+          description: 'Theme activated successfully',
+        });
+      }
+
+      if (confirmAction.type === 'reset') {
+        await themes.reset(confirmAction.theme.id);
+        toast({
+          title: 'Success',
+          description: 'Theme reset to blueprint defaults',
+        });
+      }
+
       await loadThemes();
+      setConfirmAction(null);
     } catch {
       toast({
         title: 'Error',
-        description: 'Failed to reset theme',
+        description: confirmAction.type === 'activate'
+          ? 'Failed to activate theme'
+          : 'Failed to reset theme',
         variant: 'destructive',
       });
     }
@@ -157,6 +185,35 @@ export function ThemesPage() {
         }
       />
 
+      <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction?.type === 'activate' ? 'Switch Theme?' : 'Reset Theme to Blueprint?'}
+            </DialogTitle>
+            <DialogDescription>
+              {confirmAction?.type === 'activate'
+                ? 'Switching themes will overwrite current customizations (colors, spacing, typography, header, and footer). This action cannot be undone.'
+                : 'This will remove all customizations and restore blueprint defaults (colors, spacing, typography, header, and footer). This action cannot be undone.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant={confirmAction?.type === 'reset' ? 'destructive' : 'default'}
+              disabled={confirmCountdown > 0}
+              onClick={handleConfirmAction}
+            >
+              {confirmCountdown > 0
+                ? `${confirmAction?.type === 'activate' ? 'Switch' : 'Reset'} (${confirmCountdown}s)`
+                : confirmAction?.type === 'activate' ? 'Switch Theme' : 'Reset Theme'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* All Themes */}
       <div className="mt-6">
         {allThemes.length === 0 ? (
@@ -196,7 +253,7 @@ export function ThemesPage() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => handleActivate(theme.slug)}
+                      onClick={() => handleActivate(theme)}
                       className="flex-1 min-w-[100px]"
                     >
                       Activate
@@ -226,8 +283,8 @@ export function ThemesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleReset(theme.id)}
-                    title="Reset to default"
+                    onClick={() => handleReset(theme)}
+                    title="Reset to blueprint"
                   >
                     <RotateCcw className="w-4 h-4" />
                   </Button>
@@ -241,17 +298,16 @@ export function ThemesPage() {
                     <Copy className="w-4 h-4" />
                   </Button>
 
-                  {!isThemeActive(theme.slug) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(theme.id)}
-                      className="text-red-600 hover:text-red-700"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(theme.id)}
+                    className="text-red-600 hover:text-red-700"
+                    title={isThemeActive(theme.slug) ? 'Cannot delete active theme' : 'Delete'}
+                    disabled={isThemeActive(theme.slug)}
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
                 </div>
               </Card>
             ))}

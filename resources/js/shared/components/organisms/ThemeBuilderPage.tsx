@@ -4,10 +4,18 @@ import { Puck, Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
 import { Loader2, Save, ArrowLeft, Plus, Edit2, Trash2 } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import { useToast, useEditorCssLoader } from '@/shared/hooks';
 import { useSettingsRuntimeCss } from '@/shared/hooks/useSettingsRuntimeCss';
+import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
 import { themes } from '@/shared/services/api/themes';
 import { themePlaceholders } from '@/shared/services/api/themePlaceholders';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
@@ -16,6 +24,8 @@ import { themeCustomization } from '@/shared/services/api/themeCustomization';
 import { useThemeCssSectionSave } from '@/shared/hooks/useThemeCssSectionSave';
 import { generateThemeStepCss } from '@/shared/puck/services/ThemeStepCssGenerator';
 import { puckConfig as config } from '@/shared/puck/config';
+import { ColorPickerControlColorful } from '@/shared/puck/fields/ColorPickerControlColorful';
+import type { ColorPickerValue } from '@/shared/puck/fields/ColorPickerControl';
 import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData, Theme } from '@/shared/services/api/types';
 
 /**
@@ -44,6 +54,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const [themeName, setThemeName] = useState('');
   const [themeDescription, setThemeDescription] = useState('');
   const [themePreviewImage, setThemePreviewImage] = useState('');
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [activeColorKey, setActiveColorKey] = useState<'primary' | 'secondary' | 'accent' | null>(null);
   const [themeData, setThemeData] = useState<Partial<ThemeData>>({
     colors: {
       primary: { '500': '#222222' },
@@ -80,6 +92,40 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const headerDataRef = useRef<Data>({ content: [], root: {} });
   const footerDataRef = useRef<Data>({ content: [], root: {} });
   const [settingsRefreshTrigger, setSettingsRefreshTrigger] = useState(0);
+
+  const resolveThemeColorToken = (token: string): string | undefined => {
+    const [group, shade] = token.split('.');
+    const colors = themeData.colors as Record<string, unknown> | undefined;
+    const groupValue = colors?.[group] as Record<string, unknown> | string | undefined;
+
+    if (!groupValue) return undefined;
+
+    if (typeof groupValue === 'string') return groupValue;
+    if (shade && typeof groupValue === 'object') {
+      return groupValue[shade] as string | undefined;
+    }
+
+    return undefined;
+  };
+
+  const getColorValue = (key: 'primary' | 'secondary' | 'accent', fallback: string): string => {
+    const colors = themeData.colors as Record<string, unknown> | undefined;
+    const group = colors?.[key] as Record<string, unknown> | undefined;
+    return (group?.['500'] as string) || fallback;
+  };
+
+  const setColorValue = (key: 'primary' | 'secondary' | 'accent', value: string) => {
+    setThemeData({
+      ...themeData,
+      colors: {
+        ...(themeData.colors as Record<string, unknown>),
+        [key]: {
+          ...((themeData.colors as Record<string, unknown>)?.[key] as Record<string, unknown>),
+          '500': value,
+        },
+      },
+    });
+  };
 
   // Create dynamic theme object for ThemeProvider
   // This ensures color picker and all components see live updates from Settings tab
@@ -693,13 +739,33 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
               <label className="block text-sm font-medium mb-2">
                 Preview Image URL
               </label>
-              <input
-                type="text"
-                value={themePreviewImage}
-                onChange={(e) => setThemePreviewImage(e.target.value)}
-                placeholder="https://example.com/preview.jpg"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+              <div className="flex flex-col gap-3">
+                <input
+                  type="text"
+                  value={themePreviewImage}
+                  onChange={(e) => setThemePreviewImage(e.target.value)}
+                  placeholder="https://example.com/preview.jpg"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    type="button"
+                    onClick={() => setIsMediaPickerOpen(true)}
+                  >
+                    Select from Media Library
+                  </Button>
+                  {themePreviewImage && (
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      onClick={() => setThemePreviewImage('')}
+                    >
+                      Clear
+                    </Button>
+                  )}
+                </div>
+              </div>
               {themePreviewImage && (
                 <div className="mt-4">
                   <img
@@ -710,6 +776,16 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                 </div>
               )}
             </div>
+            <MediaPickerModal
+              isOpen={isMediaPickerOpen}
+              onClose={() => setIsMediaPickerOpen(false)}
+              onSelect={(media) => {
+                setThemePreviewImage(media.url);
+                setIsMediaPickerOpen(false);
+              }}
+              title="Select Theme Preview"
+              allowedTypes={['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']}
+            />
           </div>
         </TabsContent>
         )}
@@ -724,63 +800,95 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                 {/* Primary Color */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Primary Color</label>
-                  <input
-                    type="color"
-                    value={((themeData.colors as Record<string, unknown>)?.primary as Record<string, unknown>)?.[('500')] as string || '#222222'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      colors: {
-                        ...(themeData.colors as Record<string, unknown>),
-                        primary: { ...((themeData.colors as Record<string, unknown>)?.primary as Record<string, unknown>), '500': e.target.value },
-                      },
-                    })}
-                    className="w-20 h-10 rounded border cursor-pointer"
-                  />
-                  <span className="ml-3 text-sm text-muted-foreground">
-                    {((themeData.colors as Record<string, unknown>)?.primary as Record<string, unknown>)?.[('500')] as string || '#222222'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={() => setActiveColorKey('primary')}
+                      className="flex items-center gap-3"
+                    >
+                      <span
+                        className="h-5 w-5 rounded border"
+                        style={{ backgroundColor: getColorValue('primary', '#222222') }}
+                      />
+                      <span className="text-sm">Edit</span>
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {getColorValue('primary', '#222222')}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Secondary Color */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Secondary Color</label>
-                  <input
-                    type="color"
-                    value={((themeData.colors as Record<string, unknown>)?.secondary as Record<string, unknown>)?.[('500')] as string || '#666666'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      colors: {
-                        ...(themeData.colors as Record<string, unknown>),
-                        secondary: { ...((themeData.colors as Record<string, unknown>)?.secondary as Record<string, unknown>), '500': e.target.value },
-                      },
-                    })}
-                    className="w-20 h-10 rounded border cursor-pointer"
-                  />
-                  <span className="ml-3 text-sm text-muted-foreground">
-                    {((themeData.colors as Record<string, unknown>)?.secondary as Record<string, unknown>)?.[('500')] as string || '#666666'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={() => setActiveColorKey('secondary')}
+                      className="flex items-center gap-3"
+                    >
+                      <span
+                        className="h-5 w-5 rounded border"
+                        style={{ backgroundColor: getColorValue('secondary', '#666666') }}
+                      />
+                      <span className="text-sm">Edit</span>
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {getColorValue('secondary', '#666666')}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Accent Color */}
                 <div>
                   <label className="block text-sm font-medium mb-2">Accent Color</label>
-                  <input
-                    type="color"
-                    value={((themeData.colors as Record<string, unknown>)?.accent as Record<string, unknown>)?.[('500')] as string || '#e0e0e0'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      colors: {
-                        ...(themeData.colors as Record<string, unknown>),
-                        accent: { ...((themeData.colors as Record<string, unknown>)?.accent as Record<string, unknown>), '500': e.target.value },
-                      },
-                    })}
-                    className="w-20 h-10 rounded border cursor-pointer"
-                  />
-                  <span className="ml-3 text-sm text-muted-foreground">
-                    {((themeData.colors as Record<string, unknown>)?.accent as Record<string, unknown>)?.[('500')] as string || '#e0e0e0'}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="outline"
+                      type="button"
+                      onClick={() => setActiveColorKey('accent')}
+                      className="flex items-center gap-3"
+                    >
+                      <span
+                        className="h-5 w-5 rounded border"
+                        style={{ backgroundColor: getColorValue('accent', '#e0e0e0') }}
+                      />
+                      <span className="text-sm">Edit</span>
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {getColorValue('accent', '#e0e0e0')}
+                    </span>
+                  </div>
                 </div>
               </div>
+              <Dialog open={!!activeColorKey} onOpenChange={(open) => !open && setActiveColorKey(null)}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>
+                      {activeColorKey ? `${activeColorKey.charAt(0).toUpperCase()}${activeColorKey.slice(1)} Color` : 'Color'}
+                    </DialogTitle>
+                  </DialogHeader>
+                  {activeColorKey && (
+                    <ColorPickerControlColorful
+                      field={{ label: `${activeColorKey} color` }}
+                      value={getColorValue(activeColorKey, '#000000')}
+                      onChange={(value: ColorPickerValue) => {
+                        const nextValue = value.type === 'custom'
+                          ? value.value
+                          : resolveThemeColorToken(value.value) || getColorValue(activeColorKey, '#000000');
+                        setColorValue(activeColorKey, nextValue);
+                      }}
+                    />
+                  )}
+                  <DialogFooter>
+                    <Button type="button" onClick={() => setActiveColorKey(null)}>
+                      Done
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
 
             {/* Typography Section */}
@@ -881,116 +989,84 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
             {/* Spacing Section */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Spacing (px)</h2>
-              <div className="grid grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">None (0)</label>
-                  <input
-                    type="number"
-                    value={((themeData.spacing as Record<string, unknown>)?.[('0')] as string) || '0'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      spacing: {
-                        ...(themeData.spacing as Record<string, unknown>),
-                        '0': e.target.value,
-                      },
-                    })}
-                    placeholder="0"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Small (4)</label>
-                  <input
-                    type="number"
-                    value={((themeData.spacing as Record<string, unknown>)?.[('4')] as string) || '16'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      spacing: {
-                        ...(themeData.spacing as Record<string, unknown>),
-                        '4': e.target.value,
-                      },
-                    })}
-                    placeholder="16"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Medium (8)</label>
-                  <input
-                    type="number"
-                    value={((themeData.spacing as Record<string, unknown>)?.[('8')] as string) || '32'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      spacing: {
-                        ...(themeData.spacing as Record<string, unknown>),
-                        '8': e.target.value,
-                      },
-                    })}
-                    placeholder="32"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Large (16)</label>
-                  <input
-                    type="number"
-                    value={((themeData.spacing as Record<string, unknown>)?.[('16')] as string) || '64'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      spacing: {
-                        ...(themeData.spacing as Record<string, unknown>),
-                        '16': e.target.value,
-                      },
-                    })}
-                    placeholder="64"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
+              <div className="space-y-4">
+                {([
+                  { key: '0', label: 'None (0)', fallback: '0' },
+                  { key: '4', label: 'Small (4)', fallback: '16' },
+                  { key: '8', label: 'Medium (8)', fallback: '32' },
+                  { key: '16', label: 'Large (16)', fallback: '64' },
+                ] as const).map(({ key, label, fallback }) => {
+                  const value = ((themeData.spacing as Record<string, unknown>)?.[key] as string) || fallback;
+                  const numericValue = Number(value) || 0;
+                  return (
+                    <div key={key}>
+                      <label className="block text-sm font-medium mb-2">{label}</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          value={value}
+                          onChange={(e) => setThemeData({
+                            ...themeData,
+                            spacing: {
+                              ...(themeData.spacing as Record<string, unknown>),
+                              [key]: e.target.value,
+                            },
+                          })}
+                          placeholder={fallback}
+                          min="0"
+                          className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <div className="flex-1">
+                          <div
+                            className="h-3 rounded bg-blue-500/70"
+                            style={{ width: `${Math.min(numericValue, 200)}px` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground">{numericValue}px</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
             {/* Border Radius Section */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Border Radius (px)</h2>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Base Radius</label>
-                  <input
-                    type="number"
-                    value={((themeData.borderRadius as Record<string, unknown>)?.[('base')] as string) || '4'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      borderRadius: {
-                        ...(themeData.borderRadius as Record<string, unknown>),
-                        base: e.target.value,
-                      },
-                    })}
-                    placeholder="4"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Full Radius</label>
-                  <input
-                    type="number"
-                    value={((themeData.borderRadius as Record<string, unknown>)?.[('full')] as string) || '9999'}
-                    onChange={(e) => setThemeData({
-                      ...themeData,
-                      borderRadius: {
-                        ...(themeData.borderRadius as Record<string, unknown>),
-                        full: e.target.value,
-                      },
-                    })}
-                    placeholder="9999"
-                    min="0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
+              <div className="space-y-4">
+                {([
+                  { key: 'base', label: 'Base Radius', fallback: '4' },
+                  { key: 'full', label: 'Full Radius', fallback: '9999' },
+                ] as const).map(({ key, label, fallback }) => {
+                  const value = ((themeData.borderRadius as Record<string, unknown>)?.[key] as string) || fallback;
+                  const numericValue = Number(value) || 0;
+                  return (
+                    <div key={key}>
+                      <label className="block text-sm font-medium mb-2">{label}</label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          value={value}
+                          onChange={(e) => setThemeData({
+                            ...themeData,
+                            borderRadius: {
+                              ...(themeData.borderRadius as Record<string, unknown>),
+                              [key]: e.target.value,
+                            },
+                          })}
+                          placeholder={fallback}
+                          min="0"
+                          className="w-24 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                        />
+                        <div
+                          className="h-10 w-10 border bg-blue-500/20"
+                          style={{ borderRadius: `${numericValue}px` }}
+                        />
+                        <span className="text-xs text-muted-foreground">{numericValue}px</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

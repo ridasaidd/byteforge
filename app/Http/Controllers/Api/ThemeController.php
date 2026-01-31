@@ -309,7 +309,7 @@ class ThemeController extends Controller
             ], 404);
         }
 
-        $success = $this->themeService->resetTheme($theme);
+        $success = $this->themeService->resetTheme($theme, $tenantId);
 
         if (!$success) {
             return response()->json([
