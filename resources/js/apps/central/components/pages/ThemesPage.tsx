@@ -33,6 +33,7 @@ export function ThemesPage() {
   const [allThemes, setAllThemes] = useState<Theme[]>([]);
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [previewErrorIds, setPreviewErrorIds] = useState<Set<number>>(new Set());
   const [confirmAction, setConfirmAction] = useState<{ type: 'activate' | 'reset'; theme: Theme } | null>(null);
   const [confirmCountdown, setConfirmCountdown] = useState(5);
   const { toast } = useToast();
@@ -261,12 +262,19 @@ export function ThemesPage() {
                 </div>
 
                 <div className="mb-4">
-                  {theme.preview_image ? (
+                  {theme.preview_image && !previewErrorIds.has(theme.id) ? (
                     <img
                       src={getMediumPreviewUrl(theme.preview_image) || theme.preview_image}
                       alt={`${theme.name} preview`}
                       className="w-full h-40 object-cover rounded-md border"
                       loading="lazy"
+                      onError={() => {
+                        setPreviewErrorIds((prev) => {
+                          const next = new Set(prev);
+                          next.add(theme.id);
+                          return next;
+                        });
+                      }}
                     />
                   ) : (
                     <div className="w-full h-40 rounded-md border border-dashed flex items-center justify-center text-sm text-gray-500">

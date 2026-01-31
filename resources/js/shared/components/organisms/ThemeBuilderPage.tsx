@@ -54,6 +54,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const [themeName, setThemeName] = useState('');
   const [themeDescription, setThemeDescription] = useState('');
   const [themePreviewImage, setThemePreviewImage] = useState('');
+  const [isPreviewImageError, setIsPreviewImageError] = useState(false);
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
   const [activeColorKey, setActiveColorKey] = useState<'primary' | 'secondary' | 'accent' | null>(null);
   const [themeData, setThemeData] = useState<Partial<ThemeData>>({
@@ -766,13 +767,20 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                   )}
                 </div>
               </div>
-              {themePreviewImage && (
+              {themePreviewImage && !isPreviewImageError ? (
                 <div className="mt-4">
                   <img
                     src={themePreviewImage}
                     alt="Preview"
                     className="max-w-md rounded-lg border"
+                    onError={() => setIsPreviewImageError(true)}
                   />
+                </div>
+              ) : (
+                <div className="mt-4">
+                  <div className="max-w-md h-40 rounded-lg border border-dashed flex items-center justify-center text-sm text-gray-500">
+                    No preview image
+                  </div>
                 </div>
               )}
             </div>
@@ -780,6 +788,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
               isOpen={isMediaPickerOpen}
               onClose={() => setIsMediaPickerOpen(false)}
               onSelect={(media) => {
+                  setIsPreviewImageError(false);
                 setThemePreviewImage(media.medium_url || media.url);
                 setIsMediaPickerOpen(false);
               }}
