@@ -1,709 +1,1231 @@
 # Phase 7: Font System Architecture
 
-Last updated: January 30, 2026
+Last updated: January 31, 2026
 
 ---
 
 ## Executive Summary
 
-**Goal:** Build a comprehensive font management system for theme creators to select multiple font families (sans, serif, mono) from Google Fonts and FontBunny, with live preview in Theme Builder Settings tab. Tenants use fonts configured by central - no custom font uploads by tenants.
+**Goal:** Build a font management system using **self-hosted variable fonts** with support for sans, serif, and mono families. Includes live preview in Theme Builder, component-level font selection, and a new RichText component using Puck's native richtext field.
 
 **Dependencies:** Phase 6 (Theme Customization) complete ✅
 
-**Scope:** Font family management (central-only), loading strategy, component integration, CSS generation, live preview.
-
-**Key Change from Initial Plan:**
-- **Central Only:** Font configuration (Google Fonts, FontBunny selection)
-- **Tenants:** Use fonts selected by central, no custom uploads
-- **Settings Tab Focus:** All font work happens in Settings tab (no new tabs)
-- **Customization Scope:** Tenants can override color/spacing but NOT fonts
+**Approach:** Self-hosted bundled fonts (no external API dependencies)
 
 ---
 
-## Current State
+## Key Decisions
 
-**What We Have:**
-- `themeData.typography.fontFamily.sans` - Single font family for body text
-- Manual input in Theme Settings tab
-- No serif or mono font support
-- No font preview
-- No external font loading (Google Fonts, FontBunny)
-- No component-level font selection
-
-**What We Need:**
-- Multi-font support (sans, serif, mono)
-- Font source integration (Google Fonts, FontBunny, system fonts)
-- Font preview system
-- Component font controls
-- CSS generation for multiple font families
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Font source | **Self-hosted (bundled)** | No external dependencies, GDPR compliant, works offline |
+| Font format | **Variable fonts (woff2)** | Smaller files, smooth weight transitions, modern browser support |
+| System fonts | **Included as option** | Zero-cost performance option |
+| API endpoints | **None needed** | Font list is static, stored in code |
+| RichText | **New component** | Complements Heading/Text for long-form content |
+| Future upload | **Phase 7.5** | Optional enhancement later |
 
 ---
 
-## Architecture Decisions (TBD)
+## Architecture Overview
 
-### 1. Font Data Structure
+### Font Storage
 
-**Option A: Simple Names**
-```json
-{
-  "typography": {
-    "fontFamily": {
-      "sans": "Inter",
-      "serif": "Georgia",
-      "mono": "Courier New"
-    }
-  }
-}
+```
+public/
+└── fonts/
+    ├── sans/
+    │   ├── Inter-Variable.woff2
+    │   ├── Roboto-Variable.woff2
+    │   └── ...
+    ├── serif/
+    │   ├── PlayfairDisplay-Variable.woff2
+    │   ├── Merriweather-Variable.woff2
+    │   └── ...
+    └── mono/
+        ├── JetBrainsMono-Variable.woff2
+        ├── FiraCode-Variable.woff2
+        └── ...
 ```
 
-**Option B: Full Metadata**
+### Theme Data Structure
+
 ```json
 {
   "typography": {
     "fontFamily": {
       "sans": {
         "name": "Inter",
-        "source": "google-fonts",
-        "weights": [400, 500, 600, 700],
-        "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700"
+        "source": "bundled",
+        "file": "Inter-Variable.woff2",
+        "weights": [100, 900],
+        "isVariable": true
       },
       "serif": {
         "name": "Playfair Display",
-        "source": "google-fonts",
-        "weights": [400, 700],
-        "url": "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700"
+        "source": "bundled",
+        "file": "PlayfairDisplay-Variable.woff2",
+        "weights": [400, 900],
+        "isVariable": true
       },
       "mono": {
-        "name": "Fira Code",
-        "source": "google-fonts",
-        "weights": [400, 600],
-        "url": "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600"
+        "name": "JetBrains Mono",
+        "source": "bundled",
+        "file": "JetBrainsMono-Variable.woff2",
+        "weights": [100, 800],
+        "isVariable": true
       }
     }
   }
 }
 ```
 
-**Recommendation:** Option B allows flexibility and is more future-proof.
+### Generated CSS Output
 
----
+```css
+/* @font-face declarations for variable fonts */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/sans/Inter-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-display: swap;
+}
 
-### 2. Font Sources
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('/fonts/serif/PlayfairDisplay-Variable.woff2') format('woff2');
+  font-weight: 400 900;
+  font-display: swap;
+}
 
-**Supported Sources:**
-- **System Fonts** - Browser defaults (free, no loading)
-  - Examples: Inter, -apple-system, system-ui, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell
-- **Google Fonts** - Large free catalog with preview
-  - URL: `https://fonts.google.com`
-  - API: `https://www.googleapis.com/webfonts/v1/webfonts?key=API_KEY`
-  - CSS: `@import url('https://fonts.googleapis.com/css2?family=...')`
-- **FontBunny** - Privacy-focused alternative to Google Fonts
-  - URL: `https://www.fontbunny.com`
-  - Similar API and CSS loading capability
-  - Self-hosted option available
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/mono/JetBrainsMono-Variable.woff2') format('woff2');
+  font-weight: 100 800;
+  font-display: swap;
+}
 
-**Hybrid Approach:**
-- Allow per-font source selection
-- Support all three simultaneously
-- Prioritize system fonts (no loading cost)
-- Fall back gracefully if external fonts unavailable
+/* CSS Variables */
+:root {
+  --font-family-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --font-family-serif: "Playfair Display", Georgia, serif;
+  --font-family-mono: "JetBrains Mono", "Fira Code", monospace;
+}
 
----
-
-### 3. Font Preview System
-
-**Where to Preview:**
-- **In Theme Builder:** Show sample text in each font when selecting
-- **In Component Controls:** Show font preview when applying to text
-- **Live Preview:** Components render with selected font immediately
-
-**Preview Text:**
-```
-"The quick brown fox jumps over the lazy dog"
-```
-
-**Implementation:**
-```tsx
-<FontPreview
-  fontName="Inter"
-  fontUrl="https://fonts.googleapis.com/css2?family=Inter"
-  sizes={['16px', '24px', '32px']}
-/>
-```
-
----
-
-### 4. Component Font Controls
-
-**New Field Type:**
-```tsx
-// In component fields
-font_family: {
-  type: 'custom',
-  label: 'Font',
-  render: (props) => <FontFamilyControl {...props} />
+/* Base styles */
+body {
+  font-family: var(--font-family-sans);
 }
 ```
 
-**FontFamilyControl Features:**
-- Dropdown of available fonts (sans, serif, mono)
-- Show preview for each option
-- Display font weight options
-- Live preview on component
+---
 
-**Usage in Components:**
+## Understanding Key Concepts
+
+### What Are Variable Fonts?
+
+Traditional fonts need separate files for each weight:
+- `Inter-Regular.woff2` (400)
+- `Inter-Medium.woff2` (500)
+- `Inter-SemiBold.woff2` (600)
+- `Inter-Bold.woff2` (700)
+
+**Variable fonts** contain ALL weights in ONE file:
+- `Inter-Variable.woff2` (100-900)
+
+**Benefits:**
+- Smaller total download size
+- Can use ANY weight (e.g., 450, 550)
+- Smooth weight animations possible
+- 95%+ browser support
+
+### What Are System Fonts?
+
+System fonts are fonts pre-installed on the user's operating system:
+
+| OS | Sans | Serif | Mono |
+|----|------|-------|------|
+| macOS/iOS | San Francisco | New York | SF Mono |
+| Windows | Segoe UI | Georgia | Consolas |
+| Android | Roboto | Noto Serif | Roboto Mono |
+| Linux | Varies | Varies | Varies |
+
+**System font stack** (CSS fallback chain):
+```css
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+```
+
+**Benefits:** Zero download, instant render, native look
+**Drawback:** Inconsistent across devices
+
+### Heading vs Text vs RichText
+
+| Component | Purpose | Output | Use Case |
+|-----------|---------|--------|----------|
+| **Heading** | Single title | `<h1>`-`<h6>` | Page titles, section headers |
+| **Text** | Single paragraph | `<p>` | Taglines, captions, short text |
+| **RichText** | Multi-paragraph formatted | `<div>` with nested HTML | Blog posts, articles, long-form |
+
+**They coexist** - RichText doesn't replace Heading/Text:
+- Heading/Text = **Precision** (designer-controlled)
+- RichText = **Flexibility** (content editor-friendly)
+
+---
+
+## Bundled Font List
+
+### Sans-Serif Fonts
+
+| Font | File | Weights | Notes |
+|------|------|---------|-------|
+| Inter | `Inter-Variable.woff2` | 100-900 | Modern, highly readable |
+| Roboto | `Roboto-Variable.woff2` | 100-900 | Google's system font |
+| Open Sans | `OpenSans-Variable.woff2` | 300-800 | Friendly, professional |
+| Nunito | `Nunito-Variable.woff2` | 200-900 | Rounded, approachable |
+| DM Sans | `DMSans-Variable.woff2` | 100-900 | Clean, geometric |
+
+### Serif Fonts
+
+| Font | File | Weights | Notes |
+|------|------|---------|-------|
+| Playfair Display | `PlayfairDisplay-Variable.woff2` | 400-900 | Elegant headlines |
+| Merriweather | `Merriweather-Variable.woff2` | 300-900 | Readable body serif |
+| Crimson Pro | `CrimsonPro-Variable.woff2` | 200-900 | Classic book style |
+| Lora | `Lora-Variable.woff2` | 400-700 | Contemporary serif |
+
+### Monospace Fonts
+
+| Font | File | Weights | Notes |
+|------|------|---------|-------|
+| JetBrains Mono | `JetBrainsMono-Variable.woff2` | 100-800 | Developer favorite |
+| Fira Code | `FiraCode-Variable.woff2` | 300-700 | Ligatures support |
+| Source Code Pro | `SourceCodePro-Variable.woff2` | 200-900 | Adobe's mono font |
+
+### System Fonts (No Download)
+
+| Name | Stack | Weights |
+|------|-------|---------|
+| System Default | `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` | 400, 700 |
+| System Serif | `Georgia, "Times New Roman", serif` | 400, 700 |
+| System Mono | `"SF Mono", Consolas, "Liberation Mono", monospace` | 400, 700 |
+
+---
+
+## Implementation Steps
+
+### Phase 7.1: Foundation (2 hours)
+
+#### Step 1: Download & Organize Font Files
+
+**Tasks:**
+1. Download variable font files from Google Fonts
+2. Create `/public/fonts/` directory structure
+3. Add fonts to `.gitignore` or commit (decision needed)
+
+**Commands:**
+```bash
+# Create directories
+mkdir -p public/fonts/{sans,serif,mono}
+
+# Download fonts (example using google-webfonts-helper or direct download)
+# Inter: https://fonts.google.com/specimen/Inter
+# Place Inter-Variable.woff2 in public/fonts/sans/
+```
+
+**Files to create:**
+- `public/fonts/sans/Inter-Variable.woff2`
+- `public/fonts/sans/Roboto-Variable.woff2`
+- `public/fonts/sans/OpenSans-Variable.woff2`
+- `public/fonts/serif/PlayfairDisplay-Variable.woff2`
+- `public/fonts/serif/Merriweather-Variable.woff2`
+- `public/fonts/mono/JetBrainsMono-Variable.woff2`
+- `public/fonts/mono/FiraCode-Variable.woff2`
+
+---
+
+#### Step 2: Create Font Presets Constant
+
+**File:** `resources/js/shared/constants/fonts.ts`
+
+```typescript
+export interface BundledFont {
+  name: string;
+  file: string;
+  weights: [number, number]; // [min, max] for variable fonts
+  category: 'sans' | 'serif' | 'mono';
+  isVariable: boolean;
+  fallback: string;
+}
+
+export const BUNDLED_FONTS: Record<string, BundledFont[]> = {
+  sans: [
+    {
+      name: 'Inter',
+      file: 'Inter-Variable.woff2',
+      weights: [100, 900],
+      category: 'sans',
+      isVariable: true,
+      fallback: 'system-ui, -apple-system, sans-serif',
+    },
+    {
+      name: 'Roboto',
+      file: 'Roboto-Variable.woff2',
+      weights: [100, 900],
+      category: 'sans',
+      isVariable: true,
+      fallback: 'system-ui, sans-serif',
+    },
+    {
+      name: 'Open Sans',
+      file: 'OpenSans-Variable.woff2',
+      weights: [300, 800],
+      category: 'sans',
+      isVariable: true,
+      fallback: 'system-ui, sans-serif',
+    },
+    {
+      name: 'Nunito',
+      file: 'Nunito-Variable.woff2',
+      weights: [200, 900],
+      category: 'sans',
+      isVariable: true,
+      fallback: 'system-ui, sans-serif',
+    },
+    {
+      name: 'DM Sans',
+      file: 'DMSans-Variable.woff2',
+      weights: [100, 900],
+      category: 'sans',
+      isVariable: true,
+      fallback: 'system-ui, sans-serif',
+    },
+  ],
+  serif: [
+    {
+      name: 'Playfair Display',
+      file: 'PlayfairDisplay-Variable.woff2',
+      weights: [400, 900],
+      category: 'serif',
+      isVariable: true,
+      fallback: 'Georgia, serif',
+    },
+    {
+      name: 'Merriweather',
+      file: 'Merriweather-Variable.woff2',
+      weights: [300, 900],
+      category: 'serif',
+      isVariable: true,
+      fallback: 'Georgia, serif',
+    },
+    {
+      name: 'Crimson Pro',
+      file: 'CrimsonPro-Variable.woff2',
+      weights: [200, 900],
+      category: 'serif',
+      isVariable: true,
+      fallback: 'Georgia, serif',
+    },
+    {
+      name: 'Lora',
+      file: 'Lora-Variable.woff2',
+      weights: [400, 700],
+      category: 'serif',
+      isVariable: true,
+      fallback: 'Georgia, serif',
+    },
+  ],
+  mono: [
+    {
+      name: 'JetBrains Mono',
+      file: 'JetBrainsMono-Variable.woff2',
+      weights: [100, 800],
+      category: 'mono',
+      isVariable: true,
+      fallback: 'Consolas, monospace',
+    },
+    {
+      name: 'Fira Code',
+      file: 'FiraCode-Variable.woff2',
+      weights: [300, 700],
+      category: 'mono',
+      isVariable: true,
+      fallback: 'Consolas, monospace',
+    },
+    {
+      name: 'Source Code Pro',
+      file: 'SourceCodePro-Variable.woff2',
+      weights: [200, 900],
+      category: 'mono',
+      isVariable: true,
+      fallback: 'Consolas, monospace',
+    },
+  ],
+};
+
+export const SYSTEM_FONTS: Record<string, BundledFont> = {
+  sans: {
+    name: 'System Default',
+    file: '',
+    weights: [400, 700],
+    category: 'sans',
+    isVariable: false,
+    fallback: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif',
+  },
+  serif: {
+    name: 'System Serif',
+    file: '',
+    weights: [400, 700],
+    category: 'serif',
+    isVariable: false,
+    fallback: 'Georgia, "Times New Roman", Times, serif',
+  },
+  mono: {
+    name: 'System Mono',
+    file: '',
+    weights: [400, 700],
+    category: 'mono',
+    isVariable: false,
+    fallback: '"SF Mono", Consolas, "Liberation Mono", Menlo, monospace',
+  },
+};
+
+/**
+ * Get all fonts for a category (bundled + system)
+ */
+export function getFontsForCategory(category: 'sans' | 'serif' | 'mono'): BundledFont[] {
+  return [SYSTEM_FONTS[category], ...BUNDLED_FONTS[category]];
+}
+
+/**
+ * Find a font by name across all categories
+ */
+export function findFont(name: string): BundledFont | undefined {
+  for (const category of Object.values(BUNDLED_FONTS)) {
+    const found = category.find((f) => f.name === name);
+    if (found) return found;
+  }
+  return Object.values(SYSTEM_FONTS).find((f) => f.name === name);
+}
+```
+
+---
+
+#### Step 3: Update TypeScript Types
+
+**File:** `resources/js/shared/services/api/types.ts`
+
+Add/update the font-related types:
+
+```typescript
+// Add to existing ThemeData interface
+export interface FontConfig {
+  name: string;
+  source: 'bundled' | 'system' | 'custom';
+  file?: string;
+  weights: [number, number] | number[];
+  isVariable: boolean;
+}
+
+export interface ThemeTypography {
+  fontFamily: {
+    sans: FontConfig | string;  // string for backwards compat
+    serif?: FontConfig;
+    mono?: FontConfig;
+  };
+  fontSize?: Record<string, string>;
+  fontWeight?: Record<string, string>;
+  lineHeight?: Record<string, string>;
+  letterSpacing?: Record<string, string>;
+}
+
+// Update ThemeData interface
+export interface ThemeData {
+  // ... existing fields
+  typography?: ThemeTypography;
+  // ...
+}
+```
+
+---
+
+### Phase 7.2: CSS Generation (1.5 hours)
+
+#### Step 4: Create Font CSS Generator
+
+**File:** `resources/js/shared/services/fonts/generateFontCss.ts`
+
+```typescript
+import { BundledFont, findFont, SYSTEM_FONTS } from '@/shared/constants/fonts';
+
+export interface FontSelection {
+  sans: string;   // Font name
+  serif?: string;
+  mono?: string;
+}
+
+/**
+ * Generate @font-face declarations for selected fonts
+ */
+export function generateFontFaceCSS(selection: FontSelection): string {
+  const declarations: string[] = [];
+
+  for (const [category, fontName] of Object.entries(selection)) {
+    if (!fontName) continue;
+
+    const font = findFont(fontName);
+    if (!font || !font.file) continue;
+
+    const [minWeight, maxWeight] = font.weights as [number, number];
+
+    declarations.push(`
+@font-face {
+  font-family: '${font.name}';
+  src: url('/fonts/${font.category}/${font.file}') format('woff2');
+  font-weight: ${minWeight} ${maxWeight};
+  font-style: normal;
+  font-display: swap;
+}`);
+  }
+
+  return declarations.join('\n');
+}
+
+/**
+ * Generate CSS variables for font families
+ */
+export function generateFontVariablesCSS(selection: FontSelection): string {
+  const variables: string[] = [':root {'];
+
+  for (const [category, fontName] of Object.entries(selection)) {
+    if (!fontName) continue;
+
+    const font = findFont(fontName);
+    if (!font) continue;
+
+    const familyValue = font.file
+      ? `"${font.name}", ${font.fallback}`
+      : font.fallback;
+
+    variables.push(`  --font-family-${category}: ${familyValue};`);
+  }
+
+  variables.push('}');
+  return variables.join('\n');
+}
+
+/**
+ * Generate complete fonts CSS (font-face + variables)
+ */
+export function generateCompleteFontCSS(selection: FontSelection): string {
+  const fontFace = generateFontFaceCSS(selection);
+  const variables = generateFontVariablesCSS(selection);
+
+  return `/* Font System - Auto-generated */
+${fontFace}
+
+${variables}
+
+/* Base font application */
+body {
+  font-family: var(--font-family-sans);
+}
+
+code, pre, kbd, samp {
+  font-family: var(--font-family-mono, monospace);
+}
+`;
+}
+```
+
+---
+
+#### Step 5: Update Backend CSS Generator
+
+**File:** `app/Services/ThemeCssGeneratorService.php`
+
+Add font CSS generation to the existing service:
+
+```php
+/**
+ * Generate @font-face declarations for bundled fonts
+ */
+protected function generateFontFaceCss(array $fontFamily): string
+{
+    $css = '';
+    $fontPaths = [
+        'sans' => '/fonts/sans/',
+        'serif' => '/fonts/serif/',
+        'mono' => '/fonts/mono/',
+    ];
+
+    foreach (['sans', 'serif', 'mono'] as $category) {
+        if (!isset($fontFamily[$category])) continue;
+
+        $font = $fontFamily[$category];
+        
+        // Skip system fonts (no file)
+        if (!is_array($font) || empty($font['file'])) continue;
+
+        $name = $font['name'] ?? '';
+        $file = $font['file'] ?? '';
+        $weights = $font['weights'] ?? [400, 700];
+        $isVariable = $font['isVariable'] ?? false;
+
+        if ($isVariable && count($weights) === 2) {
+            $weightRange = "{$weights[0]} {$weights[1]}";
+        } else {
+            $weightRange = implode(', ', $weights);
+        }
+
+        $css .= "
+@font-face {
+  font-family: '{$name}';
+  src: url('{$fontPaths[$category]}{$file}') format('woff2');
+  font-weight: {$weightRange};
+  font-style: normal;
+  font-display: swap;
+}
+";
+    }
+
+    return $css;
+}
+
+/**
+ * Generate font family CSS variables
+ */
+protected function generateFontVariablesCss(array $fontFamily): array
+{
+    $fallbacks = [
+        'sans' => 'system-ui, -apple-system, sans-serif',
+        'serif' => 'Georgia, serif',
+        'mono' => 'Consolas, monospace',
+    ];
+
+    $variables = [];
+
+    foreach (['sans', 'serif', 'mono'] as $category) {
+        if (!isset($fontFamily[$category])) continue;
+
+        $font = $fontFamily[$category];
+        
+        if (is_array($font)) {
+            $name = $font['name'] ?? '';
+            $fallback = $fallbacks[$category];
+            $value = $name ? "\"{$name}\", {$fallback}" : $fallback;
+        } else {
+            // Legacy string format
+            $value = $font;
+        }
+
+        $variables["--font-family-{$category}"] = $value;
+    }
+
+    return $variables;
+}
+```
+
+---
+
+### Phase 7.3: Font Picker UI (2 hours)
+
+#### Step 6: Create FontFamilyPicker Component
+
+**File:** `resources/js/shared/components/atoms/FontFamilyPicker.tsx`
+
 ```tsx
-// Example: Heading component
-heading: {
-  type: 'custom',
-  label: 'Heading Font',
-  render: (props) => (
-    <FontFamilyControl 
-      {...props} 
-      types={['sans', 'serif']}  // Allow serif or sans
-      defaultType='serif'
+import { useState, useEffect } from 'react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/shared/components/ui/select';
+import { Label } from '@/shared/components/ui/label';
+import { getFontsForCategory, BundledFont } from '@/shared/constants/fonts';
+
+interface FontFamilyPickerProps {
+  category: 'sans' | 'serif' | 'mono';
+  value: string;
+  onChange: (fontName: string) => void;
+  label?: string;
+}
+
+export function FontFamilyPicker({
+  category,
+  value,
+  onChange,
+  label,
+}: FontFamilyPickerProps) {
+  const [fonts, setFonts] = useState<BundledFont[]>([]);
+  const [loadedFonts, setLoadedFonts] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setFonts(getFontsForCategory(category));
+  }, [category]);
+
+  // Dynamically load font for preview
+  const loadFontForPreview = (font: BundledFont) => {
+    if (loadedFonts.has(font.name) || !font.file) return;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      @font-face {
+        font-family: '${font.name}';
+        src: url('/fonts/${font.category}/${font.file}') format('woff2');
+        font-weight: ${font.weights[0]} ${font.weights[1]};
+        font-display: swap;
+      }
+    `;
+    document.head.appendChild(style);
+    setLoadedFonts((prev) => new Set(prev).add(font.name));
+  };
+
+  const categoryLabels = {
+    sans: 'Sans-Serif',
+    serif: 'Serif',
+    mono: 'Monospace',
+  };
+
+  return (
+    <div className="space-y-2">
+      {label && <Label>{label || categoryLabels[category]}</Label>}
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="w-full">
+          <SelectValue placeholder={`Select ${categoryLabels[category]} font`} />
+        </SelectTrigger>
+        <SelectContent>
+          {fonts.map((font) => {
+            loadFontForPreview(font);
+            const fontFamily = font.file
+              ? `"${font.name}", ${font.fallback}`
+              : font.fallback;
+
+            return (
+              <SelectItem key={font.name} value={font.name}>
+                <div className="flex items-center gap-3">
+                  <span
+                    className="text-base"
+                    style={{ fontFamily }}
+                  >
+                    {font.name}
+                  </span>
+                  {!font.file && (
+                    <span className="text-xs text-muted-foreground">(System)</span>
+                  )}
+                </div>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+```
+
+---
+
+#### Step 7: Create FontPreview Component
+
+**File:** `resources/js/shared/components/atoms/FontPreview.tsx`
+
+```tsx
+import { useEffect, useState } from 'react';
+import { findFont } from '@/shared/constants/fonts';
+
+interface FontPreviewProps {
+  fontName: string;
+  category: 'sans' | 'serif' | 'mono';
+  previewText?: string;
+}
+
+export function FontPreview({
+  fontName,
+  category,
+  previewText = 'The quick brown fox jumps over the lazy dog',
+}: FontPreviewProps) {
+  const [isLoaded, setIsLoaded] = useState(false);
+  const font = findFont(fontName);
+
+  useEffect(() => {
+    if (!font?.file) {
+      setIsLoaded(true);
+      return;
+    }
+
+    // Load font dynamically
+    const style = document.createElement('style');
+    style.textContent = `
+      @font-face {
+        font-family: '${font.name}';
+        src: url('/fonts/${font.category}/${font.file}') format('woff2');
+        font-weight: ${font.weights[0]} ${font.weights[1]};
+        font-display: swap;
+      }
+    `;
+    document.head.appendChild(style);
+
+    // Wait for font to load
+    document.fonts.ready.then(() => setIsLoaded(true));
+  }, [font]);
+
+  if (!font) return null;
+
+  const fontFamily = font.file
+    ? `"${font.name}", ${font.fallback}`
+    : font.fallback;
+
+  const sizes = [
+    { label: 'Small', size: '14px', weight: 400 },
+    { label: 'Body', size: '16px', weight: 400 },
+    { label: 'Large', size: '20px', weight: 500 },
+    { label: 'Heading', size: '28px', weight: 600 },
+  ];
+
+  return (
+    <div className="space-y-4 p-4 border rounded-lg bg-card">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium">{font.name}</h4>
+        <span className="text-xs text-muted-foreground">
+          {font.isVariable ? `${font.weights[0]}-${font.weights[1]}` : font.weights.join(', ')}
+        </span>
+      </div>
+
+      <div className="space-y-3" style={{ opacity: isLoaded ? 1 : 0.5 }}>
+        {sizes.map(({ label, size, weight }) => (
+          <div key={label} className="flex items-baseline gap-4">
+            <span className="text-xs text-muted-foreground w-16">{label}</span>
+            <p
+              style={{
+                fontFamily,
+                fontSize: size,
+                fontWeight: weight,
+                lineHeight: 1.4,
+              }}
+            >
+              {previewText}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+```
+
+---
+
+#### Step 8: Update ThemeBuilderPage Settings Tab
+
+Update the Settings tab in `ThemeBuilderPage.tsx` to use the new font pickers:
+
+**Location:** Typography section in Settings tab
+
+```tsx
+{/* Typography Section - Replace existing font input */}
+<div className="space-y-6">
+  <h2 className="text-lg font-semibold">Typography</h2>
+
+  {/* Font Family Pickers */}
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <FontFamilyPicker
+      category="sans"
+      label="Sans-Serif Font"
+      value={themeData.typography?.fontFamily?.sans?.name || 'Inter'}
+      onChange={(fontName) => updateFont('sans', fontName)}
     />
-  )
-}
+    <FontFamilyPicker
+      category="serif"
+      label="Serif Font"
+      value={themeData.typography?.fontFamily?.serif?.name || 'Playfair Display'}
+      onChange={(fontName) => updateFont('serif', fontName)}
+    />
+    <FontFamilyPicker
+      category="mono"
+      label="Monospace Font"
+      value={themeData.typography?.fontFamily?.mono?.name || 'JetBrains Mono'}
+      onChange={(fontName) => updateFont('mono', fontName)}
+    />
+  </div>
+
+  {/* Font Previews */}
+  <div className="grid grid-cols-1 gap-4">
+    <FontPreview
+      fontName={themeData.typography?.fontFamily?.sans?.name || 'Inter'}
+      category="sans"
+    />
+    <FontPreview
+      fontName={themeData.typography?.fontFamily?.serif?.name || 'Playfair Display'}
+      category="serif"
+    />
+    <FontPreview
+      fontName={themeData.typography?.fontFamily?.mono?.name || 'JetBrains Mono'}
+      category="mono"
+    />
+  </div>
+
+  {/* Existing font size, line-height, etc. controls */}
+  {/* ... */}
+</div>
 ```
 
----
+Helper function for updating fonts:
 
-### 5. CSS Generation
-
-**CSS Variables Approach:**
-```css
-:root {
-  --fonts-sans-family: "Inter", system-ui, sans-serif;
-  --fonts-sans-url: url('https://fonts.googleapis.com/css2?family=Inter');
-  --fonts-serif-family: "Playfair Display", Georgia, serif;
-  --fonts-serif-url: url('https://fonts.googleapis.com/css2?family=Playfair+Display');
-  --fonts-mono-family: "Fira Code", "Courier New", monospace;
-  --fonts-mono-url: url('https://fonts.googleapis.com/css2?family=Fira+Code');
-}
-```
-
-**CSS File Loading:**
-```css
-@import var(--fonts-sans-url);
-@import var(--fonts-serif-url);
-@import var(--fonts-mono-url);
-
-body { font-family: var(--fonts-sans-family); }
-h1, h2, h3 { font-family: var(--fonts-serif-family); }
-code, pre { font-family: var(--fonts-mono-family); }
-```
-
----
-
-### 6. Font Loading Strategy
-
-**Timing:**
-- Load fonts in `<head>` via `@import` statements
-- Use `font-display: swap` for better performance
-- Prevent FOUT (Flash of Unstyled Text)
-
-**CSS Order:**
-1. Theme CSS variables (fonts metadata)
-2. Font import statements (`@import`)
-3. Font family fallbacks
-4. Component styles (use font variables)
-
-**Blade Template:**
-```blade
-<!-- Load fonts for theme -->
-<link href="{{ $theme->fonts_css_url }}" rel="stylesheet">
-
-<!-- Or inline critical fonts -->
-<style>{!! $theme->fonts_css !!}</style>
-```
-
----
-
-### 7. Storage Locations
-
-**Backend (Database):**
-- `themes.theme_data.typography.fontFamily` - Font metadata
-- `themes.fonts_css` - Generated `@import` statements
-
-**Disk (Public):**
-- `/public/storage/themes/{themeId}/{themeId}_fonts.css` - Compiled font CSS
-- Or: `/public/storage/themes/{themeId}/{themeId}_variables.css` (include fonts)
-
----
-
-## Implementation Plan (TDD)
-
-### Phase 7a: Font Data & Backend API (2-3 hours)
-
-#### Step 1: Update Theme Data Schema (30 min)
-
-**Status: Not started**
-
-Update theme_data to support serif and mono families with metadata:
-
-```json
-{
-  "typography": {
-    "fontFamily": {
-      "sans": {
-        "name": "Inter",
-        "source": "google-fonts",
-        "weights": [400, 500, 600, 700],
-        "url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700"
-      },
-      "serif": {
-        "name": "Playfair Display",
-        "source": "google-fonts",
-        "weights": [400, 700],
-        "url": "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700"
-      },
-      "mono": {
-        "name": "Fira Code",
-        "source": "google-fonts",
-        "weights": [400, 600],
-        "url": "https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600"
-      }
-    }
-  }
-}
-```
-
-**Tasks:**
-- [ ] Create migration to update default theme_data with serif/mono
-- [ ] Update Theme factory with sample fonts
-- [ ] Update TypeScript types to include font metadata
-
-**Files:**
-- `database/migrations/2026_02_XX_000001_update_font_family_structure.php`
-- `app/Models/Theme.php` (update $casts if needed)
-- `resources/js/shared/services/api/types.ts` (ThemeData interface)
-
----
-
-#### Step 2: Font Service (Google Fonts + FontBunny API) (1 hr)
-
-**Status: Not started**
-
-Create service to fetch available fonts and resolve URLs:
-
-**Tasks:**
-- [ ] Create `FontService` class
-  - `getGoogleFonts()` - fetch all Google Fonts (with caching)
-  - `getFontBunnyFonts()` - fetch all FontBunny fonts
-  - `resolveFontUrl(name, source, weights)` - generate @import URL
-  - `validateFont(name, source)` - check font exists before saving
-
-- [ ] Store API keys in `.env`: `GOOGLE_FONTS_API_KEY`, `FONTBUNNY_API_KEY`
-- [ ] Cache font list for 24 hours (avoid rate limits)
-- [ ] Graceful fallback if API unavailable
-
-**Files:**
-- `app/Services/FontService.php`
-- `tests/Unit/Services/FontServiceTest.php`
-- `.env.example` (add API keys)
-
----
-
-#### Step 3: Backend API Endpoint for Font Management (1 hr)
-
-**Status: Not started**
-
-API endpoint to list fonts and update theme fonts:
-
-**Endpoints:**
-- `GET /api/superadmin/fonts/available` - List available fonts (Google + FontBunny + system)
-- `GET /api/superadmin/fonts/search?q=inter` - Search fonts
-- `POST /api/superadmin/themes/{id}/fonts` - Update theme fonts
-- `GET /api/superadmin/themes/{id}/fonts` - Get theme fonts with metadata
-
-**Tasks:**
-- [ ] Create `FontController`
-- [ ] Implement font listing with pagination
-- [ ] Implement font search
-- [ ] Implement theme font updates (only central can update)
-- [ ] Add validation: only central can modify fonts
-- [ ] Add tests for all endpoints
-
-**Files:**
-- `app/Http/Controllers/Api/FontController.php`
-- `routes/api.php`
-- `tests/Feature/Api/FontApiTest.php`
-
----
-
-### Phase 7b: UI & Font Preview (2-3 hours)
-
-#### Step 4: Font Picker Component (1 hr)
-
-**Status: Not started**
-
-Create reusable FontFamilyPicker component for Settings tab:
-
-**Features:**
-- Dropdown with all available fonts
-- Separate dropdowns for sans/serif/mono
-- Show font source (Google Fonts, FontBunny, System)
-- Display available weights for each font
-- Search within font list
-
-**Tasks:**
-- [ ] Create `FontFamilyPicker.tsx` component
-  - Props: `fontType` ('sans'|'serif'|'mono'), `onSelect`, `defaultValue`
-  - Fetch fonts from API on mount
-  - Show loading state while fetching
-  - Display font source badge
-
-- [ ] Create `FontWeightSelector.tsx` sub-component
-  - Show available weights as toggles
-  - Allow selecting multiple weights
-  - Default to recommended weights (400, 600, 700)
-
-- [ ] Add error handling (API failures, network errors)
-- [ ] Cache font list in React Query
-
-**Files:**
-- `resources/js/shared/components/atoms/FontFamilyPicker.tsx`
-- `resources/js/shared/components/atoms/FontWeightSelector.tsx`
-- `resources/js/shared/hooks/useFonts.ts` (hook to fetch/cache fonts)
-- `resources/js/shared/services/api/fonts.ts` (API client)
-
----
-
-#### Step 5: Font Preview Component (1 hr)
-
-**Status: Not started**
-
-Visual preview showing selected fonts in action:
-
-**Features:**
-- Display sample text in each font size/weight
-- Show text: "The quick brown fox jumps over the lazy dog"
-- Interactive preview: change text, size, weight
-- Show current vs pending changes
-- Copy font family name to clipboard
-
-**Tasks:**
-- [ ] Create `FontPreview.tsx` component
-  - Props: `fontName`, `fontUrl`, `fontFamily`, `weights`
-  - Load font dynamically via @import
-  - Display at multiple sizes (16px, 24px, 32px)
-  - Allow text input for custom preview text
-
-- [ ] Create `PreviewPanel.tsx` for Settings tab
-  - Show sans/serif/mono previews side-by-side
-  - Color swatches (existing palette)
-  - Typography scale preview
-  - Spacing scale preview
-  - All in one Settings tab (no new tabs)
-
-**Files:**
-- `resources/js/shared/components/atoms/FontPreview.tsx`
-- `resources/js/shared/components/organisms/PreviewPanel.tsx`
-
----
-
-#### Step 6: Integrate into Settings Tab (1 hr)
-
-**Status: Not started**
-
-Update ThemeBuilderPage Settings tab to include font management:
-
-**Current Settings Tab Layout:**
-```
-- Colors section (palette editor)
-- Typography section (font family, sizes, weights, line-height)
-- Spacing section (scale)
-- Border Radius section
-- Preview panel (right side)
-```
-
-**New Layout:**
-```
-[Left Panel]
-- Colors Picker
-  - Primary/Secondary/Accent colors
-  - Neutral scale
-  
-- Typography Controls
-  - Font Family Picker (sans/serif/mono with FontFamilyPicker)
-  - Font Size Scale
-  - Line Height Scale
-  - Letter Spacing Scale
-  - Text Transform
-
-- Spacing Scale
-  - Visual grid + values
-  
-- Border Radius Scale
-  - Visual preview + values
-
-[Right Panel]
-- PreviewPanel showing:
-  - All three fonts in action
-  - Color palette swatches
-  - Typography scale
-  - Spacing grid
-  - Border radius options
-```
-
-**Tasks:**
-- [ ] Update Settings tab JSX to use FontFamilyPicker
-- [ ] Pass font selections to theme state
-- [ ] Update preview panel to render selected fonts
-- [ ] Save font selections to theme_data on save
-- [ ] Update CSS generation to include @import statements
-
-**Files:**
-- `resources/js/shared/components/organisms/ThemeBuilderPage.tsx` (Settings tab)
-- Update font-related state management
-
----
-
-### Phase 7c: CSS Generation & Loading (1.5-2 hours)
-
-#### Step 7: Generate Font CSS & Variables (1 hr)
-
-**Status: Not started**
-
-Generate CSS variables and @import statements for fonts:
-
-**Output CSS Structure:**
-```css
-/* Generated during theme save */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700');
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700');
-@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600');
-
-:root {
-  --fonts-sans-family: "Inter", system-ui, sans-serif;
-  --fonts-sans-weights: 400, 500, 600, 700;
-  
-  --fonts-serif-family: "Playfair Display", Georgia, serif;
-  --fonts-serif-weights: 400, 700;
-  
-  --fonts-mono-family: "Fira Code", "Courier New", monospace;
-  --fonts-mono-weights: 400, 600;
-}
-```
-
-**Tasks:**
-- [ ] Create/update `generateFontsCSS()` function
-  - Takes theme_data with font metadata
-  - Generates @import statements
-  - Creates CSS variables
-  - Returns complete fonts.css content
-
-- [ ] Update theme save handler
-  - Call generateFontsCSS() on save
-  - Save fonts.css to `/public/storage/themes/{id}/{id}_fonts.css`
-
-- [ ] Update CSS aggregation
-  - Include _fonts.css in final CSS bundle
-
-**Files:**
-- `resources/js/shared/services/theme/generateFontsCSS.ts`
-- `app/Services/ThemeCssGeneratorService.php` (if backend involved)
-
----
-
-#### Step 8: Load Fonts in Public Pages (30 min)
-
-**Status: Not started**
-
-Load font CSS in theme rendering:
-
-**Blade Template Update:**
-```blade
-{{-- Load fonts CSS --}}
-@if($activeTheme && $activeTheme->base_theme)
-  <link href="{{ asset('storage/themes/' . $activeTheme->base_theme . '/' . $activeTheme->base_theme . '_fonts.css') }}" rel="stylesheet">
-@endif
-
-{{-- Load variables CSS (includes color + spacing tokens) --}}
-<link href="{{ asset('storage/themes/' . $activeTheme->base_theme . '/' . $activeTheme->base_theme . '_variables.css') }}" rel="stylesheet">
-```
-
-**Best Practices:**
-- Load fonts early in `<head>` for better performance
-- Use `font-display: swap` to prevent FOUT
-- Preload critical fonts
-- Avoid loading all Google Fonts at once (performance hit)
-
-**Tasks:**
-- [ ] Update `public-tenant.blade.php`
-- [ ] Add `<link rel="preload">` for critical fonts (sans family)
-- [ ] Test font loading performance
-- [ ] Verify fonts render before page content (no FOUT)
-
-**Files:**
-- `resources/views/public-tenant.blade.php`
-- `resources/views/layouts/app.blade.php` (if central storefront)
-
----
-
-### Phase 7d: Component Integration & Testing (2 hours)
-
-#### Step 9: Component Font Controls (1 hr)
-
-**Status: Not started**
-
-Allow components to use different font families:
-
-**Example: Heading Component**
 ```tsx
-heading: {
-  font_family: {
+const updateFont = (category: 'sans' | 'serif' | 'mono', fontName: string) => {
+  const font = findFont(fontName);
+  if (!font) return;
+
+  setThemeData((prev) => ({
+    ...prev,
+    typography: {
+      ...prev.typography,
+      fontFamily: {
+        ...prev.typography?.fontFamily,
+        [category]: {
+          name: font.name,
+          source: font.file ? 'bundled' : 'system',
+          file: font.file || undefined,
+          weights: font.weights,
+          isVariable: font.isVariable,
+        },
+      },
+    },
+  }));
+};
+```
+
+---
+
+### Phase 7.4: Component Font Selection (1.5 hours)
+
+#### Step 9: Add Font Family Field to Components
+
+**File:** `resources/js/shared/puck/fields/fontFamilyField.ts`
+
+```typescript
+import { Fields } from '@puckeditor/core';
+
+export const fontFamilyField: Fields = {
+  fontFamily: {
     type: 'select',
     label: 'Font Family',
     options: [
-      { label: 'Sans (default)', value: 'var(--fonts-sans-family)' },
-      { label: 'Serif', value: 'var(--fonts-serif-family)' },
-      { label: 'Mono', value: 'var(--fonts-mono-family)' },
+      { label: 'Sans (theme default)', value: 'sans' },
+      { label: 'Serif', value: 'serif' },
+      { label: 'Monospace', value: 'mono' },
+      { label: 'Inherit', value: 'inherit' },
     ],
-    defaultValue: 'var(--fonts-sans-family)',
+  },
+};
+
+/**
+ * Resolve font family value to CSS
+ */
+export function resolveFontFamily(value: string | undefined): string {
+  switch (value) {
+    case 'sans':
+      return 'var(--font-family-sans)';
+    case 'serif':
+      return 'var(--font-family-serif)';
+    case 'mono':
+      return 'var(--font-family-mono)';
+    case 'inherit':
+    default:
+      return 'inherit';
   }
 }
 ```
 
-**Tasks:**
-- [ ] Update Heading component to include font_family control
-- [ ] Update Text component to include font_family control
-- [ ] Update Button component to include font_family control
-- [ ] Update Code block component to use mono font
-- [ ] Ensure font CSS loads before components render
+---
 
-**Files:**
-- `resources/js/shared/components/puck/Heading.tsx`
-- `resources/js/shared/components/puck/Text.tsx`
-- `resources/js/shared/components/puck/Button.tsx`
-- `resources/js/shared/components/puck/Code.tsx`
+#### Step 10: Update Heading Component
+
+Add font family selection to the Heading component:
+
+```tsx
+// In Heading.tsx fields configuration
+fields: {
+  // ... existing fields
+  fontFamily: {
+    type: 'select',
+    label: 'Font Family',
+    options: [
+      { label: 'Sans (default)', value: 'sans' },
+      { label: 'Serif', value: 'serif' },
+      { label: 'Monospace', value: 'mono' },
+    ],
+  },
+}
+
+// In render function
+const fontFamilyCSS = resolveFontFamily(fontFamily);
+
+// In CSS generation
+fontFamily: fontFamilyCSS,
+```
 
 ---
 
-#### Step 10: Testing & Validation (1 hr)
+#### Step 11: Update Text Component
 
-**Status: Not started**
-
-Comprehensive testing suite:
-
-**Unit Tests:**
-- [ ] FontService: font fetching, URL generation, caching
-- [ ] generateFontsCSS: CSS generation correctness
-- [ ] FontFamilyPicker: dropdown, search, selection
-- [ ] FontPreview: rendering, weight selection
-
-**Integration Tests:**
-- [ ] Theme save: fonts saved to database
-- [ ] CSS generation: fonts.css created correctly
-- [ ] Blade loading: fonts.css linked in HTML
-- [ ] Font rendering: fonts load before content renders
-
-**E2E Tests:**
-- [ ] Central can select fonts in Settings tab
-- [ ] Font preview updates on selection
-- [ ] Fonts render in public storefront
-- [ ] Tenants inherit fonts from central
-- [ ] Font override works (if allowed)
-- [ ] No FOUT on page load
-- [ ] Graceful fallback if API unavailable
-
-**Performance Tests:**
-- [ ] Measure page load time with fonts
-- [ ] Verify no render-blocking requests
-- [ ] Check Google Fonts API response time
-
-**Files:**
-- `tests/Unit/Services/FontServiceTest.php`
-- `tests/Feature/Api/FontApiTest.php`
-- `resources/js/shared/services/theme/__tests__/generateFontsCSS.test.ts`
-- `resources/js/shared/components/atoms/__tests__/FontFamilyPicker.test.tsx`
-- `tests/Feature/BladeFontLoadingTest.php`
+Add font family selection to the Text component (same pattern as Heading).
 
 ---
 
-## Settings Tab Enhancements (Parallel Implementation)
+### Phase 7.5: RichText Component (1.5 hours)
 
-While building Phase 7 fonts, also enhance other Settings controls:
+#### Step 12: Create RichText Puck Component
 
-### Parallel Enhancement 1: Color Picker Panel (1 hr)
-**Status: Not started**
-- [ ] Visual palette swatch display
-- [ ] Click to copy hex/rgb value
-- [ ] Drag to reorder colors (optional)
-- [ ] Add/remove custom colors (optional)
+**File:** `resources/js/shared/puck/components/content/RichText.tsx`
 
-### Parallel Enhancement 2: Typography Preview (1 hr)
-**Status: Not started**
-- [ ] Live text preview with current fonts
-- [ ] Show at multiple sizes (12px, 16px, 24px, 32px)
-- [ ] Display current line-height/letter-spacing
-- [ ] Interactive text input to test readability
+```tsx
+import { ComponentConfig } from '@puckeditor/core';
+import { resolveFontFamily } from '../../fields/fontFamilyField';
 
-### Parallel Enhancement 3: Spacing Visual Grid (30 min)
-**Status: Not started**
-- [ ] Visual representation of spacing scale
-- [ ] Show current spacing values
-- [ ] Click to copy token value
-- [ ] Visualize how spacing looks
+export interface RichTextProps {
+  id?: string;
+  content: React.ReactNode;
+  fontFamily?: 'sans' | 'serif' | 'mono' | 'inherit';
+  textColor?: string;
+  className?: string;
+}
 
-### Parallel Enhancement 4: CSS Variables Export (30 min)
-**Status: Not started**
-- [ ] Export theme as CSS file with all variables
-- [ ] Include fonts, colors, spacing, typography
-- [ ] Use in other projects
-- [ ] Option to import theme from CSS
+function RichTextComponent({
+  id,
+  content,
+  fontFamily = 'sans',
+  textColor,
+  puck,
+}: RichTextProps & { puck?: { dragRef: unknown } }) {
+  const fontFamilyCSS = resolveFontFamily(fontFamily);
 
-### Parallel Enhancement 5: Theme Metadata UI (30 min)
-**Status: Not started**
-- [ ] Author name/email field
-- [ ] Version with changelog
-- [ ] License selection dropdown
-- [ ] Preview image upload/editor
-- [ ] Description editor
+  return (
+    <div
+      ref={puck?.dragRef as React.Ref<HTMLDivElement>}
+      className={`richtext-${id} prose prose-lg max-w-none`}
+      style={{
+        fontFamily: fontFamilyCSS,
+        color: textColor || 'inherit',
+      }}
+    >
+      {content}
+    </div>
+  );
+}
+
+export const RichText: ComponentConfig<RichTextProps> = {
+  label: 'Rich Text',
+  
+  fields: {
+    content: {
+      type: 'richtext',
+      contentEditable: true, // Enable inline editing
+      options: {
+        heading: { levels: [2, 3, 4] },
+        // Available by default: bold, italic, underline, strike, link, bulletList, orderedList
+      },
+    },
+    fontFamily: {
+      type: 'select',
+      label: 'Font Family',
+      options: [
+        { label: 'Sans (default)', value: 'sans' },
+        { label: 'Serif', value: 'serif' },
+        { label: 'Monospace', value: 'mono' },
+        { label: 'Inherit', value: 'inherit' },
+      ],
+    },
+    textColor: {
+      type: 'text',
+      label: 'Text Color',
+    },
+  },
+
+  defaultProps: {
+    content: '<p>Start writing your content here...</p>',
+    fontFamily: 'sans',
+  },
+
+  render: RichTextComponent,
+};
+```
 
 ---
 
-## Estimated Effort Summary
+#### Step 13: Register RichText in Puck Config
 
-| Phase | Task | Duration | Status |
-|-------|------|----------|--------|
-| 7a | Font Data Schema | 30 min | Not started |
-| 7a | Font Service (API Integration) | 1 hr | Not started |
-| 7a | Backend Font API | 1 hr | Not started |
-| 7b | Font Picker Component | 1 hr | Not started |
-| 7b | Font Preview Component | 1 hr | Not started |
-| 7b | Settings Tab Integration | 1 hr | Not started |
-| 7c | CSS Generation & Loading | 1.5 hrs | Not started |
-| 7d | Component Integration | 1 hr | Not started |
-| 7d | Testing & Validation | 1 hr | Not started |
-| **7 Total** | | **~9 hours** | **Not started** |
-| Parallel | Settings Enhancements | **~3 hours** | **Optional** |
+**File:** `resources/js/shared/puck/config/index.ts`
+
+```typescript
+import { RichText } from '../components/content/RichText';
+
+// Add to components
+export const puckConfig = {
+  components: {
+    // ... existing components
+    RichText,
+  },
+  categories: {
+    content: {
+      components: ['Heading', 'Text', 'RichText', /* ... */],
+    },
+  },
+};
+```
+
+---
+
+### Phase 7.6: Testing (1 hour)
+
+#### Step 14: Write Tests
+
+**Frontend Tests:**
+
+```typescript
+// resources/js/shared/constants/__tests__/fonts.test.ts
+describe('Font Constants', () => {
+  it('should have fonts for all categories', () => {
+    expect(BUNDLED_FONTS.sans.length).toBeGreaterThan(0);
+    expect(BUNDLED_FONTS.serif.length).toBeGreaterThan(0);
+    expect(BUNDLED_FONTS.mono.length).toBeGreaterThan(0);
+  });
+
+  it('should find font by name', () => {
+    const inter = findFont('Inter');
+    expect(inter).toBeDefined();
+    expect(inter?.category).toBe('sans');
+  });
+});
+
+// resources/js/shared/services/fonts/__tests__/generateFontCss.test.ts
+describe('generateFontCss', () => {
+  it('should generate @font-face for bundled fonts', () => {
+    const css = generateFontFaceCSS({ sans: 'Inter' });
+    expect(css).toContain("font-family: 'Inter'");
+    expect(css).toContain('font-weight: 100 900');
+  });
+
+  it('should skip system fonts', () => {
+    const css = generateFontFaceCSS({ sans: 'System Default' });
+    expect(css).not.toContain('@font-face');
+  });
+});
+```
+
+**Backend Tests:**
+
+```php
+// tests/Unit/Services/ThemeCssGeneratorServiceFontsTest.php
+public function test_generates_font_face_css_for_variable_fonts(): void
+{
+    $fontFamily = [
+        'sans' => [
+            'name' => 'Inter',
+            'file' => 'Inter-Variable.woff2',
+            'weights' => [100, 900],
+            'isVariable' => true,
+        ],
+    ];
+
+    $css = $this->service->generateFontFaceCss($fontFamily);
+
+    $this->assertStringContainsString("font-family: 'Inter'", $css);
+    $this->assertStringContainsString('font-weight: 100 900', $css);
+}
+```
+
+---
+
+### Phase 7.7: Blade Integration (30 min)
+
+#### Step 15: Update Blade Templates
+
+**File:** `resources/views/public-central.blade.php`
+
+```blade
+<head>
+    <!-- Preload critical font -->
+    <link rel="preload" href="/fonts/sans/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin>
+
+    <!-- Theme CSS (includes @font-face and variables) -->
+    @if($activeTheme)
+        <link href="{{ asset('storage/themes/' . $activeTheme->id . '.css') }}" rel="stylesheet">
+    @endif
+</head>
+```
+
+---
+
+## Summary: Implementation Checklist
+
+### Phase 7.1: Foundation (2 hours)
+- [ ] Download variable font files to `/public/fonts/`
+- [ ] Create `fonts.ts` constants with bundled font list
+- [ ] Update TypeScript types for font configuration
+
+### Phase 7.2: CSS Generation (1.5 hours)
+- [ ] Create `generateFontCss.ts` utility
+- [ ] Update `ThemeCssGeneratorService.php` for font CSS
+- [ ] Test font CSS output
+
+### Phase 7.3: Font Picker UI (2 hours)
+- [ ] Create `FontFamilyPicker.tsx` component
+- [ ] Create `FontPreview.tsx` component
+- [ ] Update ThemeBuilderPage Settings tab
+- [ ] Test font selection and preview
+
+### Phase 7.4: Component Integration (1.5 hours)
+- [ ] Create `fontFamilyField.ts` shared field
+- [ ] Update Heading component with font selection
+- [ ] Update Text component with font selection
+- [ ] Test component font rendering
+
+### Phase 7.5: RichText Component (1.5 hours)
+- [ ] Create `RichText.tsx` Puck component
+- [ ] Register in Puck config
+- [ ] Test inline editing functionality
+- [ ] Verify font inheritance
+
+### Phase 7.6: Testing (1 hour)
+- [ ] Frontend unit tests for fonts
+- [ ] Backend unit tests for CSS generation
+- [ ] Integration tests for font loading
+
+### Phase 7.7: Blade Integration (30 min)
+- [ ] Update Blade templates with font preload
+- [ ] Verify no FOUT in production
+
+---
+
+## Estimated Total: ~10 hours
+
+---
+
+## Future: Phase 7.5 - Custom Font Upload (Optional)
+
+If custom font upload is needed later:
+
+1. **Extend Media Library** - Add font mimetypes (`font/woff2`, `font/woff`, `font/ttf`)
+2. **Create `fonts` table** - Store uploaded font metadata
+3. **Font Upload UI** - Drag-and-drop in Theme Builder
+4. **License Warning** - Remind users about font licensing
+5. **Font Preview** - Preview before confirming upload
 
 ---
 
 ## Success Criteria
 
 **Phase 7 Complete When:**
-- ✅ Can select sans, serif, and mono fonts in Settings tab
-- ✅ Font preview displays in real-time
-- ✅ Fonts load from Google Fonts / FontBunny
-- ✅ CSS variables available for component usage
-- ✅ Fonts render correctly in storefront
-- ✅ No FOUT (fonts load before content)
-- ✅ Tenants inherit fonts, cannot override
-- ✅ Graceful fallback if API unavailable
-- ✅ All tests passing (unit + integration + e2e)
-- ✅ Settings tab enhanced with color/typography/spacing previews
+- ✅ Can select sans/serif/mono fonts in Settings tab
+- ✅ Font preview shows selected fonts in real-time
+- ✅ Fonts load from local `/fonts/` directory
+- ✅ Variable fonts work with weight range
+- ✅ System fonts option available
+- ✅ CSS variables generated correctly
+- ✅ Components can select font family
+- ✅ RichText component works with inline editing
+- ✅ No FOUT on page load (font-display: swap)
 - ✅ All tests passing
-
----
-
-## Notes
-
-- This phase builds on Phase 6 (Theme Customization)
-- Fonts are critical for design system completeness
-- Should include proper font performance optimization
-- Consider accessibility (font-display strategy, sufficient contrast)
-- Future: Custom font upload capability
-- Future: Font subsetting for performance

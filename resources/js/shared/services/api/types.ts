@@ -282,6 +282,33 @@ export interface DuplicateThemeData {
   name: string;
 }
 
+/**
+ * Font Configuration
+ * 
+ * Represents a font selected in the theme builder with metadata
+ */
+export interface FontConfig {
+  name: string;
+  source: 'bundled' | 'system' | 'google' | 'custom';
+  file?: string;
+  weights?: number[];
+  isVariable?: boolean;
+  fallback?: string;
+}
+
+/**
+ * Typography Configuration
+ * 
+ * Contains all font selections for a theme (sans, serif, mono)
+ * Can store either font names (string) or full FontConfig objects
+ */
+export interface ThemeTypography {
+  sans?: string | FontConfig;
+  serif?: string | FontConfig;
+  mono?: string | FontConfig;
+  [key: string]: string | FontConfig | undefined;
+}
+
 export interface PageTemplate {
   id: number;
   theme_id: number | null;
