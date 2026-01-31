@@ -8,13 +8,13 @@ use App\Models\Page;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Services\PuckCompilerService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PuckCompilerServiceTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected PuckCompilerService $compiler;
 
@@ -23,8 +23,7 @@ class PuckCompilerServiceTest extends TestCase
         parent::setUp();
         $this->compiler = new PuckCompilerService();
 
-        // Create a user for foreign key constraints
-        \App\Models\User::factory()->create(['id' => 1]);
+        // Note: Test fixtures seeder already creates users, no need to create additional ones
     }
 
     /** @test */

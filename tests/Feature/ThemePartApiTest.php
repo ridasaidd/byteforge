@@ -7,26 +7,20 @@ use App\Models\Page;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Passport\Passport;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ThemePartApiTest extends TestCase
 {
-    use RefreshDatabase;
-
-    protected User $user;
+    use DatabaseTransactions;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // Seed roles and permissions
-        $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
-
-        $this->user = User::factory()->create();
-        Passport::actingAs($this->user);
+        // Tests use actingAsSuperadmin() helper to authenticate
     }
 
     #[Test]
@@ -34,7 +28,8 @@ class ThemePartApiTest extends TestCase
     {
         ThemePart::factory()->count(3)->create(['tenant_id' => null]);
 
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/theme-parts');
 
         $response->assertStatus(200)
@@ -59,7 +54,7 @@ class ThemePartApiTest extends TestCase
     #[Test]
     public function it_can_create_theme_part()
     {
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->postJson('/api/superadmin/theme-parts', [
                 'name' => 'Main Header',
                 'type' => 'header',
@@ -95,7 +90,7 @@ class ThemePartApiTest extends TestCase
             ],
         ]);
 
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->postJson('/api/superadmin/theme-parts', [
                 'name' => 'Themed Header',
                 'type' => 'header',
@@ -129,7 +124,7 @@ class ThemePartApiTest extends TestCase
             'type' => 'header',
         ]);
 
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->putJson("/api/superadmin/theme-parts/{$themePart->id}", [
                 'name' => 'New Name',
             ]);
@@ -148,7 +143,7 @@ class ThemePartApiTest extends TestCase
     {
         $themePart = ThemePart::factory()->create(['tenant_id' => null]);
 
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->deleteJson("/api/superadmin/theme-parts/{$themePart->id}");
 
         $response->assertStatus(200);
@@ -161,7 +156,7 @@ class ThemePartApiTest extends TestCase
     #[Test]
     public function it_validates_theme_part_type()
     {
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->postJson('/api/superadmin/theme-parts', [
                 'name' => 'Invalid Part',
                 'type' => 'invalid_type',
@@ -179,7 +174,7 @@ class ThemePartApiTest extends TestCase
         ThemePart::factory()->create(['tenant_id' => null, 'type' => 'footer']);
         ThemePart::factory()->create(['tenant_id' => null, 'type' => 'header']);
 
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/theme-parts?type=header');
 
         $response->assertStatus(200);
@@ -195,7 +190,7 @@ class ThemePartApiTest extends TestCase
             'slug' => 'header',
         ]);
 
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->postJson('/api/superadmin/theme-parts', [
                 'name' => 'Header',
                 'type' => 'header',

@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Page;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -23,7 +24,7 @@ class PageFactory extends Factory
             'status' => $this->faker->randomElement(['draft', 'published', 'archived']),
             'is_homepage' => false,
             'sort_order' => $this->faker->numberBetween(0, 10),
-            'created_by' => 1, // Should be set explicitly in seeder
+            'created_by' => fn () => User::where('email', 'superadmin@byteforge.se')->first()?->id ?? User::factory()->create()->id,
             'published_at' => null,
         ];
     }

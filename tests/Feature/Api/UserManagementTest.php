@@ -3,14 +3,14 @@
 namespace Tests\Feature\Api;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
 use Illuminate\Support\Facades\Hash;
 
 class UserManagementTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected User $superadmin;
 
@@ -18,12 +18,8 @@ class UserManagementTest extends TestCase
     {
         parent::setUp();
 
-        // Seed roles and permissions
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
-
-        // Create superadmin user
-        $this->superadmin = User::factory()->create();
-        $this->superadmin->assignRole('superadmin');
+        // Use seeded superadmin user (from TestFixturesSeeder)
+        $this->superadmin = User::where('email', 'superadmin@byteforge.se')->first();
     }
 
     public function test_can_list_users(): void
@@ -32,7 +28,7 @@ class UserManagementTest extends TestCase
 
         User::factory()->count(3)->create();
 
-        $response = $this->getJson('/api/superadmin/users');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/users');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -55,7 +51,7 @@ class UserManagementTest extends TestCase
             'role' => 'admin',
         ];
 
-        $response = $this->postJson('/api/superadmin/users', $data);
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', $data);
 
         $response->assertStatus(201)
             ->assertJsonStructure([
@@ -75,7 +71,7 @@ class UserManagementTest extends TestCase
     {
         Passport::actingAs($this->superadmin);
 
-        $response = $this->postJson('/api/superadmin/users', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'email' => 'test@example.com',
             'password' => 'password123',
             'password_confirmation' => 'password123',
@@ -89,7 +85,7 @@ class UserManagementTest extends TestCase
     {
         Passport::actingAs($this->superadmin);
 
-        $response = $this->postJson('/api/superadmin/users', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'name' => 'Test User',
             'password' => 'password123',
             'password_confirmation' => 'password123',
@@ -105,7 +101,7 @@ class UserManagementTest extends TestCase
 
         User::factory()->create(['email' => 'existing@example.com']);
 
-        $response = $this->postJson('/api/superadmin/users', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'name' => 'New User',
             'email' => 'existing@example.com',
             'password' => 'password123',
@@ -120,7 +116,7 @@ class UserManagementTest extends TestCase
     {
         Passport::actingAs($this->superadmin);
 
-        $response = $this->postJson('/api/superadmin/users', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password123',
@@ -137,7 +133,7 @@ class UserManagementTest extends TestCase
 
         $user = User::factory()->create(['name' => 'Test User']);
 
-        $response = $this->getJson("/api/superadmin/users/{$user->id}");
+        $response = $this->actingAsSuperadmin()->getJson("/api/superadmin/users/{$user->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -155,7 +151,7 @@ class UserManagementTest extends TestCase
 
         $user = User::factory()->create(['name' => 'Old Name']);
 
-        $response = $this->putJson("/api/superadmin/users/{$user->id}", [
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/users/{$user->id}", [
             'name' => 'New Name',
         ]);
 
@@ -175,7 +171,7 @@ class UserManagementTest extends TestCase
 
         $user = User::factory()->create();
 
-        $response = $this->putJson("/api/superadmin/users/{$user->id}", [
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/users/{$user->id}", [
             'password' => 'newpassword123',
             'password_confirmation' => 'newpassword123',
         ]);
@@ -192,7 +188,7 @@ class UserManagementTest extends TestCase
 
         $user = User::factory()->create();
 
-        $response = $this->deleteJson("/api/superadmin/users/{$user->id}");
+        $response = $this->actingAsSuperadmin()->deleteJson("/api/superadmin/users/{$user->id}");
 
         $response->assertStatus(200)
             ->assertJson(['message' => 'User deleted successfully']);
@@ -202,16 +198,16 @@ class UserManagementTest extends TestCase
 
     public function test_requires_authentication(): void
     {
+        // No authentication - should get 401
         $response = $this->getJson('/api/superadmin/users');
         $response->assertStatus(401);
     }
 
     public function test_requires_superadmin_role(): void
     {
+        // Regular user without superadmin role - should get 403
         $regularUser = User::factory()->create();
-        Passport::actingAs($regularUser);
-
-        $response = $this->getJson('/api/superadmin/users');
+        $response = $this->actingAs($regularUser, 'api')->getJson('/api/superadmin/users');
         $response->assertStatus(403);
     }
 }

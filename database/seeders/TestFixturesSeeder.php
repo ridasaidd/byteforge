@@ -9,197 +9,229 @@ use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 use Stancl\Tenancy\Database\Models\Domain;
 
+/**
+ * TestFixturesSeeder - Creates a complete test environment
+ *
+ * All passwords are 'password' for easy testing.
+ *
+ * CENTRAL USERS:
+ *   - superadmin@byteforge.se (superadmin role - full access)
+ *   - admin@byteforge.se (admin role - management access)
+ *   - support@byteforge.se (support role - read-heavy)
+ *   - viewer@byteforge.se (viewer role - read-only)
+ *
+ * TENANT USERS (for each tenant-one, tenant-two, tenant-three):
+ *   - owner@tenant-X.byteforge.se (full tenant permissions)
+ *   - editor@tenant-X.byteforge.se (edit permissions)
+ *   - viewer@tenant-X.byteforge.se (view-only)
+ *
+ * Usage:
+ *   php artisan migrate:fresh --seed
+ *   php artisan db:seed --class=TestFixturesSeeder
+ */
 class TestFixturesSeeder extends Seeder
 {
-    /**
-     * Seed test fixtures for a clean, predictable test environment.
-     *
-     * Creates:
-     * - 3 fixed tenants (tenant-one, tenant-two, tenant-three)
-     * - Central app users with different roles (superadmin, editor, manager, viewer)
-     * - Tenant users for each tenant
-     */
+    private const PASSWORD = 'password';
+
     public function run(): void
     {
-        // Disable activity logging during seeding
         activity()->disableLogging();
 
-        // Ensure roles and permissions exist first
+        $this->call(PassportTestSeeder::class);
         $this->call(RolePermissionSeeder::class);
 
-        echo "Creating test tenants...\n";
+        $this->createTenantRoles();
+        $this->createTenants();
+        $this->createCentralUsers();
+        $this->createTenantUsers();
 
-        // 1. Create fixed tenants (matching domain provider subdomains)
-        $tenantOne = Tenant::firstOrCreate(
-            ['id' => 'tenant_one'],
-            [
-                'name' => 'Tenant One',
-                'slug' => 'tenant-one',
-                'email' => 'contact@tenant-one.byteforge.se',
-                'phone' => '+46701234567',
-                'status' => 'active',
-            ]
-        );
-
-        $tenantTwo = Tenant::firstOrCreate(
-            ['id' => 'tenant_two'],
-            [
-                'name' => 'Tenant Two',
-                'slug' => 'tenant-two',
-                'email' => 'contact@tenant-two.byteforge.se',
-                'phone' => '+46701234568',
-                'status' => 'active',
-            ]
-        );
-
-        $tenantThree = Tenant::firstOrCreate(
-            ['id' => 'tenant_three'],
-            [
-                'name' => 'Tenant Three',
-                'slug' => 'tenant-three',
-                'email' => 'contact@tenant-three.byteforge.se',
-                'phone' => '+46701234569',
-                'status' => 'active',
-            ]
-        );
-
-        $this->command->info('✓ Created 3 fixed tenants');
-
-        // 2. Create domains for tenants
-        foreach ([
-            ['tenant_one', 'tenant-one.byteforge.se'],
-            ['tenant_two', 'tenant-two.byteforge.se'],
-            ['tenant_three', 'tenant-three.byteforge.se'],
-        ] as [$tenantId, $domain]) {
-            Domain::firstOrCreate(
-                ['domain' => $domain],
-                ['tenant_id' => $tenantId]
-            );
-        }
-
-        $this->command->info('✓ Created domains for tenants');
-
-        echo "\nCreating central app users...\n";
-
-        // 3. Create central app users with specific roles
-        $superadminRole = Role::where('name', 'superadmin')->where('guard_name', 'api')->first();
-        $adminRole = Role::where('name', 'admin')->where('guard_name', 'api')->first();
-        $supportRole = Role::where('name', 'support')->where('guard_name', 'api')->first();
-        $viewerRole = Role::where('name', 'viewer')->where('guard_name', 'api')->first();
-
-        // Superadmin
-        $superadmin = User::firstOrCreate(
-            ['email' => 'superadmin@byteforge.se'],
-            [
-                'name' => 'Super Admin',
-                'password' => Hash::make('password'),
-                'type' => 'superadmin',
-                'email_verified_at' => now(),
-            ]
-        );
-        $superadmin->syncRoles([$superadminRole]);
-        $this->command->info('✓ Created superadmin@byteforge.se');
-
-        // Admin/Editor
-        $editor = User::firstOrCreate(
-            ['email' => 'editor@byteforge.se'],
-            [
-                'name' => 'Editor',
-                'password' => Hash::make('password'),
-                'type' => 'superadmin',
-                'email_verified_at' => now(),
-            ]
-        );
-        $editor->syncRoles([$adminRole]);
-        $this->command->info('✓ Created editor@byteforge.se (admin role)');
-
-        // Manager/Support
-        $manager = User::firstOrCreate(
-            ['email' => 'manager@byteforge.se'],
-            [
-                'name' => 'Manager',
-                'password' => Hash::make('password'),
-                'type' => 'superadmin',
-                'email_verified_at' => now(),
-            ]
-        );
-        $manager->syncRoles([$supportRole]);
-        $this->command->info('✓ Created manager@byteforge.se (support role)');
-
-        // Viewer
-        $viewer = User::firstOrCreate(
-            ['email' => 'viewer@byteforge.se'],
-            [
-                'name' => 'Viewer',
-                'password' => Hash::make('password'),
-                'type' => 'superadmin',
-                'email_verified_at' => now(),
-            ]
-        );
-        $viewer->syncRoles([$viewerRole]);
-        $this->command->info('✓ Created viewer@byteforge.se (viewer role)');
-
-        echo "\nCreating tenant users with different roles...\n";
-
-        // 4. Create tenant users with different roles/permissions within each tenant context
-
-        // Tenant One: Create owner/admin user with full permissions
-        tenancy()->initialize($tenantOne);
-        $tenantOneOwner = User::firstOrCreate(
-            ['email' => 'owner.tenant-one@byteforge.se'],
-            [
-                'name' => 'Owner - Tenant One',
-                'password' => Hash::make('password'),
-                'type' => 'tenant_user',
-                'email_verified_at' => now(),
-            ]
-        );
-        $tenantOneOwner->syncPermissions(['themes.manage', 'themes.view']);
-        $this->command->info('✓ Created owner.tenant-one@byteforge.se (with themes.manage, themes.view)');
-        tenancy()->end();
-
-        // Tenant Two: Create editor user with limited permissions (view only)
-        tenancy()->initialize($tenantTwo);
-        $tenantTwoEditor = User::firstOrCreate(
-            ['email' => 'editor.tenant-two@byteforge.se'],
-            [
-                'name' => 'Editor - Tenant Two',
-                'password' => Hash::make('password'),
-                'type' => 'tenant_user',
-                'email_verified_at' => now(),
-            ]
-        );
-        $tenantTwoEditor->syncPermissions(['themes.view']);
-        $this->command->info('✓ Created editor.tenant-two@byteforge.se (with themes.view only)');
-        tenancy()->end();
-
-        // Tenant Three: Create admin user with full permissions
-        tenancy()->initialize($tenantThree);
-        $tenantThreeAdmin = User::firstOrCreate(
-            ['email' => 'admin.tenant-three@byteforge.se'],
-            [
-                'name' => 'Admin - Tenant Three',
-                'password' => Hash::make('password'),
-                'type' => 'tenant_user',
-                'email_verified_at' => now(),
-            ]
-        );
-        $tenantThreeAdmin->syncPermissions(['themes.manage', 'themes.view']);
-        $this->command->info('✓ Created admin.tenant-three@byteforge.se (with themes.manage, themes.view)');
-        tenancy()->end();
-
-        echo "\n✅ Test fixtures created successfully!\n";
-        echo "\nCentral App Users:\n";
-        echo "  - superadmin@byteforge.se (superadmin role)\n";
-        echo "  - editor@byteforge.se (admin role)\n";
-        echo "  - manager@byteforge.se (support role)\n";
-        echo "  - viewer@byteforge.se (viewer role)\n";
-        echo "\nTenant Users (with pre-configured permissions):\n";
-        echo "  - owner.tenant-one@byteforge.se (themes.manage, themes.view)\n";
-        echo "  - editor.tenant-two@byteforge.se (themes.view only)\n";
-        echo "  - admin.tenant-three@byteforge.se (themes.manage, themes.view)\n";
-
-        // Re-enable activity logging
         activity()->enableLogging();
+
+        $this->printSummary();
+    }
+
+    /**
+     * Create tenant-specific roles
+     */
+    private function createTenantRoles(): void
+    {
+        $this->command->info("\n🔑 Creating tenant roles...");
+
+        $tenantRoles = [
+            'tenant_owner' => [
+                'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
+                'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
+                'themes.view', 'themes.manage', 'themes.activate',
+                'layouts.view', 'layouts.manage',
+                'templates.view', 'templates.manage',
+                'media.view', 'media.manage',
+            ],
+            'tenant_editor' => [
+                'pages.create', 'pages.edit', 'pages.view',
+                'navigation.create', 'navigation.edit', 'navigation.view',
+                'themes.view',
+                'layouts.view',
+                'templates.view',
+                'media.view', 'media.manage',
+            ],
+            'tenant_viewer' => [
+                'pages.view',
+                'navigation.view',
+                'themes.view',
+                'layouts.view',
+                'templates.view',
+                'media.view',
+            ],
+        ];
+
+        foreach ($tenantRoles as $roleName => $permissions) {
+            $role = Role::firstOrCreate(['name' => $roleName, 'guard_name' => 'api']);
+            $perms = \Spatie\Permission\Models\Permission::whereIn('name', $permissions)
+                ->where('guard_name', 'api')
+                ->get();
+            $role->syncPermissions($perms);
+            $this->command->info("  ✓ {$roleName}");
+        }
+    }
+
+    private function createTenants(): void
+    {
+        $this->command->info("\n📦 Creating tenants...");
+
+        $tenants = [
+            ['id' => 'tenant_one', 'slug' => 'tenant-one', 'name' => 'Tenant One'],
+            ['id' => 'tenant_two', 'slug' => 'tenant-two', 'name' => 'Tenant Two'],
+            ['id' => 'tenant_three', 'slug' => 'tenant-three', 'name' => 'Tenant Three'],
+        ];
+
+        foreach ($tenants as $t) {
+            $tenant = Tenant::firstOrCreate(
+                ['id' => $t['id']],
+                [
+                    'name' => $t['name'],
+                    'slug' => $t['slug'],
+                    'email' => "contact@{$t['slug']}.byteforge.se",
+                    'phone' => '+46701234567',
+                    'status' => 'active',
+                ]
+            );
+
+            Domain::firstOrCreate(
+                ['domain' => "{$t['slug']}.byteforge.se"],
+                ['tenant_id' => $tenant->id]
+            );
+
+            $this->command->info("  ✓ {$t['name']} ({$t['slug']}.byteforge.se)");
+        }
+    }
+
+    private function createCentralUsers(): void
+    {
+        $this->command->info("\n👤 Creating central users...");
+
+        $users = [
+            ['email' => 'superadmin@byteforge.se', 'name' => 'Super Admin', 'role' => 'superadmin'],
+            ['email' => 'admin@byteforge.se', 'name' => 'Central Admin', 'role' => 'admin'],
+            ['email' => 'support@byteforge.se', 'name' => 'Support Staff', 'role' => 'support'],
+            ['email' => 'viewer@byteforge.se', 'name' => 'Central Viewer', 'role' => 'viewer'],
+        ];
+
+        foreach ($users as $u) {
+            $user = User::firstOrCreate(
+                ['email' => $u['email']],
+                [
+                    'name' => $u['name'],
+                    'password' => Hash::make(self::PASSWORD),
+                    'type' => 'superadmin',
+                    'email_verified_at' => now(),
+                ]
+            );
+
+            $role = Role::where('name', $u['role'])->where('guard_name', 'api')->first();
+            if ($role) {
+                $user->syncRoles([$role]);
+            }
+
+            $this->command->info("  ✓ {$u['email']} ({$u['role']})");
+        }
+    }
+
+    private function createTenantUsers(): void
+    {
+        $this->command->info("\n👥 Creating tenant users...");
+
+        setPermissionsTeamId(null); // Clear team context
+
+        $tenantSlugs = ['tenant-one', 'tenant-two', 'tenant-three'];
+
+        $userTypes = [
+            'owner' => [
+                'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
+                'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
+                'themes.view', 'themes.manage', 'themes.activate',
+                'layouts.view', 'layouts.manage',
+                'templates.view', 'templates.manage',
+                'media.view', 'media.manage',
+            ],
+            'editor' => [
+                'pages.create', 'pages.edit', 'pages.view',
+                'navigation.create', 'navigation.edit', 'navigation.view',
+                'themes.view',
+                'layouts.view',
+                'templates.view',
+                'media.view', 'media.manage',
+            ],
+            'viewer' => [
+                'pages.view',
+                'navigation.view',
+                'themes.view',
+                'layouts.view',
+                'templates.view',
+                'media.view',
+            ],
+        ];
+
+        foreach ($tenantSlugs as $slug) {
+            $this->command->info("  {$slug}:");
+
+            foreach ($userTypes as $type => $permissions) {
+                $email = "{$type}@{$slug}.byteforge.se";
+                $name = ucfirst($type) . ' - ' . ucwords(str_replace('-', ' ', $slug));
+
+                $user = User::firstOrCreate(
+                    ['email' => $email],
+                    [
+                        'name' => $name,
+                        'password' => Hash::make(self::PASSWORD),
+                        'type' => 'tenant_user',
+                        'email_verified_at' => now(),
+                    ]
+                );
+
+                $user->syncPermissions($permissions);
+                $this->command->info("    ✓ {$email}");
+            }
+        }
+    }
+
+    private function printSummary(): void
+    {
+        $this->command->info("\n" . str_repeat('═', 60));
+        $this->command->info("✅ TEST FIXTURES READY");
+        $this->command->info(str_repeat('═', 60));
+        $this->command->info("\n🔑 All passwords: 'password'");
+        $this->command->info("\n📋 Central Users:");
+        $this->command->info("   superadmin@byteforge.se  → Full access");
+        $this->command->info("   admin@byteforge.se       → Admin role");
+        $this->command->info("   support@byteforge.se     → Support role");
+        $this->command->info("   viewer@byteforge.se      → View only");
+        $this->command->info("\n📋 Tenant Users (×3 tenants):");
+        $this->command->info("   owner@tenant-X.byteforge.se   → Full permissions");
+        $this->command->info("   editor@tenant-X.byteforge.se  → Edit permissions");
+        $this->command->info("   viewer@tenant-X.byteforge.se  → View only");
+        $this->command->info("\n📋 Tenants:");
+        $this->command->info("   tenant-one.byteforge.se");
+        $this->command->info("   tenant-two.byteforge.se");
+        $this->command->info("   tenant-three.byteforge.se\n");
     }
 }

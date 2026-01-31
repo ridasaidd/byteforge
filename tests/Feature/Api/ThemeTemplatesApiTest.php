@@ -6,7 +6,7 @@ use App\Models\Theme;
 use App\Models\PageTemplate;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 
 /**
  * Phase 6 Step 7: Theme Templates API Tests
@@ -16,7 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
  */
 class ThemeTemplatesApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     /**
      * Test that getting templates from active theme returns page_templates

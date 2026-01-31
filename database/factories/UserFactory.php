@@ -45,20 +45,38 @@ class UserFactory extends Factory
     }
 
     /**
-     * Configure the factory for testing - auto-assign superadmin role.
+     * Create a user with the superadmin role.
+     *
+     * Use this state when you need a superadmin user in tests:
+     *   User::factory()->superadmin()->create()
+     *
+     * For most tests, use the seeded users instead via TestUsers::centralSuperadmin()
      */
-    public function configure(): static
+    public function superadmin(): static
     {
         return $this->afterCreating(function ($user) {
-            // In test environment, auto-assign superadmin role for convenience
-            if (app()->environment('testing')) {
-                $superadmin = Role::where('name', 'superadmin')
-                    ->where('guard_name', 'api')
-                    ->first();
+            $superadmin = Role::where('name', 'superadmin')
+                ->where('guard_name', 'api')
+                ->first();
 
-                if ($superadmin) {
-                    $user->syncRoles([$superadmin]);
-                }
+            if ($superadmin) {
+                $user->syncRoles([$superadmin]);
+            }
+        });
+    }
+
+    /**
+     * Create a user with a specific role.
+     */
+    public function withRole(string $roleName): static
+    {
+        return $this->afterCreating(function ($user) use ($roleName) {
+            $role = Role::where('name', $roleName)
+                ->where('guard_name', 'api')
+                ->first();
+
+            if ($role) {
+                $user->syncRoles([$role]);
             }
         });
     }

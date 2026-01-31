@@ -4,29 +4,16 @@ namespace Tests\Feature\Api;
 
 use App\Models\Theme;
 use App\Models\ThemePlaceholder;
-use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Passport\Passport;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ThemePlaceholderApiTest extends TestCase
 {
-    use RefreshDatabase;
-
-    protected User $user;
     protected Theme $theme;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Permissions/Roles seeded by TestCase -> TestFixturesSeeder
-
-        $this->user = User::factory()->create();
-        $this->user->givePermissionTo('themes.manage');
-
-        Passport::actingAs($this->user);
 
         // Create a theme (Blueprint) - all themes are blueprints in simplified architecture
         $this->theme = Theme::factory()->create([
@@ -47,7 +34,8 @@ class ThemePlaceholderApiTest extends TestCase
             ]
         ];
 
-        $response = $this->postJson("/api/superadmin/themes/{$this->theme->id}/placeholders/header", $payload);
+        $response = $this->actingAsSuperadmin()
+            ->postJson("/api/superadmin/themes/{$this->theme->id}/placeholders/header", $payload);
 
         $response->assertStatus(200)
             ->assertJsonPath('message', 'Header placeholder saved successfully');
@@ -62,7 +50,8 @@ class ThemePlaceholderApiTest extends TestCase
     public function it_requires_content_in_payload()
     {
         // Missing content should fail
-        $response = $this->postJson("/api/superadmin/themes/{$this->theme->id}/placeholders/header", []);
+        $response = $this->actingAsSuperadmin()
+            ->postJson("/api/superadmin/themes/{$this->theme->id}/placeholders/header", []);
 
         $response->assertStatus(422);
     }
@@ -81,7 +70,8 @@ class ThemePlaceholderApiTest extends TestCase
             'content' => ['new' => 'data']
         ];
 
-        $response = $this->postJson("/api/superadmin/themes/{$this->theme->id}/placeholders/footer", $payload);
+        $response = $this->actingAsSuperadmin()
+            ->postJson("/api/superadmin/themes/{$this->theme->id}/placeholders/footer", $payload);
 
         $response->assertStatus(200);
 
@@ -103,7 +93,8 @@ class ThemePlaceholderApiTest extends TestCase
             'content' => ['test' => 'content']
         ]);
 
-        $response = $this->getJson("/api/superadmin/themes/{$this->theme->id}/placeholders/header");
+        $response = $this->actingAsSuperadmin()
+            ->getJson("/api/superadmin/themes/{$this->theme->id}/placeholders/header");
 
         $response->assertStatus(200)
             ->assertJsonPath('data.content', ['test' => 'content']);
@@ -112,7 +103,8 @@ class ThemePlaceholderApiTest extends TestCase
     #[Test]
     public function it_returns_404_if_placeholder_does_not_exist()
     {
-        $response = $this->getJson("/api/superadmin/themes/{$this->theme->id}/placeholders/sidebar");
+        $response = $this->actingAsSuperadmin()
+            ->getJson("/api/superadmin/themes/{$this->theme->id}/placeholders/sidebar");
 
         $response->assertStatus(404);
     }
@@ -132,7 +124,8 @@ class ThemePlaceholderApiTest extends TestCase
             'content' => ['footer' => 'content']
         ]);
 
-        $response = $this->getJson("/api/superadmin/themes/{$this->theme->id}/placeholders");
+        $response = $this->actingAsSuperadmin()
+            ->getJson("/api/superadmin/themes/{$this->theme->id}/placeholders");
 
         $response->assertStatus(200)
             ->assertJsonCount(2, 'data');

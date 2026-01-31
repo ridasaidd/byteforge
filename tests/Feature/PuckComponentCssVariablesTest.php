@@ -4,8 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Theme;
 use App\Services\ThemeCssGeneratorService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
@@ -19,14 +18,13 @@ use Tests\TestCase;
  */
 class PuckComponentCssVariablesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected ThemeCssGeneratorService $service;
 
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('public');
         $this->service = app(ThemeCssGeneratorService::class);
     }
 
@@ -289,25 +287,19 @@ class PuckComponentCssVariablesTest extends TestCase
             ],
         ]);
 
-        // Act: Generate and write CSS
+        // Act: Generate CSS (file writing is handled by ThemeCssPublishService in production)
         $css = $this->service->generateCss($theme->theme_data);
-        $this->service->writeCssFile($theme->id, $css);
 
-        // Assert: File exists and contains expected structure
-        Storage::disk('public')->assertExists("themes/{$theme->id}.css");
-
-        $fileContent = Storage::disk('public')->get("themes/{$theme->id}.css");
-
-        // Check structure
-        $this->assertStringContainsString(':root {', $fileContent);
-        $this->assertStringContainsString('}', $fileContent);
+        // Assert: CSS contains expected structure
+        $this->assertStringContainsString(':root {', $css);
+        $this->assertStringContainsString('}', $css);
 
         // Check all categories present
-        $this->assertStringContainsString('--color-', $fileContent);
-        $this->assertStringContainsString('--font-', $fileContent);
-        $this->assertStringContainsString('--spacing-', $fileContent);
-        $this->assertStringContainsString('--border-radius-', $fileContent);
-        $this->assertStringContainsString('--shadow-', $fileContent);
+        $this->assertStringContainsString('--color-', $css);
+        $this->assertStringContainsString('--font-', $css);
+        $this->assertStringContainsString('--spacing-', $css);
+        $this->assertStringContainsString('--border-radius-', $css);
+        $this->assertStringContainsString('--shadow-', $css);
     }
 
     /** @test */

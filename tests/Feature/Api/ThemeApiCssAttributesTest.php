@@ -6,23 +6,16 @@ use App\Models\Theme;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ThemeService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Passport\Passport;
 use Tests\TestCase;
 
 class ThemeApiCssAttributesTest extends TestCase
 {
-    use RefreshDatabase;
-
-    protected User $user;
     protected Theme $theme;
 
     protected function setUp(): void
     {
         parent::setUp();
-
-        $this->user = User::factory()->create();
 
         $this->theme = Theme::factory()->create([
             'tenant_id' => null, // Central theme
@@ -33,7 +26,6 @@ class ThemeApiCssAttributesTest extends TestCase
             ],
         ]);
 
-        Passport::actingAs($this->user);
     }
 
     /**
@@ -47,7 +39,8 @@ class ThemeApiCssAttributesTest extends TestCase
         app(ThemeService::class)->activateTheme($this->theme->slug, null);
 
         // Fetch active theme via API
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/themes/active');
 
         $response->assertStatus(200);
@@ -89,7 +82,8 @@ class ThemeApiCssAttributesTest extends TestCase
         app(ThemeService::class)->activateTheme($this->theme->slug, null);
 
         // Fetch themes list
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/themes');
 
         $response->assertStatus(200);
@@ -116,7 +110,8 @@ class ThemeApiCssAttributesTest extends TestCase
         app(ThemeService::class)->activateTheme($this->theme->slug, null);
 
         // Get initial CSS URL
-        $response1 = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response1 = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/themes/active');
 
         $initialUrl = $response1->json('data.css_url');
@@ -126,7 +121,8 @@ class ThemeApiCssAttributesTest extends TestCase
         sleep(1);
 
         // Update theme
-        $response2 = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response2 = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->putJson("/api/superadmin/themes/{$this->theme->id}", [
                 'name' => $this->theme->name,
                 'slug' => $this->theme->slug,
@@ -138,7 +134,8 @@ class ThemeApiCssAttributesTest extends TestCase
         $response2->assertStatus(200);
 
         // Fetch updated theme
-        $response3 = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response3 = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/themes/active');
 
         $newUrl = $response3->json('data.css_url');
@@ -162,7 +159,8 @@ class ThemeApiCssAttributesTest extends TestCase
         app(ThemeService::class)->activateTheme($this->theme->slug, null);
 
         // The publicTheme endpoint may or may not exist - just verify active theme works
-        $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
+        $response = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->getJson('/api/superadmin/themes/active');
 
         $response->assertStatus(200);

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Theme;
+use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
 class ThemeService
@@ -12,6 +13,14 @@ class ThemeService
     public function __construct(ThemeCssGeneratorService $cssGenerator)
     {
         $this->cssGenerator = $cssGenerator;
+    }
+
+    /**
+     * Get the current user ID or fall back to superadmin for system operations.
+     */
+    private function getCurrentUserId(): int
+    {
+        return Auth::id() ?? User::where('email', 'superadmin@byteforge.se')->value('id') ?? 1;
     }
     /**
      * Activate a theme for a tenant.
@@ -66,7 +75,7 @@ class ThemeService
                 'puck_data_compiled' => null,
                 'status' => 'published',
                 'sort_order' => 0,
-                'created_by' => Auth::id() ?? 1,
+                'created_by' => $this->getCurrentUserId(),
             ]);
         }
     }
@@ -106,7 +115,7 @@ class ThemeService
                 'puck_data_compiled' => null,
                 'status' => 'published',
                 'sort_order' => 0,
-                'created_by' => Auth::id() ?? 1,
+                'created_by' => $this->getCurrentUserId(),
             ]);
         }
 

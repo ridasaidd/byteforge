@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Models\Navigation;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Str;
 
@@ -21,7 +22,7 @@ class NavigationFactory extends Factory
             'structure' => null, // Empty for now
             'status' => $this->faker->randomElement(['active', 'draft', 'archived']),
             'sort_order' => $this->faker->numberBetween(0, 10),
-            'created_by' => 1, // Should be set explicitly in seeder
+            'created_by' => fn () => User::where('email', 'superadmin@byteforge.se')->first()?->id ?? User::factory()->create()->id,
         ];
     }
 }

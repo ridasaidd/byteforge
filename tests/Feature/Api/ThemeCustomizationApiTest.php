@@ -8,7 +8,7 @@ use App\Models\ThemePlaceholder;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Services\ThemeService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Passport\Passport;
 use Tests\TestCase;
 
@@ -24,7 +24,7 @@ use Tests\TestCase;
  */
 class ThemeCustomizationApiTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected User $superadminUser;
     protected User $viewerUser;
@@ -45,7 +45,7 @@ class ThemeCustomizationApiTest extends TestCase
 
         // Get tenant fixtures
         $this->tenantOne = Tenant::where('slug', 'tenant-one')->first();
-        $this->tenantOwnerUser = User::where('email', 'owner.tenant-one@byteforge.se')->first();
+        $this->tenantOwnerUser = User::where('email', 'owner@tenant-one.byteforge.se')->first();
 
         // Create a theme blueprint with placeholders
         $this->theme = Theme::factory()->create([

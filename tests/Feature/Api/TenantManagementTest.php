@@ -4,14 +4,14 @@ namespace Tests\Feature\Api;
 
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Laravel\Passport\Passport;
 use Stancl\Tenancy\Database\Models\Domain;
 use Tests\TestCase;
 
 class TenantManagementTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected User $superadmin;
 
@@ -19,12 +19,8 @@ class TenantManagementTest extends TestCase
     {
         parent::setUp();
 
-        // Seed roles and permissions
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
-
-        // Create superadmin user
-        $this->superadmin = User::factory()->create();
-        $this->superadmin->assignRole('superadmin');
+        // Use seeded superadmin user (from TestFixturesSeeder)
+        $this->superadmin = User::where('email', 'superadmin@byteforge.se')->first();
     }
 
     public function test_can_list_tenants(): void
@@ -38,7 +34,7 @@ class TenantManagementTest extends TestCase
         $tenant2 = Tenant::create(['id' => '2', 'name' => 'Tenant 2', 'slug' => 'tenant-2']);
         Domain::create(['domain' => 'tenant2.test', 'tenant_id' => $tenant2->id]);
 
-        $response = $this->getJson('/api/superadmin/tenants');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/tenants');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -58,7 +54,7 @@ class TenantManagementTest extends TestCase
             'domain' => 'newtest.example.com',
         ];
 
-        $response = $this->postJson('/api/superadmin/tenants', $data);
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', $data);
 
         $response->assertStatus(201)
             ->assertJsonStructure([
@@ -79,7 +75,7 @@ class TenantManagementTest extends TestCase
     {
         Passport::actingAs($this->superadmin);
 
-        $response = $this->postJson('/api/superadmin/tenants', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
             'domain' => 'test.example.com',
         ]);
 
@@ -91,7 +87,7 @@ class TenantManagementTest extends TestCase
     {
         Passport::actingAs($this->superadmin);
 
-        $response = $this->postJson('/api/superadmin/tenants', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
             'name' => 'Test Tenant',
         ]);
 
@@ -106,7 +102,7 @@ class TenantManagementTest extends TestCase
         $tenant = Tenant::create(['id' => '1', 'name' => 'Existing Tenant', 'slug' => 'existing-tenant']);
         Domain::create(['domain' => 'existing.test', 'tenant_id' => $tenant->id]);
 
-        $response = $this->postJson('/api/superadmin/tenants', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
             'name' => 'New Tenant',
             'domain' => 'existing.test',
         ]);
@@ -122,7 +118,7 @@ class TenantManagementTest extends TestCase
         $tenant = Tenant::create(['id' => '1', 'name' => 'Test Tenant', 'slug' => 'test-tenant']);
         Domain::create(['domain' => 'test.example.com', 'tenant_id' => $tenant->id]);
 
-        $response = $this->getJson("/api/superadmin/tenants/{$tenant->id}");
+        $response = $this->actingAsSuperadmin()->getJson("/api/superadmin/tenants/{$tenant->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -141,7 +137,7 @@ class TenantManagementTest extends TestCase
         $tenant = Tenant::create(['id' => '1', 'name' => 'Old Name', 'slug' => 'old-name']);
         Domain::create(['domain' => 'old.test', 'tenant_id' => $tenant->id]);
 
-        $response = $this->putJson("/api/superadmin/tenants/{$tenant->id}", [
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/tenants/{$tenant->id}", [
             'name' => 'New Name',
             'domain' => 'new.test',
         ]);
@@ -165,7 +161,7 @@ class TenantManagementTest extends TestCase
         $tenant = Tenant::create(['id' => '1', 'name' => 'To Delete', 'slug' => 'to-delete']);
         Domain::create(['domain' => 'delete.test', 'tenant_id' => $tenant->id]);
 
-        $response = $this->deleteJson("/api/superadmin/tenants/{$tenant->id}");
+        $response = $this->actingAsSuperadmin()->deleteJson("/api/superadmin/tenants/{$tenant->id}");
 
         $response->assertStatus(200)
             ->assertJson(['message' => 'Tenant deleted successfully']);
@@ -175,16 +171,16 @@ class TenantManagementTest extends TestCase
 
     public function test_requires_authentication(): void
     {
+        // No authentication - should get 401
         $response = $this->getJson('/api/superadmin/tenants');
         $response->assertStatus(401);
     }
 
     public function test_requires_superadmin_role(): void
     {
+        // Regular user without superadmin role - should get 403
         $regularUser = User::factory()->create();
-        Passport::actingAs($regularUser);
-
-        $response = $this->getJson('/api/superadmin/tenants');
+        $response = $this->actingAs($regularUser, 'api')->getJson('/api/superadmin/tenants');
         $response->assertStatus(403);
     }
 }

@@ -6,28 +6,24 @@ use App\Models\Media;
 use App\Models\MediaFolder;
 use App\Models\MediaLibrary;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Passport\Passport;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Support\TestUsers;
 
 class CentralMediaLibraryTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected User $user;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
 
         Storage::fake('public');
 
-        $this->user = User::factory()->create();
-        Passport::actingAs($this->user);
+        // Use seeded superadmin for uploaded_by references
+        $this->user = TestUsers::centralSuperadmin();
     }
 
     #[Test]
@@ -35,9 +31,10 @@ class CentralMediaLibraryTest extends TestCase
     {
         $file = UploadedFile::fake()->image('test-image.jpg', 800, 600)->size(1024);
 
-        $response = $this->postJson('/api/superadmin/media', [
-            'file' => $file,
-        ]);
+        $response = $this->actingAsSuperadmin()
+            ->postJson('/api/superadmin/media', [
+                'file' => $file,
+            ]);
 
         $response->assertStatus(201)
             ->assertJsonStructure([
@@ -81,7 +78,7 @@ class CentralMediaLibraryTest extends TestCase
 
         $file = UploadedFile::fake()->image('folder-test.jpg');
 
-        $response = $this->postJson('/api/superadmin/media', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/media', [
             'file' => $file,
             'folder_id' => $folder->id,
         ]);
@@ -110,7 +107,7 @@ class CentralMediaLibraryTest extends TestCase
         $mediaLibrary->addMedia(UploadedFile::fake()->image('root-image.jpg'))
             ->toMediaCollection('default');
 
-        $response = $this->getJson('/api/superadmin/media');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/media');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -165,7 +162,7 @@ class CentralMediaLibraryTest extends TestCase
             ->toMediaCollection('default');
 
         // Request media in specific folder
-        $response = $this->getJson("/api/superadmin/media?folder_id={$folder->id}");
+        $response = $this->actingAsSuperadmin()->getJson("/api/superadmin/media?folder_id={$folder->id}");
 
         $response->assertStatus(200);
         $data = $response->json('data');
@@ -197,7 +194,7 @@ class CentralMediaLibraryTest extends TestCase
         $normalLibrary->addMedia(UploadedFile::fake()->image('normal.jpg'))
             ->toMediaCollection('default');
 
-        $response = $this->getJson('/api/superadmin/media');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/media');
 
         $response->assertStatus(200);
         $data = $response->json('data');
@@ -220,7 +217,7 @@ class CentralMediaLibraryTest extends TestCase
         $media = $mediaLibrary->addMedia(UploadedFile::fake()->image('delete-test.jpg'))
             ->toMediaCollection('default');
 
-        $response = $this->deleteJson("/api/superadmin/media/{$media->id}");
+        $response = $this->actingAsSuperadmin()->deleteJson("/api/superadmin/media/{$media->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -235,7 +232,7 @@ class CentralMediaLibraryTest extends TestCase
     #[Test]
     public function user_can_create_folder()
     {
-        $response = $this->postJson('/api/superadmin/media-folders', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/media-folders', [
             'name' => 'New Folder',
         ]);
 
@@ -265,7 +262,7 @@ class CentralMediaLibraryTest extends TestCase
             'parent_id' => null,
         ]);
 
-        $response = $this->postJson('/api/superadmin/media-folders', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/media-folders', [
             'name' => 'Child Folder',
             'parent_id' => $parentFolder->id,
         ]);
@@ -287,7 +284,7 @@ class CentralMediaLibraryTest extends TestCase
             'parent_id' => null,
         ]);
 
-        $response = $this->postJson('/api/superadmin/media-folders', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/media-folders', [
             'name' => 'Existing Folder',
         ]);
 
@@ -312,7 +309,7 @@ class CentralMediaLibraryTest extends TestCase
         ]);
 
         // Create "Documents" inside "Parent" (should be allowed)
-        $response = $this->postJson('/api/superadmin/media-folders', [
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/media-folders', [
             'name' => 'Documents',
             'parent_id' => $parentFolder->id,
         ]);
@@ -331,7 +328,7 @@ class CentralMediaLibraryTest extends TestCase
             'parent_id' => null,
         ]);
 
-        $response = $this->putJson("/api/superadmin/media-folders/{$folder->id}", [
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/media-folders/{$folder->id}", [
             'name' => 'New Name',
         ]);
 
@@ -364,7 +361,7 @@ class CentralMediaLibraryTest extends TestCase
             'parent_id' => null,
         ]);
 
-        $response = $this->putJson("/api/superadmin/media-folders/{$folder->id}", [
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/media-folders/{$folder->id}", [
             'name' => 'Existing Name',
         ]);
 
@@ -381,7 +378,7 @@ class CentralMediaLibraryTest extends TestCase
             'parent_id' => null,
         ]);
 
-        $response = $this->deleteJson("/api/superadmin/media-folders/{$folder->id}");
+        $response = $this->actingAsSuperadmin()->deleteJson("/api/superadmin/media-folders/{$folder->id}");
 
         $response->assertStatus(200)
             ->assertJson([
@@ -435,7 +432,7 @@ class CentralMediaLibraryTest extends TestCase
             ->toMediaCollection('default');
 
         // Delete parent folder
-        $response = $this->deleteJson("/api/superadmin/media-folders/{$parent->id}");
+        $response = $this->actingAsSuperadmin()->deleteJson("/api/superadmin/media-folders/{$parent->id}");
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -465,7 +462,7 @@ class CentralMediaLibraryTest extends TestCase
         MediaFolder::create(['tenant_id' => null, 'name' => 'Folder 1', 'parent_id' => null]);
         MediaFolder::create(['tenant_id' => null, 'name' => 'Folder 2', 'parent_id' => null]);
 
-        $response = $this->getJson('/api/superadmin/media-folders');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/media-folders');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -503,7 +500,7 @@ class CentralMediaLibraryTest extends TestCase
             'parent_id' => $parent->id,
         ]);
 
-        $response = $this->getJson('/api/superadmin/media-folders-tree');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/media-folders-tree');
 
         $response->assertStatus(200)
             ->assertJsonStructure([
