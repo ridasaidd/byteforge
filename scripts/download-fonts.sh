@@ -18,13 +18,13 @@ declare -A FONTS=(
   ["sans/OpenSans-Variable.woff2"]="opensans/v40/memtYaGs126MiZpBA-UFUIcVXFi-K_sJYOCWWEg.woff2"
   ["sans/Nunito-Variable.woff2"]="nunito/v26/XRXV3I6Li01BKofINeaBTWlsxC.woff2"
   ["sans/DMSans-Variable.woff2"]="dmsans/v13/rP2Hp2ywxg089UriI5-g4vlH9MZHS-NzK4w.woff2"
-  
+
   # Serif fonts
   ["serif/PlayfairDisplay-Variable.woff2"]="playfairdisplay/v30/nuFnD-vYSZviVYUq_2wVV37TAfL-B_yJxuAOQ.woff2"
   ["serif/Merriweather-Variable.woff2"]="merriweather/v30/u-490izqplzOf_Z_CbWQhznjRVGK5PPts04.woff2"
   ["serif/CrimsonPro-Variable.woff2"]="crimsonpro/v14/wXK3E25jTg4V4p8lI_TqM9oZcYPF5DcZwQ.woff2"
   ["serif/Lora-Variable.woff2"]="lora/v32/0QI6MX1D_JOuMw_BLaWJr_-W9MHLV-zkkzuH.woff2"
-  
+
   # Mono fonts
   ["mono/JetBrainsMono-Variable.woff2"]="jetbrainsmono/v18/BBaaL_WNMnkymLEuliXAUXhgyU3rKjZsPuAe.woff2"
   ["mono/FiraCode-Variable.woff2"]="firacode/v22/uU9MCBsR6Z2vfE9aBYiM.woff2"
@@ -37,10 +37,10 @@ for local_path in "${!FONTS[@]}"; do
   font_url="${GF_CDN}/${FONTS[$local_path]}"
   full_path="${FONTS_DIR}/${local_path}"
   dir=$(dirname "$full_path")
-  
+
   # Create directory if needed
   mkdir -p "$dir"
-  
+
   echo "Downloading $(basename $local_path)..."
   curl -s -L "$font_url" -o "$full_path" || echo "Warning: Failed to download $local_path"
 done

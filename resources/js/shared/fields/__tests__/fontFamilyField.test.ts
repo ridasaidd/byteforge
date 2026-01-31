@@ -46,7 +46,7 @@ describe('Font Family Field Configuration', () => {
 
       expect(Array.isArray(field.options)).toBe(true);
       if (field.options) {
-        field.options.forEach((option: any) => {
+        field.options.forEach((option: { label: string; value: string }) => {
           expect(option).toHaveProperty('label');
           expect(option).toHaveProperty('value');
           expect(typeof option.label).toBe('string');

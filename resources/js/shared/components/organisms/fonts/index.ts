@@ -1,6 +1,6 @@
 /**
  * Font Components
- * 
+ *
  * Shared components for font system
  */
 

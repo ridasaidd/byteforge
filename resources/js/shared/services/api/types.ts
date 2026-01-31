@@ -284,7 +284,7 @@ export interface DuplicateThemeData {
 
 /**
  * Font Configuration
- * 
+ *
  * Represents a font selected in the theme builder with metadata
  */
 export interface FontConfig {
@@ -298,7 +298,7 @@ export interface FontConfig {
 
 /**
  * Typography Configuration
- * 
+ *
  * Contains all font selections for a theme (sans, serif, mono)
  * Can store either font names (string) or full FontConfig objects
  */
