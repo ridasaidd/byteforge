@@ -21,6 +21,7 @@ import {
   textColorField,
   fontSizeField,
   fontWeightField,
+  fontFamilyField,
   typographyAdvancedFields,
   textAlignField,
   backgroundFields,
@@ -43,6 +44,7 @@ export interface HeadingProps {
   backgroundColor?: ColorValue;
   fontSize?: ResponsiveFontSizeValue;
   fontWeight?: FontWeightValue;
+  fontFamily?: string;
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
@@ -70,6 +72,7 @@ function HeadingComponent({
   backgroundColor,
   fontSize,
   fontWeight,
+  fontFamily,
   lineHeight,
   letterSpacing,
   textTransform,
@@ -170,6 +173,7 @@ function HeadingComponent({
     textAlign: align,
     color: resolvedColor,
     backgroundColor: resolvedBgColor,
+    fontFamily,
     fontWeight: resolvedFontWeight,
     lineHeight,
     letterSpacing,
@@ -224,6 +228,7 @@ export const Heading: ComponentConfig<HeadingProps> = {
     ...textColorField,
     ...fontSizeField,
     ...fontWeightField,
+    ...fontFamilyField('sans'),
     ...typographyAdvancedFields,
     // Spacing
     ...spacingFields,
@@ -245,6 +250,7 @@ export const Heading: ComponentConfig<HeadingProps> = {
       textColorField,
       fontSizeField,
       fontWeightField,
+      fontFamilyField('sans'),
       typographyAdvancedFields,
       layoutAdvancedFields,
       spacingFields,

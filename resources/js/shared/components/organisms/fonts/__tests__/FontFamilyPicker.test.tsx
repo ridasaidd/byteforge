@@ -73,8 +73,10 @@ describe('FontFamilyPicker Component', () => {
       />
     );
 
-    // Check that preview section with "Bundled" label is displayed
-    expect(screen.getByText('Bundled')).toBeInTheDocument();
+    // Check that preview section is displayed with font metadata
+    expect(screen.getByText('Family:')).toBeInTheDocument();
+    const foxTexts = screen.getAllByText(/The quick brown fox/);
+    expect(foxTexts.length).toBeGreaterThan(0);
   });
 
   it('should show variable font weight range', () => {
@@ -86,9 +88,9 @@ describe('FontFamilyPicker Component', () => {
       />
     );
 
-    // Variable fonts should show weight range
-    const text = screen.getByText(/Variable:/i);
-    expect(text).toBeInTheDocument();
+    // Variable fonts should show weight range in metadata
+    expect(screen.getByText('Weights:')).toBeInTheDocument();
+    expect(screen.getByText(/100.*900/)).toBeInTheDocument();
   });
 
   it('should accept custom className', () => {

@@ -27,7 +27,7 @@ import { puckConfig as config } from '@/shared/puck/config';
 import { ColorPickerControlColorful } from '@/shared/puck/fields/ColorPickerControlColorful';
 import type { ColorPickerValue } from '@/shared/puck/fields/ColorPickerControl';
 import type { PageTemplate, CreatePageTemplateData, UpdatePageTemplateData, ThemeData, Theme } from '@/shared/services/api/types';
-import { FontFamilyPicker, FontPreview } from '@/shared/components/organisms/fonts';
+import { FontFamilyPicker } from '@/shared/components/organisms/fonts';
 
 /**
  * Phase 6: Theme Builder Page
@@ -971,8 +971,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                   </div>
                 </div>
 
-                {/* Font Preview */}
-                {(((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string | undefined) && (
+                {/* Font Preview - Commented out: FontFamilyPicker now shows live preview with weights */}
+                {/* {(((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string | undefined) && (
                   <div className="border-t pt-4">
                     <h3 className="text-sm font-medium mb-3">Sans Font Preview</h3>
                     <FontPreview
@@ -980,7 +980,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                       category="sans"
                     />
                   </div>
-                )}
+                )} */}
 
                 {/* Font Sizes */}
                 <div className="grid grid-cols-3 gap-4">

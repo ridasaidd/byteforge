@@ -156,6 +156,7 @@ export {
   textColorField,
   fontSizeField,
   fontWeightField,
+  fontFamilyField,
   typographyFields,
   typographyAdvancedFields,
   textAlignField,

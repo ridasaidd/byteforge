@@ -22,6 +22,7 @@ import {
   textColorField,
   fontSizeField,
   fontWeightField,
+  fontFamilyField,
   typographyAdvancedFields,
   backgroundFields,
   spacingFields,
@@ -41,6 +42,7 @@ export interface TextProps {
   backgroundColor?: ColorValue;
   fontSize?: ResponsiveFontSizeValue;
   fontWeight?: FontWeightValue;
+  fontFamily?: string;
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
   textTransform?: 'none' | 'uppercase' | 'lowercase' | 'capitalize';
@@ -67,6 +69,7 @@ function TextComponent({
   backgroundColor,
   fontSize,
   fontWeight,
+  fontFamily,
   lineHeight,
   letterSpacing,
   textTransform,
@@ -147,6 +150,7 @@ function TextComponent({
     textAlign: align,
     color: resolvedColor,
     backgroundColor: resolvedBgColor,
+    fontFamily,
     fontWeight: resolvedFontWeight,
     lineHeight,
     letterSpacing,
@@ -204,6 +208,7 @@ export const Text: ComponentConfig<TextProps> = {
     ...textColorField,
     ...fontSizeField,
     ...fontWeightField,
+    ...fontFamilyField('sans'),
     ...typographyAdvancedFields,
     // Spacing
     ...spacingFields,
@@ -226,6 +231,7 @@ export const Text: ComponentConfig<TextProps> = {
       textColorField,
       fontSizeField,
       fontWeightField,
+      fontFamilyField('sans'),
       typographyAdvancedFields,
       layoutAdvancedFields,
       spacingFields,

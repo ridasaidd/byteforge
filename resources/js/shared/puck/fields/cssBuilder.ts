@@ -538,6 +538,7 @@ export interface TypographyCSSOptions {
   textAlign?: 'left' | 'center' | 'right' | 'justify';
   color?: string; // Already resolved color value
   backgroundColor?: string; // Already resolved color value
+  fontFamily?: string; // Font family name
   fontWeight?: string;
   lineHeight?: ResponsiveLineHeightValue;
   letterSpacing?: ResponsiveLetterSpacingValue;
@@ -662,6 +663,9 @@ export function buildTypographyCSS(options: TypographyCSSOptions & { resolveToke
   }
   if (backgroundColor) {
     textRules.push(`background-color: ${backgroundColor};`);
+  }
+  if (fontFamily) {
+    textRules.push(`font-family: ${fontFamily};`);
   }
   if (fontWeight) {
     textRules.push(`font-weight: ${fontWeight};`);

@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { FieldLabel } from '@puckeditor/core';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
+import { FontFamilyPicker } from '@/shared/components/organisms/fonts';
 import type { Media } from '@/shared/services/api';
 import {
   ColorPickerControlColorful as ColorPickerControl,
@@ -223,6 +224,21 @@ export const fontWeightField = {
     defaultValue: { type: 'theme' as const, value: 'typography.fontWeight.normal' },
   },
 };
+
+export const fontFamilyField = (category: 'sans' | 'serif' | 'mono' = 'sans') => ({
+  fontFamily: {
+    type: 'custom' as const,
+    label: 'Font Family',
+    render: ({ value, onChange }: { value?: string; onChange: (value: string) => void }) => (
+      <FontFamilyPicker
+        category={category}
+        selectedFont={value}
+        onSelect={onChange}
+      />
+    ),
+    defaultValue: undefined,
+  },
+});
 
 export const typographyFields = {
   ...textColorField,
