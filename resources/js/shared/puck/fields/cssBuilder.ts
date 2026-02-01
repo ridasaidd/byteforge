@@ -573,6 +573,7 @@ export function buildTypographyCSS(options: TypographyCSSOptions & { resolveToke
     textAlign = 'left',
     color,
     backgroundColor,
+    fontFamily,
     fontWeight,
     lineHeight,
     letterSpacing,
@@ -666,6 +667,9 @@ export function buildTypographyCSS(options: TypographyCSSOptions & { resolveToke
   }
   if (fontFamily) {
     textRules.push(`font-family: ${fontFamily};`);
+  } else {
+    // Fall back to theme's default sans font when no font-family is specified
+    textRules.push(`font-family: var(--font-family-sans, system-ui, sans-serif);`);
   }
   if (fontWeight) {
     textRules.push(`font-weight: ${fontWeight};`);

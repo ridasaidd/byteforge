@@ -1,4 +1,5 @@
 import type { Data } from '@puckeditor/core';
+import { generateFontCSSFromThemeData } from '@/shared/services/fonts/generateFontCss';
 import {
   buildLayoutCSS,
   buildTypographyCSS,
@@ -38,6 +39,15 @@ type ThemeResolver = (path: string, fallback?: string) => string;
  * Converts nested theme structure into CSS custom properties
  */
 export function generateVariablesCss(themeData: ThemeData): string {
+  const cssParts: string[] = [];
+  
+  // Generate @font-face rules for selected fonts
+  const fontCss = generateFontCSSFromThemeData(themeData);
+  if (fontCss) {
+    cssParts.push(fontCss);
+  }
+
+  // Generate CSS variables from theme data
   const variables: string[] = [];
 
   function flattenObject(obj: Record<string, unknown>, prefix = ''): void {
@@ -58,11 +68,11 @@ export function generateVariablesCss(themeData: ThemeData): string {
 
   flattenObject(themeData);
 
-  if (variables.length === 0) {
-    return ':root {}';
+  if (variables.length > 0) {
+    cssParts.push(`:root {\n  ${variables.join(';\n  ')};\n}`);
   }
 
-  return `:root {\n  ${variables.join(';\n  ')};\n}`;
+  return cssParts.join('\n\n');
 }
 
 function resolveThemeValue(themeData: ThemeData | undefined, path: string | undefined, fallback?: string): string {

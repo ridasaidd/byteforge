@@ -913,7 +913,10 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     <FontFamilyPicker
                       category="sans"
                       selectedFont={
-                        ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')] as string
+                        (() => {
+                          const val = ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')];
+                          return typeof val === 'string' ? val : (val as Record<string, unknown>)?.name as string | undefined;
+                        })()
                       }
                       onSelect={(fontName) => setThemeData({
                         ...themeData,
@@ -934,7 +937,10 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     <FontFamilyPicker
                       category="serif"
                       selectedFont={
-                        ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('serif')] as string
+                        (() => {
+                          const val = ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('serif')];
+                          return typeof val === 'string' ? val : (val as Record<string, unknown>)?.name as string | undefined;
+                        })()
                       }
                       onSelect={(fontName) => setThemeData({
                         ...themeData,
@@ -955,7 +961,10 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     <FontFamilyPicker
                       category="mono"
                       selectedFont={
-                        ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('mono')] as string
+                        (() => {
+                          const val = ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('mono')];
+                          return typeof val === 'string' ? val : (val as Record<string, unknown>)?.name as string | undefined;
+                        })()
                       }
                       onSelect={(fontName) => setThemeData({
                         ...themeData,

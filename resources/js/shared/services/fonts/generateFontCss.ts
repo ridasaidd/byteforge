@@ -112,8 +112,16 @@ code, pre, kbd, samp {
  * Handles both FontConfig objects and legacy string format
  */
 export function generateFontCSSFromThemeData(
-  fontFamily: Record<string, unknown>
+  themeData: Record<string, unknown>
 ): string {
+  // Extract fontFamily from themeData.typography.fontFamily
+  const typography = themeData.typography as Record<string, unknown> | undefined;
+  const fontFamily = typography?.fontFamily as Record<string, unknown> | undefined;
+  
+  if (!fontFamily) {
+    return '';
+  }
+
   const selection: FontSelection = {
     sans: '',
     serif: '',
