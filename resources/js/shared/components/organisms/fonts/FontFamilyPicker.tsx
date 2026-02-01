@@ -16,6 +16,7 @@ export interface FontFamilyPickerProps {
   selectedFont: string | undefined;
   onSelect: (fontName: string) => void;
   className?: string;
+  placeholder?: string;
 }
 
 export function FontFamilyPicker({
@@ -23,6 +24,7 @@ export function FontFamilyPicker({
   selectedFont,
   onSelect,
   className = '',
+  placeholder = 'Default (from theme)',
 }: FontFamilyPickerProps) {
   // Get fonts for category (system first, then bundled)
   const fonts = useMemo(() => {
@@ -71,7 +73,7 @@ export function FontFamilyPicker({
           onChange={(e) => onSelect(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
         >
-          <option value="">Select a font...</option>
+          <option value="">{placeholder}</option>
           {fonts.map((font) => (
             <option key={`${category}-${font.name}`} value={font.name}>
               {font.name}
