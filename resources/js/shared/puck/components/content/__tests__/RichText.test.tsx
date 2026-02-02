@@ -27,15 +27,15 @@ describe('RichText Component', () => {
     });
 
     it('should have richtext field type', () => {
-      expect(RichText.fields.content.type).toBe('richtext');
+      expect(RichText?.fields?.content.type).toBe('richtext');
     });
 
     it('should have contentEditable enabled for inline editing', () => {
-      expect(RichText.fields.content.contentEditable).toBe(true);
+      expect(RichText?.fields?.content.contentEditable).toBe(true);
     });
 
     it('should restrict headings to h2-h4', () => {
-      expect(RichText.fields.content.options?.heading).toEqual({ levels: [2, 3, 4] });
+      expect(RichText?.fields?.content.options?.heading).toEqual({ levels: [2, 3, 4] });
     });
 
     it('should have fontFamily field', () => {
@@ -51,7 +51,7 @@ describe('RichText Component', () => {
   describe('Rendering', () => {
     it('should render with HTML string content', () => {
       const htmlContent = '<h2>Test Heading</h2><p>Test paragraph</p>';
-      
+
       const { container } = renderWithTheme(
         <RichTextRender id="test" content={htmlContent} />
       );
@@ -87,11 +87,11 @@ describe('RichText Component', () => {
 
     it('should render dragRef attachment point', () => {
       const mockDragRef = { current: null };
-      
+
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           puck={{ dragRef: mockDragRef }}
         />
       );
@@ -127,9 +127,9 @@ describe('RichText Component', () => {
 
     it('should apply custom font family', () => {
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           fontFamily="Inter"
         />
       );
@@ -143,9 +143,9 @@ describe('RichText Component', () => {
 
     it('should fall back to theme font when fontFamily is empty', () => {
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           fontFamily={undefined}
         />
       );
@@ -190,8 +190,8 @@ describe('RichText Component', () => {
     it('should handle inline formatting (bold, italic, underline)', () => {
       const htmlContent = `
         <p>
-          <strong>Bold</strong> 
-          <em>Italic</em> 
+          <strong>Bold</strong>
+          <em>Italic</em>
           <u>Underline</u>
         </p>
       `;
@@ -221,9 +221,9 @@ describe('RichText Component', () => {
   describe('Theme Integration', () => {
     it('should use theme color values', () => {
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           color={{ type: 'theme', value: 'components.richtext.colors.default' }}
         />
       );
@@ -237,9 +237,9 @@ describe('RichText Component', () => {
 
     it('should use custom color values', () => {
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           color={{ type: 'custom', value: '#ff0000' }}
         />
       );
@@ -255,9 +255,9 @@ describe('RichText Component', () => {
   describe('Layout Props', () => {
     it('should accept and use display prop', () => {
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           display={{ mobile: 'block' }}
         />
       );
@@ -271,9 +271,9 @@ describe('RichText Component', () => {
 
     it('should accept and use spacing props', () => {
       const { container } = renderWithTheme(
-        <RichTextRender 
-          id="test" 
-          content="<p>Test</p>" 
+        <RichTextRender
+          id="test"
+          content="<p>Test</p>"
           padding={{ mobile: '16px' }}
           margin={{ mobile: '8px' }}
         />
