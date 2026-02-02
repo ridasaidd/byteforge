@@ -5,8 +5,6 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { pages as pagesApi } from '@/shared/services/api/pages';
 import { themes } from '@/shared/services/api/themes';
-import { layouts as layoutsApi } from '@/shared/services/api/layouts';
-import { themeParts as themePartsApi } from '@/shared/services/api/themeParts';
 import type { Page, CreatePageData, UpdatePageData, PageTemplate } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { TabbedFormModal, type FormTab } from '@/shared/components/organisms/TabbedFormModal';
@@ -27,18 +25,6 @@ const pageSchema = z.object({
   page_type: z.enum(['general', 'home', 'about', 'contact', 'blog', 'service', 'product', 'custom']),
   status: z.enum(['draft', 'published', 'archived']),
   is_homepage: z.boolean().optional(),
-  layout_id: z.union([z.string(), z.number(), z.null()]).optional().transform(val => {
-    if (val === 'none' || val === null || val === undefined) return null;
-    return typeof val === 'string' ? parseInt(val, 10) : val;
-  }),
-  header_id: z.union([z.string(), z.number(), z.null()]).optional().transform(val => {
-    if (val === 'none' || val === null || val === undefined) return null;
-    return typeof val === 'string' ? parseInt(val, 10) : val;
-  }),
-  footer_id: z.union([z.string(), z.number(), z.null()]).optional().transform(val => {
-    if (val === 'none' || val === null || val === undefined) return null;
-    return typeof val === 'string' ? parseInt(val, 10) : val;
-  }),
   meta_data: z.object({
     meta_title: z.string().optional(),
     meta_description: z.string().optional(),
@@ -78,43 +64,6 @@ export function PagesPage() {
 
   const templates: PageTemplate[] = templatesResponse?.data || [];
 
-  // Fetch layouts for selection
-  const { data: layoutsResponse } = useQuery({
-    queryKey: ['layouts', 'published'],
-    queryFn: async () => {
-      return await layoutsApi.list({ status: 'published', per_page: 100 });
-    },
-  });
-
-  const layoutOptions = (layoutsResponse?.data || []).map(layout => ({
-    label: layout.name,
-    value: String(layout.id),
-  }));
-
-  // Fetch theme parts for selection
-  const { data: headersResponse } = useQuery({
-    queryKey: ['theme-parts', 'header', 'published'],
-    queryFn: async () => {
-      return await themePartsApi.list({ type: 'header', status: 'published', per_page: 100 });
-    },
-  });
-
-  const headerOptions = (headersResponse?.data || []).map(part => ({
-    label: part.name,
-    value: String(part.id),
-  }));
-
-  const { data: footersResponse } = useQuery({
-    queryKey: ['theme-parts', 'footer', 'published'],
-    queryFn: async () => {
-      return await themePartsApi.list({ type: 'footer', status: 'published', per_page: 100 });
-    },
-  });
-
-  const footerOptions = (footersResponse?.data || []).map(part => ({
-    label: part.name,
-    value: String(part.id),
-  }));
 
   // Build form tabs dynamically with fetched options
   const getFormTabs = (): FormTab[] => [
@@ -167,44 +116,12 @@ export function PagesPage() {
           ],
           description: 'Publication status',
         },
-      ],
-    },
-    {
-      id: 'layout',
-      label: 'Layout & Parts',
-      fields: [
         {
-          name: 'layout_id',
-          label: 'Layout',
-          type: 'select',
+          name: 'is_homepage',
+          label: 'Set as Homepage',
+          type: 'checkbox',
           required: false,
-          options: [
-            { label: 'None (use manual parts)', value: 'none' },
-            ...layoutOptions,
-          ],
-          description: 'Choose a pre-configured layout with header/footer',
-        },
-        {
-          name: 'header_id',
-          label: 'Header Override',
-          type: 'select',
-          required: false,
-          options: [
-            { label: 'None (use layout default)', value: 'none' },
-            ...headerOptions,
-          ],
-          description: 'Override the layout header with a specific one',
-        },
-        {
-          name: 'footer_id',
-          label: 'Footer Override',
-          type: 'select',
-          required: false,
-          options: [
-            { label: 'None (use layout default)', value: 'none' },
-            ...footerOptions,
-          ],
-          description: 'Override the layout footer with a specific one',
+          description: 'Make this page the homepage',
         },
       ],
     },
@@ -471,9 +388,6 @@ export function PagesPage() {
           page_type: editingPage.page_type,
           status: editingPage.status,
           is_homepage: editingPage.is_homepage,
-          layout_id: editingPage.layout_id ? String(editingPage.layout_id) : 'none',
-          header_id: editingPage.header_id ? String(editingPage.header_id) : 'none',
-          footer_id: editingPage.footer_id ? String(editingPage.footer_id) : 'none',
           meta_data: editingPage.meta_data as { meta_title?: string; meta_description?: string; meta_keywords?: string } | undefined,
         } as never : undefined}
         isLoading={pagesData.update.isPending}
