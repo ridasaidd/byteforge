@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Sparkles, Upload } from 'lucide-react';
+import { FileText, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -52,7 +52,7 @@ export function PageCreationWizard({
   templates = [],
   isLoading = false,
 }: PageCreationWizardProps) {
-  const [creationType, setCreationType] = useState<'scratch' | 'template' | 'import'>('scratch');
+  const [creationType, setCreationType] = useState<'scratch' | 'template'>('scratch');
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [pageType, setPageType] = useState('general');
@@ -65,6 +65,14 @@ export function PageCreationWizard({
     setTitle(value);
     if (!slug || slug === title.toLowerCase().replace(/\s+/g, '-')) {
       setSlug(value.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''));
+    }
+  };
+
+  // Auto-set page_type to 'home' when is_homepage is checked
+  const handleHomepageChange = (checked: boolean) => {
+    setIsHomepage(checked);
+    if (checked) {
+      setPageType('home');
     }
   };
 
@@ -119,7 +127,7 @@ export function PageCreationWizard({
 
         <div className="flex-1 overflow-auto">
           {/* Creation Type Selector */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <Card
               className={`p-4 cursor-pointer transition-all hover:shadow-md ${
                 creationType === 'scratch' ? 'ring-2 ring-primary' : ''
@@ -146,21 +154,6 @@ export function PageCreationWizard({
                 <h3 className="font-semibold">Use Theme Template</h3>
                 <p className="text-xs text-muted-foreground">
                   Start with pre-designed content
-                </p>
-              </div>
-            </Card>
-
-            <Card
-              className={`p-4 cursor-pointer transition-all hover:shadow-md opacity-50 ${
-                creationType === 'import' ? 'ring-2 ring-primary' : ''
-              }`}
-              onClick={() => setCreationType('import')}
-            >
-              <div className="flex flex-col items-center text-center gap-2">
-                <Upload className="h-8 w-8 text-primary" />
-                <h3 className="font-semibold">Import from Saved</h3>
-                <p className="text-xs text-muted-foreground">
-                  Coming soon
                 </p>
               </div>
             </Card>
@@ -214,7 +207,7 @@ export function PageCreationWizard({
                 type="checkbox"
                 className="h-4 w-4"
                 checked={isHomepage}
-                onChange={(e) => setIsHomepage(e.target.checked)}
+                onChange={(e) => handleHomepageChange(e.target.checked)}
               />
               <Label htmlFor="is-homepage">Set as homepage</Label>
             </div>
@@ -270,16 +263,6 @@ export function PageCreationWizard({
                   </p>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Import Section (Coming Soon) */}
-          {creationType === 'import' && (
-            <div className="text-center py-8">
-              <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Import from saved pages feature coming soon!
-              </p>
             </div>
           )}
         </div>
