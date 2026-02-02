@@ -6,4 +6,4 @@ export { ThemeBuilderPage } from './ThemeBuilderPage';
 export { ThemeCustomizePage } from './ThemeCustomizePage';
 
 export type { FormField } from './FormModal';
-export type { PageTemplate, PageCreationData } from './PageCreationWizard';
+export type { PageCreationData } from './PageCreationWizard';

@@ -7,21 +7,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Card } from '@/shared/components/ui/card';
-
-export interface PageTemplate {
-  name: string;
-  slug: string;
-  description: string;
-  category: string;
-  preview?: string;
-  puckData: {
-    content: Array<{
-      type: string;
-      props: Record<string, unknown>;
-    }>;
-    root?: Record<string, unknown>;
-  };
-}
+import type { PageTemplate } from '@/shared/services/api/types';
 
 export interface PageCreationData {
   title: string;
@@ -40,7 +26,7 @@ export interface PageCreationData {
 interface PageCreationWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: PageCreationData, creationType: 'scratch' | 'template' | 'import') => void;
+  onSubmit: (data: PageCreationData, creationType: 'scratch' | 'template') => void;
   templates?: PageTemplate[];
   isLoading?: boolean;
 }
@@ -99,7 +85,7 @@ export function PageCreationWizard({
     if (creationType === 'template' && selectedTemplate) {
       const template = templates.find(t => t.slug === selectedTemplate);
       if (template) {
-        baseData.puck_data = template.puckData as Record<string, unknown>;
+        baseData.puck_data = template.puck_data as Record<string, unknown>;
       }
     }
 
@@ -239,10 +225,10 @@ export function PageCreationWizard({
                       }`}
                       onClick={() => setSelectedTemplate(template.slug)}
                     >
-                      {template.preview && (
+                      {template.preview_image && (
                         <div className="aspect-video bg-muted rounded mb-2 overflow-hidden">
                           <img
-                            src={template.preview}
+                            src={template.preview_image}
                             alt={template.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
