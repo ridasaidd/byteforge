@@ -176,13 +176,11 @@ export interface Page extends Record<string, unknown> {
   page_type: 'general' | 'home' | 'about' | 'contact' | 'blog' | 'service' | 'product' | 'custom';
   puck_data: Record<string, unknown> | null;
   puck_data_compiled: Record<string, unknown> | null;
+  page_css: string | null;
   meta_data: Record<string, unknown> | null;
   status: 'draft' | 'published' | 'archived';
   is_homepage: boolean;
   sort_order: number;
-  layout_id: number | null;
-  header_id: number | null;
-  footer_id: number | null;
   created_by: number;
   published_at: string | null;
   created_at: string;
@@ -198,9 +196,6 @@ export interface CreatePageData {
   status: 'draft' | 'published' | 'archived';
   is_homepage?: boolean;
   sort_order?: number;
-  layout_id?: number | null;
-  header_id?: number | null;
-  footer_id?: number | null;
 }
 
 export interface UpdatePageData {
@@ -208,13 +203,11 @@ export interface UpdatePageData {
   slug?: string;
   page_type?: 'general' | 'home' | 'about' | 'contact' | 'blog' | 'service' | 'product' | 'custom';
   puck_data?: Record<string, unknown> | null;
+  page_css?: string;
   meta_data?: Record<string, unknown> | null;
   status?: 'draft' | 'published' | 'archived';
   is_homepage?: boolean;
   sort_order?: number;
-  layout_id?: number | null;
-  header_id?: number | null;
-  footer_id?: number | null;
 }
 export interface ThemeData {
   name?: string;

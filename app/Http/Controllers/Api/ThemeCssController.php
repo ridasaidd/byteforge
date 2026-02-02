@@ -42,6 +42,17 @@ class ThemeCssController extends Controller
 
         $this->sectionService->saveSectionCss($theme->id, $section, $validated['css']);
 
+        // Auto-publish if all required sections are present
+        try {
+            $missing = $this->publishService->validateRequiredSections($theme->id);
+            if (empty($missing)) {
+                $this->publishService->publishTheme($theme->id);
+            }
+        } catch (\Exception $e) {
+            // Log error but continue
+            \Illuminate\Support\Facades\Log::warning("Auto-publish failed for theme {$theme->id}: " . $e->getMessage());
+        }
+
         return response()->json(['success' => true]);
     }
 

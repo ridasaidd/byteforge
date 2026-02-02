@@ -20,9 +20,7 @@ class Page extends Model implements HasMedia
         'page_type',
         'puck_data',
         'puck_data_compiled',
-        'layout_id',
-        'header_id',
-        'footer_id',
+        'page_css',
         'meta_data',
         'status',
         'is_homepage',
@@ -56,29 +54,7 @@ class Page extends Model implements HasMedia
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Get the layout for this page.
-     */
-    public function layout()
-    {
-        return $this->belongsTo(Layout::class, 'layout_id');
-    }
-
-    /**
-     * Get the header override for this page.
-     */
-    public function header()
-    {
-        return $this->belongsTo(ThemePart::class, 'header_id');
-    }
-
-    /**
-     * Get the footer override for this page.
-     */
-    public function footer()
-    {
-        return $this->belongsTo(ThemePart::class, 'footer_id');
-    }
+    // Layout, header, and footer relationships removed in Phase 8 cleanup.
 
     /**
      * Configure activity logging.

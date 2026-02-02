@@ -37,6 +37,15 @@
         @if($scopedCustomCss)
             <style id="customization-css">{!! $scopedCustomCss !!}</style>
         @endif
+
+        {{-- Load page-specific CSS from database (merged from all published pages) --}}
+        @php
+            $pageCssService = app(\App\Services\PageCssService::class);
+            $pagesCss = $pageCssService->getMergedPagesCss(null);
+        @endphp
+        @if($pagesCss)
+            <style id="pages-css">{!! $pagesCss !!}</style>
+        @endif
     @endisset
 
     <!-- Vite JS only - CSS comes from theme system -->

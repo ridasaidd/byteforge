@@ -49,6 +49,9 @@ Route::middleware([
     // Public tenant routes
     Route::get('info', [TenantController::class, 'info']);
 
+    // Public pages CSS endpoint (for tenant storefront)
+    Route::get('pages/css/merged', [\App\Http\Controllers\Api\PageCssController::class, 'getMergedCss']);
+
     // Protected tenant routes - require authentication
     Route::middleware('auth:api')->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
@@ -56,6 +59,7 @@ Route::middleware([
         // Resource routes
         Route::apiResource('pages', PageController::class)
             ->middleware('permission:pages.view|pages.create|pages.edit|pages.delete');
+
         Route::apiResource('navigations', NavigationController::class)
             ->middleware('permission:navigation.view|navigation.create|navigation.edit|navigation.delete');
         Route::apiResource('theme-parts', ThemePartController::class)
@@ -64,6 +68,10 @@ Route::middleware([
             ->middleware('permission:layouts.view|layouts.manage');
 
         // Theme Customization (Phase 6) - Tenant
+        Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active'])
+            ->middleware('permission:themes.view');
+        Route::get('themes/active/templates', [\App\Http\Controllers\Api\ThemeController::class, 'activeTemplates'])
+            ->middleware('permission:themes.view');
         Route::get('themes/{theme}/customization', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'getCustomization'])
             ->middleware('permission:themes.view');
         Route::post('themes/{theme}/customization/{section}', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'saveSection'])

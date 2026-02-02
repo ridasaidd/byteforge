@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import { pages as pagesApi } from '@/shared/services/api/pages';
 import { themes } from '@/shared/services/api/themes';
-import type { Page, CreatePageData, UpdatePageData, PageTemplate } from '@/shared/services/api/types';
+import type { Page, CreatePageData, UpdatePageData, PageTemplate, ApiResponse } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { TabbedFormModal, type FormTab } from '@/shared/components/organisms/TabbedFormModal';
 import { PageCreationWizard, type PageCreationData } from '@/shared/components/organisms/PageCreationWizard';
@@ -160,7 +160,7 @@ export function PagesPage() {
 
   const handleCreate = async (data: PageCreationData, creationType: 'scratch' | 'template') => {
     try {
-      await pagesData.create.mutateAsync(data as CreatePageData);
+      const response = await pagesData.create.mutateAsync(data as CreatePageData) as ApiResponse<Page>;
       toast({
         title: 'Page created',
         description: creationType === 'template'
@@ -168,6 +168,10 @@ export function PagesPage() {
           : 'Blank page created successfully.',
       });
       setIsCreateModalOpen(false);
+
+      if (response?.data?.id) {
+         navigate(`/dashboard/pages/${response.data.id}/edit`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to create page';
       toast({

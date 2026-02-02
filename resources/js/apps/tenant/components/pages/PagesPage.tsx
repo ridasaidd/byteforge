@@ -1,10 +1,14 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { z } from 'zod';
-import { pages } from '@/shared/services/api/pages';
-import type { Page, CreatePageData, UpdatePageData } from '@/shared/services/api/types';
+import { useQuery } from '@tanstack/react-query';
+import { tenantPages as pages } from '@/shared/services/api/pages';
+import { tenantThemes as themes } from '@/shared/services/api/themes';
+import type { Page, CreatePageData, UpdatePageData, PageTemplate } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { FormModal, type FormField } from '@/shared/components/organisms/FormModal';
+import { PageCreationWizard, type PageCreationData } from '@/shared/components/organisms/PageCreationWizard';
 import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
@@ -75,6 +79,12 @@ const formFields: FormField[] = [
     description: 'Publication status',
   },
   {
+    name: 'is_homepage',
+    label: 'Set as Homepage',
+    type: 'checkbox',
+    description: 'Make this the default landing page',
+  },
+  {
     name: 'meta_data.meta_title',
     label: 'SEO Title',
     type: 'text',
@@ -102,6 +112,7 @@ const formFields: FormField[] = [
 // ============================================================================
 
 export function PagesPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   // State
@@ -118,18 +129,36 @@ export function PagesPage() {
     apiService: pages,
   });
 
+  // Fetch available templates from active theme
+  const { data: templatesResponse } = useQuery({
+    queryKey: ['templates', 'active'],
+    queryFn: async () => {
+      // Typically tenants only see their own templates or system templates
+      // For now, allow seeing active theme templates which are shared/system
+      return await themes.getActiveTemplates();
+    },
+  });
+
+  const templates: PageTemplate[] = templatesResponse?.data || [];
+
   // ============================================================================
   // Handlers
   // ============================================================================
 
-  const handleCreate = async (data: z.infer<typeof pageSchema>) => {
+  const handleCreate = async (data: PageCreationData, creationType: 'scratch' | 'template') => {
     try {
-  pagesData.create.mutate(data);
+      const response = await pagesData.create.mutateAsync(data as CreatePageData) as { data: Page };
       toast({
         title: 'Page created',
-        description: 'The page has been created successfully.',
+        description: creationType === 'template'
+          ? 'Page created with template content successfully.'
+          : 'Blank page created successfully.',
       });
       setIsCreateModalOpen(false);
+
+      if (response?.data?.id) {
+        navigate(`/cms/pages/${response.data.id}/edit`);
+      }
     } catch (error) {
       toast({
         title: 'Error',
@@ -201,14 +230,17 @@ export function PagesPage() {
       sortable: true,
       render: (page) => (
         <div className="space-y-1">
-          <div className="font-medium flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/cms/pages/${page.id}/edit`)}
+            className="font-medium flex items-center gap-2 hover:text-primary transition-colors text-left"
+          >
             {page.title}
             {page.is_homepage && (
               <Badge variant="default" className="text-xs">
                 Homepage
               </Badge>
             )}
-          </div>
+          </button>
           <div className="text-xs text-muted-foreground">/{page.slug}</div>
         </div>
       ),
@@ -323,21 +355,12 @@ export function PagesPage() {
       />
 
       {/* Create Modal */}
-      <FormModal
+      <PageCreationWizard
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSubmit={handleCreate}
-        title="Create Page"
-        description="Add a new page to your website"
-        fields={formFields}
-        schema={pageSchema}
-  isLoading={pagesData.create.isPending}
-        submitText="Create"
-        defaultValues={{
-          status: 'draft',
-          page_type: 'general',
-          is_homepage: false,
-        }}
+        templates={templates}
+        isLoading={pagesData.create.isPending}
       />
 
       {/* Edit Modal */}

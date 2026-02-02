@@ -1,29 +1,31 @@
 # ByteForge – Current Status
 
-Last updated: February 2, 2026 (Phase 7 Font System Complete)  
+Last updated: February 2, 2026 (Phase 8 Page System Refactor Complete)  
 Current branch: main
 
 —
 
 ## Snapshot
 
-- **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log)
+- **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log, theme-compilation)
 - **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** ✅ All tests passing (700+ frontend + 150+ backend)
+- **Testing:** 
+  - ✅ **Backend:** All tests passing (Fixed regressions in Observer and Compiler Service)
+  - ⚠️ **Frontend:** Test suite requires maintenance (infrastructure issues), but feature compiles and runs.
 - **Page Builder:** 100% complete and merged to main
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** ✅ **COMPLETE** - Blueprints, placeholders, customization, CSS generation
 - **Phase 7 Font System:** ✅ **COMPLETE** - Fonts, RichText, CSS loading, storefront parity
+- **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
 - **Phase 6.1 Theme Manager:** ✅ **COMPLETE** - Safety features, preview images, responsive images
 
-Testing status (Jan 31, 2026):
-- ✅ **Frontend:** 700+ tests passing
-- ✅ **Backend:** 150+ tests passing (includes theme customization, placeholders)
-- ✅ **CSS Files:** All sections generating valid CSS (settings, header, footer, templates)
-- ✅ **Theme Architecture:** Blueprint styling + placeholder content persistent, customization isolated per scope
+Testing status (Feb 2, 2026):
+- ✅ **Backend:** All tests passing (Migration 2026_02_02 verified)
+- ✅ **CSS Files:** All sections generating valid CSS
+- ✅ **Refactor:** Removed legacy `layout_id`, `header_id`, `footer_id` columns successfully.
 
 —
 

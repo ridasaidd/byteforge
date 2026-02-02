@@ -160,6 +160,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             return response()->json(['status' => 'ok']);
         });
 
+        // Public pages CSS endpoint (for storefront loading)
+        Route::get('pages/css/merged', [\App\Http\Controllers\Api\PageCssController::class, 'getMergedCss']);
+
         // Public theme endpoint (no auth required)
         Route::get('themes/public', [\App\Http\Controllers\Api\ThemeController::class, 'publicTheme']);
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Models\Page;
 use App\Http\Controllers\Controller;
 use App\Services\PuckCompilerService;
+use App\Services\PageCssService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -12,6 +13,10 @@ use Illuminate\Validation\Rule;
 
 class PageController extends Controller
 {
+    public function __construct(
+        private PageCssService $pageCssService
+    ) {
+    }
     /**
      * Get tenant ID - uses null for central app, or tenant ID for tenant context
      */
@@ -70,9 +75,6 @@ class PageController extends Controller
                 'puck_data_compiled' => $page->puck_data_compiled,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
-                'layout_id' => $page->layout_id,
-                'header_id' => $page->header_id,
-                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -117,9 +119,6 @@ class PageController extends Controller
             'puck_data' => 'nullable|array',
             'meta_data' => 'nullable|array',
             'status' => 'required|string|in:draft,published,archived',
-            'layout_id' => 'nullable|exists:layouts,id',
-            'header_id' => 'nullable|exists:theme_parts,id',
-            'footer_id' => 'nullable|exists:theme_parts,id',
             'is_homepage' => 'boolean',
             'sort_order' => 'nullable|integer',
         ]);
@@ -182,9 +181,6 @@ class PageController extends Controller
                 'puck_data_compiled' => $page->puck_data_compiled,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
-                'layout_id' => $page->layout_id,
-                'header_id' => $page->header_id,
-                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -214,11 +210,9 @@ class PageController extends Controller
                 'page_type' => $page->page_type,
                 'puck_data' => $page->puck_data,
                 'puck_data_compiled' => $page->puck_data_compiled,
+                'page_css' => $page->page_css,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
-                'layout_id' => $page->layout_id,
-                'header_id' => $page->header_id,
-                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -257,11 +251,9 @@ class PageController extends Controller
             ],
             'page_type' => 'sometimes|required|string|in:general,home,about,contact,blog,service,product,custom',
             'puck_data' => 'nullable|array',
+            'page_css' => 'nullable|string',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
-            'layout_id' => 'nullable|exists:layouts,id',
-            'header_id' => 'nullable|exists:theme_parts,id',
-            'footer_id' => 'nullable|exists:theme_parts,id',
             'is_homepage' => 'boolean',
             'sort_order' => 'nullable|integer',
         ]);
@@ -286,21 +278,14 @@ class PageController extends Controller
         }
 
         $oldStatus = $page->status;
-        $oldHeaderId = $page->header_id;
-        $oldFooterId = $page->footer_id;
-        
         $page->update($validated);
 
-        // Recompile if:
-        // - Status changed to published, OR
-        // - Already published and (puck_data, header_id, or footer_id changed)
+        // Recompile if status changed to published or puck_data changed
         $shouldCompile = (
             ($validated['status'] ?? $page->status) === 'published' &&
             (
                 $oldStatus !== 'published' ||
-                isset($validated['puck_data']) ||
-                (isset($validated['header_id']) && $validated['header_id'] !== $oldHeaderId) ||
-                (isset($validated['footer_id']) && $validated['footer_id'] !== $oldFooterId)
+                isset($validated['puck_data'])
             )
         );
 
@@ -310,6 +295,9 @@ class PageController extends Controller
             $page->save();
         }
 
+        // Invalidate pages CSS cache when page is updated
+        $this->pageCssService->invalidateCache($tenantId);
+
         return response()->json([
             'data' => [
                 'id' => $page->id,
@@ -318,11 +306,9 @@ class PageController extends Controller
                 'page_type' => $page->page_type,
                 'puck_data' => $page->puck_data,
                 'puck_data_compiled' => $page->puck_data_compiled,
+                'page_css' => $page->page_css,
                 'meta_data' => $page->meta_data,
                 'status' => $page->status,
-                'layout_id' => $page->layout_id,
-                'header_id' => $page->header_id,
-                'footer_id' => $page->footer_id,
                 'is_homepage' => $page->is_homepage,
                 'sort_order' => $page->sort_order,
                 'published_at' => $page->published_at?->toISOString(),
@@ -361,7 +347,6 @@ class PageController extends Controller
 
         $page = $query->where('slug', $slug)
             ->where('status', 'published')
-            ->with(['header', 'footer', 'layout.header', 'layout.footer'])
             ->firstOrFail();
 
         // Use compiled data (header + content + footer + metadata already merged during publish)
@@ -399,7 +384,6 @@ class PageController extends Controller
 
         $page = $query->where('is_homepage', true)
             ->where('status', 'published')
-            ->with(['header', 'footer', 'layout.header', 'layout.footer'])
             ->first();
 
         if (!$page) {

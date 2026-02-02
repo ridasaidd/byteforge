@@ -140,7 +140,6 @@ export const puckConfig: Config = {
             backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
             backgroundSize: 'cover',
             backgroundPosition: 'center',
-            minHeight: '100vh',
           }}
         >
           <div

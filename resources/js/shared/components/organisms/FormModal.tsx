@@ -26,7 +26,7 @@ import {
 export interface FormField {
   name: string;
   label: string;
-  type: 'text' | 'email' | 'password' | 'number' | 'textarea' | 'select';
+  type: 'text' | 'email' | 'password' | 'number' | 'textarea' | 'select' | 'checkbox';
   placeholder?: string;
   options?: { label: string; value: string }[]; // For select fields
   required?: boolean;
@@ -149,6 +149,32 @@ export function FormModal<T extends z.ZodType>({
             )}
             {errorMessage && (
               <p className="text-sm text-destructive">{errorMessage}</p>
+            )}
+          </div>
+        );
+
+      case 'checkbox':
+        return (
+          <div key={field.name} className="flex flex-row items-center space-x-3 space-y-0 p-1">
+            <div className="flex items-center h-5">
+              <input
+                type="checkbox"
+                id={field.name}
+                className="h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                {...register(field.name as never)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={field.name} className="font-medium cursor-pointer">
+                {field.label}
+                {field.required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              {field.description && (
+                <p className="text-xs text-muted-foreground">{field.description}</p>
+              )}
+            </div>
+            {errorMessage && (
+              <p className="text-sm text-destructive ml-auto">{errorMessage}</p>
             )}
           </div>
         );
