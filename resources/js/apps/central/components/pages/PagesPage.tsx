@@ -241,7 +241,7 @@ export function PagesPage() {
   // Handlers
   // ============================================================================
 
-  const handleCreate = async (data: PageCreationData, creationType: 'scratch' | 'template' | 'import') => {
+  const handleCreate = async (data: PageCreationData, creationType: 'scratch' | 'template') => {
     try {
       await pagesData.create.mutateAsync(data as CreatePageData);
       toast({
