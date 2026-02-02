@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: January 31, 2026 (Phase 6.1 Theme Manager Refinements Complete)  
+Last updated: February 2, 2026 (Phase 7 Font System Complete)  
 Current branch: main
 
 —
@@ -13,6 +13,7 @@ Current branch: main
 - **Page Builder:** 100% complete and merged to main
 - **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
 - **Theme system:** ✅ **COMPLETE** - Blueprints, placeholders, customization, CSS generation
+- **Phase 7 Font System:** ✅ **COMPLETE** - Fonts, RichText, CSS loading, storefront parity
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -77,18 +78,14 @@ Testing status (Jan 31, 2026):
 
 ## What's Remaining
 
-### **Phase 7: Font System (NEXT - 5-7 days)**
-
-> **Detailed plan:** See [PHASE7_FONT_SYSTEM.md](./PHASE7_FONT_SYSTEM.md)
+### **Phase 8: Booking Integration (NEXT)**
 
 **Summary:**
-- Multi-font support (sans, serif, mono families)
-- Google Fonts + FontBunny integration (central only, tenants use central's fonts)
-- Font picker UI with live preview in Theme Builder Settings tab
-- Font loading optimization (`font-display: swap`, `@import` preload)
-- Component-level font family selection
+- Integrate existing booking system into multi-tenant CMS
+- Adapt appointment/scheduling models to tenancy
+- Payment processing (Stripe + Swish)
 
-**Status**: Architecture designed, ready for implementation
+**Status**: Planned
 
 ---
 
@@ -118,6 +115,12 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 —
 
 ## Key Implementations (Recent)
+
+**February 2, 2026 (Phase 7 - Font System Complete):**
+- ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation
+- ✅ RichText component with inline editing and typography CSS
+- ✅ Storefront CSS loading cleaned up (consolidated theme CSS + scoped customizations)
+- ✅ Tailwind removed from public storefront bundle
 
 **January 30, 2026 (Phase 6 - Theme Customization Complete):**
 - ✅ Implemented three-layer theme architecture:

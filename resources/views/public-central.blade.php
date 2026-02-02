@@ -27,28 +27,20 @@
             @endforeach
         @endif
 
-        {{-- 1. Load base theme CSS from disk (system theme files) --}}
-        @if($activeTheme->base_theme)
-            <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->base_theme . '/' . $activeTheme->base_theme . '_variables.css') }}" id="theme-variables-css">
-            <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->base_theme . '/' . $activeTheme->base_theme . '_header.css') }}" id="theme-header-css">
-            <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->base_theme . '/' . $activeTheme->base_theme . '_footer.css') }}" id="theme-footer-css">
-        @endif
+        {{-- Load consolidated theme CSS from disk --}}
+        <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css') }}" id="theme-css">
 
-        {{-- 2. Load customization CSS from database (overrides base theme) --}}
-        @if($activeTheme->settings_css)
-            <style id="customization-settings-css">{!! $activeTheme->settings_css !!}</style>
-        @endif
-        @if($activeTheme->header_css)
-            <style id="customization-header-css">{!! $activeTheme->header_css !!}</style>
-        @endif
-        @if($activeTheme->footer_css)
-            <style id="customization-footer-css">{!! $activeTheme->footer_css !!}</style>
+        {{-- Load scoped customization CSS from database (central scope: tenant_id = NULL) --}}
+        @php
+            $scopedCustomCss = $activeTheme->getScopedCustomizationCss(null);
+        @endphp
+        @if($scopedCustomCss)
+            <style id="customization-css">{!! $scopedCustomCss !!}</style>
         @endif
     @endisset
 
-    <!-- Vite CSS -->
+    <!-- Vite JS only - CSS comes from theme system -->
     @viteReactRefresh
-    @vite(['resources/css/app.css'])
 </head>
 <body class="antialiased">
     <div id="public-app"></div>

@@ -7,13 +7,19 @@ import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 vi.mock('@/shared/hooks', () => ({
   useTheme: () => ({
     theme: {},
-    resolve: (path: string, fallback: string) => fallback,
+    resolve: (_path: string, fallback: string) => fallback,
   }),
   usePuckEditMode: () => true, // Enable edit mode for CSS injection in tests
 }));
 
 // Extract render function from ComponentConfig
 const RichTextRender = RichText.render;
+
+// Mock puck context
+const mockPuckContext = {
+  dragRef: () => {},
+  isEditing: false,
+} as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
 // Helper to render with theme
 const renderWithTheme = (ui: React.ReactElement) => {
@@ -31,15 +37,17 @@ describe('RichText Component', () => {
     });
 
     it('should have contentEditable enabled for inline editing', () => {
-      expect(RichText?.fields?.content.contentEditable).toBe(true);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((RichText?.fields?.content as any).contentEditable).toBe(true);
     });
 
     it('should restrict headings to h2-h4', () => {
-      expect(RichText?.fields?.content.options?.heading).toEqual({ levels: [2, 3, 4] });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      expect((RichText?.fields?.content as any).options?.heading).toEqual({ levels: [2, 3, 4] });
     });
 
     it('should have fontFamily field', () => {
-      expect(RichText.fields.fontFamily).toBeDefined();
+      expect(RichText?.fields?.fontFamily).toBeDefined();
     });
 
     it('should have default content', () => {
@@ -53,7 +61,7 @@ describe('RichText Component', () => {
       const htmlContent = '<h2>Test Heading</h2><p>Test paragraph</p>';
 
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content={htmlContent} />
+        <RichTextRender id="test" content={htmlContent} puck={mockPuckContext} />
       );
 
       expect(container.querySelector('h2')).toHaveTextContent('Test Heading');
@@ -68,8 +76,8 @@ describe('RichText Component', () => {
         </>
       );
 
-      const { container } = renderWithTheme(
-        <RichTextRender id="test" content={reactContent} />
+      renderWithTheme(
+        <RichTextRender id="test" content={reactContent} puck={mockPuckContext} />
       );
 
       expect(screen.getByText('React Heading')).toBeInTheDocument();
@@ -78,7 +86,7 @@ describe('RichText Component', () => {
 
     it('should apply richtext-{id} className', () => {
       const { container } = renderWithTheme(
-        <RichTextRender id="test-123" content="<p>Test</p>" />
+        <RichTextRender id="test-123" content="<p>Test</p>" puck={mockPuckContext} />
       );
 
       const richTextDiv = container.querySelector('.richtext-test-123');
@@ -86,13 +94,13 @@ describe('RichText Component', () => {
     });
 
     it('should render dragRef attachment point', () => {
-      const mockDragRef = { current: null };
+      const mockDragRef = () => {};
 
       const { container } = renderWithTheme(
         <RichTextRender
           id="test"
           content="<p>Test</p>"
-          puck={{ dragRef: mockDragRef }}
+          puck={{ ...mockPuckContext, dragRef: mockDragRef }}
         />
       );
 
@@ -103,7 +111,7 @@ describe('RichText Component', () => {
   describe('Styling', () => {
     it('should inject CSS in edit mode', () => {
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content="<p>Test</p>" />
+        <RichTextRender id="test" content="<p>Test</p>" puck={mockPuckContext} />
       );
 
       const styles = container.querySelectorAll('style');
@@ -112,7 +120,7 @@ describe('RichText Component', () => {
 
     it('should include typography CSS rules', () => {
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content="<ul><li>Item</li></ul>" />
+        <RichTextRender id="test" content="<ul><li>Item</li></ul>" puck={mockPuckContext} />
       );
 
       const styleContent = Array.from(container.querySelectorAll('style'))
@@ -131,6 +139,7 @@ describe('RichText Component', () => {
           id="test"
           content="<p>Test</p>"
           fontFamily="Inter"
+          puck={mockPuckContext}
         />
       );
 
@@ -147,6 +156,7 @@ describe('RichText Component', () => {
           id="test"
           content="<p>Test</p>"
           fontFamily={undefined}
+          puck={mockPuckContext}
         />
       );
 
@@ -161,7 +171,7 @@ describe('RichText Component', () => {
   describe('Content Handling', () => {
     it('should handle empty content gracefully', () => {
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content="" />
+        <RichTextRender id="test" content="" puck={mockPuckContext} />
       );
 
       expect(container.querySelector('.richtext-test')).toBeInTheDocument();
@@ -180,7 +190,7 @@ describe('RichText Component', () => {
       `;
 
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content={htmlContent} />
+        <RichTextRender id="test" content={htmlContent} puck={mockPuckContext} />
       );
 
       const lists = container.querySelectorAll('ul');
@@ -197,7 +207,7 @@ describe('RichText Component', () => {
       `;
 
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content={htmlContent} />
+        <RichTextRender id="test" content={htmlContent} puck={mockPuckContext} />
       );
 
       expect(container.querySelector('strong')).toHaveTextContent('Bold');
@@ -209,7 +219,7 @@ describe('RichText Component', () => {
       const htmlContent = '<p><a href="https://example.com">Link text</a></p>';
 
       const { container } = renderWithTheme(
-        <RichTextRender id="test" content={htmlContent} />
+        <RichTextRender id="test" content={htmlContent} puck={mockPuckContext} />
       );
 
       const link = container.querySelector('a');
@@ -225,6 +235,7 @@ describe('RichText Component', () => {
           id="test"
           content="<p>Test</p>"
           color={{ type: 'theme', value: 'components.richtext.colors.default' }}
+          puck={mockPuckContext}
         />
       );
 
@@ -241,6 +252,7 @@ describe('RichText Component', () => {
           id="test"
           content="<p>Test</p>"
           color={{ type: 'custom', value: '#ff0000' }}
+          puck={mockPuckContext}
         />
       );
 
@@ -259,6 +271,7 @@ describe('RichText Component', () => {
           id="test"
           content="<p>Test</p>"
           display={{ mobile: 'block' }}
+          puck={mockPuckContext}
         />
       );
 
@@ -274,8 +287,9 @@ describe('RichText Component', () => {
         <RichTextRender
           id="test"
           content="<p>Test</p>"
-          padding={{ mobile: '16px' }}
-          margin={{ mobile: '8px' }}
+          padding={{ mobile: { top: '16', right: '16', bottom: '16', left: '16', unit: 'px', linked: true } }}
+          margin={{ mobile: { top: '8', right: '8', bottom: '8', left: '8', unit: 'px', linked: true } }}
+          puck={mockPuckContext}
         />
       );
 

@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { PublicApp } from '@/apps/public/App';
 import './bootstrap';
-import '../css/app.css';
 
 const rootElement = document.getElementById('public-app');
 

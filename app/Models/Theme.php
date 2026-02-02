@@ -239,4 +239,25 @@ class Theme extends Model
 
         return $this->theme_data !== $baseThemeData;
     }
+
+    /**
+     * Get scoped CSS customizations for this theme in a specific scope.
+     * For central scope, pass $tenantId = null.
+     * Combines CSS from all theme_parts (header, footer, settings) into one string.
+     */
+    public function getScopedCustomizationCss(?string $tenantId = null): string
+    {
+        $parts = ThemePart::where('theme_id', $this->id)
+            ->where('tenant_id', $tenantId)
+            ->get();
+
+        $css = '';
+        foreach ($parts as $part) {
+            if ($part->settings_css) {
+                $css .= $part->settings_css . "\n";
+            }
+        }
+
+        return $css;
+    }
 }
