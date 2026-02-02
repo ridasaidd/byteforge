@@ -63,12 +63,12 @@ export function PageCreationWizard({
   };
 
   // Get unique categories from templates
-  const categories = ['all', ...new Set(templates.map(t => t.category))];
+  const categories = ['all', ...new Set(templates.map(t => t.category || 'uncategorized'))];
 
   // Filter templates by category
   const filteredTemplates = selectedCategory === 'all'
     ? templates
-    : templates.filter(t => t.category === selectedCategory);
+    : templates.filter(t => (t.category || 'uncategorized') === selectedCategory);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
