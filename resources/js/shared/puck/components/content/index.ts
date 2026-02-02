@@ -6,6 +6,7 @@
 
 export { Heading, type HeadingProps } from './Heading';
 export { Text, type TextProps } from './Text';
+export { RichText, type RichTextProps } from './RichText';
 export { Button, type ButtonProps } from './Button';
 export { Image, type ImageProps } from './Image';
 export { Card, type CardProps } from './Card';

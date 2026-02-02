@@ -40,7 +40,7 @@ type ThemeResolver = (path: string, fallback?: string) => string;
  */
 export function generateVariablesCss(themeData: ThemeData): string {
   const cssParts: string[] = [];
-  
+
   // Generate @font-face rules for selected fonts
   const fontCss = generateFontCSSFromThemeData(themeData);
   if (fontCss) {
@@ -155,7 +155,7 @@ function isLayoutComponent(type?: string): boolean {
 
 function isTypographyComponent(type?: string): boolean {
   if (!type) return false;
-  return ['heading', 'text', 'link', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(type.toLowerCase());
+  return ['heading', 'text', 'richtext', 'link', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(type.toLowerCase());
 }
 
 function isComponentLike(value: unknown): value is PuckComponent {
@@ -299,6 +299,12 @@ function getTextClassName(component: PuckComponent): string {
   return `text-${id}`;
 }
 
+function getRichTextClassName(component: PuckComponent): string {
+  const props = component.props || {};
+  const id = props.id ?? component.id ?? 'richtext';
+  return `richtext-${id}`;
+}
+
 function buildBoxCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
   const className = getBoxClassName(component);
@@ -358,9 +364,9 @@ function buildCardCss(component: PuckComponent, resolver: ThemeResolver): string
   const className = `card-Card-${(props.id as string) || component.props?.id || 'unknown'}`;
 
   const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
-  const titleColor = resolveColorValue(props.titleColor as ColorValue | string | undefined, resolver);
-  const descriptionColor = resolveColorValue(props.descriptionColor as ColorValue | string | undefined, resolver);
-  const iconColor = resolveColorValue(props.iconColor as ColorValue | string | undefined, resolver);
+  //const titleColor = resolveColorValue(props.titleColor as ColorValue | string | undefined, resolver);
+  //const descriptionColor = resolveColorValue(props.descriptionColor as ColorValue | string | undefined, resolver);
+  //const iconColor = resolveColorValue(props.iconColor as ColorValue | string | undefined, resolver);
 
   const padding = normalizeResponsiveSpacing(props.padding);
   const margin = normalizeResponsiveSpacing(props.margin);
@@ -595,12 +601,78 @@ function buildTextCss(component: PuckComponent, resolver: ThemeResolver): string
   return [css, fontSizeCss].filter(Boolean).join('\n');
 }
 
+function buildRichTextCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const className = getRichTextClassName(component);
+
+  const resolvedColor = resolveColorValue(
+    props.color as ColorValue | string | undefined,
+    resolver,
+    'var(--component-richtext-color-default, inherit)',
+    'inherit'
+  );
+
+  const resolvedBackground = resolveColorValue(
+    props.backgroundColor as ColorValue | string | undefined,
+    resolver,
+    'transparent',
+    'transparent'
+  );
+
+  const padding = normalizeResponsiveSpacing(props.padding);
+  const margin = normalizeResponsiveSpacing(props.margin);
+  const borderRadius = normalizeBorderRadius(props.borderRadius);
+
+  // Base layout CSS
+  const css = buildTypographyCSS({
+    className,
+    display: props.display as ResponsiveDisplayValue,
+    width: props.width as ResponsiveWidthValue,
+    maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
+    maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
+    padding,
+    margin,
+    border: props.border as BorderValue,
+    borderRadius,
+    shadow: props.shadow as ShadowValue,
+    color: resolvedColor,
+    backgroundColor: resolvedBackground,
+    fontFamily: props.fontFamily as string | undefined,
+    visibility: props.visibility as ResponsiveVisibilityValue,
+    resolveToken: resolver,
+  });
+
+  // RichText typography CSS - explicit styles for storefront (no Tailwind)
+  const richTextTypographyCSS = `
+    .${className} h2 { font-size: 1.5rem; font-weight: 700; margin: 1.5rem 0 0.75rem; line-height: 1.3; }
+    .${className} h3 { font-size: 1.25rem; font-weight: 600; margin: 1.25rem 0 0.5rem; line-height: 1.4; }
+    .${className} h4 { font-size: 1.125rem; font-weight: 600; margin: 1rem 0 0.5rem; line-height: 1.4; }
+    .${className} p { margin: 0 0 1rem; line-height: 1.7; }
+    .${className} ul { list-style-type: disc; padding-left: 1.5rem; margin: 0 0 1rem; }
+    .${className} ol { list-style-type: decimal; padding-left: 1.5rem; margin: 0 0 1rem; }
+    .${className} li { margin: 0.25rem 0; line-height: 1.7; }
+    .${className} li > ul, .${className} li > ol { margin: 0.5rem 0; }
+    .${className} strong { font-weight: 700; }
+    .${className} em { font-style: italic; }
+    .${className} u { text-decoration: underline; }
+    .${className} s { text-decoration: line-through; }
+    .${className} a { color: var(--color-primary-500, #3b82f6); text-decoration: underline; }
+    .${className} a:hover { text-decoration: none; }
+    .${className} blockquote { border-left: 4px solid var(--color-gray-300, #d1d5db); padding-left: 1rem; margin: 1rem 0; font-style: italic; }
+    .${className} code { background: var(--color-gray-100, #f3f4f6); padding: 0.125rem 0.25rem; border-radius: 0.25rem; font-family: var(--font-family-mono, monospace); font-size: 0.875em; }
+    .${className} pre { background: var(--color-gray-100, #f3f4f6); padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin: 1rem 0; }
+    .${className} pre code { background: none; padding: 0; }
+  `.trim();
+
+  return [css, richTextTypographyCSS].filter(Boolean).join('\n');
+}
+
 function buildImageCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
   const id = props.id ?? component.id ?? 'image';
   const className = `image-${id}`;
 
-  const padding = normalizeResponsiveSpacing(props.padding);
+  //const padding = normalizeResponsiveSpacing(props.padding);
   const margin = normalizeResponsiveSpacing(props.margin);
   const borderRadius = normalizeBorderRadius(props.borderRadius);
 
@@ -835,6 +907,9 @@ export function extractTypographyComponentsCss(puckData: Data, themeData?: Theme
         break;
       case 'text':
         cssRules.push(buildTextCss(component, resolver));
+        break;
+      case 'richtext':
+        cssRules.push(buildRichTextCss(component, resolver));
         break;
       case 'link':
         cssRules.push(buildLinkCss(component, resolver));

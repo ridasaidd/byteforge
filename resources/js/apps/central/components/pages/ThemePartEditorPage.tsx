@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Puck, Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
+import '@/shared/puck/styles/preview-reset.css'; // Reset Tailwind inside Puck preview
 import { Loader2, Save, ArrowLeft } from 'lucide-react';
 import { Button } from '@/shared/components/ui/button';
 import { useToast } from '@/shared/hooks';

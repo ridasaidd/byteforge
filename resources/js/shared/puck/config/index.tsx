@@ -13,6 +13,7 @@ import {
   // Content
   Heading,
   Text,
+  RichText,
   Button,
   Image,
   Card,
@@ -46,6 +47,7 @@ export const puckConfig: Config = {
     // Content Components
     Heading: Heading as Config['components'][string],
     Text: Text as Config['components'][string],
+    RichText: RichText as Config['components'][string],
     Button: Button as Config['components'][string],
     Link: Link as Config['components'][string],
     Image: Image as Config['components'][string],
@@ -77,7 +79,7 @@ export const puckConfig: Config = {
       defaultExpanded: false,
     },
     content: {
-      components: ['Heading', 'Text', 'Button', 'Link', 'Image'],
+      components: ['Heading', 'Text', 'RichText', 'Button', 'Link', 'Image'],
       title: 'Content',
       defaultExpanded: true,
     },

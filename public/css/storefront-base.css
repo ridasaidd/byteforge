@@ -1,0 +1,104 @@
+/**
+ * Storefront Base CSS
+ *
+ * Browser-default styles for the storefront.
+ * This is the UNSCOPED version of preview-reset.css
+ *
+ * Both files should stay in sync to ensure:
+ * Editor Preview = Storefront Rendering
+ *
+ * Generated from: resources/js/shared/puck/styles/preview-reset.css
+ */
+
+/* ============================================
+   Typography - Headings
+   ============================================ */
+h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }
+h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; }
+h3 { font-size: 1.17em; font-weight: bold; margin: 1em 0; }
+h4 { font-size: 1em; font-weight: bold; margin: 1.33em 0; }
+h5 { font-size: 0.83em; font-weight: bold; margin: 1.67em 0; }
+h6 { font-size: 0.67em; font-weight: bold; margin: 2.33em 0; }
+
+/* ============================================
+   Typography - Paragraphs & Text
+   ============================================ */
+p { margin: 1em 0; }
+strong, b { font-weight: bold; }
+em, i { font-style: italic; }
+u { text-decoration: underline; }
+s, strike { text-decoration: line-through; }
+small { font-size: 80%; }
+sub { font-size: 75%; vertical-align: sub; }
+sup { font-size: 75%; vertical-align: super; }
+
+/* ============================================
+   Lists
+   ============================================ */
+ul { list-style-type: disc; padding-left: 2em; margin: 1em 0; }
+ol { list-style-type: decimal; padding-left: 2em; margin: 1em 0; }
+li { margin: 0.25em 0; }
+ul ul { list-style-type: circle; }
+ul ul ul { list-style-type: square; }
+ol ol { list-style-type: lower-alpha; }
+ol ol ol { list-style-type: lower-roman; }
+
+/* ============================================
+   Links
+   ============================================ */
+a { color: #0000EE; text-decoration: underline; cursor: pointer; }
+a:visited { color: #551A8B; }
+a:hover { text-decoration: none; }
+
+/* ============================================
+   Blockquote & Pre
+   ============================================ */
+blockquote { margin: 1em 40px; }
+pre {
+  font-family: monospace;
+  white-space: pre;
+  margin: 1em 0;
+  padding: 0.5em;
+  background: #f5f5f5;
+  overflow-x: auto;
+}
+code { font-family: monospace; }
+
+/* ============================================
+   Horizontal Rule
+   ============================================ */
+hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 1em 0;
+}
+
+/* ============================================
+   Tables
+   ============================================ */
+table { border-collapse: collapse; border-spacing: 0; }
+th { font-weight: bold; text-align: left; padding: 0.5em; }
+td { padding: 0.5em; }
+
+/* ============================================
+   Forms
+   ============================================ */
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+button { cursor: pointer; }
+fieldset { border: 1px solid #c0c0c0; margin: 0 2px; padding: 0.35em 0.625em 0.75em; }
+legend { padding: 0 0.5em; }
+
+/* ============================================
+   Images & Media
+   ============================================ */
+img { max-width: 100%; height: auto; }
+figure { margin: 1em 40px; }
+figcaption { font-size: 0.9em; color: #666; }

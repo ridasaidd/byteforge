@@ -17,6 +17,8 @@ export {
   type HeadingProps,
   Text,
   type TextProps,
+  RichText,
+  type RichTextProps,
   Button,
   type ButtonProps,
   Image,

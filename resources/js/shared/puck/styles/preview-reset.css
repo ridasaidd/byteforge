@@ -1,0 +1,117 @@
+/**
+ * Puck Preview Reset CSS
+ *
+ * Undoes Tailwind's base resets ONLY inside the Puck editor preview.
+ * This ensures components render the same way as they will on the storefront.
+ *
+ * Why not normalize.css?
+ * - Modern browsers (2020+) are already consistent
+ * - Our problem is Tailwind's aggressive resets, not browser quirks
+ * - This is simpler and more targeted
+ *
+ * Storefront equivalent: public/css/storefront-base.css (unscoped version)
+ */
+
+/* ============================================
+   Typography - Headings
+   ============================================ */
+[data-puck-component] h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }
+[data-puck-component] h2 { font-size: 1.5em; font-weight: bold; margin: 0.83em 0; }
+[data-puck-component] h3 { font-size: 1.17em; font-weight: bold; margin: 1em 0; }
+[data-puck-component] h4 { font-size: 1em; font-weight: bold; margin: 1.33em 0; }
+[data-puck-component] h5 { font-size: 0.83em; font-weight: bold; margin: 1.67em 0; }
+[data-puck-component] h6 { font-size: 0.67em; font-weight: bold; margin: 2.33em 0; }
+
+/* ============================================
+   Typography - Paragraphs & Text
+   ============================================ */
+[data-puck-component] p { margin: 1em 0; }
+[data-puck-component] strong, [data-puck-component] b { font-weight: bold; }
+[data-puck-component] em, [data-puck-component] i { font-style: italic; }
+[data-puck-component] u { text-decoration: underline; }
+[data-puck-component] s, [data-puck-component] strike { text-decoration: line-through; }
+[data-puck-component] small { font-size: 80%; }
+[data-puck-component] sub { font-size: 75%; vertical-align: sub; }
+[data-puck-component] sup { font-size: 75%; vertical-align: super; }
+
+/* ============================================
+   Lists - Tailwind removes list-style
+   ============================================ */
+[data-puck-component] ul { list-style-type: disc; padding-left: 2em; margin: 1em 0; }
+[data-puck-component] ol { list-style-type: decimal; padding-left: 2em; margin: 1em 0; }
+[data-puck-component] li { margin: 0.25em 0; }
+[data-puck-component] ul ul { list-style-type: circle; }
+[data-puck-component] ul ul ul { list-style-type: square; }
+[data-puck-component] ol ol { list-style-type: lower-alpha; }
+[data-puck-component] ol ol ol { list-style-type: lower-roman; }
+
+/* ============================================
+   Links
+   ============================================ */
+[data-puck-component] a { color: #0000EE; text-decoration: underline; cursor: pointer; }
+[data-puck-component] a:visited { color: #551A8B; }
+[data-puck-component] a:hover { text-decoration: none; }
+
+/* ============================================
+   Blockquote & Pre
+   ============================================ */
+[data-puck-component] blockquote { margin: 1em 40px; }
+[data-puck-component] pre {
+  font-family: monospace;
+  white-space: pre;
+  margin: 1em 0;
+  padding: 0.5em;
+  background: #f5f5f5;
+  overflow-x: auto;
+}
+[data-puck-component] code { font-family: monospace; }
+
+/* ============================================
+   Horizontal Rule
+   ============================================ */
+[data-puck-component] hr {
+  border: none;
+  border-top: 1px solid #ccc;
+  margin: 1em 0;
+}
+
+/* ============================================
+   Tables
+   ============================================ */
+[data-puck-component] table { border-collapse: collapse; border-spacing: 0; }
+[data-puck-component] th { font-weight: bold; text-align: left; padding: 0.5em; }
+[data-puck-component] td { padding: 0.5em; }
+
+/* ============================================
+   Forms
+   ============================================ */
+[data-puck-component] button,
+[data-puck-component] input,
+[data-puck-component] select,
+[data-puck-component] textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  margin: 0;
+}
+[data-puck-component] button { cursor: pointer; }
+[data-puck-component] fieldset { border: 1px solid #c0c0c0; margin: 0 2px; padding: 0.35em 0.625em 0.75em; }
+[data-puck-component] legend { padding: 0 0.5em; }
+
+/* ============================================
+   Images & Media
+   ============================================ */
+[data-puck-component] img { max-width: 100%; height: auto; }
+[data-puck-component] figure { margin: 1em 40px; }
+[data-puck-component] figcaption { font-size: 0.9em; color: #666; }
+
+/* ============================================
+   Ensure pointer-events work for editing
+   (Puck disables these by default)
+   ============================================ */
+[data-puck-component] [contenteditable="true"],
+[data-puck-component] [contenteditable="true"] * {
+  pointer-events: auto !important;
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+}
