@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Layout;
 use App\Models\Navigation;
 use App\Models\Page;
+use App\Models\Tenant;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Services\PuckCompilerService;
@@ -196,23 +197,38 @@ class PuckCompilerServiceTest extends TestCase
     }
 
     /** @test */
-    public function it_compiles_page_content_without_header_footer()
+    public function it_compiles_page_content_with_header_footer_from_active_theme()
     {
-        // NOTE: Header/footer merging now happens at runtime on the frontend,
-        // not at compile time. compilePage() only compiles the page content itself.
+        // Setup Tenant
+        $tenant = Tenant::factory()->create();
+        $tenantId = $tenant->id;
 
-        $header = ThemePart::factory()->create([
+        // Setup Active Theme
+        $theme = Theme::factory()->create([
+            'tenant_id' => $tenantId,
+            'is_active' => true,
+        ]);
+
+        // Setup Header Part for this tenant/theme
+        ThemePart::factory()->create([
+            'tenant_id' => $tenantId,
+            'theme_id' => $theme->id,
             'type' => 'header',
-            'puck_data_compiled' => [
+            'status' => 'published',
+            'puck_data_raw' => [
                 'content' => [
                     ['type' => 'Header', 'props' => ['title' => 'Site Header']],
                 ],
             ],
         ]);
 
-        $footer = ThemePart::factory()->create([
+        // Setup Footer Part
+        ThemePart::factory()->create([
+            'tenant_id' => $tenantId,
+            'theme_id' => $theme->id,
             'type' => 'footer',
-            'puck_data_compiled' => [
+            'status' => 'published',
+            'puck_data_raw' => [
                 'content' => [
                     ['type' => 'Footer', 'props' => ['text' => 'Copyright 2025']],
                 ],
@@ -220,8 +236,7 @@ class PuckCompilerServiceTest extends TestCase
         ]);
 
         $page = Page::factory()->create([
-            'header_id' => $header->id,
-            'footer_id' => $footer->id,
+            'tenant_id' => $tenantId,
             'puck_data' => [
                 'content' => [
                     ['type' => 'Text', 'props' => ['text' => 'Page Content']],
@@ -236,42 +251,6 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('Site Header', $compiled['content'][0]['props']['title']);
         $this->assertEquals('Page Content', $compiled['content'][1]['props']['text']);
         $this->assertEquals('Copyright 2025', $compiled['content'][2]['props']['text']);
-    }
-
-    /** @test */
-    public function it_compiles_page_content_independently_of_layout()
-    {
-        // NOTE: Layout header/footer resolution now happens at runtime via API relationships,
-        // not at compile time. The compiler only handles the page content itself.
-
-        $header = ThemePart::factory()->create([
-            'type' => 'header',
-            'puck_data_compiled' => [
-                'content' => [
-                    ['type' => 'Header', 'props' => ['title' => 'Layout Header']],
-                ],
-            ],
-        ]);
-
-        $layout = Layout::factory()->create([
-            'header_id' => $header->id,
-        ]);
-
-        $page = Page::factory()->create([
-            'layout_id' => $layout->id,
-            'puck_data' => [
-                'content' => [
-                    ['type' => 'Text', 'props' => ['text' => 'Page Content']],
-                ],
-            ],
-        ]);
-
-        $compiled = $this->compiler->compilePage($page);
-
-        // Should contain layout header + page content
-        $this->assertCount(2, $compiled['content']);
-        $this->assertEquals('Layout Header', $compiled['content'][0]['props']['title']);
-        $this->assertEquals('Page Content', $compiled['content'][1]['props']['text']);
     }
 
     /** @test */

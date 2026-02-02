@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FileText, Sparkles, Upload } from 'lucide-react';
+import { FileText, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -7,21 +7,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Card } from '@/shared/components/ui/card';
-
-export interface PageTemplate {
-  name: string;
-  slug: string;
-  description: string;
-  category: string;
-  preview?: string;
-  puckData: {
-    content: Array<{
-      type: string;
-      props: Record<string, unknown>;
-    }>;
-    root?: Record<string, unknown>;
-  };
-}
+import type { PageTemplate } from '@/shared/services/api/types';
 
 export interface PageCreationData {
   title: string;
@@ -40,7 +26,7 @@ export interface PageCreationData {
 interface PageCreationWizardProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSubmit: (data: PageCreationData, creationType: 'scratch' | 'template' | 'import') => void;
+  onSubmit: (data: PageCreationData, creationType: 'scratch' | 'template') => void;
   templates?: PageTemplate[];
   isLoading?: boolean;
 }
@@ -52,7 +38,7 @@ export function PageCreationWizard({
   templates = [],
   isLoading = false,
 }: PageCreationWizardProps) {
-  const [creationType, setCreationType] = useState<'scratch' | 'template' | 'import'>('scratch');
+  const [creationType, setCreationType] = useState<'scratch' | 'template'>('scratch');
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
   const [pageType, setPageType] = useState('general');
@@ -68,13 +54,21 @@ export function PageCreationWizard({
     }
   };
 
+  // Auto-set page_type to 'home' when is_homepage is checked
+  const handleHomepageChange = (checked: boolean) => {
+    setIsHomepage(checked);
+    if (checked) {
+      setPageType('home');
+    }
+  };
+
   // Get unique categories from templates
-  const categories = ['all', ...new Set(templates.map(t => t.category))];
+  const categories = ['all', ...new Set(templates.map(t => t.category || 'uncategorized'))];
 
   // Filter templates by category
   const filteredTemplates = selectedCategory === 'all'
     ? templates
-    : templates.filter(t => t.category === selectedCategory);
+    : templates.filter(t => (t.category || 'uncategorized') === selectedCategory);
 
   const handleSubmit = () => {
     if (!title.trim()) return;
@@ -91,7 +85,7 @@ export function PageCreationWizard({
     if (creationType === 'template' && selectedTemplate) {
       const template = templates.find(t => t.slug === selectedTemplate);
       if (template) {
-        baseData.puck_data = template.puckData as Record<string, unknown>;
+        baseData.puck_data = template.puck_data as Record<string, unknown>;
       }
     }
 
@@ -119,7 +113,7 @@ export function PageCreationWizard({
 
         <div className="flex-1 overflow-auto">
           {/* Creation Type Selector */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <Card
               className={`p-4 cursor-pointer transition-all hover:shadow-md ${
                 creationType === 'scratch' ? 'ring-2 ring-primary' : ''
@@ -146,21 +140,6 @@ export function PageCreationWizard({
                 <h3 className="font-semibold">Use Theme Template</h3>
                 <p className="text-xs text-muted-foreground">
                   Start with pre-designed content
-                </p>
-              </div>
-            </Card>
-
-            <Card
-              className={`p-4 cursor-pointer transition-all hover:shadow-md opacity-50 ${
-                creationType === 'import' ? 'ring-2 ring-primary' : ''
-              }`}
-              onClick={() => setCreationType('import')}
-            >
-              <div className="flex flex-col items-center text-center gap-2">
-                <Upload className="h-8 w-8 text-primary" />
-                <h3 className="font-semibold">Import from Saved</h3>
-                <p className="text-xs text-muted-foreground">
-                  Coming soon
                 </p>
               </div>
             </Card>
@@ -214,7 +193,7 @@ export function PageCreationWizard({
                 type="checkbox"
                 className="h-4 w-4"
                 checked={isHomepage}
-                onChange={(e) => setIsHomepage(e.target.checked)}
+                onChange={(e) => handleHomepageChange(e.target.checked)}
               />
               <Label htmlFor="is-homepage">Set as homepage</Label>
             </div>
@@ -246,10 +225,10 @@ export function PageCreationWizard({
                       }`}
                       onClick={() => setSelectedTemplate(template.slug)}
                     >
-                      {template.preview && (
+                      {template.preview_image && (
                         <div className="aspect-video bg-muted rounded mb-2 overflow-hidden">
                           <img
-                            src={template.preview}
+                            src={template.preview_image}
                             alt={template.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
@@ -270,16 +249,6 @@ export function PageCreationWizard({
                   </p>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Import Section (Coming Soon) */}
-          {creationType === 'import' && (
-            <div className="text-center py-8">
-              <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">
-                Import from saved pages feature coming soon!
-              </p>
             </div>
           )}
         </div>

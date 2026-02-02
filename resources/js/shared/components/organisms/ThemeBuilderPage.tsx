@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Puck, Data } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
 import '@/shared/puck/styles/preview-reset.css'; // Reset Tailwind inside Puck preview
@@ -47,8 +47,13 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const { saveSection } = useThemeCssSectionSave();
   const isNew = !id || id === 'new';
   const isCustomizeMode = mode === 'customize';
+  const [searchParams] = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState(isCustomizeMode ? 'settings' : 'info');
+  const [activeTab, setActiveTab] = useState(() => {
+    const section = searchParams.get('section');
+    if (section) return section;
+    return isCustomizeMode ? 'settings' : 'info';
+  });
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -595,6 +600,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         });
         if (templateCss && templateCss.trim().length > 0) {
           await saveSection(Number(id), `template-${templateId}`, templateCss);
+          // Publish theme to merge template CSS into master file
+          await themeCssApi.publish(Number(id));
         }
       } catch (error) {
         console.error('Failed to save template CSS:', error);

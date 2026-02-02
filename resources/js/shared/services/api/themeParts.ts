@@ -13,3 +13,16 @@ export const themeParts = {
   delete: (id: number | string) =>
     http.remove<{ message: string }>('/superadmin/theme-parts', id),
 };
+
+export const tenantThemeParts = {
+  list: (params?: { page?: number; per_page?: number; search?: string; status?: string; type?: string }) =>
+    http.getAll<PaginatedResponse<ThemePart>>('/theme-parts', params),
+  get: (id: number | string) =>
+    http.getOne<ApiResponse<ThemePart>>('/theme-parts', id),
+  create: (data: CreateThemePartData) =>
+    http.create<ApiResponse<ThemePart>>('/theme-parts', data),
+  update: (id: number | string, data: UpdateThemePartData) =>
+    http.update<ApiResponse<ThemePart>>('/theme-parts', id, data),
+  delete: (id: number | string) =>
+    http.remove<{ message: string }>('/theme-parts', id),
+};

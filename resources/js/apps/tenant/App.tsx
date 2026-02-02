@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, PagesPage } from './components/pages';
+import { DashboardPage, PagesPage, PageEditorPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { tenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -40,6 +40,7 @@ function ProtectedRoutes() {
         <Routes>
           {/* Full Screen Editors - Without Layout */}
           <Route path="/cms/theme/customize" element={<ThemeCustomizePage />} />
+          <Route path="/cms/pages/:id/edit" element={<PageEditorPage />} />
 
           {/* All other routes with Dashboard Layout */}
           <Route path="/cms" element={<DashboardPage />} />

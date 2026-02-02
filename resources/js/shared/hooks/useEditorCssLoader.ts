@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback } from 'react';
 
 interface UseEditorCssLoaderOptions {
-  themeId: number | string | undefined;
-  section: 'header' | 'footer' | 'settings';
+  themeId: number | string | undefined | null;
+  section: 'header' | 'footer' | 'settings' | 'theme';
   enabled?: boolean;
   refreshTrigger?: number; // Increment this to force reload
 }
@@ -35,9 +35,12 @@ export function useEditorCssLoader({ themeId, section, enabled = true, refreshTr
       setError(null);
 
       // Construct CSS file URL based on section
+      // 'theme' section means loading the main compiled css which includes everything
       const cssFileName = section === 'settings'
         ? `${themeId}_variables.css`
-        : `${themeId}_${section}.css`;
+        : section === 'theme'
+          ? `${themeId}.css`
+          : `${themeId}_${section}.css`;
 
       // Add cache-busting timestamp to force reload
       const timestamp = Date.now();

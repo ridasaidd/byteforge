@@ -13,3 +13,16 @@ export const pages = {
   delete: (id: number | string) =>
     http.remove<{ message: string }>('/superadmin/pages', id),
 };
+
+export const tenantPages = {
+  list: (params?: { page?: number; per_page?: number; search?: string; status?: string; page_type?: string }) =>
+    http.getAll<PaginatedResponse<Page>>('/pages', params),
+  get: (id: number | string) =>
+    http.getOne<ApiResponse<Page>>('/pages', id),
+  create: (data: CreatePageData) =>
+    http.create<ApiResponse<Page>>('/pages', data),
+  update: (id: number | string, data: UpdatePageData) =>
+    http.update<ApiResponse<Page>>('/pages', id, data),
+  delete: (id: number | string) =>
+    http.remove<{ message: string }>('/pages', id),
+};

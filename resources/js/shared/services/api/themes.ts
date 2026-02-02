@@ -47,3 +47,8 @@ export const themes = {
   /** Get templates from specific theme */
   getTemplates: (slug: string) => http.get<{ data: PageTemplate[] }>(`/superadmin/themes/${slug}/templates`),
 };
+
+export const tenantThemes = {
+  active: () => http.get<{ data: Theme }>('/themes/active'),
+  getActiveTemplates: () => http.get<{ data: PageTemplate[] }>('/themes/active/templates'),
+};

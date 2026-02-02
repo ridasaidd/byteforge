@@ -6,6 +6,7 @@ use App\Models\Navigation;
 use App\Models\Page;
 use App\Models\Theme;
 use App\Models\ThemePart;
+use App\Models\ThemePlaceholder;
 use App\Settings\TenantSettings;
 use Illuminate\Support\Facades\Cache;
 
@@ -33,16 +34,19 @@ class PuckCompilerService
         // Build merged content array (header + content + footer)
         $mergedContent = [];
 
-        // Add header content first
-        if ($page->header) {
-            $headerData = $page->header->puck_data_compiled ?? $page->header->puck_data_raw ?? [];
-            if (isset($headerData['content']) && is_array($headerData['content'])) {
-                $mergedContent = array_merge($mergedContent, $headerData['content']);
-            }
-        } elseif ($page->layout && $page->layout->header) {
-            $headerData = $page->layout->header->puck_data_compiled ?? $page->layout->header->puck_data_raw ?? [];
-            if (isset($headerData['content']) && is_array($headerData['content'])) {
-                $mergedContent = array_merge($mergedContent, $headerData['content']);
+        // Add header content from active theme's parts (customized for tenant)
+        if ($theme) {
+            $headerPart = ThemePart::where('theme_id', $theme->id)
+                ->where('tenant_id', $page->tenant_id)
+                ->where('type', 'header')
+                ->where('status', 'published')
+                ->first();
+
+            if ($headerPart && !empty($headerPart->puck_data_raw)) {
+                $headerData = $headerPart->puck_data_raw;
+                if (isset($headerData['content']) && is_array($headerData['content'])) {
+                    $mergedContent = array_merge($mergedContent, $headerData['content']);
+                }
             }
         }
 
@@ -51,16 +55,19 @@ class PuckCompilerService
             $mergedContent = array_merge($mergedContent, $rawData['content']);
         }
 
-        // Add footer content last
-        if ($page->footer) {
-            $footerData = $page->footer->puck_data_compiled ?? $page->footer->puck_data_raw ?? [];
-            if (isset($footerData['content']) && is_array($footerData['content'])) {
-                $mergedContent = array_merge($mergedContent, $footerData['content']);
-            }
-        } elseif ($page->layout && $page->layout->footer) {
-            $footerData = $page->layout->footer->puck_data_compiled ?? $page->layout->footer->puck_data_raw ?? [];
-            if (isset($footerData['content']) && is_array($footerData['content'])) {
-                $mergedContent = array_merge($mergedContent, $footerData['content']);
+        // Add footer content from active theme's parts (customized for tenant)
+        if ($theme) {
+            $footerPart = ThemePart::where('theme_id', $theme->id) // Use parts, not placeholders
+                ->where('tenant_id', $page->tenant_id)
+                ->where('type', 'footer')
+                ->where('status', 'published')
+                ->first();
+
+            if ($footerPart && !empty($footerPart->puck_data_raw)) {
+                $footerData = $footerPart->puck_data_raw;
+                if (isset($footerData['content']) && is_array($footerData['content'])) {
+                    $mergedContent = array_merge($mergedContent, $footerData['content']);
+                }
             }
         }
 
@@ -79,6 +86,26 @@ class PuckCompilerService
         $metadata = $this->gatherMetadata($page->tenant_id);
 
         return array_merge($compiledContent, ['metadata' => $metadata]);
+    }
+
+    /**
+     * Generate CSS for a page's content (page-specific components only)
+     * Does NOT include header/footer CSS (those are in theme CSS)
+     */
+    public function generatePageCss(Page $page): string
+    {
+        $rawData = $page->puck_data ?? [];
+        $theme = $this->getActiveTheme($page->tenant_id);
+
+        // Use a simple CSS extraction approach
+        // This will extract CSS from the page's puck_data only
+        if (empty($rawData)) {
+            return '';
+        }
+
+        // For now, return empty - the frontend will generate this
+        // We'll populate it from the frontend when saving
+        return '';
     }
 
     /**

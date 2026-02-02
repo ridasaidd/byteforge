@@ -162,4 +162,72 @@ class ThemeServiceTest extends TestCase
         $this->assertEquals(['root' => [], 'content' => ['header_stuff']], $headerPart2->puck_data_raw);
         $this->assertNotEquals($headerPart1->puck_data_raw, $headerPart2->puck_data_raw);
     }
+
+    #[Test]
+    public function it_returns_empty_templates_list_safely_when_no_theme_available()
+    {
+        // Ensure the setup theme isn't used as fallback
+        $this->theme->is_system_theme = false;
+        $this->theme->save();
+
+        // Ensure no other themes interfering
+        Theme::where('id', '!=', $this->theme->id)->delete();
+
+        $templates = $this->themeService->getTemplatesFromActiveTheme('some-random-tenant');
+
+        $this->assertIsArray($templates);
+        $this->assertEmpty($templates);
+    }
+
+    #[Test]
+    public function it_returns_system_templates_to_tenant_users()
+    {
+        // 1. Setup: A system theme is active for the tenant
+        $tenantId = $this->getTenant('tenant-one')->id;
+        $activeTheme = $this->themeService->activateTheme($this->theme->slug, $tenantId);
+
+        // 2. Setup: Create a system template (tenant_id = null) for this theme
+        \App\Models\PageTemplate::create([
+            'tenant_id' => null, // System template
+            'theme_id' => $this->theme->id,
+            'name' => 'System Homepage',
+            'slug' => 'system-home',
+            'category' => 'general',
+            'is_active' => true,
+            'puck_data' => ['content' => []]
+        ]);
+
+        // 3. Act: Get templates for the tenant
+        $results = $this->themeService->getTemplatesFromActiveTheme($tenantId);
+
+        // 4. Assert: The system template is returned
+        $this->assertCount(1, $results);
+        $this->assertEquals('System Homepage', $results[0]['name']);
+    }
+
+    #[Test]
+    public function it_returns_tenant_specific_templates_to_tenant_users()
+    {
+        // 1. Setup: A system theme is active for the tenant
+        $tenantId = $this->getTenant('tenant-one')->id;
+        $this->themeService->activateTheme($this->theme->slug, $tenantId);
+
+        // 2. Setup: Create a tenant-specific template
+        \App\Models\PageTemplate::create([
+            'tenant_id' => $tenantId,
+            'theme_id' => $this->theme->id,
+            'name' => 'My Custom Landing',
+            'slug' => 'custom-landing',
+            'category' => 'landing',
+            'is_active' => true,
+            'puck_data' => ['content' => []]
+        ]);
+
+        // 3. Act: Get templates for the tenant
+        $results = $this->themeService->getTemplatesFromActiveTheme($tenantId);
+
+        // 4. Assert: The tenant template is returned
+        $this->assertCount(1, $results);
+        $this->assertEquals('My Custom Landing', $results[0]['name']);
+    }
 }

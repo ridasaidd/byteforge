@@ -328,13 +328,20 @@ class ThemeService
     {
         $theme = $this->getOrCreateDefaultTheme($tenantId);
 
+        if (!$theme) {
+            return [];
+        }
+
         // Get from page_templates table, not theme_data
         $templates = \App\Models\PageTemplate::where('theme_id', $theme->id)
             ->where('is_active', true);
 
         // Scope to tenant if provided
         if ($tenantId !== null) {
-            $templates->where('tenant_id', $tenantId);
+            $templates->where(function ($query) use ($tenantId) {
+                $query->where('tenant_id', $tenantId)
+                      ->orWhereNull('tenant_id');
+            });
         } else {
             $templates->whereNull('tenant_id');
         }

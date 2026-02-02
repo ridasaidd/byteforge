@@ -1,14 +1,14 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+ import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Puck, Data, Config } from '@puckeditor/core';
 import '@puckeditor/core/puck.css';
 import '@/shared/puck/styles/preview-reset.css'; // Reset Tailwind inside Puck preview
 import { Loader2, Monitor, Tablet, Smartphone } from 'lucide-react';
 import { useToast, useEditorCssLoader } from '@/shared/hooks';
-import { pages } from '@/shared/services/api/pages';
-import { themeParts } from '@/shared/services/api/themeParts';
-import { themes } from '@/shared/services/api/themes';
-import { config as baseConfig } from './puck-components';
+import { tenantPages } from '@/shared/services/api/pages';
+import { tenantThemeParts } from '@/shared/services/api/themeParts';
+import { tenantThemes } from '@/shared/services/api/themes';
+import { puckConfig as baseConfig } from '@/shared/puck/config';
 import { PageEditorPreview } from '@/shared/components/organisms/PageEditorPreview';
 import { extractCssFromPuckData } from '@/shared/puck/services/PuckCssAggregator';
 import type { ThemeData } from '@/shared/puck/services/PuckCssAggregator';
@@ -69,9 +69,8 @@ export function PageEditorPage() {
                 footerData={footerData}
                 config={baseConfig}
                 onEditSection={(section) => {
-                  if (themeId) {
-                    navigate(`/dashboard/themes/${themeId}/customize?section=${section}`);
-                  }
+                   // Navigate to Tenant Theme Customizer
+                   navigate(`/cms/theme/customize?section=${section}`);
                 }}
               >
                  <div
@@ -92,7 +91,7 @@ export function PageEditorPage() {
         },
       },
     };
-  }, [headerData, footerData, themeId, navigate]);
+  }, [headerData, footerData, navigate]);
 
   // Load page data and theme parts once
   useEffect(() => {
@@ -101,7 +100,7 @@ export function PageEditorPage() {
     const loadPageAndThemeParts = async () => {
       try {
         // Load page data
-        const pageResponse = await pages.get(id);
+        const pageResponse = await tenantPages.get(id);
         const page = pageResponse.data;
 
         setPageData(page);
@@ -115,11 +114,13 @@ export function PageEditorPage() {
         // Load theme parts (header/footer) for preview
         try {
           const [headerResponse, footerResponse] = await Promise.all([
-            themeParts.list({ type: 'header' }),
-            themeParts.list({ type: 'footer' }),
+            tenantThemeParts.list({ type: 'header' }),
+            tenantThemeParts.list({ type: 'footer' }),
           ]);
 
           // Get the first header/footer (active theme's parts)
+          // For Tenant, the API should return parts relevant to their active theme (or all their parts)
+          // We assume the first one is the one we want to preview if multiple exist, or better, the API validates.
           const headerPart = headerResponse.data?.[0];
           const footerPart = footerResponse.data?.[0];
 
@@ -127,18 +128,9 @@ export function PageEditorPage() {
           else if (footerPart?.theme_id) setThemeId(footerPart.theme_id);
 
           // Load theme data for CSS generation
-          if (headerPart?.theme_id) {
+          if (headerPart?.theme_id || footerPart?.theme_id) {
             try {
-              const themeResponse = await themes.get(headerPart.theme_id);
-              if (themeResponse.data?.theme_data) {
-                setThemeData(themeResponse.data.theme_data as ThemeData);
-              }
-            } catch (error) {
-              console.warn('Could not load theme data:', error);
-            }
-          } else if (footerPart?.theme_id) {
-            try {
-              const themeResponse = await themes.get(footerPart.theme_id);
+              const themeResponse = await tenantThemes.active();
               if (themeResponse.data?.theme_data) {
                 setThemeData(themeResponse.data.theme_data as ThemeData);
               }
@@ -163,7 +155,7 @@ export function PageEditorPage() {
           description: 'Failed to load page',
           variant: 'destructive',
         });
-        navigate('/dashboard/pages');
+        navigate('/cms/pages');
       } finally {
         setIsLoading(false);
       }
@@ -187,7 +179,7 @@ export function PageEditorPage() {
         ? extractCssFromPuckData(puckDataRef.current, themeData, false)
         : '';
 
-      await pages.update(Number(id), {
+      await tenantPages.update(Number(id), {
         puck_data: puckDataRef.current as Record<string, unknown>,
         page_css: pageCss,
       });
