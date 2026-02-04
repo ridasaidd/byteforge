@@ -29,6 +29,12 @@ export {
   type LinkProps,
 } from './content';
 
+// Media Components
+export {
+  Icon,
+  type IconProps,
+} from './media';
+
 // Navigation Components
 export {
   Navigation,

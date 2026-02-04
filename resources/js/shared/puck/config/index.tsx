@@ -18,6 +18,8 @@ import {
   Image,
   Card,
   Link,
+  // Media
+  Icon,
   // Navigation
   Navigation,
   // Forms
@@ -52,6 +54,9 @@ export const puckConfig: Config = {
     Link: Link as Config['components'][string],
     Image: Image as Config['components'][string],
 
+    // Media Components
+    Icon: Icon as Config['components'][string],
+
     // Form Components
     Form: Form as Config['components'][string],
     TextInput: TextInput as Config['components'][string],
@@ -81,6 +86,11 @@ export const puckConfig: Config = {
     content: {
       components: ['Heading', 'Text', 'RichText', 'Button', 'Link', 'Image'],
       title: 'Content',
+      defaultExpanded: true,
+    },
+    media: {
+      components: ['Icon'],
+      title: 'Media',
       defaultExpanded: true,
     },
     forms: {
