@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { ComponentConfig } from '@puckeditor/core';
 import { navigations, type Navigation as NavigationType, type MenuItem } from '@/shared/services/api/navigations';
 import { Menu, ChevronDown, ExternalLink, X } from 'lucide-react';
-import { useTheme } from '@/shared/hooks';
+import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   ColorPickerControlColorful as ColorPickerControl,
   FontWeightControl,
@@ -90,7 +90,6 @@ export const Navigation: ComponentConfig<NavigationProps> = {
           ],
         },
         id: { type: 'text', label: 'ID (Optional)' },
-        order: { type: 'number', label: 'Order' },
         children: {
           type: 'array',
           label: 'Submenu Items',
@@ -106,7 +105,6 @@ export const Navigation: ComponentConfig<NavigationProps> = {
               ],
             },
             id: { type: 'text', label: 'ID (Optional)' },
-            order: { type: 'number', label: 'Order' },
           },
         },
       },
@@ -321,6 +319,7 @@ function NavigationRenderer({
   puck,
 }: NavigationProps & { puck?: { metadata?: { navigations?: NavigationType[] } } }) {
   const { resolve } = useTheme();
+  const isEditing = usePuckEditMode();
 
   // Detect if we're in editor mode by checking if we're on an edit route
   // puck prop exists in both editor and public view (for metadata), so we check the URL
@@ -437,244 +436,101 @@ function NavigationRenderer({
     return roots;
   };
 
+  // ==========================================================================
+  // CSS Classes
+  // ==========================================================================
 
+  const alignClass = { left: 'justify-start', center: 'justify-center', right: 'justify-end' }[align];
+  const breakpointHide = { sm: 'sm:hidden', md: 'md:hidden', lg: 'lg:hidden' }[mobileBreakpoint];
+  const breakpointShow = { sm: 'sm:flex', md: 'md:flex', lg: 'lg:flex' }[mobileBreakpoint];
+
+  const getMenuClasses = (): string => {
+    const bp = mobileBreakpoint;
+
+    // Base layout classes for desktop
+    const baseLayout = layout === 'horizontal'
+      ? `flex flex-wrap ${alignClass}`
+      : 'flex flex-col space-y-1';
+
+    switch (mobileStyle) {
+      case 'none':
+        // Always visible - no mobile menu behavior
+        return `${baseLayout}`;
+
+      case 'off-canvas': {
+        // Mobile: fixed sidebar sliding from left
+        // Desktop: normal inline menu
+        const desktopClasses = {
+          sm: 'sm:static sm:flex-row sm:flex-wrap sm:h-auto sm:w-auto sm:bg-transparent sm:shadow-none sm:p-0 sm:translate-x-0 sm:space-y-0',
+          md: 'md:static md:flex-row md:flex-wrap md:h-auto md:w-auto md:bg-transparent md:shadow-none md:p-0 md:translate-x-0 md:space-y-0',
+          lg: 'lg:static lg:flex-row lg:flex-wrap lg:h-auto lg:w-auto lg:bg-transparent lg:shadow-none lg:p-0 lg:translate-x-0 lg:space-y-0',
+        }[bp];
+        const desktopAlign = { sm: `sm:${alignClass}`, md: `md:${alignClass}`, lg: `lg:${alignClass}` }[bp];
+
+        return `flex flex-col fixed top-0 left-0 h-full w-64 bg-white shadow-lg z-50 p-4
+          transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${desktopClasses} ${desktopAlign}`;
+      }
+
+      case 'full-width': {
+        // Mobile: full-screen overlay with centered vertical menu
+        // Desktop: normal inline menu
+        const desktopClasses = {
+          sm: 'sm:static sm:flex-row sm:flex-wrap sm:h-auto sm:w-auto sm:bg-transparent sm:shadow-none sm:p-0 sm:inset-auto sm:items-stretch sm:justify-start sm:space-y-0',
+          md: 'md:static md:flex-row md:flex-wrap md:h-auto md:w-auto md:bg-transparent md:shadow-none md:p-0 md:inset-auto md:items-stretch md:justify-start md:space-y-0',
+          lg: 'lg:static lg:flex-row lg:flex-wrap lg:h-auto lg:w-auto lg:bg-transparent lg:shadow-none lg:p-0 lg:inset-auto md:items-stretch lg:justify-start lg:space-y-0',
+        }[bp];
+        const desktopAlign = { sm: `sm:${alignClass}`, md: `md:${alignClass}`, lg: `lg:${alignClass}` }[bp];
+
+        return `flex flex-col items-center justify-center
+          ${isMobileMenuOpen ? 'flex' : 'hidden'}
+          fixed inset-0 w-full h-full bg-white z-50 p-8
+          ${breakpointShow}
+          ${desktopClasses} ${desktopAlign}`;
+      }
+
+      case 'hamburger-dropdown':
+      default: {
+        // Mobile: fixed full-width dropdown from top
+        // Desktop: normal inline menu
+        const desktopClasses = {
+          sm: 'sm:static sm:flex-row sm:flex-wrap sm:w-auto sm:h-auto sm:bg-transparent sm:shadow-none sm:p-0 sm:space-y-0 sm:top-auto sm:left-auto sm:right-auto',
+          md: 'md:static md:flex-row md:flex-wrap md:w-auto md:h-auto md:bg-transparent md:shadow-none md:p-0 md:space-y-0 md:top-auto md:left-auto md:right-auto',
+          lg: 'lg:static lg:flex-row lg:flex-wrap lg:w-auto lg:h-auto lg:bg-transparent lg:shadow-none lg:p-0 lg:space-y-0 lg:top-auto lg:left-auto lg:right-auto',
+        }[bp];
+        const desktopAlign = { sm: `sm:${alignClass}`, md: `md:${alignClass}`, lg: `lg:${alignClass}` }[bp];
+
+        return `flex flex-col space-y-1
+          ${isMobileMenuOpen ? 'flex' : 'hidden'}
+          fixed top-0 left-0 right-0 w-full bg-white shadow-lg p-4 pt-16 z-50
+          ${breakpointShow}
+          ${desktopClasses} ${desktopAlign}`;
+      }
+    }
+  };
 
   // ==========================================================================
   // Responsive CSS Generation
   // ==========================================================================
 
-  // Breakpoint values in pixels
-  const bpValues = { sm: 640, md: 768, lg: 1024 };
-  const bpWidth = `${bpValues[mobileBreakpoint]}px`;
-  // Subtract 0.02px to avoid overlap issues in some browsers, effectively "max-width: N - epsilon"
-  const mobileLinkMaxParams = `(max-width: ${bpValues[mobileBreakpoint] - 0.02}px)`;
-  const desktopLinkMinParams = `(min-width: ${bpWidth})`;
+  const css = isEditing ? (() => {
+    const rules: string[] = [];
 
-  const generateNavigationCSS = () => {
-    const rootClass = `.${cssClassName}`;
-    const safeBgColor = resolvedBgColor || '#ffffff';
-    
-    let styles = `
-      ${rootClass} {
-        position: relative;
-        font-family: inherit;
-      }
-      ${rootClass} .nav-menu {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: flex;
-        gap: ${layout === 'horizontal' ? `${itemSpacing}px` : '4px'};
-      }
-      ${rootClass} .nav-toggle {
-        display: none;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 8px;
-        color: inherit;
-      }
-      ${rootClass} .nav-close-btn {
-        display: none;
-        background: none;
-        border: none;
-        cursor: pointer;
-        padding: 8px;
-        position: absolute;
-        top: 16px;
-        right: 16px;
-        z-index: 60;
-      }
-      ${rootClass} .nav-backdrop {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background-color: rgba(0, 0, 0, 0.5);
-        z-index: 40;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-      }
-       /* Dropdown defaults */
-      ${rootClass} .nav-dropdown {
-        background-color: ${layout === 'horizontal' ? '#ffffff' : safeBgColor};
-        list-style: none;
-        padding: 0;
-        margin: 0;
-        z-index: 50;
-      }
-    `;
+    // Font size (responsive, handled separately)
+    const fontSizeCss = fontSize ? generateFontSizeCSS(cssClassName, fontSize) : '';
+    if (fontSizeCss) rules.push(fontSizeCss);
 
-    // Dropdown Visibility Logic (Desktop + Mobile Base)
-    if (layout === 'horizontal') {
-        styles += `
-            ${rootClass} .nav-dropdown {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                min-width: 200px;
-                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-                border-radius: 4px;
-                padding: 8px 0;
-            }
-        `;
-    } else {
-        styles += `
-             ${rootClass} .nav-dropdown {
-                margin-left: 16px;
-                margin-top: 4px;
-                border-left: 1px solid rgba(0,0,0,0.1);
-             }
-        `;
-    }
+    // Layout CSS for padding and margin
+    const layoutCss = buildLayoutCSS({
+      className: cssClassName,
+      padding,
+      margin,
+    });
+    if (layoutCss) rules.push(layoutCss);
 
-    // DESKTOP STYLES
-    styles += `
-      @media ${desktopLinkMinParams} {
-        ${rootClass} .nav-menu {
-          display: flex !important;
-          flex-direction: ${layout === 'horizontal' ? 'row' : 'column'};
-          flex-wrap: wrap;
-          justify-content: ${align === 'left' ? 'flex-start' : align === 'center' ? 'center' : 'flex-end'};
-          position: static !important;
-          width: auto !important;
-          height: auto !important;
-          background-color: transparent !important;
-          box-shadow: none !important;
-          padding: 0 !important;
-          inset: auto !important;
-          transform: none !important;
-        }
-        ${rootClass} .nav-toggle {
-          display: none !important;
-        }
-        ${rootClass} .nav-close-btn {
-          display: none !important;
-        }
-        ${rootClass} .nav-backdrop {
-            display: none !important;
-        }
-      }
-    `;
-
-    // MOBILE STYLES
-    if (mobileStyle !== 'none') {
-      styles += `
-        @media ${mobileLinkMaxParams} {
-          ${rootClass} .nav-toggle {
-            display: block;
-          }
-           ${rootClass} .nav-menu {
-             /* Base mobile menu reset */
-             gap: 0; 
-           }
-      `;
-
-      if (mobileStyle === 'hamburger-dropdown') {
-        styles += `
-          ${rootClass} .nav-menu {
-            display: ${isMobileMenuOpen ? 'flex' : 'none'};
-            flex-direction: column;
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background-color: ${safeBgColor};
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            padding: 16px;
-            z-index: 50;
-            margin-top: 8px; 
-          }
-          ${rootClass} .nav-close-btn {
-            display: ${isMobileMenuOpen ? 'block' : 'none'};
-             /* Inside absolute menu */
-          }
-        `;
-      } else if (mobileStyle === 'off-canvas') {
-        styles += `
-          ${rootClass} .nav-backdrop {
-             display: block;
-             opacity: ${isMobileMenuOpen ? '1' : '0'};
-             pointer-events: ${isMobileMenuOpen ? 'auto' : 'none'};
-          }
-          ${rootClass} .nav-menu {
-            position: fixed;
-            top: 0;
-            left: 0;
-            height: 100%;
-            width: 256px;
-            background-color: #ffffff; /* Typically white/themed offcanvas */
-            box-shadow: 4px 0 24px rgba(0,0,0,0.1);
-            z-index: 51;
-            padding: 64px 24px 24px 24px;
-            flex-direction: column;
-            transform: ${isMobileMenuOpen ? 'translateX(0)' : 'translateX(-100%)'};
-            transition: transform 0.3s ease-in-out;
-            display: flex;
-          }
-           ${rootClass} .nav-close-btn {
-            display: block;
-            position: fixed; /* Fixed relative to viewport or menu */
-            top: 16px;
-            left: 200px; /* Inside the 256px menu */
-            z-index: 60;
-            pointer-events: ${isMobileMenuOpen ? 'auto' : 'none'};
-            opacity: ${isMobileMenuOpen ? '1' : '0'};
-            transition: opacity 0.3s;
-          }
-        `;
-        // Use resolved bg color if user set it, else default to white for offcanvas
-        if (resolvedBgColor && resolvedBgColor !== 'transparent') {
-            styles += `
-                ${rootClass} .nav-menu { background-color: ${resolvedBgColor}; }
-            `;
-        }
-      } else if (mobileStyle === 'full-width') {
-         styles += `
-           ${rootClass} .nav-menu {
-             position: fixed;
-             inset: 0;
-             background-color: ${safeBgColor};
-             z-index: 51;
-             padding: 64px 32px;
-             flex-direction: column;
-             align-items: center;
-             justify-content: center;
-             display: ${isMobileMenuOpen ? 'flex' : 'none'};
-             text-align: center;
-           }
-           ${rootClass} .nav-close-btn {
-            display: ${isMobileMenuOpen ? 'block' : 'none'};
-            position: fixed;
-            top: 24px;
-            right: 24px;
-            z-index: 60;
-          }
-         `;
-      }
-      
-      styles += `}`; // End mobile media query
-    }
-
-    // Font size & Layout (Padding/Margin) from helpers
-    // Note: these helpers typically return styles with media queries or standard blocks
-    // We append them to the style tag.
-    
-    // Explicitly add custom font size CSS
-     if (fontSize) {
-         styles += '\n' + generateFontSizeCSS(cssClassName, fontSize);
-     }
-     
-     // Explicitly add padding/margin
-     const layoutRules = buildLayoutCSS({ className: cssClassName, padding, margin });
-     if (layoutRules) {
-        styles += '\n' + layoutRules;
-     }
-
-    return styles;
-  };
-
-  const css = generateNavigationCSS();
+    return rules.join('\n');
+  })() : '';
 
   // ==========================================================================
   // Render Menu Item
@@ -704,17 +560,12 @@ function NavigationRenderer({
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.id);
 
+    const itemClasses = `flex items-center gap-2 transition-all duration-200`;
     const itemStyle: React.CSSProperties = {
       color: resolvedTextColor,
       fontWeight: resolvedFontWeight,
       borderRadius: itemBorderRadius ? `${itemBorderRadius}px` : undefined,
       backgroundColor: resolvedItemBgColor,
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      textDecoration: 'none',
-      transition: 'all 0.2s ease',
-      whiteSpace: 'nowrap',
       ...getItemPaddingStyle(),
     };
 
@@ -731,6 +582,7 @@ function NavigationRenderer({
       if (isEditor) {
         e.preventDefault();
       }
+      // Don't stop propagation - let the link navigate
     };
     const toggleChildren = (e: React.MouseEvent) => {
       e.preventDefault();
@@ -766,45 +618,27 @@ function NavigationRenderer({
 
     const linkContent = (
       <>
-        {showIcons && isCustomLink && item.target === '_blank' && <ExternalLink size={16} className="nav-icon" />}
+        {showIcons && isCustomLink && item.target === '_blank' && <ExternalLink className="w-4 h-4" />}
         <span>{item.label}</span>
         {hasChildren && (
           <button
             onClick={toggleChildren}
-            className="nav-dropdown-toggle"
+            className="ml-1"
             type="button"
-            style={{
-                marginLeft: '4px', 
-                border: 'none', 
-                background: 'transparent', 
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                color: 'inherit'
-            }}
           >
-            <ChevronDown 
-                size={16} 
-                style={{ 
-                    transition: 'transform 0.2s',
-                    transform: isExpanded ? 'rotate(180deg)' : 'none' 
-                }} 
-             />
+            <ChevronDown className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
           </button>
         )}
       </>
     );
 
+    // Show dropdown: always for vertical when expanded, on hover/click for horizontal
     const showDropdown = hasChildren && isExpanded;
 
     return (
       <li
         key={item.id}
-        className={`nav-item ${depth > 0 ? 'nav-item-nested' : ''}`}
-        style={{
-            position: (layout === 'horizontal' && hasChildren) ? 'relative' : undefined,
-            marginLeft: depth > 0 && layout !== 'horizontal' ? '16px' : undefined
-        }}
+        className={`${depth > 0 ? 'ml-4' : ''} ${layout === 'horizontal' && hasChildren ? 'relative' : ''}`}
         onMouseEnter={handleParentMouseEnter}
         onMouseLeave={handleParentMouseLeave}
       >
@@ -813,7 +647,7 @@ function NavigationRenderer({
             href={item.url || '#'}
             target={item.target || '_self'}
             rel={item.target === '_blank' ? 'noopener noreferrer' : undefined}
-            className="nav-link"
+            className={itemClasses}
             style={itemStyle}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -824,7 +658,7 @@ function NavigationRenderer({
         ) : (
           <Link
             to={item.url || '#'}
-            className="nav-link"
+            className={itemClasses}
             style={itemStyle}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -835,7 +669,13 @@ function NavigationRenderer({
         )}
 
         {showDropdown && (
-          <ul className="nav-dropdown">
+          <ul
+            className={layout === 'horizontal'
+              ? 'absolute left-0 top-full bg-white shadow-lg rounded-md py-2 min-w-[200px] z-50'
+              : 'ml-4 mt-1'
+            }
+            style={{ backgroundColor: layout === 'horizontal' ? '#ffffff' : (resolvedBgColor || '#ffffff') }}
+          >
             {item.children?.map((child) => renderMenuItem(child, depth + 1))}
           </ul>
         )}
@@ -849,24 +689,8 @@ function NavigationRenderer({
 
   if (isLoading) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
-        <div 
-            style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                borderBottom: '2px solid #111827',
-                animation: 'spin 1s linear infinite'
-            }}
-        />
-        <style>
-         {`
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
-            }
-         `}
-        </style>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
       </div>
     );
   }
@@ -882,21 +706,13 @@ function NavigationRenderer({
     } else {
       return (
         <div
-          style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: '32px', 
-            border: '2px dashed #d1d5db', 
-            borderRadius: '8px',
-            backgroundColor: resolvedBgColor, 
-            color: resolvedTextColor 
-          }}
+          className="flex items-center justify-center p-8 border-2 border-dashed border-gray-300 rounded-lg"
+          style={{ backgroundColor: resolvedBgColor, color: resolvedTextColor }}
         >
-          <div style={{ textAlign: 'center' }}>
-            <Menu style={{ width: '48px', height: '48px', margin: '0 auto 8px auto', color: '#9ca3af' }} />
-            <p style={{ color: '#4b5563', margin: 0 }}>No navigation selected</p>
-            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px' }}>Select a navigation or add placeholder items (Theme Builder)</p>
+          <div className="text-center">
+            <Menu className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+            <p className="text-gray-600">No navigation selected</p>
+            <p className="text-sm text-gray-500 mt-1">Select a navigation or add placeholder items (Theme Builder)</p>
           </div>
         </div>
       );
@@ -929,40 +745,52 @@ function NavigationRenderer({
 
   return (
     <>
-      {/* Generated CSS (Always active for structure) */}
-      {css && <style>{css}</style>}
+      {/* Responsive CSS */}
+      {isEditing && css && <style>{css}</style>}
 
-      <nav className={`${cssClassName} navigation-root`} style={{ backgroundColor: resolvedBgColor, borderRadius: borderRadius ? `${borderRadius}px` : undefined }}>
-        {/* Backdrop for off-canvas */}
-        {mobileStyle === 'off-canvas' && (
-             <div className="nav-backdrop" onClick={() => setIsMobileMenuOpen(false)} />
-        )}
+      {/* Off-canvas backdrop overlay */}
+      {mobileStyle === 'off-canvas' && (
+        <div
+          className={`fixed inset-0 bg-black z-40 transition-opacity duration-300
+            ${isMobileMenuOpen ? 'opacity-50' : 'opacity-0 pointer-events-none'}
+            ${breakpointHide}`}
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
+      <nav className={`${cssClassName} relative`} style={{ backgroundColor: resolvedBgColor, borderRadius: borderRadius ? `${borderRadius}px` : undefined }}>
         {/* Hamburger Toggle Button */}
         {showHamburger && (
           <button
-            className="nav-toggle"
+            className={`block ${breakpointHide} p-2 relative z-[9999] pointer-events-auto`}
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               setIsMobileMenuOpen(!isMobileMenuOpen);
             }}
-            onPointerDown={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            onPointerDown={(e) => {
+              e.stopPropagation();
+            }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+            }}
             aria-label="Toggle menu"
             aria-expanded={isMobileMenuOpen}
-            style={{ color: resolvedTextColor }}
+            style={{ position: 'relative', zIndex: 9999 }}
           >
-            <Menu size={24} style={{ pointerEvents: 'none' }} />
+            <Menu className="w-6 h-6 pointer-events-none" style={{ color: resolvedTextColor }} />
           </button>
         )}
 
         {/* Menu List */}
-        <ul className="nav-menu">
-          {/* Close button for mobile styles */}
+        <ul
+          className={getMenuClasses()}
+          style={{ gap: layout === 'horizontal' ? `${itemSpacing}px` : undefined }}
+        >
+          {/* Close button for mobile styles with overlay */}
           {(mobileStyle === 'off-canvas' || mobileStyle === 'full-width' || mobileStyle === 'hamburger-dropdown') && (
+            <li className={`absolute top-4 right-4 ${breakpointHide}`} style={{ zIndex: 9999 }}>
               <button
-                className="nav-close-btn"
                 onClick={(e) => {
                   e.stopPropagation();
                   e.preventDefault();
@@ -970,11 +798,13 @@ function NavigationRenderer({
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
+                className="p-2 hover:bg-gray-100 rounded pointer-events-auto"
                 aria-label="Close menu"
-                style={{ color: resolvedTextColor }}
+                style={{ position: 'relative', zIndex: 9999 }}
               >
-                <X size={24} style={{ pointerEvents: 'none' }} />
+                <X className="w-6 h-6 pointer-events-none" style={{ color: resolvedTextColor }} />
               </button>
+            </li>
           )}
           {menuItems.map((item) => renderMenuItem(item))}
         </ul>
