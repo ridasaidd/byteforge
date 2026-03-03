@@ -32,12 +32,13 @@ export function AuthProvider({ children, initialUser = null }: { children: React
   }, []);
 
   useEffect(() => {
-    // Always attempt to fetch the user if no initialUser was provided.
-    // Previously this was gated on authService.isAuthenticated() (token in storage),
-    // but a valid server-side session with a missing/lost token would leave the user
-    // permanently unauthenticated until they explicitly log in again.
-    // fetchUser() will hit /auth/user; a 401 silently sets user to null.
-    if (!initialUser) {
+    // Only fetch user if a token exists in storage. With Passport bearer tokens
+    // there is no valid server session without a token, so calling fetchUser()
+    // unconditionally would trigger a 401 on every public page (e.g. /login),
+    // causing an infinite redirect loop via the 401 interceptor.
+    // The Safari storage bug that motivated the unconditional call is now handled
+    // by the resilient tokenStorage.ts layer.
+    if (!initialUser && authService.isAuthenticated()) {
       fetchUser();
     }
   }, [initialUser, fetchUser]);

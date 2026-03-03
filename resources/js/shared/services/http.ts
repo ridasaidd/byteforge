@@ -46,7 +46,14 @@ class HttpService {
             const centralUrl = (import.meta as unknown as { env?: { VITE_CENTRAL_URL?: string } }).env?.VITE_CENTRAL_URL;
             const loginUrl = centralUrl ? `${centralUrl}/login` : '/login';
 
-            if (window.location.href !== loginUrl) {
+            // Use pathname comparison for relative loginUrl (/login) and
+            // full href comparison for absolute central URLs, so we never
+            // redirect when already on the login page.
+            const alreadyOnLogin = centralUrl
+              ? window.location.href.startsWith(loginUrl)
+              : window.location.pathname === '/login';
+
+            if (!alreadyOnLogin) {
               window.location.href = loginUrl;
             }
           }
