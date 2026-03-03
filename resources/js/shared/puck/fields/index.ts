@@ -170,6 +170,8 @@ export {
   backgroundImageFields,
   // Layout Advanced
   layoutAdvancedFields,
+  positionOffsetFields,
+  transformFields,
   // Effects
   effectsFields,
   // Interaction
@@ -200,3 +202,23 @@ export {
 // CSS builder
 export { buildLayoutCSS, buildTypographyCSS } from './cssBuilder';
 export type { LayoutCSSOptions, TypographyCSSOptions } from './cssBuilder';
+
+export { PositionOffsetControl, type PositionOffsetValue } from './PositionOffsetControl';
+export {
+  ResponsivePositionOffsetControl,
+  generatePositionOffsetCSS,
+  type ResponsivePositionOffsetValue
+} from './ResponsivePositionOffsetControl';
+
+export { TransformControl, type TransformValue } from './TransformControl';
+export {
+  ResponsiveTransformControl,
+  generateTransformCSS,
+  type ResponsiveTransformValue
+} from './ResponsiveTransformControl';
+
+export {
+  ResponsiveFlexDirectionControl,
+  generateFlexDirectionCSS,
+  type ResponsiveFlexDirectionValue
+} from './ResponsiveFlexDirectionControl';

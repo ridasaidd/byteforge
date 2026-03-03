@@ -7,4 +7,5 @@ export { useTheme } from './useTheme';
 export { useEditorCssLoader } from './useEditorCssLoader';
 export { useSettingsRuntimeCss } from './useSettingsRuntimeCss';
 export { usePuckEditMode } from './usePuckEditMode';
+export { useWindowWidth } from './useWindowWidth';
 export type { UseCrudOptions, UseCrudReturn, ApiService, PaginatedResponse, ListParams } from './useCrud';

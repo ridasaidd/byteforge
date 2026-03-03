@@ -16,12 +16,15 @@ import {
   type ResponsiveOpacityValue,
   type ResponsiveOverflowValue,
   type ResponsivePositionValue,
+  type ResponsivePositionOffsetValue,
+  type ResponsiveTransformValue,
   type ResponsiveSpacingValue,
   type ResponsiveVisibilityValue,
   type ResponsiveWidthValue,
   type ResponsiveZIndexValue,
   type ShadowValue,
 } from '../fields';
+import { buildNavigationMenuCss as buildNavMenuCss } from '../components/navigation_v2/shared/navCssBuilder';
 
 export type ThemeData = Record<string, unknown>;
 
@@ -142,7 +145,7 @@ function isLayoutComponent(type?: string): boolean {
     'card',
     'button',
     'image',
-    'navigation',
+    'navigationmenu',
     'form',
     'textinput',
     'textarea',
@@ -335,6 +338,8 @@ function buildBoxCss(component: PuckComponent, resolver: ThemeResolver): string 
     // @ts-expect-error Puck runtime data is dynamically typed from editor
     alignItems: props.alignItems,
     position: props.position as ResponsivePositionValue,
+    positionOffset: props.positionOffset as ResponsivePositionOffsetValue,
+    transform: props.transform as ResponsiveTransformValue,
     zIndex: props.zIndex as ResponsiveZIndexValue,
     opacity: props.opacity as ResponsiveOpacityValue,
     overflow: props.overflow as ResponsiveOverflowValue,
@@ -783,43 +788,6 @@ function buildLinkCss(component: PuckComponent, resolver: ThemeResolver): string
   return [baseCss, fontSizeCss, hoverCss].filter(Boolean).join('\n');
 }
 
-function buildNavigationCss(component: PuckComponent, resolver: ThemeResolver): string {
-  const props = (component.props || {}) as Record<string, unknown>;
-  const id = props.id ?? component.id ?? 'navigation';
-  const className = `navigation-${id}`;
-
-  const backgroundColor = resolveColorValue(
-    props.backgroundColor as ColorValue | string | undefined,
-    resolver,
-    'transparent',
-    'transparent'
-  );
-
-  const textColor = resolveColorValue(
-    props.textColor as ColorValue | string | undefined,
-    resolver,
-    'inherit',
-    'inherit'
-  );
-
-  const padding = normalizeResponsiveSpacing(props.padding);
-  const margin = normalizeResponsiveSpacing(props.margin);
-  const fontSize = normalizeFontSize(props.fontSize);
-
-  const baseCss = buildLayoutCSS({
-    className,
-    padding,
-    margin,
-    backgroundColor,
-    resolveToken: resolver,
-  });
-
-  const fontSizeCss = fontSize ? generateFontSizeCSS(className, fontSize) : '';
-  const colorCss = textColor ? `.${className} { color: ${textColor}; }` : '';
-
-  return [baseCss, fontSizeCss, colorCss].filter(Boolean).join('\n');
-}
-
 function buildFormComponentCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
   const type = (component.type || '').toLowerCase();
@@ -867,8 +835,8 @@ export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData
       case 'image':
         cssRules.push(buildImageCss(component, resolver));
         break;
-      case 'navigation':
-        cssRules.push(buildNavigationCss(component, resolver));
+      case 'navigationmenu':
+        cssRules.push(buildNavMenuCss(component, resolver));
         break;
       case 'form':
       case 'textinput':

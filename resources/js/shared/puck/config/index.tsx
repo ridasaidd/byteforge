@@ -12,7 +12,6 @@ import {
   Box,
   // Content
   Heading,
-  Text,
   RichText,
   Button,
   Image,
@@ -21,7 +20,7 @@ import {
   // Media
   Icon,
   // Navigation
-  Navigation,
+  NavigationMenu,
   // Forms
   Form,
   TextInput,
@@ -44,7 +43,7 @@ export const puckConfig: Config = {
     Card: Card as Config['components'][string],
 
     // Navigation
-    Navigation: Navigation as Config['components'][string],
+    NavigationMenu: NavigationMenu as Config['components'][string],
 
     // Content Components
     Heading: Heading as Config['components'][string],
@@ -79,7 +78,7 @@ export const puckConfig: Config = {
       defaultExpanded: true,
     },
     navigation: {
-      components: ['Navigation'],
+      components: ['NavigationMenu'],
       title: 'Navigation',
       defaultExpanded: false,
     },

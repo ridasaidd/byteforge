@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import { clearAuthToken, getAuthToken } from './tokenStorage';
 
 class HttpService {
   private client: AxiosInstance;
@@ -20,7 +21,7 @@ class HttpService {
     // Request interceptor - add auth token
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('auth_token');
+        const token = getAuthToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -35,8 +36,11 @@ class HttpService {
       (error) => {
         if (error.response?.status === 401) {
           // Unauthorized - clear token and redirect to login
-          localStorage.removeItem('auth_token');
-          window.location.href = '/login';
+          clearAuthToken();
+
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+            window.location.href = '/login';
+          }
         }
         return Promise.reject(error);
       }

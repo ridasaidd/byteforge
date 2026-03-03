@@ -1,12 +1,31 @@
 import { http } from '../http';
 import type { User, LoginCredentials, LoginResponse, CreateUserData, UpdateProfileData, UpdatePasswordData } from './types';
+import { clearAuthToken, setAuthToken } from '../tokenStorage';
 
 export const auth = {
-  login: (credentials: LoginCredentials) => http.post<LoginResponse>('/auth/login', credentials),
-  logout: () => http.post<{ message: string }>('/auth/logout'),
+  login: async (credentials: LoginCredentials) => {
+    const response = await http.post<LoginResponse>('/auth/login', credentials);
+    setAuthToken(response.token);
+    return response;
+  },
+  logout: async () => {
+    try {
+      return await http.post<{ message: string }>('/auth/logout');
+    } finally {
+      clearAuthToken();
+    }
+  },
   user: () => http.get<User>('/auth/user'),
-  refresh: () => http.post<{ token: string }>('/auth/refresh'),
-  register: (data: CreateUserData) => http.post<LoginResponse>('/auth/register', data),
+  refresh: async () => {
+    const response = await http.post<{ token: string }>('/auth/refresh');
+    setAuthToken(response.token);
+    return response;
+  },
+  register: async (data: CreateUserData) => {
+    const response = await http.post<LoginResponse>('/auth/register', data);
+    setAuthToken(response.token);
+    return response;
+  },
   updateProfile: (data: UpdateProfileData) => http.put<{ message: string; user: User }>('/auth/user', data),
   updatePassword: (data: UpdatePasswordData) => http.put<{ message: string }>('/auth/password', data),
   uploadAvatar: (file: File) => {

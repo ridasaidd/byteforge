@@ -14,6 +14,19 @@ interface FontWeightControlProps {
   showCustom?: boolean;
 }
 
+function toSafeFontWeight(value: string | number | undefined, fallback: string = '400'): string {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return String(value);
+  }
+
+  if (typeof value !== 'string') {
+    return fallback;
+  }
+
+  const normalized = value.trim();
+  return /^\d+$/.test(normalized) ? normalized : fallback;
+}
+
 export function FontWeightControl({
   field,
   value,
@@ -99,6 +112,7 @@ export function FontWeightControl({
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {fontWeightOptions.map(({ label, token, value }) => {
               const resolvedValue = resolve(token) || value;
+              const previewWeight = toSafeFontWeight(resolvedValue);
               return (
                 <button
                   key={token}
@@ -125,7 +139,7 @@ export function FontWeightControl({
                       {resolvedValue}
                     </span>
                   </div>
-                  <span style={{ fontWeight: parseInt(resolvedValue), fontSize: '16px', color: '#6b7280' }}>
+                  <span style={{ fontWeight: previewWeight, fontSize: '16px', color: '#6b7280' }}>
                     Aa
                   </span>
                 </button>
@@ -190,7 +204,7 @@ export function FontWeightControl({
               backgroundColor: '#f9fafb',
               border: '1px solid #e5e7eb',
             }}>
-              <div style={{ fontWeight: parseInt(customWeight), fontSize: '16px', color: '#374151' }}>
+              <div style={{ fontWeight: toSafeFontWeight(customWeight), fontSize: '16px', color: '#374151' }}>
                 Preview Text ({customWeight})
               </div>
             </div>

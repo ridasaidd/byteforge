@@ -60,8 +60,7 @@ describe('PuckCssAggregator', () => {
     it('should return empty CSS if theme data is empty', () => {
       const css = generateVariablesCss({});
 
-      expect(css).toContain(':root');
-      expect(css).toContain('{}');
+      expect(css).toBe('');
     });
   });
 
@@ -106,6 +105,71 @@ describe('PuckCssAggregator', () => {
 
       expect(css).toBeTruthy();
       expect(css.length).toBeGreaterThan(0);
+    });
+
+    it('should generate CSS for position offsets', () => {
+      const puckData: Partial<Data> = {
+        content: [
+          {
+            type: 'box',
+            props: {
+              position: { mobile: 'absolute' },
+              positionOffset: {
+                mobile: { top: '10', left: '20', unit: 'px', linked: false },
+                desktop: { top: '50', left: '50', unit: '%' },
+              },
+            },
+          },
+        ],
+      };
+
+      const css = extractLayoutComponentsCss(puckData as Data);
+      expect(css).toContain('position: absolute');
+      expect(css).toContain('top: 10px');
+      expect(css).toContain('left: 20px');
+      expect(css).toContain('top: 50%');
+      expect(css).toContain('left: 50%');
+    });
+
+    it('should generate CSS for transform properties', () => {
+      const puckData: Partial<Data> = {
+        content: [
+          {
+            type: 'box',
+            props: {
+              transform: {
+                mobile: { translateX: '10', translateY: '20', scale: '1.5', rotate: '45' },
+              },
+            },
+          },
+        ],
+      };
+
+      const css = extractLayoutComponentsCss(puckData as Data);
+
+      // Note: The order of transform functions depends on implementation
+      expect(css).toContain('transform: translateX(10px) translateY(20px) scale(1.5) rotate(45deg)');
+    });
+
+    it('should generate CSS for responsive flex direction', () => {
+      const puckData: Partial<Data> = {
+        content: [
+          {
+            type: 'box',
+            props: {
+              display: { mobile: 'flex' },
+              direction: {
+                mobile: 'column',
+                desktop: 'row',
+              },
+            },
+          },
+        ],
+      };
+
+      const css = extractLayoutComponentsCss(puckData as Data);
+      expect(css).toContain('flex-direction: column');
+      expect(css).toContain('flex-direction: row');
     });
 
     it('should return empty CSS if no layout components', () => {

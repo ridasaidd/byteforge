@@ -22,6 +22,8 @@ import {
   ColorValue,
   ResponsiveDisplayControl,
   ResponsiveDisplayValue,
+  ResponsiveFlexDirectionControl,
+  ResponsiveFlexDirectionValue,
   ResponsiveWidthControl,
   ResponsiveWidthValue,
   ResponsiveHeightControl,
@@ -52,6 +54,12 @@ import {
   ResponsiveLetterSpacingValue,
   ResponsivePositionControl,
   ResponsivePositionValue,
+  ResponsivePositionOffsetControl,
+  PositionOffsetValue,
+  ResponsivePositionOffsetValue,
+  ResponsiveTransformControl,
+  TransformValue,
+  ResponsiveTransformValue,
   ResponsiveOverflowControl,
   ResponsiveOverflowValue,
   ResponsiveZIndexControl,
@@ -229,13 +237,17 @@ export const fontFamilyField = (category: 'sans' | 'serif' | 'mono' = 'sans') =>
   fontFamily: {
     type: 'custom' as const,
     label: 'Font Family',
-    render: ({ value, onChange }: { value?: string; onChange: (value: string) => void }) => (
-      <FontFamilyPicker
-        category={category}
-        selectedFont={value}
-        onSelect={onChange}
-      />
-    ),
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: string; onChange: (value: string) => void }) => {
+      const content = (
+        <FontFamilyPicker
+          category={category}
+          selectedFont={value}
+          onSelect={onChange}
+        />
+      );
+
+      return field.label ? <FieldLabel label={field.label}>{content}</FieldLabel> : content;
+    },
     defaultValue: undefined,
   },
 });
@@ -322,15 +334,12 @@ export const textAlignField = {
 
 export const flexLayoutFields = {
   direction: {
-    type: 'select' as const,
+    type: 'custom' as const,
     label: 'Direction',
-    options: [
-      { label: 'Row', value: 'row' },
-      { label: 'Row Reverse', value: 'row-reverse' },
-      { label: 'Column', value: 'column' },
-      { label: 'Column Reverse', value: 'column-reverse' },
-    ],
-    defaultValue: 'row',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveFlexDirectionValue; onChange: (value: ResponsiveFlexDirectionValue) => void }) => (
+      <ResponsiveFlexDirectionControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: { mobile: 'row' as const },
   },
 
   justify: {
@@ -582,7 +591,35 @@ export const backgroundImageFields = {
 // 6. Layout Advanced Fields (z-index, opacity, overflow, position)
 // ============================================================================
 
+
+export const positionOffsetFields = {
+  positionOffset: {
+    type: 'custom' as const,
+    label: 'Offsets',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsivePositionOffsetValue; onChange: (value: ResponsivePositionOffsetValue) => void }) => (
+      <ResponsivePositionOffsetControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: {
+      mobile: { top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', unit: 'px' as const, linked: false },
+    },
+  },
+};
+
+export const transformFields = {
+  transform: {
+    type: 'custom' as const,
+    label: 'Transform',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveTransformValue; onChange: (value: ResponsiveTransformValue) => void }) => (
+      <ResponsiveTransformControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: {
+      mobile: { translateX: '0', translateY: '0', scale: '1', rotate: '0' },
+    },
+  },
+};
+
 export const layoutAdvancedFields = {
+
   position: {
     type: 'custom' as const,
     label: 'Position',
@@ -590,6 +627,28 @@ export const layoutAdvancedFields = {
       <ResponsivePositionControl field={field} value={value} onChange={onChange} />
     ),
     defaultValue: { mobile: 'static' as const },
+  },
+
+  positionOffset: {
+    type: 'custom' as const,
+    label: 'Offsets',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsivePositionOffsetValue; onChange: (value: ResponsivePositionOffsetValue) => void }) => (
+      <ResponsivePositionOffsetControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: {
+      mobile: { top: 'auto', right: 'auto', bottom: 'auto', left: 'auto', unit: 'px' as const, linked: false },
+    },
+  },
+
+  transform: {
+    type: 'custom' as const,
+    label: 'Transform',
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveTransformValue; onChange: (value: ResponsiveTransformValue) => void }) => (
+      <ResponsiveTransformControl field={field} value={value} onChange={onChange} />
+    ),
+    defaultValue: {
+      mobile: { translateX: '0', translateY: '0', scale: '1', rotate: '0' },
+    },
   },
 
   zIndex: {

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { authService } from '../services/auth.service';
+import { clearAuthToken } from '../services/tokenStorage';
 
 // NOTE: Login/logout tests are skipped because they require mocking axios,
 // which is complex and brittle. These are better tested via E2E tests.
@@ -7,10 +8,12 @@ import { authService } from '../services/auth.service';
 
 describe('authService', () => {
   beforeEach(() => {
+    clearAuthToken();
     localStorage.clear();
   });
 
   afterEach(() => {
+    clearAuthToken();
     localStorage.clear();
   });
 

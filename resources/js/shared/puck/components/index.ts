@@ -37,9 +37,9 @@ export {
 
 // Navigation Components
 export {
-  Navigation,
-  type NavigationProps,
-} from './navigation';
+    NavigationMenu,
+    type NavigationMenuProps,
+} from './navigation_v2';
 
 // Form Components
 export {
