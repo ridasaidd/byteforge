@@ -18,7 +18,10 @@ foreach (config('tenancy.central_domains') as $domain) {
                 ->where('status', 'published')
                 ->first();
 
-            $theme = $themeService->getOrCreateDefaultTheme(null);
+            // Use getActiveTheme (read-only) on public routes.
+            // getOrCreateDefaultTheme auto-provisions themes which is a write-side
+            // operation that must not be triggered by anonymous page views.
+            $theme = $themeService->getActiveTheme(null);
             $themeCssUrl = $theme?->getCssUrl();
 
             if ($homepage) {
@@ -39,7 +42,7 @@ foreach (config('tenancy.central_domains') as $domain) {
         Route::get('/pages/{slug}', function () {
             /** @var ThemeService $themeService */
             $themeService = app(ThemeService::class);
-            $theme = $themeService->getOrCreateDefaultTheme(null);
+            $theme = $themeService->getActiveTheme(null);
 
             return view('public-central', [
                 'themeCssUrl' => $theme?->getCssUrl(),
@@ -52,8 +55,11 @@ foreach (config('tenancy.central_domains') as $domain) {
             return view('dash-central');
         })->name('login');
 
-        // Central Admin Dashboard (protected routes - uses dashboard app)
-        Route::middleware(['auth:api'])->prefix('dashboard')->group(function () {
+        // Central Admin Dashboard - serves the React SPA shell.
+        // No auth middleware here: browsers don't send Bearer tokens on page navigation,
+        // so auth:api would redirect to login on every refresh before React can load.
+        // Auth protection is handled client-side by ProtectedRoutes in the React app.
+        Route::prefix('dashboard')->group(function () {
             Route::get('/{any?}', function () {
                 return view('dash-central');
             })->where('any', '.*');

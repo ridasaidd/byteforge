@@ -17,8 +17,10 @@ class ThemeController extends Controller
      */
     public function publicTheme(Request $request)
     {
-        // Determine tenant context (e.g., from domain, request param, etc.)
-        $tenantId = $request->get('tenant_id') ?? null; // Adapt as needed
+        // Tenant context is resolved from the current tenant (set by tenancy middleware),
+        // NOT from request input — accepting tenant_id from the caller would allow
+        // unauthenticated enumeration of any tenant's theme data.
+        $tenantId = tenant()?->id ?? null;
 
         $theme = $this->themeService->getActiveTheme($tenantId);
 

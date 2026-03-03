@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: February 2, 2026 (Phase 8 Page System Refactor Complete)  
-Current branch: main
+Last updated: March 3, 2026 (Phase 9 Analytics Foundation — in progress)  
+Current branch: `feature/phase9-analytics-foundation`
 
 —
 
@@ -17,6 +17,8 @@ Current branch: main
 - **Theme system:** ✅ **COMPLETE** - Blueprints, placeholders, customization, CSS generation
 - **Phase 7 Font System:** ✅ **COMPLETE** - Fonts, RichText, CSS loading, storefront parity
 - **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
+- **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
+- **Phase 9 Analytics Foundation:** 🚧 **IN PROGRESS** - Event pipeline, tenant/central isolation, page view tracking, dashboard widgets.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -80,12 +82,44 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Phase 8: Booking Integration (NEXT)**
+### **Phase 9: Analytics Foundation (ACTIVE)**
+
+**Summary:**
+Build a single extensible event pipeline consumed by all future analytics types — booking, payments, platform, web.
+
+**Sub-phases:**
+- 9.1: Event schema + `AnalyticsService` + `AnalyticsEvent` model
+- 9.2: `AnalyticsQueryService` + API endpoints (tenant + central)
+- 9.3: `page.viewed` tracking + web analytics passthrough setting
+- 9.4: Tenant analytics dashboard (frontend)
+- 9.5: Central analytics dashboard (frontend)
+
+**Status**: In progress — see [PHASE9_ANALYTICS_FOUNDATION.md](PHASE9_ANALYTICS_FOUNDATION.md)
+
+**Packages:**
+- Backend: `spatie/laravel-stats` (aggregation on top of event log)
+- Frontend: `recharts` + shadcn `chart.tsx` (Area, Bar, Line, Pie, Radial, Radar)
+
+---
+
+### **Phase 10: Payments Core (NEXT after Phase 9)**
+
+**Summary:**
+- Stripe + Swish integration, webhook handling
+- Products/prices model, tenant-scoped
+- Fires `payment.*` events into analytics pipeline
+
+**Status**: Planned
+
+---
+
+### **Phase 11: Booking Integration (AFTER Phase 10)**
 
 **Summary:**
 - Integrate existing booking system into multi-tenant CMS
 - Adapt appointment/scheduling models to tenancy
-- Payment processing (Stripe + Swish)
+- Fires `booking.*` events into analytics pipeline
+- `<BookingWidget>` Puck component
 
 **Status**: Planned
 
@@ -117,6 +151,17 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 —
 
 ## Key Implementations (Recent)
+
+**March 3, 2026 (Documentation Sync):**
+- ✅ Updated status and roadmap to reflect merged `navigation_v2` refactor
+- ✅ Aligned phase sequencing across docs (Phase 7 + Phase 8 complete; Booking Integration next)
+- ✅ Updated docs index links to point to current active/completed planning documents
+
+**March 3, 2026 (Navigation Refactor Complete):**
+- ✅ navigation_v2 refactor merged into main (`b47648c`)
+- ✅ Navigation component architecture simplified and aligned with shared field/CSS builder patterns
+- ✅ Documentation plan committed and merged (`333ac10`)
+- ✅ Feature implementation commit merged (`0b1df8c`)
 
 **February 2, 2026 (Phase 7 - Font System Complete):**
 - ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation

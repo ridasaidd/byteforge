@@ -29,8 +29,13 @@ class ThemeService
      */
     public function activateTheme(string $themeSlug, ?string $tenantId = null): ?Theme
     {
-        // Find the theme by slug
-        $theme = Theme::where('slug', $themeSlug)->first();
+        // Scope slug lookup to themes belonging to this tenant OR system themes (tenant_id IS NULL).
+        // A fully global lookup would allow one tenant to activate another tenant's theme.
+        $theme = Theme::where('slug', $themeSlug)
+            ->where(function ($q) use ($tenantId) {
+                $q->where('tenant_id', $tenantId)->orWhereNull('tenant_id');
+            })
+            ->first();
 
         if (!$theme) {
             return null;

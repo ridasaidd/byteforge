@@ -11,8 +11,10 @@ foreach (config('tenancy.central_domains') as $domain) {
 
         // Authentication routes
         Route::prefix('auth')->group(function () {
-            Route::post('login', [AuthController::class, 'login']);
-            Route::post('register', [AuthController::class, 'register']);
+            Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
+            // Registration is disabled on the central admin surface.
+            // Re-enable only when invite/verification flow is in place.
+            // Route::post('register', [AuthController::class, 'register']);
             Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:api');
             Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
             Route::get('user', [AuthController::class, 'user'])->middleware('auth:api');

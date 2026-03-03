@@ -32,8 +32,12 @@ export function AuthProvider({ children, initialUser = null }: { children: React
   }, []);
 
   useEffect(() => {
-    // If no initial user provided, fetch from API
-    if (!initialUser && authService.isAuthenticated()) {
+    // Always attempt to fetch the user if no initialUser was provided.
+    // Previously this was gated on authService.isAuthenticated() (token in storage),
+    // but a valid server-side session with a missing/lost token would leave the user
+    // permanently unauthenticated until they explicitly log in again.
+    // fetchUser() will hit /auth/user; a 401 silently sets user to null.
+    if (!initialUser) {
       fetchUser();
     }
   }, [initialUser, fetchUser]);

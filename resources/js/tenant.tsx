@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { TenantApp } from '@/apps/tenant/App';
+import { AuthProvider } from '@/shared/context/AuthContext';
 import './bootstrap';
 import '../css/app.css';
 
@@ -12,6 +13,8 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-        <TenantApp />
+        <AuthProvider>
+            <TenantApp />
+        </AuthProvider>
     </React.StrictMode>
 );
