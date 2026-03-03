@@ -155,7 +155,7 @@ class PuckCompilerService
             $component['props'] = $this->resolveProps($component['props'], $theme);
 
             // Special handling for Navigation component
-            if ($component['type'] === 'Navigation' && isset($component['props']['navigationId'])) {
+            if (($component['type'] === 'Navigation' || $component['type'] === 'NavigationV2' || $component['type'] === 'NavigationMenu') && isset($component['props']['navigationId'])) {
                 $component['props'] = $this->embedNavigationData($component['props']);
             }
 

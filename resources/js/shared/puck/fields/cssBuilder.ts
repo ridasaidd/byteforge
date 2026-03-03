@@ -15,6 +15,9 @@ import {
   ResponsiveGridGapValue,
   ResponsiveGapValue,
   ResponsiveVisibilityValue,
+  ResponsiveFlexDirectionValue,
+  ResponsivePositionOffsetValue,
+  ResponsiveTransformValue,
   BorderValue,
   BorderRadiusValue,
   ShadowValue,
@@ -32,6 +35,9 @@ import {
   generateZIndexCSS,
   generateOpacityCSS,
   generateOverflowCSS,
+  generateFlexDirectionCSS,
+  generatePositionOffsetCSS,
+  generateTransformCSS,
   ResponsiveLineHeightValue,
   ResponsiveLetterSpacingValue,
   generateGridColumnsCSS,
@@ -84,7 +90,7 @@ export interface LayoutCSSOptions {
   display?: ResponsiveDisplayValue;
 
   // Flex properties
-  direction?: 'row' | 'row-reverse' | 'column' | 'column-reverse';
+  direction?: ResponsiveFlexDirectionValue | string; // string for compat
   justify?: 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly';
   align?: 'start' | 'end' | 'center' | 'stretch' | 'baseline';
   wrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
@@ -97,6 +103,8 @@ export interface LayoutCSSOptions {
 
   // Layout advanced
   position?: ResponsivePositionValue;
+  positionOffset?: ResponsivePositionOffsetValue;
+  transform?: ResponsiveTransformValue;
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
@@ -146,6 +154,8 @@ export function buildLayoutCSS(options: LayoutCSSOptions & { resolveToken?: Them
     gridGap,
     alignItems,
     position,
+    positionOffset,
+    transform,
     zIndex,
     opacity,
     overflow,
@@ -195,6 +205,12 @@ export function buildLayoutCSS(options: LayoutCSSOptions & { resolveToken?: Them
   // Layout advanced CSS
   if (position) {
     css += generatePositionCSS(className, position);
+  }
+  if (positionOffset) {
+    css += generatePositionOffsetCSS(className, positionOffset);
+  }
+  if (transform) {
+    css += generateTransformCSS(className, transform);
   }
   if (zIndex) {
     css += generateZIndexCSS(className, zIndex);
@@ -288,7 +304,7 @@ export function buildLayoutCSS(options: LayoutCSSOptions & { resolveToken?: Them
 function buildFlexCSS(
   className: string,
   options: {
-    direction?: string;
+    direction?: ResponsiveFlexDirectionValue | string;
     justify?: string;
     align?: string;
     wrap?: string;
@@ -314,9 +330,24 @@ function buildFlexCSS(
     baseline: 'baseline',
   };
 
-  let css = `
+  let css = '';
+
+  // Handle direction (responsive or static)
+  let staticDirection = 'row'; // Default
+
+  if (typeof direction === 'object' && direction !== null) {
+      // It's responsive, generate separate CSS rules
+      css += generateFlexDirectionCSS(className, direction);
+  } else {
+      // It's static string
+      staticDirection = direction || 'row';
+      // We will include it in the base block below only if static
+  }
+
+  // Base Flex Props
+  css += `
     .${className} {
-      flex-direction: ${direction};
+      ${typeof direction === 'string' ? `flex-direction: ${staticDirection};` : ''}
       justify-content: ${justifyMap[justify] || justify};
       align-items: ${alignMap[align] || align};
       flex-wrap: ${wrap};

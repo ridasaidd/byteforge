@@ -14,6 +14,20 @@ interface FontSizeControlProps {
   showCustom?: boolean;
 }
 
+function parseCustomFontSize(value: string): { size: string; unit: 'px' | 'rem' | 'em' } {
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(-?\d*\.?\d+)\s*(px|rem|em)?$/i);
+
+  if (!match) {
+    return { size: trimmed.replace(/[a-z%]+$/i, ''), unit: 'px' };
+  }
+
+  return {
+    size: match[1] || '',
+    unit: ((match[2]?.toLowerCase() as 'px' | 'rem' | 'em' | undefined) || 'px'),
+  };
+}
+
 export function FontSizeControl({
   field,
   value,
@@ -29,11 +43,15 @@ export function FontSizeControl({
     ? { type: value.startsWith('typography.') ? 'theme' : 'custom', value }
     : value || { type: 'theme', value: 'typography.fontSize.base' };
 
+  const parsedCustomValue = normalizedValue.type === 'custom'
+    ? parseCustomFontSize(normalizedValue.value)
+    : { size: '16', unit: 'px' as const };
+
   const [activeTab, setActiveTab] = useState<'theme' | 'custom'>(normalizedValue.type);
   const [customSize, setCustomSize] = useState(
-    normalizedValue.type === 'custom' ? normalizedValue.value : '16px'
+    parsedCustomValue.size
   );
-  const [customUnit, setCustomUnit] = useState<'px' | 'rem' | 'em'>('px');
+  const [customUnit, setCustomUnit] = useState<'px' | 'rem' | 'em'>(parsedCustomValue.unit);
 
   // Extract font sizes from theme
   const themeFontSizes = theme?.theme_data?.typography?.fontSize || {};

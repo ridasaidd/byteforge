@@ -1,5 +1,6 @@
 import { http } from './http';
 import type { User } from '../types';
+import { clearAuthToken, getAuthToken, setAuthToken } from './tokenStorage';
 
 interface LoginCredentials {
   email: string;
@@ -15,8 +16,7 @@ export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await http.post<LoginResponse>('/auth/login', credentials);
 
-    // Store token in localStorage
-    localStorage.setItem('auth_token', response.token);
+    setAuthToken(response.token);
 
     return response;
   },
@@ -25,8 +25,8 @@ export const authService = {
     try {
       await http.post('/auth/logout');
     } finally {
-      // Always clear local storage even if API call fails
-      localStorage.removeItem('auth_token');
+      // Always clear auth token even if API call fails
+      clearAuthToken();
       window.location.href = '/login';
     }
   },
@@ -51,7 +51,7 @@ export const authService = {
   },
 
   getToken(): string | null {
-    return localStorage.getItem('auth_token');
+    return getAuthToken();
   },
 
   isAuthenticated(): boolean {

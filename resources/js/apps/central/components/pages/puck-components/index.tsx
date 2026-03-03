@@ -22,8 +22,8 @@ export {
   Card,
   type CardProps,
   // Navigation
-  Navigation,
-  type NavigationProps,
+  NavigationMenu,
+  type NavigationMenuProps,
   // Forms
   Form,
   type FormProps,
