@@ -12,6 +12,7 @@ import {
   Box,
   // Content
   Heading,
+  Text as TextComponent,
   RichText,
   Button,
   Image,
@@ -47,7 +48,7 @@ export const puckConfig: Config = {
 
     // Content Components
     Heading: Heading as Config['components'][string],
-    Text: Text as Config['components'][string],
+    Text: TextComponent as Config['components'][string],
     RichText: RichText as Config['components'][string],
     Button: Button as Config['components'][string],
     Link: Link as Config['components'][string],
