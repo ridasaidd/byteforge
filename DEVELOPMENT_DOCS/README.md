@@ -2,7 +2,7 @@
 
 This folder contains organized documentation for the ByteForge multi-tenant CMS platform.
 
-Last updated: January 31, 2026
+Last updated: March 3, 2026
 
 ---
 
@@ -21,7 +21,9 @@ Last updated: January 31, 2026
 ### 📋 Status & Planning
 - [CURRENT_STATUS.md](CURRENT_STATUS.md) - Current state, completed features, next steps
 - [ROADMAP.md](ROADMAP.md) - Milestones and priorities
-- [PHASE7_FONT_SYSTEM.md](PHASE7_FONT_SYSTEM.md) - Next phase: Font system architecture
+- [PHASE9_ANALYTICS_FOUNDATION.md](PHASE9_ANALYTICS_FOUNDATION.md) - **Current phase: Analytics event pipeline plan**
+- [PHASE7_FONT_SYSTEM_COMPLETE.md](PHASE7_FONT_SYSTEM_COMPLETE.md) - Completed font system implementation summary
+- [NAVIGATION_REFACTOR_PLAN.md](NAVIGATION_REFACTOR_PLAN.md) - Navigation v2 architecture and refactor plan (implemented)
 
 ### 📐 Architecture
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) - Complete tech stack, packages, structure
@@ -64,6 +66,7 @@ archive/
 - **Full media library** with folders, conversions, responsive images
 - **Puck Page Builder** with 15 themed components and advanced controls
 - **Theme system** with blueprints, placeholders, customization
+- **Navigation v2 refactor** merged with field-group CSS architecture
 - **CSS generation** with section files and dual-mode rendering
 - **Central admin** for pages, themes, media, users, tenants, settings
 - **Dashboard** with stats, activity, and permission-based visibility

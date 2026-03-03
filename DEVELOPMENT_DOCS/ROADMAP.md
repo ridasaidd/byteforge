@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: January 31, 2026
+Last updated: March 3, 2026
 
 —
 
@@ -22,96 +22,77 @@ Last updated: January 31, 2026
 - ✅ Removed Tailwind from public pages (loading spinner, 404 page cleanup)
 - ✅ **Phase 6: Theme Customization** - Blueprint/instance separation, scoped customizations (Jan 30)
 - ✅ **Phase 6.1: Theme Manager Refinements** - Safety features, preview images, responsive image optimization (Jan 31)
+- ✅ **Phase 7: Font System** - Self-hosted variable fonts, RichText, storefront parity (Feb 2)
+- ✅ **Phase 8: Page System Refactor** - Header/footer/layout decoupled from legacy page columns (Feb 2)
+- ✅ **Navigation v2 Refactor** - Field-group driven navigation architecture merged to `main` (Mar 3)
 
 —
 
 ## In flight / Priority Order
 
-### M1: Theme Customization System ✅ COMPLETE (Jan 30, 2026)
+### M1: Analytics Foundation ✅ IN PROGRESS (Mar 3, 2026)
 
-**Phase 6: Theme Customization - Central + Tenants - DONE**
+**Phase 9: Event pipeline + tenant/central dashboards**
 
-All steps complete:
-- ✅ Database schema (settings_css column, settings enum)
-- ✅ Backend API (ThemeCustomizationController)
-- ✅ Frontend (ThemeBuilderPage with mode prop)
-- ✅ API client (themeCustomization.ts)
-- ✅ CSS loading cascade (disk + database)
-- ✅ Tenant routes and pages
-- ✅ Templates endpoint fixed
+> **Detailed plan:** See [PHASE9_ANALYTICS_FOUNDATION.md](./PHASE9_ANALYTICS_FOUNDATION.md)
 
-**Status:** Merged to main. Theme customization working end-to-end.
+**Goal:** One event store, many aggregation consumers. Every future analytics type (booking, revenue, platform, web) slots in without new infrastructure.
 
----
+**Sub-phases:**
+- 9.1: Schema + `AnalyticsService` + `AnalyticsEvent` model — **2–3 hrs**
+- 9.2: `AnalyticsQueryService` + API endpoints — **3–4 hrs**
+- 9.3: `page.viewed` tracking + web analytics passthrough — **1–2 hrs**
+- 9.4: Tenant analytics dashboard — **3–4 hrs**
+- 9.5: Central analytics dashboard — **2–3 hrs**
 
-### M2: Theme Manager Refinements ✅ COMPLETE (Jan 31, 2026)
-
-**Phase 6.1: Theme Manager Polish - DONE**
-
-All critical features implemented:
-- ✅ **Deletion Protection** - Prevent deleting active themes (frontend disabled + backend validation)
-- ✅ **Theme Switch Warning** - 5-second countdown dialog before activation
-- ✅ **Theme Rollback** - Reset button with confirmation to restore blueprint defaults
-- ✅ **Preview Image** - MediaPicker integration, theme cards show preview
-- ✅ **Responsive Images** - srcset/sizes for optimized loading (small/medium/large conversions)
-- ✅ **Media Cleanup** - Empty directory cleanup on deletion, orphan file detection
-
-**Status:** Merged to main.
+**Est:** ~12–16 hrs  
+**Packages:** `spatie/laravel-stats` (backend) + `recharts` + shadcn `chart.tsx` (frontend)  
+**Status:** In progress — branch `feature/phase9-analytics-foundation`
 
 ---
 
-### M3: Font System (NEXT - 5-7 days)
+### M2: Payments Core (NEXT after Phase 9)
 
-**Phase 7: Font System Architecture**
+**Phase 10: Stripe + Swish, products/prices, tenant-scoped**
 
-> **Detailed plan:** See [PHASE7_FONT_SYSTEM.md](./PHASE7_FONT_SYSTEM.md)
+**Scope:**
+- Stripe + Swish integration with webhook handling
+- Products/prices model with tenant scoping
+- Checkout flows and refund handling
+- Fires `payment.*` events into analytics pipeline (activates revenue widgets automatically)
 
-**Goal:** Multi-font support (sans, serif, mono) with Google Fonts + FontBunny integration.
-
-**Key Features:**
-- Font family selection in Settings tab (central only)
-- Google Fonts + FontBunny integration (API)
-- Font preview with live rendering
-- CSS variables + @import generation
-- Component-level font usage
-- Tenants inherit fonts from central (no custom uploads)
-
-**Timeline:**
-- 7a: Font Data & Backend API - 2-3 hrs
-- 7b: UI & Preview Components - 2-3 hrs
-- 7c: CSS Generation & Loading - 1.5-2 hrs
-- 7d: Component Integration & Testing - 2 hrs
-- **Total:** ~9 hours
-
-**Parallel Enhancements:** Settings tab improvements (color picker, typography preview, spacing grid, CSS export, metadata)
-
-**Est:** 5-7 days (full week)
-
-**Status:** Architecture designed, ready for implementation
+**Est:** 1–2 weeks  
+**Status:** Planned
 
 ---
 
-### M4: Booking Integration (FUTURE - After Theme System Complete)
+### M3: Booking Integration (AFTER Phase 10)
 
-**Goal:** Integrate existing booking system into ByteForge multi-tenant CMS
+**Phase 11: Port booking system into multi-tenant CMS**
 
 **Scope:**
 - Port appointment/scheduling models to multi-tenant
-- Adapt payment processing (Stripe + Swish)
-- Create booking management dashboard
+- Availability, confirmation, cancellation flows
 - Build `<BookingWidget>` Puck component
+- Fires `booking.*` events into analytics pipeline (activates booking widgets automatically)
 
-**Est:** 6-8 weeks (booking logic exists, integration focus)
-
-**Status:** Scoped, waiting for theme system completion
+**Est:** 6–8 weeks (booking logic exists, integration focus)  
+**Status:** Planned, waiting for Phase 9 + 10
 
 ---
 
-### M5: Analytics & Insights (FUTURE)
-- Analytics dashboard (activity, usage, trends)
-- Booking analytics (revenue, popular times, cancellations)
-- Performance monitoring
-- **Est:** 6-8 hours
+### M4: Advanced Analytics (FUTURE)
+- Booking analytics: revenue trends, peak hours, popular services
+- Platform analytics: subscription revenue, feature adoption
+- Aggregation cron jobs for pre-computed roll-ups
+- **Unlocked automatically** once Phase 9 + 11 are complete
+
+---
+
+### M5: Platform Enhancements (FUTURE)
+- Tenant dashboard access (scoped pages, media, themes for tenant users)
+- Subscription billing and usage quotas
+- Navigation drag-and-drop tree UI
 
 —
 
