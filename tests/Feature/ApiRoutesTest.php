@@ -34,8 +34,10 @@ class ApiRoutesTest extends TestCase
     }
 
     #[Test]
-    public function central_api_register_works()
+    public function central_api_register_is_disabled()
     {
+        // Self-registration is intentionally disabled on the central admin surface.
+        // The route is commented out in api.php until an invite/verification flow exists.
         $response = $this->withServerVariables(['HTTP_HOST' => 'localhost'])
             ->postJson('/api/auth/register', [
                 'name' => 'Test User',
@@ -44,8 +46,7 @@ class ApiRoutesTest extends TestCase
                 'password_confirmation' => 'password',
             ]);
 
-        $response->assertStatus(201)
-            ->assertJsonStructure(['user', 'token']);
+        $response->assertStatus(404);
     }
 
     #[Test]

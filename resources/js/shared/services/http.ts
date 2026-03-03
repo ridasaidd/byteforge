@@ -15,7 +15,8 @@ class HttpService {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      withCredentials: true, // For Laravel Sanctum/Passport
+      // withCredentials intentionally omitted: auth is Bearer token only.
+      // Enabling it alongside Bearer headers creates mixed trust boundaries.
     });
 
     // Request interceptor - add auth token
@@ -35,11 +36,19 @@ class HttpService {
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          // Unauthorized - clear token and redirect to login
+          // Unauthorized - clear token and redirect to login.
+          // Resolve the login URL from VITE_CENTRAL_URL so tenant apps (which run
+          // on a different subdomain/domain) redirect to the central login page
+          // rather than a non-existent /login on the tenant domain.
           clearAuthToken();
 
-          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-            window.location.href = '/login';
+          if (typeof window !== 'undefined') {
+            const centralUrl = (import.meta as unknown as { env?: { VITE_CENTRAL_URL?: string } }).env?.VITE_CENTRAL_URL;
+            const loginUrl = centralUrl ? `${centralUrl}/login` : '/login';
+
+            if (window.location.href !== loginUrl) {
+              window.location.href = loginUrl;
+            }
           }
         }
         return Promise.reject(error);
