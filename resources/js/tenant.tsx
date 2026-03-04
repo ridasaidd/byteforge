@@ -1,9 +1,20 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TenantApp } from '@/apps/tenant/App';
 import { AuthProvider } from '@/shared/context/AuthContext';
 import './bootstrap';
 import '../css/app.css';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1,
+      staleTime: 5 * 60 * 1000,
+    },
+  },
+});
 
 const rootElement = document.getElementById('tenant-app');
 
@@ -13,8 +24,10 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
-        <AuthProvider>
-            <TenantApp />
-        </AuthProvider>
+        <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+                <TenantApp />
+            </AuthProvider>
+        </QueryClientProvider>
     </React.StrictMode>
 );

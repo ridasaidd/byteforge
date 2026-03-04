@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image, FileText, Palette, Menu } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Settings, Activity, Shield, Image, FileText, Palette, Menu, BarChart2 } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 
 export const centralMenuItems: MenuItem[] = [
@@ -55,6 +55,12 @@ export const centralMenuItems: MenuItem[] = [
     path: '/dashboard/activity',
     icon: Activity,
     permission: 'view activity logs',
+  },
+  {
+    label: 'Analytics',
+    path: '/dashboard/analytics',
+    icon: BarChart2,
+    permission: 'view platform analytics',
   },
   {
     label: 'Settings',

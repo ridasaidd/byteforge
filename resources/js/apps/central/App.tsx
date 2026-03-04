@@ -11,6 +11,7 @@ import { ActivityLogPage } from './components/pages/ActivityLogPage';
 import { SettingsPage } from './components/pages/SettingsPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AccountSettingsPage } from './components/pages/AccountSettingsPage';
+import { PlatformAnalyticsPage } from './components/pages/PlatformAnalyticsPage';
 import RolesPermissionsPage from './components/pages/RolesPermissionsPage';
 import MediaLibraryPage from './components/pages/MediaLibraryPage';
 import { centralMenuItems } from './config/menu';
@@ -63,6 +64,7 @@ function ProtectedRoutes() {
               <Route path="media" element={<MediaLibraryPage />} />
               <Route path="roles-permissions" element={<RolesPermissionsPage />} />
               <Route path="activity" element={<ActivityLogPage />} />
+              <Route path="analytics" element={<PlatformAnalyticsPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="account" element={<AccountSettingsPage />} />

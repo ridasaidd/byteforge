@@ -376,3 +376,31 @@ export interface UpdateThemePartData {
   status?: 'draft' | 'published';
   sort_order?: number;
 }
+
+// ─── Analytics ─────────────────────────────────────────────────────────────
+
+/** Period used by every analytics response envelope */
+export interface AnalyticsPeriod {
+  from: string; // YYYY-MM-DD
+  to:   string;
+}
+
+/**
+ * Analytics overview data shape.
+ * Returned by both GET /api/analytics/overview (tenant)
+ * and GET /api/superadmin/analytics/overview (central).
+ */
+export interface AnalyticsOverviewData {
+  total_events: number;
+  by_type:      Record<string, number>; // e.g. { 'page.viewed': 42, 'page.created': 5 }
+}
+
+/** Full response envelope for the overview endpoints */
+export interface AnalyticsOverviewResponse {
+  data:         AnalyticsOverviewData;
+  period:       AnalyticsPeriod;
+  generated_at: string;
+}
+
+/** Allowed date-range presets for the analytics UI */
+export type AnalyticsRangePreset = '7d' | '30d' | '90d';
