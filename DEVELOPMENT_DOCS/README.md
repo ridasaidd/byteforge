@@ -22,6 +22,7 @@ Last updated: March 3, 2026
 - [CURRENT_STATUS.md](CURRENT_STATUS.md) - Current state, completed features, next steps
 - [ROADMAP.md](ROADMAP.md) - Milestones and priorities
 - [PHASE9_ANALYTICS_FOUNDATION.md](PHASE9_ANALYTICS_FOUNDATION.md) - **Current phase: Analytics event pipeline plan**
+- [PHASE9_EXECUTION_CHECKLIST.md](PHASE9_EXECUTION_CHECKLIST.md) - **Active: TDD gates, anti-drift rules, file list per sub-phase**
 - [PHASE7_FONT_SYSTEM_COMPLETE.md](PHASE7_FONT_SYSTEM_COMPLETE.md) - Completed font system implementation summary
 - [NAVIGATION_REFACTOR_PLAN.md](NAVIGATION_REFACTOR_PLAN.md) - Navigation v2 architecture and refactor plan (implemented)
 
