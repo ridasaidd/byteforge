@@ -254,11 +254,18 @@ public function platformFeatureUsage(): array
 
 > **Scope boundary:** Web analytics passthrough (GA4/Plausible script injection) is optional and must not block 9.4. Add `analytics_tracking_id` to settings only if time allows; otherwise stub the field for Phase 9.5.
 
-### Gate 3 Checklist (partial — before frontend)
+### Gate 3 Checklist (backend — Sub-phase 9.3) ✅ COMPLETE — committed `9118157` (March 4, 2026)
 
-- [ ] Requesting a public page creates one `analytics_events` row with `event_type = 'page.viewed'`
-- [ ] Row contains `{ page_id, slug, referrer, user_agent_type }` in `properties`
-- [ ] Row `tenant_id` matches the page's tenant
+- [x] Requesting a public page creates one `analytics_events` row with `event_type = 'page.viewed'`
+  — `PageViewTrackingTest::viewing_a_published_page_by_slug_records_page_viewed_event`
+- [x] Row contains `{ page_id, slug, referrer, user_agent_type }` in `properties`
+  — `PageViewTrackingTest::page_viewed_event_contains_required_properties`
+- [x] Row `tenant_id` matches the page's tenant
+  — `PageViewTrackingTest::page_viewed_event_tenant_id_matches_page_tenant`
+- [x] Requesting the same page twice creates two rows (append-only confirmed)
+  — `PageViewTrackingTest::viewing_same_page_twice_creates_two_events`
+- [x] No 500 errors if analytics write fails (fire-and-forget where needed)
+  — `PageViewTrackingTest::analytics_write_failure_does_not_return_500`; try/catch in `recordPageView()`
 - [ ] Requesting the same page twice creates two rows (append-only confirmed)
 - [ ] No 500 errors if analytics write fails (fire-and-forget where needed)
 
