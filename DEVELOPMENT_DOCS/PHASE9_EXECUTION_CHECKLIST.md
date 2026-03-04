@@ -126,18 +126,18 @@ const TYPE_BOOKING_CANCELLED             = 'booking.cancelled';
 const TYPE_BOOKING_COMPLETED             = 'booking.completed';
 ```
 
-### Gate 1 Checklist
+### Gate 1 Checklist ✅ COMPLETE — committed `2692ef1` (March 4, 2026)
 
-- [ ] Migration creates `analytics_events` with all columns and indexes
-- [ ] `AnalyticsEvent::forTenant($tenantId)` filters by `tenant_id = $tenantId`
-- [ ] `AnalyticsEvent::platformLevel()` filters by `tenant_id IS NULL`
-- [ ] `AnalyticsEvent::ofType($type)` filters by `event_type`
-- [ ] `AnalyticsEvent::between($from, $to)` filters by `occurred_at`
-- [ ] `AnalyticsService::record()` writes a row with resolved `tenant_id`
-- [ ] `record()` uses `tenancy()->initialized ? tenant('id') : null` for tenant resolution
-- [ ] `record()` accepts explicit `$tenantId` override (for events fired outside tenant context)
-- [ ] `occurred_at` defaults to `now()` but can be passed explicitly
-- [ ] All Gate 1 unit tests pass in isolation (no database seeding required)
+- [x] Migration creates `analytics_events` with all columns and indexes
+- [x] `AnalyticsEvent::forTenant($tenantId)` filters by `tenant_id = $tenantId`
+- [x] `AnalyticsEvent::platformLevel()` filters by `tenant_id IS NULL`
+- [x] `AnalyticsEvent::ofType($type)` filters by `event_type`
+- [x] `AnalyticsEvent::between($from, $to)` filters by `occurred_at`
+- [x] `AnalyticsService::record()` writes a row with resolved `tenant_id`
+- [x] `record()` uses `tenancy()->initialized ? tenant('id') : null` for tenant resolution
+- [x] `record()` accepts explicit `$tenantId` override (for events fired outside tenant context)
+- [x] `occurred_at` defaults to `now()` but can be passed explicitly
+- [x] All Gate 1 unit tests pass — 21 tests, 38 assertions, zero failures
 
 ---
 
@@ -152,34 +152,55 @@ const TYPE_BOOKING_COMPLETED             = 'booking.completed';
 5. Implement `AnalyticsQueryService` to make unit tests pass.
 6. Implement controllers + register routes to make feature tests pass.
 
+### Install `spatie/laravel-stats` first
+
+```bash
+composer require spatie/laravel-stats
+```
+
+This must be done before implementing `AnalyticsQueryService` (it provides the aggregation helpers).
+
+### New Spatie Permissions to Seed
+
+The existing route pattern is `->middleware('permission:view analytics')` — never a bare role check. Two new permissions must be added:
+
+| Permission | Who gets it | Route group |
+|---|---|---|
+| `view analytics` | tenant owner, tenant editor | `GET /api/analytics/*` |
+| `view platform analytics` | superadmin, admin | `GET /api/superadmin/analytics/*` |
+
+Add both to `TestFixturesSeeder` (or the relevant roles seeder) so feature tests can use `$this->actingAsTenantOwner()` and `$this->actingAsSuperadmin()` without manual setup.
+
 ### Files to Create
 
 | File | Notes |
 |------|-------|
-| `app/Services/AnalyticsQueryService.php` | Read-only; depend on `AnalyticsEvent` model |
+| `app/Services/AnalyticsQueryService.php` | Read-only; depends on `AnalyticsEvent` model |
 | `app/Http/Controllers/Api/AnalyticsController.php` | Tenant-scoped; uses `auth:api` middleware |
 | `app/Http/Controllers/Api/PlatformAnalyticsController.php` | Superadmin-only |
-| `tests/Unit/AnalyticsQueryServiceTest.php` | Written FIRST |
+| `tests/Unit/Services/AnalyticsQueryServiceTest.php` | Written FIRST |
 | `tests/Feature/Api/TenantAnalyticsApiTest.php` | Written FIRST |
 | `tests/Feature/Api/CentralAnalyticsApiTest.php` | Written FIRST |
 | `tests/Feature/Api/AnalyticsIsolationTest.php` | Written FIRST |
 
 ### Routes to Register (add to existing route files, do not create new ones)
 
+Must follow the existing `->middleware('permission:...')` convention — not bare role checks.
+
 ```php
-// routes/api.php — central routes
-Route::middleware(['auth:api', 'superadmin'])->prefix('superadmin/analytics')->group(function () {
-    Route::get('overview',         [PlatformAnalyticsController::class, 'overview']);
-    Route::get('tenants/growth',   [PlatformAnalyticsController::class, 'tenantGrowth']);
-    Route::get('platform/usage',   [PlatformAnalyticsController::class, 'featureUsage']);
+// routes/api.php — inside the existing Route::prefix('superadmin') group
+Route::prefix('analytics')->group(function () {
+    Route::get('overview',       [PlatformAnalyticsController::class, 'overview'])->middleware('permission:view platform analytics');
+    Route::get('tenants/growth', [PlatformAnalyticsController::class, 'tenantGrowth'])->middleware('permission:view platform analytics');
+    Route::get('platform/usage', [PlatformAnalyticsController::class, 'featureUsage'])->middleware('permission:view platform analytics');
 });
 
 // routes/tenant.php — tenant-scoped routes
 Route::middleware('auth:api')->prefix('analytics')->group(function () {
-    Route::get('overview',  [AnalyticsController::class, 'overview']);
-    Route::get('pages',     [AnalyticsController::class, 'pages']);
-    Route::get('bookings',  [AnalyticsController::class, 'bookings']);   // returns empty until Phase 11
-    Route::get('revenue',   [AnalyticsController::class, 'revenue']);    // returns empty until Phase 10
+    Route::get('overview',  [AnalyticsController::class, 'overview'])->middleware('permission:view analytics');
+    Route::get('pages',     [AnalyticsController::class, 'pages'])->middleware('permission:view analytics');
+    Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');   // returns empty until Phase 11
+    Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');    // returns empty until Phase 10
 });
 ```
 
