@@ -97,11 +97,20 @@ trait WithAuthentication
     }
 
     /**
-     * Authenticate as the seeded tenant editor (tenant-two, view-only).
+     * Authenticate as a seeded tenant editor (tenant-one by default).
      */
     protected function actingAsTenantEditor(): static
     {
         $this->currentUser = TestUsers::tenantEditor();
+        return $this->actingAs($this->currentUser, 'api');
+    }
+
+    /**
+     * Authenticate as a seeded tenant viewer (tenant-one by default).
+     */
+    protected function actingAsTenantViewer(string $tenantSlug = 'tenant-one'): static
+    {
+        $this->currentUser = TestUsers::tenantViewer($tenantSlug);
         return $this->actingAs($this->currentUser, 'api');
     }
 

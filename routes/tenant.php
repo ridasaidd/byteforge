@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
@@ -99,5 +100,11 @@ Route::middleware([
         // Activity logs
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:view activity logs');
         Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('permission:view activity logs');
+
+        // Analytics (tenant-scoped events only)
+        Route::prefix('analytics')->group(function () {
+            Route::get('overview', [AnalyticsController::class, 'overview'])
+                ->middleware('permission:view analytics');
+        });
     });
 });

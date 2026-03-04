@@ -65,6 +65,7 @@ class TestFixturesSeeder extends Seeder
                 'layouts.view', 'layouts.manage',
                 'templates.view', 'templates.manage',
                 'media.view', 'media.manage',
+                'view analytics',
             ],
             'tenant_editor' => [
                 'pages.create', 'pages.edit', 'pages.view',
@@ -73,6 +74,7 @@ class TestFixturesSeeder extends Seeder
                 'layouts.view',
                 'templates.view',
                 'media.view', 'media.manage',
+                'view analytics',
             ],
             'tenant_viewer' => [
                 'pages.view',
@@ -172,6 +174,7 @@ class TestFixturesSeeder extends Seeder
                 'layouts.view', 'layouts.manage',
                 'templates.view', 'templates.manage',
                 'media.view', 'media.manage',
+                'view analytics',
             ],
             'editor' => [
                 'pages.create', 'pages.edit', 'pages.view',
@@ -180,6 +183,7 @@ class TestFixturesSeeder extends Seeder
                 'layouts.view',
                 'templates.view',
                 'media.view', 'media.manage',
+                'view analytics',
             ],
             'viewer' => [
                 'pages.view',

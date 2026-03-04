@@ -4,7 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Carbon;
+use Carbon\Carbon;
 
 /**
  * Append-only analytics event log.
@@ -62,9 +62,11 @@ class AnalyticsEvent extends Model
     const TYPE_PLATFORM_TENANT_SUSPENDED       = 'tenant.suspended';
     const TYPE_PLATFORM_SUBSCRIPTION_CREATED   = 'platform.subscription.created';
     const TYPE_PLATFORM_SUBSCRIPTION_CANCELLED = 'platform.subscription.cancelled';
+    const TYPE_PLATFORM_USER_REGISTERED        = 'platform.user.registered';
     const TYPE_PLATFORM_ERROR                  = 'platform.error';
 
     // Tenant content events (tenant_id = UUID)
+    const TYPE_PAGE_CREATED     = 'page.created';
     const TYPE_PAGE_VIEWED      = 'page.viewed';
     const TYPE_PAGE_PUBLISHED   = 'page.published';
     const TYPE_THEME_ACTIVATED  = 'theme.activated';

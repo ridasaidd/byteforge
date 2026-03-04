@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PlatformAnalyticsController;
 use App\Http\Controllers\Api\SuperadminController;
 use App\Http\Controllers\Api\ThemeCssController;
 use Illuminate\Support\Facades\Route;
@@ -114,6 +115,12 @@ foreach (config('tenancy.central_domains') as $domain) {
 
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
+
+            // Analytics (platform-level events only)
+            Route::prefix('analytics')->group(function () {
+                Route::get('overview', [PlatformAnalyticsController::class, 'overview'])
+                    ->middleware('permission:view platform analytics');
+            });
 
             // Settings management
             Route::get('settings', [SuperadminController::class, 'getSettings'])->middleware('permission:view settings');
