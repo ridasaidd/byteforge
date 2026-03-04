@@ -15,7 +15,10 @@ use Illuminate\Http\Request;
  * Only events belonging to the initialised tenant are included.
  *
  * Routes (tenant domain, /api/analytics/...):
- *   GET /api/analytics/overview  → overview()
+ *   GET /api/analytics/overview   → overview()
+ *   GET /api/analytics/pages      → pages()
+ *   GET /api/analytics/bookings   → bookings()  (Phase 11 — returns empty until then)
+ *   GET /api/analytics/revenue    → revenue()   (Phase 10 — returns empty until then)
  *
  * Required permission: view analytics
  */
@@ -53,5 +56,66 @@ class AnalyticsController extends Controller
             ],
             'generated_at' => now()->toIso8601String(),
         ]);
+    }
+
+    /**
+     * GET /api/analytics/pages
+     *
+     * Page-level analytics (page.viewed events aggregated by page).
+     * Populated once page.viewed is wired in Sub-phase 9.3.
+     */
+    public function pages(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data'         => [],
+            'period'       => $this->resolvePeriod($request),
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * GET /api/analytics/bookings
+     *
+     * Booking analytics — returns empty until Phase 11.
+     */
+    public function bookings(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data'         => [],
+            'period'       => $this->resolvePeriod($request),
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * GET /api/analytics/revenue
+     *
+     * Revenue analytics — returns empty until Phase 10.
+     */
+    public function revenue(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data'         => [],
+            'period'       => $this->resolvePeriod($request),
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
+
+    // ------------------------------------------------------------------ //
+
+    private function resolvePeriod(Request $request): array
+    {
+        $from = $request->has('from')
+            ? Carbon::parse($request->input('from'))->startOfDay()
+            : now()->subDays(30)->startOfDay();
+
+        $to = $request->has('to')
+            ? Carbon::parse($request->input('to'))->endOfDay()
+            : now()->endOfDay();
+
+        return [
+            'from' => $from->format('Y-m-d'),
+            'to'   => $to->format('Y-m-d'),
+        ];
     }
 }

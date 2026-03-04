@@ -103,8 +103,10 @@ Route::middleware([
 
         // Analytics (tenant-scoped events only)
         Route::prefix('analytics')->group(function () {
-            Route::get('overview', [AnalyticsController::class, 'overview'])
-                ->middleware('permission:view analytics');
+            Route::get('overview',  [AnalyticsController::class, 'overview'])->middleware('permission:view analytics');
+            Route::get('pages',     [AnalyticsController::class, 'pages'])->middleware('permission:view analytics');
+            Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');  // empty until Phase 11
+            Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');   // empty until Phase 10
         });
     });
 });
