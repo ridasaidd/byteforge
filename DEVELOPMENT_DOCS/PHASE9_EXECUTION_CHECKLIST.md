@@ -266,8 +266,6 @@ public function platformFeatureUsage(): array
   — `PageViewTrackingTest::viewing_same_page_twice_creates_two_events`
 - [x] No 500 errors if analytics write fails (fire-and-forget where needed)
   — `PageViewTrackingTest::analytics_write_failure_does_not_return_500`; try/catch in `recordPageView()`
-- [ ] Requesting the same page twice creates two rows (append-only confirmed)
-- [ ] No 500 errors if analytics write fails (fire-and-forget where needed)
 
 ---
 
@@ -314,17 +312,17 @@ Add chart CSS variables to `resources/css/app.css` (values in PHASE9_ANALYTICS_F
 | `AnalyticsPage.test.tsx` | Renders loading / error / empty states with mocked data |
 | `AnalyticsWidget.test.tsx` | Stat card renders value + trend indicator |
 
-### Gate 3 (frontend part)
+### Gate 3 (frontend part) ✅ COMPLETE — committed `6d5cae9` (March 4, 2026)
 
-- [ ] `/dashboard/analytics` route exists and is accessible to authenticated users
-- [ ] Page views area chart renders with mocked response
-- [ ] Loading skeleton shown while data is fetching
-- [ ] Empty state shown cleanly when no data exists (no chart errors)
-- [ ] Booking and revenue widgets show explicit "Available in a future update" placeholder
+- [x] `/cms/analytics` (tenant) and `/dashboard/analytics` (central) routes exist and are accessible to authenticated users
+- [x] Events-by-type BarChart renders with data from `GET /api/analytics/overview` (by_type breakdown)
+- [x] Loading skeleton shown while data is fetching
+- [x] Empty state shown cleanly when no data exists (no chart errors)
+- [x] Booking and revenue widgets show explicit "Available in a future update" placeholder
 
 ---
 
-## Sub-Phase 9.5 — Central Analytics Dashboard (Frontend)
+## Sub-Phase 9.5 — Central Analytics Dashboard (Frontend) ✅ COMPLETE — committed `6d5cae9`
 
 ### Files to Create / Modify
 
