@@ -342,6 +342,38 @@ Add chart CSS variables to `resources/css/app.css` (values in PHASE9_ANALYTICS_F
 
 ---
 
+## Sub-Phase 9.6 — Third-Party Analytics Integrations
+
+### Goal
+Allow each tenant to connect their own GA4, GTM, Clarity, Plausible, Fathom, or Meta Pixel account. Scripts are injected in the public blade layout — no data passes through your servers.
+
+### Files to Create / Modify
+
+| File | Change |
+|------|--------|
+| `app/Settings/TenantAnalyticsSettings.php` (or add to existing settings) | New settings group: `analytics_integrations` |
+| Public blade layout (`resources/views/public-central.blade.php` or equivalent) | Conditional script injection per provider |
+| `resources/js/apps/tenant/components/pages/SettingsPage.tsx` or dedicated analytics settings component | UI: toggle + ID field per provider |
+
+### Provider Checklist
+
+- [ ] Google Analytics 4 (`ga4_measurement_id`) — gtag.js snippet injected
+- [ ] Google Tag Manager (`gtm_container_id`) — GTM head + body snippets injected
+- [ ] Microsoft Clarity (`clarity_project_id`) — clarity.js snippet injected
+- [ ] Plausible (`plausible_domain`) — plausible script injected
+- [ ] Fathom (`fathom_site_id`) — Fathom CDN snippet injected
+- [ ] Meta Pixel (`meta_pixel_id`) — fbevents.js snippet injected
+
+### Gate
+
+- [ ] Saving a GA4 ID in tenant settings results in gtag.js being present in the public storefront `<head>`
+- [ ] Clearing the ID removes the script
+- [ ] No script is injected if the field is empty/null
+- [ ] GTM trust policy decision documented (all tenants vs. verified tenants only)
+- [ ] Settings persist across page reloads
+
+---
+
 ## Phase Done Acceptance Criteria
 
 These map directly to the acceptance criteria in PHASE9_ANALYTICS_FOUNDATION.md. All must be checked before merging to `main`.
@@ -369,6 +401,5 @@ These map directly to the acceptance criteria in PHASE9_ANALYTICS_FOUNDATION.md.
 - ❌ Building subscription/revenue charts
 - ❌ `analytics_aggregates` table (defer unless page view queries are slow)
 - ❌ Custom date range picker (7d/30d/90d tabs only)
-- ❌ Web analytics passthrough (nice to have, not a blocker)
 - ❌ Cron jobs for pre-computed roll-ups (Phase Advanced Analytics)
 - ❌ DDD domain folder refactor (current flat Services/ structure is fine for this phase)

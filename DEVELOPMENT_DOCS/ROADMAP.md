@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: March 3, 2026
+Last updated: March 4, 2026
 
 —
 
@@ -39,13 +39,14 @@ Last updated: March 3, 2026
 **Goal:** One event store, many aggregation consumers. Every future analytics type (booking, revenue, platform, web) slots in without new infrastructure.
 
 **Sub-phases:**
-- 9.1: Schema + `AnalyticsService` + `AnalyticsEvent` model — **2–3 hrs**
-- 9.2: `AnalyticsQueryService` + API endpoints — **3–4 hrs**
-- 9.3: `page.viewed` tracking + web analytics passthrough — **1–2 hrs**
-- 9.4: Tenant analytics dashboard — **3–4 hrs**
-- 9.5: Central analytics dashboard — **2–3 hrs**
+- 9.1: Schema + `AnalyticsService` + `AnalyticsEvent` model — **2–3 hrs** ✅
+- 9.2: `AnalyticsQueryService` + API endpoints — **3–4 hrs** ✅
+- 9.3: `page.viewed` tracking — **1–2 hrs** ✅
+- 9.4: Tenant analytics dashboard — **3–4 hrs** ✅
+- 9.5: Central analytics dashboard — **2–3 hrs** ✅
+- 9.6: Third-party analytics integrations (GA4, GTM, Clarity, Plausible, Meta Pixel) — **2–3 hrs**
 
-**Est:** ~12–16 hrs  
+**Est:** ~14–19 hrs  
 **Packages:** `spatie/laravel-stats` (backend) + `recharts` + shadcn `chart.tsx` (frontend)  
 **Status:** In progress — branch `feature/phase9-analytics-foundation`
 
