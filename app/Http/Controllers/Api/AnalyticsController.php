@@ -61,14 +61,29 @@ class AnalyticsController extends Controller
     /**
      * GET /api/analytics/pages
      *
-     * Page-level analytics (page.viewed events aggregated by page).
-     * Populated once page.viewed is wired in Sub-phase 9.3.
+     * Page-level breakdown: views per page slug within the period.
      */
     public function pages(Request $request): JsonResponse
     {
+        /** @var string $tenantId */
+        $tenantId = (string) tenant('id');
+
+        $from = $request->has('from')
+            ? Carbon::parse($request->input('from'))->startOfDay()
+            : now()->subDays(30)->startOfDay();
+
+        $to = $request->has('to')
+            ? Carbon::parse($request->input('to'))->endOfDay()
+            : now()->endOfDay();
+
+        $data = $this->queryService->pageBreakdown($tenantId, $from, $to);
+
         return response()->json([
-            'data'         => [],
-            'period'       => $this->resolvePeriod($request),
+            'data'         => $data,
+            'period'       => [
+                'from' => $from->format('Y-m-d'),
+                'to'   => $to->format('Y-m-d'),
+            ],
             'generated_at' => now()->toIso8601String(),
         ]);
     }

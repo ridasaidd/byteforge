@@ -60,6 +60,20 @@ export function PublicPage() {
 
         const result = await response.json();
         setPage(result.data);
+
+        // Fire page.viewed analytics beacon — non-blocking, failure is silently ignored
+        fetch('/api/analytics/track', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_type: 'page.viewed',
+            properties: {
+              page_id: result.data?.id,
+              slug:    result.data?.slug,
+              title:   result.data?.title,
+            },
+          }),
+        }).catch(() => { /* tracking must never break page load */ });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load page');
       } finally {

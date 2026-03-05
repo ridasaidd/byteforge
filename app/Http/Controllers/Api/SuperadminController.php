@@ -295,6 +295,11 @@ class SuperadminController extends Controller
                         'support_email',
                         'company_name',
                         'max_tenants_per_user',
+                        'ga4_measurement_id',
+                        'gtm_container_id',
+                        'clarity_project_id',
+                        'plausible_domain',
+                        'meta_pixel_id',
                     ]),
                 ])
                 ->log('General settings updated');

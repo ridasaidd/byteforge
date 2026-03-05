@@ -52,7 +52,32 @@ class AnalyticsQueryService
 
         return $this->buildSummary($rows);
     }
+    /**
+     * Page-level breakdown: aggregate page.viewed events by slug for a tenant.
+     *
+     * @return array<int, array{slug: string, title: string|null, views: int}>
+     */
+    public function pageBreakdown(string $tenantId, Carbon $from, Carbon $to): array
+    {
+        $rows = AnalyticsEvent::forTenant($tenantId)
+            ->between($from, $to)
+            ->where('event_type', AnalyticsEvent::TYPE_PAGE_VIEWED)
+            ->selectRaw("
+                JSON_UNQUOTE(JSON_EXTRACT(properties, '$.slug'))  AS slug,
+                JSON_UNQUOTE(JSON_EXTRACT(properties, '$.title')) AS title,
+                COUNT(*) AS views
+            ")
+            ->groupByRaw("JSON_EXTRACT(properties, '$.slug')")
+            ->havingRaw("JSON_EXTRACT(properties, '$.slug') IS NOT NULL")
+            ->orderByDesc('views')
+            ->get();
 
+        return $rows->map(fn ($row) => [
+            'slug'  => $row->slug,
+            'title' => $row->title,
+            'views' => (int) $row->views,
+        ])->all();
+    }
     // ─────────────────────────────────────────────────────────────────────────
 
     /**

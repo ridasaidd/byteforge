@@ -82,6 +82,10 @@ Route::middleware([
     Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
     Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
 
+    // Public analytics beacon (no auth, rate-limited)
+    Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
+        ->middleware('throttle:60,1');
+
     // Protected tenant routes - require authentication
     Route::middleware('auth:api')->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
