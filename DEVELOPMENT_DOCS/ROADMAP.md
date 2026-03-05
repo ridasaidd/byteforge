@@ -30,29 +30,25 @@ Last updated: March 4, 2026
 
 ## In flight / Priority Order
 
-### M1: Analytics Foundation ✅ IN PROGRESS (Mar 3, 2026)
+### M1: Analytics Foundation ✅ COMPLETE (Mar 5, 2026)
 
 **Phase 9: Event pipeline + tenant/central dashboards**
 
-> **Detailed plan:** See [PHASE9_ANALYTICS_FOUNDATION.md](./PHASE9_ANALYTICS_FOUNDATION.md)
+> **Archived plan:** See [archive/completed-phases/PHASE9_ANALYTICS_FOUNDATION.md](./archive/completed-phases/PHASE9_ANALYTICS_FOUNDATION.md)
 
-**Goal:** One event store, many aggregation consumers. Every future analytics type (booking, revenue, platform, web) slots in without new infrastructure.
+**Sub-phases — all complete:**
+- 9.1: Schema + `AnalyticsService` + `AnalyticsEvent` model ✅
+- 9.2: `AnalyticsQueryService` + API endpoints ✅
+- 9.3: `page.viewed` tracking ✅
+- 9.4: Tenant analytics dashboard ✅
+- 9.5: Central analytics dashboard ✅
+- 9.6: Third-party analytics integrations (GA4, GTM, Clarity, Plausible, Meta Pixel) + public page view beacon + tenant CMS settings page ✅
 
-**Sub-phases:**
-- 9.1: Schema + `AnalyticsService` + `AnalyticsEvent` model — **2–3 hrs** ✅
-- 9.2: `AnalyticsQueryService` + API endpoints — **3–4 hrs** ✅
-- 9.3: `page.viewed` tracking — **1–2 hrs** ✅
-- 9.4: Tenant analytics dashboard — **3–4 hrs** ✅
-- 9.5: Central analytics dashboard — **2–3 hrs** ✅
-- 9.6: Third-party analytics integrations (GA4, GTM, Clarity, Plausible, Meta Pixel) — **2–3 hrs**
-
-**Est:** ~14–19 hrs  
-**Packages:** `spatie/laravel-stats` (backend) + `recharts` + shadcn `chart.tsx` (frontend)  
-**Status:** In progress — branch `feature/phase9-analytics-foundation`
+**Merged:** `feature/phase9-analytics-foundation` → `main` (`6f7bd1d`)
 
 ---
 
-### M2: Payments Core (NEXT after Phase 9)
+### M2: Payments Core (ACTIVE NEXT)
 
 **Phase 10: Stripe + Swish, products/prices, tenant-scoped**
 

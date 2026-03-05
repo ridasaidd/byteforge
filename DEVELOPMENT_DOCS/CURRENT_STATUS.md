@@ -1,9 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: March 3, 2026 (Phase 9 Analytics Foundation — in progress)  
-Current branch: `feature/phase9-analytics-foundation`
-
-—
+Last updated: March 5, 2026 (Phase 9 Analytics Foundation — complete, Phase 10 Payments next)
+Current branch: `main`
 
 ## Snapshot
 
@@ -18,7 +16,7 @@ Current branch: `feature/phase9-analytics-foundation`
 - **Phase 7 Font System:** ✅ **COMPLETE** - Fonts, RichText, CSS loading, storefront parity
 - **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
 - **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
-- **Phase 9 Analytics Foundation:** 🚧 **IN PROGRESS** - Event pipeline, tenant/central isolation, page view tracking, dashboard widgets.
+- **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -82,32 +80,14 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Phase 9: Analytics Foundation (ACTIVE)**
-
-**Summary:**
-Build a single extensible event pipeline consumed by all future analytics types — booking, payments, platform, web.
-
-**Sub-phases:**
-- 9.1: Event schema + `AnalyticsService` + `AnalyticsEvent` model
-- 9.2: `AnalyticsQueryService` + API endpoints (tenant + central)
-- 9.3: `page.viewed` tracking + web analytics passthrough setting
-- 9.4: Tenant analytics dashboard (frontend)
-- 9.5: Central analytics dashboard (frontend)
-
-**Status**: In progress — see [PHASE9_ANALYTICS_FOUNDATION.md](PHASE9_ANALYTICS_FOUNDATION.md)
-
-**Packages:**
-- Backend: `spatie/laravel-stats` (aggregation on top of event log)
-- Frontend: `recharts` + shadcn `chart.tsx` (Area, Bar, Line, Pie, Radial, Radar)
-
----
-
-### **Phase 10: Payments Core (NEXT after Phase 9)**
+### **Phase 10: Payments Core (ACTIVE NEXT)**
 
 **Summary:**
 - Stripe + Swish integration, webhook handling
 - Products/prices model, tenant-scoped
-- Fires `payment.*` events into analytics pipeline
+- Fires `payment.*` events into analytics pipeline (activates revenue widgets automatically)
+
+**Note:** `payment.*` and `booking.*` constants pre-registered in `AnalyticsEvent`. `spatie/laravel-stats` already installed.
 
 **Status**: Planned
 
