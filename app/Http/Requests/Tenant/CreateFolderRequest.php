@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Tenant;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class CreateFolderRequest extends FormRequest
 {
@@ -30,7 +31,14 @@ class CreateFolderRequest extends FormRequest
                     }
                 },
             ],
-            'parent_id' => ['nullable', 'integer', 'exists:media_folders,id'],
+            'parent_id' => [
+                'nullable', 'integer',
+                // Scope to current tenant — prevents creating a folder under
+                // another tenant's parent (cross-tenant IDOR).
+                Rule::exists('media_folders', 'id')->where(function ($query) use ($tenantId) {
+                    $query->where('tenant_id', $tenantId);
+                }),
+            ],
             'description' => ['nullable', 'string', 'max:1000'],
             'metadata' => ['nullable', 'array'],
         ];
