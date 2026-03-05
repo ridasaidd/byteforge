@@ -18,6 +18,11 @@ class RoleController extends Controller
         return response()->json($roles);
     }
 
+    /**
+     * Reserved role names that cannot be created or deleted through the API.
+     */
+    private const PROTECTED_ROLES = ['superadmin'];
+
     // Create a new role
     public function store(Request $request): JsonResponse
     {
@@ -25,6 +30,13 @@ class RoleController extends Controller
             'name' => 'required|string|unique:roles,name',
             'guard_name' => 'sometimes|string',
         ]);
+
+        if (in_array(strtolower($data['name']), array_map('strtolower', self::PROTECTED_ROLES), true)) {
+            return response()->json([
+                'message' => 'Cannot create a role with a reserved name.',
+            ], 403);
+        }
+
         $role = Role::create($data);
         return response()->json($role, 201);
     }
@@ -50,6 +62,12 @@ class RoleController extends Controller
     // Delete a role
     public function destroy(Role $role): JsonResponse
     {
+        if (in_array($role->name, self::PROTECTED_ROLES, true)) {
+            return response()->json([
+                'message' => 'Cannot delete a protected system role.',
+            ], 403);
+        }
+
         $role->delete();
         return response()->json(['message' => 'Role deleted']);
     }

@@ -30,8 +30,8 @@ class ListTenantsAction
             });
         }
 
-        // Pagination
-        $perPage = $filters['per_page'] ?? 15;
+        // Pagination — cap at 100 to prevent large table-scan responses
+        $perPage = min((int) ($filters['per_page'] ?? 15), 100);
         $tenants = $query->paginate($perPage);
 
         // Transform data to include primary domain

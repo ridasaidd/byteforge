@@ -145,8 +145,13 @@ class MediaController extends Controller
      */
     public function show(int $media): JsonResponse
     {
-        $media = Media::where('tenant_id', tenant('id'))
-            ->findOrFail($media);
+        if (tenancy()->initialized) {
+            $media = Media::where('tenant_id', tenancy()->tenant->id)
+                ->findOrFail($media);
+        } else {
+            $media = Media::whereNull('tenant_id')
+                ->findOrFail($media);
+        }
 
         $data = [
             'id' => $media->id,

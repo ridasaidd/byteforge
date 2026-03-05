@@ -33,7 +33,7 @@ class SuperadminController extends Controller
 
     public function storeTenant(Request $request)
     {
-        $tenant = CreateTenantAction::run($request->all());
+        $tenant = CreateTenantAction::run($request->only(['name', 'domain']));
 
         return response()->json(['data' => $tenant], 201);
     }
@@ -56,7 +56,7 @@ class SuperadminController extends Controller
 
     public function updateTenant(Request $request, Tenant $tenant)
     {
-        $updated = UpdateTenantAction::run($tenant, $request->all());
+        $updated = UpdateTenantAction::run($tenant, $request->only(['name', 'domain']));
 
         return response()->json(['data' => $updated]);
     }
@@ -81,7 +81,7 @@ class SuperadminController extends Controller
 
     public function storeUser(Request $request)
     {
-        $user = CreateUserAction::run($request->all());
+        $user = CreateUserAction::run($request->only(['name', 'email', 'password', 'password_confirmation', 'role']));
 
         return response()->json(['data' => $user], 201);
     }
@@ -105,7 +105,7 @@ class SuperadminController extends Controller
 
     public function updateUser(Request $request, User $user)
     {
-        $updated = UpdateUserAction::run($user, $request->all());
+        $updated = UpdateUserAction::run($user, $request->only(['name', 'email', 'password', 'password_confirmation', 'role']));
 
         return response()->json(['data' => $updated]);
     }
@@ -152,7 +152,7 @@ class SuperadminController extends Controller
             $query->where('causer_id', $request->input('causer_id'));
         }
 
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $activities = $query->paginate($perPage);
 
         return response()->json([

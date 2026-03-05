@@ -53,8 +53,10 @@ class SettingsController extends Controller
             'logo_url' => 'nullable|url',
             'favicon_url' => 'nullable|url',
             'maintenance_mode' => 'sometimes|boolean',
-            'social_links' => 'sometimes|array',
-            'seo_meta' => 'sometimes|array',
+            'social_links' => 'sometimes|array|max:20',
+            'social_links.*' => 'string|max:500',
+            'seo_meta' => 'sometimes|array|max:20',
+            'seo_meta.*' => 'nullable|string|max:500',
             // Phase 9.6 — Analytics integrations
             'ga4_measurement_id' => 'nullable|string|max:255',
             'gtm_container_id' => 'nullable|string|max:255',

@@ -48,17 +48,12 @@ class ThemeController extends Controller
 
     /**
      * Get tenant ID based on context (central vs tenant).
+     * Uses tenancy()->initialized for reliable context detection,
+     * not URL pattern matching.
      */
     private function getTenantId(): ?string
     {
-        // For central context, return null
-        // For tenant context, return tenant_id from the current tenant
-        if (request()->is('api/superadmin/*')) {
-            return null;
-        }
-
-        // Assuming tenant() helper exists for multi-tenancy
-        return tenant()?->id;
+        return tenancy()->initialized ? tenancy()->tenant->id : null;
     }
 
 

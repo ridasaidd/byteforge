@@ -11,9 +11,22 @@ use Spatie\Permission\Models\Permission;
 
 class RoleAssignmentController extends Controller
 {
+    /**
+     * Reserved role names that cannot be modified through the API.
+     * Prevents privilege escalation by protecting the superadmin role.
+     */
+    private const PROTECTED_ROLES = ['superadmin'];
+
     // Assign permissions to a role
     public function assignPermissions(Request $request, Role $role): JsonResponse
     {
+        // Prevent modification of protected system roles
+        if (in_array($role->name, self::PROTECTED_ROLES, true)) {
+            return response()->json([
+                'message' => 'The "' . $role->name . '" role cannot be modified.',
+            ], 403);
+        }
+
         $data = $request->validate([
             'permissions' => 'required|array',
             'permissions.*' => 'string|exists:permissions,name',
@@ -42,6 +55,14 @@ class RoleAssignmentController extends Controller
             'roles' => 'required|array',
             'roles.*' => 'string|exists:roles,name',
         ]);
+
+        // Prevent assigning protected system roles to prevent privilege escalation
+        $requestedProtected = array_intersect($data['roles'], self::PROTECTED_ROLES);
+        if (!empty($requestedProtected)) {
+            return response()->json([
+                'message' => 'Cannot assign protected system role(s): ' . implode(', ', $requestedProtected),
+            ], 403);
+        }
 
         $oldRoles = $user->roles->pluck('name')->toArray();
         $user->syncRoles($data['roles']);

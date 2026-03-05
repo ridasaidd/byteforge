@@ -31,6 +31,16 @@ class ThemeCustomizationController extends Controller
         // Get current tenant context
         $tenantId = $this->getTenantId();
 
+        // Verify this theme is accessible in the current context.
+        // Central (null) may only access system themes; tenants may only access their own themes.
+        $themeOwnedByCurrent = ($tenantId === null)
+            ? $theme->tenant_id === null
+            : $theme->tenant_id === $tenantId;
+
+        if (!$themeOwnedByCurrent) {
+            return response()->json(['message' => 'Theme not found.'], 404);
+        }
+
         // Load header/footer content from theme_parts for this tenant/central scope
         $headerPart = ThemePart::where('theme_id', $theme->id)
             ->where('tenant_id', $tenantId)
@@ -74,6 +84,16 @@ class ThemeCustomizationController extends Controller
      */
     public function saveSection(Request $request, Theme $theme, string $section)
     {
+        // Verify theme ownership before allowing writes
+        $tenantId = $this->getTenantId();
+        $themeOwnedByCurrent = ($tenantId === null)
+            ? $theme->tenant_id === null
+            : $theme->tenant_id === $tenantId;
+
+        if (!$themeOwnedByCurrent) {
+            return response()->json(['message' => 'Theme not found.'], 404);
+        }
+
         // Validate section is allowed (settings, header, footer only)
         $validator = Validator::make(
             ['section' => $section],

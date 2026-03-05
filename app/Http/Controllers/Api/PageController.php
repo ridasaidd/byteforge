@@ -42,12 +42,15 @@ class PageController extends Controller
             ? Page::whereNull('tenant_id')
             : Page::where('tenant_id', $tenantId);
 
-        // Apply filters
-        if ($request->has('status')) {
+        // Apply filters — whitelist values to avoid silent empty results on typos
+        $validStatuses   = ['draft', 'published', 'archived'];
+        $validPageTypes  = ['general', 'home', 'about', 'contact', 'blog', 'service', 'product', 'custom'];
+
+        if ($request->has('status') && in_array($request->input('status'), $validStatuses, true)) {
             $query->where('status', $request->input('status'));
         }
 
-        if ($request->has('page_type')) {
+        if ($request->has('page_type') && in_array($request->input('page_type'), $validPageTypes, true)) {
             $query->where('page_type', $request->input('page_type'));
         }
 
@@ -60,7 +63,7 @@ class PageController extends Controller
             });
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $pages = $query->orderBy('sort_order')
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
