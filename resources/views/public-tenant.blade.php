@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'ByteForge') }}</title>
+    <title>{{ $analyticsSettings?->site_title ?? config('app.name', 'ByteForge') }}</title>
 
     <!-- Storefront Base CSS - Browser defaults (undoes Tailwind resets, ensures consistent rendering) -->
     <link rel="stylesheet" href="{{ asset('css/storefront-base.css') }}">
@@ -30,18 +30,19 @@
         {{-- Load consolidated theme CSS from disk --}}
         <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css') }}" id="theme-css">
 
-        {{-- Load scoped customization CSS from database (central scope: tenant_id = NULL) --}}
+        {{-- Load scoped customization CSS from database (tenant scope) --}}
         @php
-            $scopedCustomCss = $activeTheme->getScopedCustomizationCss(null);
+            $tenantId = tenant('id');
+            $scopedCustomCss = $activeTheme->getScopedCustomizationCss($tenantId);
         @endphp
         @if($scopedCustomCss)
             <style id="customization-css">{!! $scopedCustomCss !!}</style>
         @endif
 
-        {{-- Load page-specific CSS from database (merged from all published pages) --}}
+        {{-- Load page-specific CSS from database (merged from all published pages for this tenant) --}}
         @php
             $pageCssService = app(\App\Services\PageCssService::class);
-            $pagesCss = $pageCssService->getMergedPagesCss(null);
+            $pagesCss = $pageCssService->getMergedPagesCss($tenantId);
         @endphp
         @if($pagesCss)
             <style id="pages-css">{!! $pagesCss !!}</style>
@@ -55,6 +56,12 @@
     @viteReactRefresh
 </head>
 <body class="antialiased">
+    @if(!empty($analyticsSettings?->gtm_container_id))
+    {{-- Google Tag Manager (noscript body tag) --}}
+    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $analyticsSettings->gtm_container_id }}"
+    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+    @endif
+
     <div id="public-app"></div>
 
     <!-- Vite JS - Only public app bundle -->

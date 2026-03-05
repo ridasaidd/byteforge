@@ -207,6 +207,12 @@ class SuperadminController extends Controller
                     'support_email' => $settings->support_email,
                     'company_name' => $settings->company_name,
                     'max_tenants_per_user' => $settings->max_tenants_per_user,
+                    // Phase 9.6 — Analytics integrations
+                    'ga4_measurement_id' => $settings->ga4_measurement_id,
+                    'gtm_container_id' => $settings->gtm_container_id,
+                    'clarity_project_id' => $settings->clarity_project_id,
+                    'plausible_domain' => $settings->plausible_domain,
+                    'meta_pixel_id' => $settings->meta_pixel_id,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -225,6 +231,12 @@ class SuperadminController extends Controller
             'support_email' => 'nullable|email|max:255',
             'company_name' => 'nullable|string|max:255',
             'max_tenants_per_user' => 'sometimes|required|integer|min:1|max:100',
+            // Phase 9.6 — Analytics integrations
+            'ga4_measurement_id' => 'nullable|string|max:255',
+            'gtm_container_id' => 'nullable|string|max:255',
+            'clarity_project_id' => 'nullable|string|max:255',
+            'plausible_domain' => 'nullable|string|max:255',
+            'meta_pixel_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -251,6 +263,22 @@ class SuperadminController extends Controller
             }
             if ($request->has('max_tenants_per_user')) {
                 $settings->max_tenants_per_user = $request->max_tenants_per_user;
+            }
+            // Phase 9.6 — Analytics integrations
+            if ($request->has('ga4_measurement_id')) {
+                $settings->ga4_measurement_id = $request->ga4_measurement_id;
+            }
+            if ($request->has('gtm_container_id')) {
+                $settings->gtm_container_id = $request->gtm_container_id;
+            }
+            if ($request->has('clarity_project_id')) {
+                $settings->clarity_project_id = $request->clarity_project_id;
+            }
+            if ($request->has('plausible_domain')) {
+                $settings->plausible_domain = $request->plausible_domain;
+            }
+            if ($request->has('meta_pixel_id')) {
+                $settings->meta_pixel_id = $request->meta_pixel_id;
             }
 
             $settings->save();
@@ -279,6 +307,12 @@ class SuperadminController extends Controller
                     'support_email' => $settings->support_email,
                     'company_name' => $settings->company_name,
                     'max_tenants_per_user' => $settings->max_tenants_per_user,
+                    // Phase 9.6 — Analytics integrations
+                    'ga4_measurement_id' => $settings->ga4_measurement_id,
+                    'gtm_container_id' => $settings->gtm_container_id,
+                    'clarity_project_id' => $settings->clarity_project_id,
+                    'plausible_domain' => $settings->plausible_domain,
+                    'meta_pixel_id' => $settings->meta_pixel_id,
                 ],
             ]);
         } catch (\Exception $e) {

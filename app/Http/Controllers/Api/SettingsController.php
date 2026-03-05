@@ -26,6 +26,12 @@ class SettingsController extends Controller
                     'maintenance_mode' => $settings->maintenance_mode,
                     'social_links' => $settings->social_links,
                     'seo_meta' => $settings->seo_meta,
+                    // Phase 9.6 — Analytics integrations
+                    'ga4_measurement_id' => $settings->ga4_measurement_id,
+                    'gtm_container_id' => $settings->gtm_container_id,
+                    'clarity_project_id' => $settings->clarity_project_id,
+                    'plausible_domain' => $settings->plausible_domain,
+                    'meta_pixel_id' => $settings->meta_pixel_id,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -49,6 +55,12 @@ class SettingsController extends Controller
             'maintenance_mode' => 'sometimes|boolean',
             'social_links' => 'sometimes|array',
             'seo_meta' => 'sometimes|array',
+            // Phase 9.6 — Analytics integrations
+            'ga4_measurement_id' => 'nullable|string|max:255',
+            'gtm_container_id' => 'nullable|string|max:255',
+            'clarity_project_id' => 'nullable|string|max:255',
+            'plausible_domain' => 'nullable|string|max:255',
+            'meta_pixel_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -91,6 +103,27 @@ class SettingsController extends Controller
                 $changedFields['seo_meta'] = ['old' => $settings->seo_meta, 'new' => $request->seo_meta];
                 $settings->seo_meta = $request->seo_meta;
             }
+            // Phase 9.6 — Analytics integrations
+            if ($request->has('ga4_measurement_id')) {
+                $changedFields['ga4_measurement_id'] = ['old' => $settings->ga4_measurement_id, 'new' => $request->ga4_measurement_id];
+                $settings->ga4_measurement_id = $request->ga4_measurement_id;
+            }
+            if ($request->has('gtm_container_id')) {
+                $changedFields['gtm_container_id'] = ['old' => $settings->gtm_container_id, 'new' => $request->gtm_container_id];
+                $settings->gtm_container_id = $request->gtm_container_id;
+            }
+            if ($request->has('clarity_project_id')) {
+                $changedFields['clarity_project_id'] = ['old' => $settings->clarity_project_id, 'new' => $request->clarity_project_id];
+                $settings->clarity_project_id = $request->clarity_project_id;
+            }
+            if ($request->has('plausible_domain')) {
+                $changedFields['plausible_domain'] = ['old' => $settings->plausible_domain, 'new' => $request->plausible_domain];
+                $settings->plausible_domain = $request->plausible_domain;
+            }
+            if ($request->has('meta_pixel_id')) {
+                $changedFields['meta_pixel_id'] = ['old' => $settings->meta_pixel_id, 'new' => $request->meta_pixel_id];
+                $settings->meta_pixel_id = $request->meta_pixel_id;
+            }
 
             $settings->save();
 
@@ -113,6 +146,12 @@ class SettingsController extends Controller
                     'maintenance_mode' => $settings->maintenance_mode,
                     'social_links' => $settings->social_links,
                     'seo_meta' => $settings->seo_meta,
+                    // Phase 9.6 — Analytics integrations
+                    'ga4_measurement_id' => $settings->ga4_measurement_id,
+                    'gtm_container_id' => $settings->gtm_container_id,
+                    'clarity_project_id' => $settings->clarity_project_id,
+                    'plausible_domain' => $settings->plausible_domain,
+                    'meta_pixel_id' => $settings->meta_pixel_id,
                 ],
             ]);
         } catch (\Exception $e) {

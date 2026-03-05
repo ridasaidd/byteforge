@@ -110,6 +110,12 @@ export interface GeneralSettings extends Record<string, unknown> {
   support_email: string | null;
   company_name: string | null;
   max_tenants_per_user: number;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id: string | null;
+  gtm_container_id: string | null;
+  clarity_project_id: string | null;
+  plausible_domain: string | null;
+  meta_pixel_id: string | null;
 }
 
 export interface UpdateSettingsData {
@@ -118,6 +124,12 @@ export interface UpdateSettingsData {
   support_email?: string | null;
   company_name?: string | null;
   max_tenants_per_user?: number;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id?: string | null;
+  gtm_container_id?: string | null;
+  clarity_project_id?: string | null;
+  plausible_domain?: string | null;
+  meta_pixel_id?: string | null;
 }
 
 export interface Media extends Record<string, unknown> {

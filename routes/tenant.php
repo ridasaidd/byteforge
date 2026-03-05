@@ -34,10 +34,34 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->group(function () {
+    // Public storefront — serve tenant SPA with theme + analytics scripts injected
     Route::get('/', function () {
-        // dd(\App\Models\User::all());
-        return 'This is your multi-tenant application. The id of the current tenant is '.tenant('id');
+        try {
+            $analyticsSettings = app(\App\Settings\TenantSettings::class);
+        } catch (\Throwable $e) {
+            $analyticsSettings = null;
+        }
+        try {
+            $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+        } catch (\Throwable $e) {
+            $activeTheme = null;
+        }
+        return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
     });
+
+    Route::get('/pages/{slug}', function (string $slug) {
+        try {
+            $analyticsSettings = app(\App\Settings\TenantSettings::class);
+        } catch (\Throwable $e) {
+            $analyticsSettings = null;
+        }
+        try {
+            $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+        } catch (\Throwable $e) {
+            $activeTheme = null;
+        }
+        return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
+    })->where('slug', '[a-z0-9\-]+');
 });
 
 // Tenant API routes
@@ -52,6 +76,11 @@ Route::middleware([
 
     // Public pages CSS endpoint (for tenant storefront)
     Route::get('pages/css/merged', [\App\Http\Controllers\Api\PageCssController::class, 'getMergedCss']);
+
+    // Public storefront page endpoints (Phase 9.6 — mirrors central api.php for tenant domain)
+    Route::get('themes/public', [\App\Http\Controllers\Api\ThemeController::class, 'publicTheme']);
+    Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
+    Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
 
     // Protected tenant routes - require authentication
     Route::middleware('auth:api')->group(function () {
