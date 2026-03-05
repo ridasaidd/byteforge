@@ -25,7 +25,7 @@ class ListMediaAction
 
         // Only show media attached to MediaLibrary (not avatars, etc.)
         $query->where('media.model_type', 'App\Models\MediaLibrary');
-        
+
         // Explicitly handle tenant_id check for central context (prevent ambiguity in joins)
         if (tenancy()->initialized) {
             $query->where('media.tenant_id', tenancy()->tenant->id);
@@ -36,12 +36,12 @@ class ListMediaAction
         // ALWAYS filter by folder - use join for better performance
         // Default to root folder (null) if not specified
         $folderId = $filters['folder_id'] ?? null;
-        
+
         // Join with media_libraries to filter by folder_id
         $query->join('media_libraries', function ($join) use ($folderId) {
             $join->on('media.model_id', '=', 'media_libraries.id')
                 ->where('media.model_type', '=', 'App\Models\MediaLibrary');
-                
+
             if ($folderId === null || $folderId === 'null' || $folderId === '') {
                 $join->whereNull('media_libraries.folder_id');
             } else {

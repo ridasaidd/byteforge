@@ -19,7 +19,7 @@ class UploadMediaRequest extends FormRequest
         $allowedExtensions = implode(',', config('media-upload.allowed_extensions'));
         $allowedMimeTypes = implode(',', config('media-upload.allowed_mime_types'));
         $maxFileSize = config('media-upload.max_file_size');
-        
+
         return [
             'file' => [
                 'required',
