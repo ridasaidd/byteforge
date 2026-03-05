@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Page;
 use App\Http\Controllers\Controller;
-use App\Services\PuckCompilerService;
+use App\Services\AnalyticsService;
 use App\Services\PageCssService;
+use App\Services\PuckCompilerService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -14,9 +15,9 @@ use Illuminate\Validation\Rule;
 class PageController extends Controller
 {
     public function __construct(
-        private PageCssService $pageCssService
-    ) {
-    }
+        private readonly PageCssService   $pageCssService,
+        private readonly AnalyticsService $analytics
+    ) {}
     /**
      * Get tenant ID - uses null for central app, or tenant ID for tenant context
      */
@@ -352,6 +353,8 @@ class PageController extends Controller
         // Use compiled data (header + content + footer + metadata already merged during publish)
         $pageData = $page->puck_data_compiled ?? $page->puck_data;
 
+        $this->recordPageView($page, $request);
+
         return response()->json([
             'data' => [
                 'id' => $page->id,
@@ -396,6 +399,8 @@ class PageController extends Controller
         // Use compiled data (header + content + footer + metadata already merged during publish)
         $pageData = $page->puck_data_compiled ?? $page->puck_data;
 
+        $this->recordPageView($page, $request);
+
         return response()->json([
             'data' => [
                 'id' => $page->id,
@@ -414,5 +419,40 @@ class PageController extends Controller
         ])
         ->header('Cache-Control', 'public, max-age=3600')
         ->header('ETag', md5(json_encode($pageData)));
+    }
+
+    // ------------------------------------------------------------------ //
+
+    /**
+     * Fire a page.viewed analytics event in a fire-and-forget manner.
+     * Swallows all exceptions so analytics never breaks the page response.
+     */
+    private function recordPageView(Page $page, Request $request): void
+    {
+        try {
+            $ua        = $request->userAgent() ?? '';
+            $uaType    = match (true) {
+                (bool) preg_match('/bot|crawl|spider/i', $ua)         => 'bot',
+                (bool) preg_match('/mobile|android|iphone|ipad/i', $ua) => 'mobile',
+                default                                                 => 'desktop',
+            };
+
+            $this->analytics->record(
+                eventType:  \App\Models\AnalyticsEvent::TYPE_PAGE_VIEWED,
+                properties: [
+                    'page_id'         => $page->id,
+                    'slug'            => $page->slug,
+                    'referrer'        => $request->header('Referer', ''),
+                    'user_agent_type' => $uaType,
+                ],
+                tenantId:   $page->tenant_id,
+                subject:    $page,
+            );
+        } catch (\Throwable) {
+            // Analytics is a non-critical side-effect; never surface failures to the caller.
+            \Illuminate\Support\Facades\Log::warning('page.viewed analytics record failed', [
+                'page_id' => $page->id,
+            ]);
+        }
     }
 }

@@ -35,7 +35,7 @@ class RolePermissionSeeder extends Seeder
             // Settings
             'view settings', 'manage settings',
             // Analytics & dashboard
-            'view analytics', 'view dashboard stats',
+            'view analytics', 'view platform analytics', 'view dashboard stats',
         ];
 
         // Create permissions for both web and api guards
@@ -60,7 +60,7 @@ class RolePermissionSeeder extends Seeder
                 'manage users', 'view users',
                 'manage tenants', 'view tenants',
                 'manage roles',
-                'view analytics', 'view dashboard stats',
+                'view analytics', 'view platform analytics', 'view dashboard stats',
                 'view activity logs',
                 'view settings', 'manage settings',
             ],

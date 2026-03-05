@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save } from 'lucide-react';
+import { Save, BarChart2 } from 'lucide-react';
 import { api, type UpdateSettingsData } from '@/shared/services/api';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
@@ -22,6 +22,12 @@ const settingsSchema = z.object({
   support_email: z.string().email('Invalid email address').max(255, 'Email is too long').nullable().or(z.literal('')),
   company_name: z.string().max(255, 'Company name is too long').nullable().or(z.literal('')),
   max_tenants_per_user: z.number().int().min(1, 'Must be at least 1').max(100, 'Maximum is 100'),
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id: z.string().max(255).nullable().or(z.literal('')),
+  gtm_container_id: z.string().max(255).nullable().or(z.literal('')),
+  clarity_project_id: z.string().max(255).nullable().or(z.literal('')),
+  plausible_domain: z.string().max(255).nullable().or(z.literal('')),
+  meta_pixel_id: z.string().max(255).nullable().or(z.literal('')),
 });
 
 type SettingsFormData = z.infer<typeof settingsSchema>;
@@ -83,6 +89,11 @@ export function SettingsPage() {
       support_email: '',
       company_name: '',
       max_tenants_per_user: 5,
+      ga4_measurement_id: '',
+      gtm_container_id: '',
+      clarity_project_id: '',
+      plausible_domain: '',
+      meta_pixel_id: '',
     },
   });
 
@@ -95,6 +106,11 @@ export function SettingsPage() {
         support_email: data.support_email || '',
         company_name: data.company_name || '',
         max_tenants_per_user: data.max_tenants_per_user,
+        ga4_measurement_id: data.ga4_measurement_id || '',
+        gtm_container_id: data.gtm_container_id || '',
+        clarity_project_id: data.clarity_project_id || '',
+        plausible_domain: data.plausible_domain || '',
+        meta_pixel_id: data.meta_pixel_id || '',
       });
     }
   }, [data, form]);
@@ -110,6 +126,11 @@ export function SettingsPage() {
       support_email: formData.support_email || null,
       company_name: formData.company_name || null,
       max_tenants_per_user: formData.max_tenants_per_user,
+      ga4_measurement_id: formData.ga4_measurement_id || null,
+      gtm_container_id: formData.gtm_container_id || null,
+      clarity_project_id: formData.clarity_project_id || null,
+      plausible_domain: formData.plausible_domain || null,
+      meta_pixel_id: formData.meta_pixel_id || null,
     });
   };
 
@@ -248,6 +269,70 @@ export function SettingsPage() {
               <p className="text-sm text-muted-foreground">
                 Maximum number of tenants a single user can create (1-100)
               </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Analytics Integrations */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart2 className="h-5 w-5" />
+              Analytics Integrations
+            </CardTitle>
+            <CardDescription>
+              Third-party analytics scripts injected into the public storefront. Leave blank to disable a provider.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="ga4_measurement_id">Google Analytics 4 — Measurement ID</Label>
+              <Input
+                id="ga4_measurement_id"
+                placeholder="G-XXXXXXXXXX"
+                {...form.register('ga4_measurement_id')}
+              />
+              <p className="text-sm text-muted-foreground">Found in GA4 › Admin › Data Streams › your stream</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gtm_container_id">Google Tag Manager — Container ID</Label>
+              <Input
+                id="gtm_container_id"
+                placeholder="GTM-XXXXXXX"
+                {...form.register('gtm_container_id')}
+              />
+              <p className="text-sm text-muted-foreground">Found in GTM › your workspace (top of page)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="clarity_project_id">Microsoft Clarity — Project ID</Label>
+              <Input
+                id="clarity_project_id"
+                placeholder="xxxxxxxxxx"
+                {...form.register('clarity_project_id')}
+              />
+              <p className="text-sm text-muted-foreground">Found in Clarity › Settings › Overview</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="plausible_domain">Plausible Analytics — Domain</Label>
+              <Input
+                id="plausible_domain"
+                placeholder="byteforge.com"
+                {...form.register('plausible_domain')}
+              />
+              <p className="text-sm text-muted-foreground">The domain you registered in Plausible (without https://)</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="meta_pixel_id">Meta Pixel — Pixel ID</Label>
+              <Input
+                id="meta_pixel_id"
+                placeholder="000000000000000"
+                {...form.register('meta_pixel_id')}
+              />
+              <p className="text-sm text-muted-foreground">Found in Meta Events Manager › your pixel</p>
             </div>
           </CardContent>
         </Card>

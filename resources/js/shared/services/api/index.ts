@@ -13,4 +13,5 @@ export * from './themePlaceholders';
 export * from './pageTemplates';
 export * from './layouts';
 export * from './stats';
+export * from './analytics';
 export * from './types';

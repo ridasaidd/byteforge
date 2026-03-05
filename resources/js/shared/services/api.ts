@@ -14,6 +14,7 @@ export { users } from './api/users';
 export { tenants } from './api/tenants';
 export { activity } from './api/activity';
 export { settings } from './api/settings';
+export { tenantSettings } from './api/settings';
 export { pages } from './api/pages';
 export { media } from './api/media';
 export { mediaFolders } from './api/mediaFolders';
@@ -25,7 +26,7 @@ import { auth } from './api/auth';
 import { users } from './api/users';
 import { tenants } from './api/tenants';
 import { activity } from './api/activity';
-import { settings } from './api/settings';
+import { settings, tenantSettings } from './api/settings';
 import { pages } from './api/pages';
 import { media } from './api/media';
 import { mediaFolders } from './api/mediaFolders';
@@ -50,6 +51,7 @@ export const api = {
   tenants,
   activity,
   settings,
+  tenantSettings,
   pages,
   media,
   mediaFolders,

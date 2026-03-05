@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\PlatformAnalyticsController;
 use App\Http\Controllers\Api\SuperadminController;
 use App\Http\Controllers\Api\ThemeCssController;
 use Illuminate\Support\Facades\Route;
@@ -115,6 +116,14 @@ foreach (config('tenancy.central_domains') as $domain) {
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
 
+            // Analytics (platform-level and cross-tenant aggregates)
+            Route::prefix('analytics')->group(function () {
+                Route::get('overview', [PlatformAnalyticsController::class, 'overview'])
+                    ->middleware('permission:view platform analytics');
+                Route::get('tenants/overview', [PlatformAnalyticsController::class, 'tenantsOverview'])
+                    ->middleware('permission:view platform analytics');
+            });
+
             // Settings management
             Route::get('settings', [SuperadminController::class, 'getSettings'])->middleware('permission:view settings');
             Route::put('settings', [SuperadminController::class, 'updateSettings'])->middleware('permission:manage settings');
@@ -171,6 +180,10 @@ foreach (config('tenancy.central_domains') as $domain) {
         // Public page endpoints (no auth required)
         Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
         Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
+
+        // Public analytics beacon (no auth, rate-limited)
+        Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
+            ->middleware('throttle:60,1');
 
     });
 }

@@ -110,6 +110,12 @@ export interface GeneralSettings extends Record<string, unknown> {
   support_email: string | null;
   company_name: string | null;
   max_tenants_per_user: number;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id: string | null;
+  gtm_container_id: string | null;
+  clarity_project_id: string | null;
+  plausible_domain: string | null;
+  meta_pixel_id: string | null;
 }
 
 export interface UpdateSettingsData {
@@ -118,6 +124,45 @@ export interface UpdateSettingsData {
   support_email?: string | null;
   company_name?: string | null;
   max_tenants_per_user?: number;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id?: string | null;
+  gtm_container_id?: string | null;
+  clarity_project_id?: string | null;
+  plausible_domain?: string | null;
+  meta_pixel_id?: string | null;
+}
+
+// Tenant-scoped settings (POST /api/settings on tenant domain)
+export interface TenantSettings extends Record<string, unknown> {
+  site_title: string;
+  site_description: string | null;
+  logo_url: string | null;
+  favicon_url: string | null;
+  maintenance_mode: boolean;
+  social_links: Record<string, string>;
+  seo_meta: Record<string, string>;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id: string | null;
+  gtm_container_id: string | null;
+  clarity_project_id: string | null;
+  plausible_domain: string | null;
+  meta_pixel_id: string | null;
+}
+
+export interface UpdateTenantSettingsData {
+  site_title?: string;
+  site_description?: string | null;
+  logo_url?: string | null;
+  favicon_url?: string | null;
+  maintenance_mode?: boolean;
+  social_links?: Record<string, string>;
+  seo_meta?: Record<string, string>;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id?: string | null;
+  gtm_container_id?: string | null;
+  clarity_project_id?: string | null;
+  plausible_domain?: string | null;
+  meta_pixel_id?: string | null;
 }
 
 export interface Media extends Record<string, unknown> {
@@ -375,4 +420,48 @@ export interface UpdateThemePartData {
   puck_data_raw?: Record<string, unknown> | null;
   status?: 'draft' | 'published';
   sort_order?: number;
+}
+
+// ─── Analytics ─────────────────────────────────────────────────────────────
+
+/** Period used by every analytics response envelope */
+export interface AnalyticsPeriod {
+  from: string; // YYYY-MM-DD
+  to:   string;
+}
+
+/**
+ * Analytics overview data shape.
+ * Returned by both GET /api/analytics/overview (tenant)
+ * and GET /api/superadmin/analytics/overview (central).
+ */
+export interface AnalyticsOverviewData {
+  total_events: number;
+  by_type:      Record<string, number>; // e.g. { 'page.viewed': 42, 'page.created': 5 }
+}
+
+/** Full response envelope for the overview endpoints */
+export interface AnalyticsOverviewResponse {
+  data:         AnalyticsOverviewData;
+  period:       AnalyticsPeriod;
+  generated_at: string;
+}
+
+/** Allowed date-range presets for the analytics UI */
+export type AnalyticsRangePreset = '7d' | '30d' | '90d';
+
+/**
+ * Cross-tenant overview: aggregated analytics across ALL tenants combined.
+ * Returned by GET /api/superadmin/analytics/tenants/overview
+ */
+export interface CrossTenantOverviewData {
+  total_events: number;
+  tenant_count: number;  // distinct tenants with ≥1 event in the period
+  by_type:      Record<string, number>;
+}
+
+export interface CrossTenantOverviewResponse {
+  data:         CrossTenantOverviewData;
+  period:       AnalyticsPeriod;
+  generated_at: string;
 }

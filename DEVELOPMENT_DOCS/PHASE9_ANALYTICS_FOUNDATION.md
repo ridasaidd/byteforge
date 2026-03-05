@@ -1,6 +1,6 @@
 # Phase 9: Analytics Foundation
 
-**Status**: In Progress 🚧  
+**Status**: Sub-phases 9.1–9.5 complete ✅ | 9.6 (third-party integrations) in planning  
 **Started**: March 3, 2026  
 **Branch**: `feature/phase9-analytics-foundation`  
 **Depends on**: Phase 8 (complete), Navigation v2 (complete)  
@@ -312,9 +312,93 @@ $this->analytics->record('page.viewed', [
 ```
 
 **Frontend integration (web analytics passthrough):**
-- Add `analytics_tracking_id` field to tenant settings (Google Analytics 4 Measurement ID / Plausible domain)
-- Inject appropriate `<script>` tag in `public-central.blade.php` if set
-- No custom event tracking needed — GA4/Plausible handles visitor-level detail
+- Add `analytics_integrations` group to tenant settings (see Phase 9.6 below)
+- Inject appropriate `<script>` tags in the public blade layout based on which providers are configured
+- No custom event tracking needed — each provider handles visitor-level detail directly in the browser
+
+---
+
+## Third-Party Analytics Integrations (Phase 9.6)
+
+### Architecture
+
+Third-party tracking is purely additive — it runs entirely in the visitor's browser and never touches your servers. Your own `analytics_events` pipeline continues in parallel and is unaffected.
+
+```
+Tenant configures tracking IDs in Settings UI
+      ↓
+Stored in tenant_settings (analytics_integrations group)
+      ↓
+Public blade layout reads settings on every storefront request
+      ↓
+Injects <script> tags for configured providers
+      ↓
+Visitor's browser sends hits directly to GA4 / Clarity / etc.
+```
+
+### Supported Providers
+
+| Provider | Setting key | What is stored | Script pattern |
+|----------|------------|----------------|----------------|
+| Google Analytics 4 | `ga4_measurement_id` | e.g. `G-XXXXXXXXXX` | gtag.js |
+| Google Tag Manager | `gtm_container_id` | e.g. `GTM-XXXXXX` | GTM snippet |
+| Microsoft Clarity | `clarity_project_id` | alphanumeric project ID | clarity.js |
+| Plausible | `plausible_domain` | e.g. `acme.com` | plausible.io/js/script.js |
+| Fathom | `fathom_site_id` | e.g. `ABCDEFGH` | cdn.usefathom.com/script.js |
+| Meta Pixel | `meta_pixel_id` | numeric pixel ID | connect.facebook.net snippet |
+
+### Implementation
+
+**Backend:**
+- Add `analytics_integrations` settings group (alongside existing theme/general groups)
+- Settings are tenant-scoped, stored in `tenant_settings`
+- No migration needed — reuses existing settings infrastructure
+
+**Frontend (Settings UI):**
+- Add "Analytics Integrations" card to tenant settings page
+- Toggle per provider + text field for the ID/domain
+- Saved via existing settings API
+
+**Blade (storefront):**
+```blade
+@if($analyticsSettings['ga4_measurement_id'] ?? null)
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ $analyticsSettings['ga4_measurement_id'] }}"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', '{{ $analyticsSettings['ga4_measurement_id'] }}');
+</script>
+@endif
+
+@if($analyticsSettings['clarity_project_id'] ?? null)
+<!-- Microsoft Clarity -->
+<script>
+  (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+  t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+  y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+  })(window, document, "clarity", "script", "{{ $analyticsSettings['clarity_project_id'] }}");
+</script>
+@endif
+```
+
+### GTM Trust Policy
+
+Google Tag Manager allows a tenant to inject **any** script through their container — including scripts you haven't whitelisted. Two options:
+
+| Option | Trade-off |
+|--------|----------|
+| Allow GTM for all tenants | Maximum flexibility, risk of abuse |
+| Allow GTM for verified/paid tenants only | Safe default; gate behind a tenant flag |
+
+**Decision deferred to product.** Default implementation enables GTM field for all tenants. A `gtm_enabled` flag on the `Tenant` model can gate access later without a settings migration.
+
+### What This Does NOT Do
+- Does not relay visitor data through your backend
+- Does not replace your `analytics_events` pipeline
+- Does not provide server-side tracking (browser-only)
+- Does not validate that the IDs are real/active
 
 ---
 
@@ -412,7 +496,8 @@ All existing tests must continue passing. Target 80%+ coverage on new service co
 | 9.3 | `page.viewed` tracking + web analytics passthrough setting | 1–2 hrs |
 | 9.4 | Tenant analytics dashboard (frontend) | 3–4 hrs |
 | 9.5 | Central analytics dashboard (frontend) | 2–3 hrs |
-| **Total** | | **~12–16 hrs** |
+| 9.6 | Third-party analytics integrations (GA4, GTM, Clarity, Plausible, Meta Pixel) | 2–3 hrs |
+| **Total** | | **~14–19 hrs** |
 
 ---
 

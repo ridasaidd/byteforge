@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\ThemeService;
+use App\Settings\GeneralSettings;
 use Illuminate\Support\Facades\Route;
 
 // routes/web.php, api.php or any other central route files you have
@@ -29,6 +30,7 @@ foreach (config('tenancy.central_domains') as $domain) {
                 return view('public-central', [
                     'themeCssUrl' => $themeCssUrl,
                     'activeTheme' => $theme,
+                    'analyticsSettings' => app(GeneralSettings::class),
                 ]);
             }
 
@@ -47,6 +49,7 @@ foreach (config('tenancy.central_domains') as $domain) {
             return view('public-central', [
                 'themeCssUrl' => $theme?->getCssUrl(),
                 'activeTheme' => $theme,
+                'analyticsSettings' => app(GeneralSettings::class),
             ]);
         })->where('slug', '[a-z0-9\-]+');
 

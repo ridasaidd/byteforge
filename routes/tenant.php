@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Api\ActivityLogController;
+use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
@@ -33,10 +34,34 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
 ])->group(function () {
+    // Public storefront — serve tenant SPA with theme + analytics scripts injected
     Route::get('/', function () {
-        // dd(\App\Models\User::all());
-        return 'This is your multi-tenant application. The id of the current tenant is '.tenant('id');
+        try {
+            $analyticsSettings = app(\App\Settings\TenantSettings::class);
+        } catch (\Throwable $e) {
+            $analyticsSettings = null;
+        }
+        try {
+            $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+        } catch (\Throwable $e) {
+            $activeTheme = null;
+        }
+        return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
     });
+
+    Route::get('/pages/{slug}', function (string $slug) {
+        try {
+            $analyticsSettings = app(\App\Settings\TenantSettings::class);
+        } catch (\Throwable $e) {
+            $analyticsSettings = null;
+        }
+        try {
+            $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+        } catch (\Throwable $e) {
+            $activeTheme = null;
+        }
+        return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
+    })->where('slug', '[a-z0-9\-]+');
 });
 
 // Tenant API routes
@@ -51,6 +76,15 @@ Route::middleware([
 
     // Public pages CSS endpoint (for tenant storefront)
     Route::get('pages/css/merged', [\App\Http\Controllers\Api\PageCssController::class, 'getMergedCss']);
+
+    // Public storefront page endpoints (Phase 9.6 — mirrors central api.php for tenant domain)
+    Route::get('themes/public', [\App\Http\Controllers\Api\ThemeController::class, 'publicTheme']);
+    Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
+    Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
+
+    // Public analytics beacon (no auth, rate-limited)
+    Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
+        ->middleware('throttle:60,1');
 
     // Protected tenant routes - require authentication
     Route::middleware('auth:api')->group(function () {
@@ -99,5 +133,13 @@ Route::middleware([
         // Activity logs
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:view activity logs');
         Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('permission:view activity logs');
+
+        // Analytics (tenant-scoped events only)
+        Route::prefix('analytics')->group(function () {
+            Route::get('overview',  [AnalyticsController::class, 'overview'])->middleware('permission:view analytics');
+            Route::get('pages',     [AnalyticsController::class, 'pages'])->middleware('permission:view analytics');
+            Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');  // empty until Phase 11
+            Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');   // empty until Phase 10
+        });
     });
 });
