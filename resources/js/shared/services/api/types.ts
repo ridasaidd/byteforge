@@ -132,6 +132,39 @@ export interface UpdateSettingsData {
   meta_pixel_id?: string | null;
 }
 
+// Tenant-scoped settings (POST /api/settings on tenant domain)
+export interface TenantSettings extends Record<string, unknown> {
+  site_title: string;
+  site_description: string | null;
+  logo_url: string | null;
+  favicon_url: string | null;
+  maintenance_mode: boolean;
+  social_links: Record<string, string>;
+  seo_meta: Record<string, string>;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id: string | null;
+  gtm_container_id: string | null;
+  clarity_project_id: string | null;
+  plausible_domain: string | null;
+  meta_pixel_id: string | null;
+}
+
+export interface UpdateTenantSettingsData {
+  site_title?: string;
+  site_description?: string | null;
+  logo_url?: string | null;
+  favicon_url?: string | null;
+  maintenance_mode?: boolean;
+  social_links?: Record<string, string>;
+  seo_meta?: Record<string, string>;
+  // Phase 9.6 — Analytics integrations
+  ga4_measurement_id?: string | null;
+  gtm_container_id?: string | null;
+  clarity_project_id?: string | null;
+  plausible_domain?: string | null;
+  meta_pixel_id?: string | null;
+}
+
 export interface Media extends Record<string, unknown> {
   id: number;
   uuid: string;

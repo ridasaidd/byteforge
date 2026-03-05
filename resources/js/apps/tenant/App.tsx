@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, PagesPage, PageEditorPage, AnalyticsPage } from './components/pages';
+import { DashboardPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { tenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
@@ -46,6 +46,7 @@ function ProtectedRoutes() {
           <Route path="/cms" element={<DashboardPage />} />
           <Route path="/cms/pages" element={<PagesPage />} />
           <Route path="/cms/analytics" element={<AnalyticsPage />} />
+          <Route path="/cms/settings" element={<SettingsPage />} />
           {/* TODO: Add other routes */}
           <Route path="/" element={<Navigate to="/cms" replace />} />
         </Routes>
