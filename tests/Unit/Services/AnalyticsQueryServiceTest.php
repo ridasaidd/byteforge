@@ -301,4 +301,144 @@ class AnalyticsQueryServiceTest extends TestCase
         $this->assertEquals(0, $result['total_events']);
         $this->assertEmpty($result['by_type']);
     }
+
+    // =========================================================================
+    // allTenantsSummary()
+    // =========================================================================
+
+    #[Test]
+    public function all_tenants_summary_returns_total_event_count(): void
+    {
+        $from = Carbon::parse('2025-01-01');
+        $to   = Carbon::parse('2025-01-31');
+
+        foreach (['tenant_a', 'tenant_a', 'tenant_b'] as $tenantId) {
+            AnalyticsEvent::create([
+                'tenant_id'   => $tenantId,
+                'event_type'  => AnalyticsEvent::TYPE_PAGE_VIEWED,
+                'properties'  => [],
+                'occurred_at' => Carbon::parse('2025-01-15'),
+            ]);
+        }
+
+        $result = $this->service->allTenantsSummary($from, $to);
+
+        $this->assertEquals(3, $result['total_events']);
+    }
+
+    #[Test]
+    public function all_tenants_summary_returns_distinct_tenant_count(): void
+    {
+        $from = Carbon::parse('2025-01-01');
+        $to   = Carbon::parse('2025-01-31');
+
+        // tenant_a fires 3 events, tenant_b fires 1 — distinct count must be 2
+        foreach (['tenant_a', 'tenant_a', 'tenant_a', 'tenant_b'] as $tenantId) {
+            AnalyticsEvent::create([
+                'tenant_id'   => $tenantId,
+                'event_type'  => AnalyticsEvent::TYPE_PAGE_VIEWED,
+                'properties'  => [],
+                'occurred_at' => Carbon::parse('2025-01-10'),
+            ]);
+        }
+
+        $result = $this->service->allTenantsSummary($from, $to);
+
+        $this->assertEquals(2, $result['tenant_count']);
+    }
+
+    #[Test]
+    public function all_tenants_summary_excludes_platform_level_events(): void
+    {
+        $from = Carbon::parse('2025-01-01');
+        $to   = Carbon::parse('2025-01-31');
+
+        // Platform event (null tenant_id) — must NOT be counted
+        AnalyticsEvent::create([
+            'tenant_id'   => null,
+            'event_type'  => AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED,
+            'properties'  => [],
+            'occurred_at' => Carbon::parse('2025-01-05'),
+        ]);
+
+        // Tenant event — must be counted
+        AnalyticsEvent::create([
+            'tenant_id'   => 'tenant_a',
+            'event_type'  => AnalyticsEvent::TYPE_PAGE_VIEWED,
+            'properties'  => [],
+            'occurred_at' => Carbon::parse('2025-01-10'),
+        ]);
+
+        $result = $this->service->allTenantsSummary($from, $to);
+
+        $this->assertEquals(1, $result['total_events']);
+        $this->assertEquals(1, $result['tenant_count']);
+    }
+
+    #[Test]
+    public function all_tenants_summary_only_includes_events_in_date_range(): void
+    {
+        $from = Carbon::parse('2025-02-01');
+        $to   = Carbon::parse('2025-02-28');
+
+        // Outside range — must be excluded
+        AnalyticsEvent::create([
+            'tenant_id'   => 'tenant_a',
+            'event_type'  => AnalyticsEvent::TYPE_PAGE_VIEWED,
+            'properties'  => [],
+            'occurred_at' => Carbon::parse('2025-01-31'),
+        ]);
+
+        // Inside range — must be included
+        AnalyticsEvent::create([
+            'tenant_id'   => 'tenant_a',
+            'event_type'  => AnalyticsEvent::TYPE_PAGE_VIEWED,
+            'properties'  => [],
+            'occurred_at' => Carbon::parse('2025-02-15'),
+        ]);
+
+        $result = $this->service->allTenantsSummary($from, $to);
+
+        $this->assertEquals(1, $result['total_events']);
+    }
+
+    #[Test]
+    public function all_tenants_summary_groups_events_by_type(): void
+    {
+        $from = Carbon::parse('2025-01-01');
+        $to   = Carbon::parse('2025-01-31');
+
+        foreach (range(1, 3) as $_) {
+            AnalyticsEvent::create([
+                'tenant_id'   => 'tenant_a',
+                'event_type'  => AnalyticsEvent::TYPE_PAGE_VIEWED,
+                'properties'  => [],
+                'occurred_at' => Carbon::parse('2025-01-10'),
+            ]);
+        }
+        AnalyticsEvent::create([
+            'tenant_id'   => 'tenant_b',
+            'event_type'  => AnalyticsEvent::TYPE_PAGE_CREATED,
+            'properties'  => [],
+            'occurred_at' => Carbon::parse('2025-01-15'),
+        ]);
+
+        $result = $this->service->allTenantsSummary($from, $to);
+
+        $this->assertEquals(3, $result['by_type'][AnalyticsEvent::TYPE_PAGE_VIEWED]);
+        $this->assertEquals(1, $result['by_type'][AnalyticsEvent::TYPE_PAGE_CREATED]);
+    }
+
+    #[Test]
+    public function all_tenants_summary_returns_zero_when_no_events(): void
+    {
+        $from = Carbon::parse('2025-01-01');
+        $to   = Carbon::parse('2025-01-31');
+
+        $result = $this->service->allTenantsSummary($from, $to);
+
+        $this->assertEquals(0, $result['total_events']);
+        $this->assertEquals(0, $result['tenant_count']);
+        $this->assertEmpty($result['by_type']);
+    }
 }

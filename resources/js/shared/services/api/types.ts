@@ -404,3 +404,19 @@ export interface AnalyticsOverviewResponse {
 
 /** Allowed date-range presets for the analytics UI */
 export type AnalyticsRangePreset = '7d' | '30d' | '90d';
+
+/**
+ * Cross-tenant overview: aggregated analytics across ALL tenants combined.
+ * Returned by GET /api/superadmin/analytics/tenants/overview
+ */
+export interface CrossTenantOverviewData {
+  total_events: number;
+  tenant_count: number;  // distinct tenants with ≥1 event in the period
+  by_type:      Record<string, number>;
+}
+
+export interface CrossTenantOverviewResponse {
+  data:         CrossTenantOverviewData;
+  period:       AnalyticsPeriod;
+  generated_at: string;
+}

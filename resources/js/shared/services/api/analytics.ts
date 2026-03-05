@@ -7,7 +7,7 @@
  * Both return the same AnalyticsOverviewResponse envelope.
  */
 import { http } from '../http';
-import type { AnalyticsOverviewResponse, AnalyticsRangePreset } from './types';
+import type { AnalyticsOverviewResponse, AnalyticsRangePreset, CrossTenantOverviewResponse } from './types';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -44,13 +44,28 @@ export const analyticsApi = {
 
   /**
    * GET /api/superadmin/analytics/overview
-   * Platform-level analytics. Central domain only; requires view platform analytics.
+   * Platform-level analytics (tenant_id = null events only).
+   * Central domain only; requires view platform analytics.
    */
   async getPlatformOverview(
     from: string,
     to: string,
   ): Promise<AnalyticsOverviewResponse> {
     return http.get<AnalyticsOverviewResponse>('/superadmin/analytics/overview', {
+      params: { from, to },
+    });
+  },
+
+  /**
+   * GET /api/superadmin/analytics/tenants/overview
+   * Cross-tenant aggregate: all events across all tenants combined.
+   * Central domain only; requires view platform analytics.
+   */
+  async getCrossTenantOverview(
+    from: string,
+    to: string,
+  ): Promise<CrossTenantOverviewResponse> {
+    return http.get<CrossTenantOverviewResponse>('/superadmin/analytics/tenants/overview', {
       params: { from, to },
     });
   },

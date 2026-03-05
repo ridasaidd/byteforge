@@ -116,9 +116,11 @@ foreach (config('tenancy.central_domains') as $domain) {
             // Activity logs (central)
             Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
 
-            // Analytics (platform-level events only)
+            // Analytics (platform-level and cross-tenant aggregates)
             Route::prefix('analytics')->group(function () {
                 Route::get('overview', [PlatformAnalyticsController::class, 'overview'])
+                    ->middleware('permission:view platform analytics');
+                Route::get('tenants/overview', [PlatformAnalyticsController::class, 'tenantsOverview'])
                     ->middleware('permission:view platform analytics');
             });
 

@@ -56,6 +56,36 @@ class AnalyticsQueryService
     // ─────────────────────────────────────────────────────────────────────────
 
     /**
+     * Summarise analytics events across ALL tenants within a date range.
+     *
+     * Only events with a non-null tenant_id are included; platform-level events
+     * (tenant_id = null) are always excluded. Additionally returns the number of
+     * distinct tenants that generated at least one event in the period.
+     *
+     * @return array{total_events: int, tenant_count: int, by_type: array<string, int>}
+     */
+    public function allTenantsSummary(Carbon $from, Carbon $to): array
+    {
+        $rows = AnalyticsEvent::whereNotNull('tenant_id')
+            ->between($from, $to)
+            ->selectRaw('event_type, COUNT(*) as cnt')
+            ->groupBy('event_type')
+            ->get();
+
+        $tenantCount = AnalyticsEvent::whereNotNull('tenant_id')
+            ->between($from, $to)
+            ->distinct()
+            ->count('tenant_id');
+
+        $summary = $this->buildSummary($rows);
+        $summary['tenant_count'] = $tenantCount;
+
+        return $summary;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
      * Build the standard summary array from a grouped result set.
      *
      * @param \Illuminate\Support\Collection $rows  Rows with event_type + cnt

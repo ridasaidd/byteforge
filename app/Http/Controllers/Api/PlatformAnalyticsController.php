@@ -51,4 +51,36 @@ class PlatformAnalyticsController extends Controller
             'generated_at' => now()->toIso8601String(),
         ]);
     }
+
+    /**
+     * GET /api/superadmin/analytics/tenants/overview
+     *
+     * Aggregated analytics across ALL tenants combined (tenant_id IS NOT NULL).
+     * Returns total events, distinct active tenant count, and breakdown by type.
+     *
+     * Query parameters:
+     *   from  (Y-m-d) — start of period, default 30 days ago
+     *   to    (Y-m-d) — end of period,   default today
+     */
+    public function tenantsOverview(Request $request): JsonResponse
+    {
+        $from = $request->has('from')
+            ? Carbon::parse($request->input('from'))->startOfDay()
+            : now()->subDays(30)->startOfDay();
+
+        $to = $request->has('to')
+            ? Carbon::parse($request->input('to'))->endOfDay()
+            : now()->endOfDay();
+
+        $data = $this->queryService->allTenantsSummary($from, $to);
+
+        return response()->json([
+            'data'         => $data,
+            'period'       => [
+                'from' => $from->format('Y-m-d'),
+                'to'   => $to->format('Y-m-d'),
+            ],
+            'generated_at' => now()->toIso8601String(),
+        ]);
+    }
 }
