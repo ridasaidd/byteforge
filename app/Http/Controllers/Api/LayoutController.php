@@ -32,21 +32,23 @@ class LayoutController extends Controller
             ? Layout::whereNull('tenant_id')
             : Layout::where('tenant_id', $tenantId);
 
-        // Apply filters
-        if ($request->has('status')) {
+        // Whitelist filter values
+        $validStatuses = ['draft', 'published', 'archived'];
+
+        if ($request->has('status') && in_array($request->input('status'), $validStatuses, true)) {
             $query->where('status', $request->input('status'));
         }
 
         // Search
         if ($request->has('search')) {
-            $search = $request->input('search');
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
             });
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $layouts = $query->with(['header', 'footer', 'sidebarLeft', 'sidebarRight'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
@@ -118,10 +120,18 @@ class LayoutController extends Controller
                     return $query->where('tenant_id', $tenantId);
                 }),
             ],
-            'header_id' => 'nullable|exists:theme_parts,id',
-            'footer_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_left_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_right_id' => 'nullable|exists:theme_parts,id',
+            'header_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'footer_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_left_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_right_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
             'status' => 'required|string|in:draft,published',
         ]);
 
@@ -259,10 +269,18 @@ class LayoutController extends Controller
                     return $query->where('tenant_id', $tenantId);
                 })->ignore($id),
             ],
-            'header_id' => 'nullable|exists:theme_parts,id',
-            'footer_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_left_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_right_id' => 'nullable|exists:theme_parts,id',
+            'header_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'footer_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_left_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_right_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
             'status' => 'sometimes|required|string|in:draft,published',
         ]);
 

@@ -7,14 +7,12 @@ use App\Models\Page;
 use App\Models\User;
 use App\Services\AnalyticsService;
 use PHPUnit\Framework\Attributes\Test;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Carbon;
+use Tests\Support\TestUsers;
 use Tests\TestCase;
 
 class AnalyticsServiceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     private AnalyticsService $service;
 
     protected function setUp(): void
@@ -85,7 +83,7 @@ class AnalyticsServiceTest extends TestCase
     #[Test]
     public function it_accepts_an_actor_model(): void
     {
-        $user = User::factory()->create();
+        $user = TestUsers::centralSuperadmin();
 
         $event = $this->service->record(
             eventType: AnalyticsEvent::TYPE_THEME_ACTIVATED,

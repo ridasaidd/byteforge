@@ -10,7 +10,7 @@ class TenancyTeamResolver implements PermissionsTeamResolver
 
     public function getPermissionsTeamId(): int|string|null
     {
-        return tenancy()->tenant?->id ?? $this->teamId;
+        return $this->teamId;
     }
 
     public function setPermissionsTeamId($id): void

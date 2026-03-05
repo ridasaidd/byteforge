@@ -33,25 +33,28 @@ class ThemePartController extends Controller
             ? ThemePart::whereNull('tenant_id')
             : ThemePart::where('tenant_id', $tenantId);
 
-        // Apply filters
-        if ($request->has('type')) {
+        // Whitelist filter values
+        $validTypes   = ['header', 'footer', 'sidebar_left', 'sidebar_right', 'section', 'settings'];
+        $validStatuses = ['draft', 'published'];
+
+        if ($request->has('type') && in_array($request->input('type'), $validTypes, true)) {
             $query->where('type', $request->input('type'));
         }
 
-        if ($request->has('status')) {
+        if ($request->has('status') && in_array($request->input('status'), $validStatuses, true)) {
             $query->where('status', $request->input('status'));
         }
 
         // Search
         if ($request->has('search')) {
-            $search = $request->input('search');
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
             });
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $themeParts = $query->orderBy('sort_order')
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);

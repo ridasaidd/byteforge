@@ -25,15 +25,15 @@ class ListUsersAction
 
         // Search
         if (isset($filters['search'])) {
-            $search = $filters['search'];
+            $search = str_replace(['%', '_'], ['\%', '\_'], $filters['search']);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
-        // Pagination
-        $perPage = $filters['per_page'] ?? 15;
+        // Pagination — cap at 100 to prevent large table-scan responses
+        $perPage = min((int) ($filters['per_page'] ?? 15), 100);
         $users = $query->paginate($perPage);
 
         // Transform data

@@ -3,29 +3,14 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Laravel\Passport\Passport;
 use Stancl\Tenancy\Database\Models\Domain;
 use Tests\TestCase;
 
 class TenantManagementTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected User $superadmin;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Use seeded superadmin user (from TestFixturesSeeder)
-        $this->superadmin = User::where('email', 'superadmin@byteforge.se')->first();
-    }
 
     public function test_can_list_tenants(): void
     {
-        Passport::actingAs($this->superadmin);
 
         // Create some tenants
         $tenant1 = Tenant::create(['id' => '1', 'name' => 'Tenant 1', 'slug' => 'tenant-1']);
@@ -47,7 +32,6 @@ class TenantManagementTest extends TestCase
 
     public function test_can_create_tenant(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $data = [
             'name' => 'New Test Tenant',
@@ -73,7 +57,6 @@ class TenantManagementTest extends TestCase
 
     public function test_cannot_create_tenant_without_name(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
             'domain' => 'test.example.com',
@@ -85,7 +68,6 @@ class TenantManagementTest extends TestCase
 
     public function test_cannot_create_tenant_without_domain(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
             'name' => 'Test Tenant',
@@ -97,7 +79,6 @@ class TenantManagementTest extends TestCase
 
     public function test_cannot_create_tenant_with_duplicate_domain(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $tenant = Tenant::create(['id' => '1', 'name' => 'Existing Tenant', 'slug' => 'existing-tenant']);
         Domain::create(['domain' => 'existing.test', 'tenant_id' => $tenant->id]);
@@ -113,7 +94,6 @@ class TenantManagementTest extends TestCase
 
     public function test_can_show_single_tenant(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $tenant = Tenant::create(['id' => '1', 'name' => 'Test Tenant', 'slug' => 'test-tenant']);
         Domain::create(['domain' => 'test.example.com', 'tenant_id' => $tenant->id]);
@@ -132,7 +112,6 @@ class TenantManagementTest extends TestCase
 
     public function test_can_update_tenant(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $tenant = Tenant::create(['id' => '1', 'name' => 'Old Name', 'slug' => 'old-name']);
         Domain::create(['domain' => 'old.test', 'tenant_id' => $tenant->id]);
@@ -156,7 +135,6 @@ class TenantManagementTest extends TestCase
 
     public function test_can_delete_tenant(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $tenant = Tenant::create(['id' => '1', 'name' => 'To Delete', 'slug' => 'to-delete']);
         Domain::create(['domain' => 'delete.test', 'tenant_id' => $tenant->id]);
@@ -176,11 +154,14 @@ class TenantManagementTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_requires_superadmin_role(): void
+    public function test_requires_manage_tenants_permission(): void
     {
-        // Regular user without superadmin role - should get 403
-        $regularUser = User::factory()->create();
-        $response = $this->actingAs($regularUser, 'api')->getJson('/api/superadmin/tenants');
+        // User with no permissions should be rejected
+        $user = \App\Models\User::factory()->create();
+        $response = $this->actingAs($user, 'api')->postJson('/api/superadmin/tenants', [
+            'name' => 'Test',
+            'domain' => 'forbidden.test',
+        ]);
         $response->assertStatus(403);
     }
 }

@@ -25,6 +25,15 @@ class UpdateUserAction
             'role' => 'sometimes|required|string|exists:roles,name',
         ])->validate();
 
+        // Prevent escalation to protected system roles via the update path.
+        $protectedRoles = ['superadmin'];
+        if (isset($validated['role']) &&
+            in_array(strtolower($validated['role']), array_map('strtolower', $protectedRoles), true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'role' => ['Cannot assign a protected system role.'],
+            ]);
+        }
+
         $original = $user->getOriginal();
         $updateData = [];
 

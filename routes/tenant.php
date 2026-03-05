@@ -90,16 +90,32 @@ Route::middleware([
     Route::middleware('auth:api')->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
 
-        // Resource routes
-        Route::apiResource('pages', PageController::class)
-            ->middleware('permission:pages.view|pages.create|pages.edit|pages.delete');
+        // Resource routes — per-action permission checks
+        Route::get('pages',           [PageController::class, 'index'])->middleware('permission:pages.view');
+        Route::post('pages',          [PageController::class, 'store'])->middleware('permission:pages.create');
+        Route::get('pages/{page}',    [PageController::class, 'show'])->middleware('permission:pages.view');
+        Route::put('pages/{page}',    [PageController::class, 'update'])->middleware('permission:pages.edit');
+        Route::patch('pages/{page}',  [PageController::class, 'update'])->middleware('permission:pages.edit');
+        Route::delete('pages/{page}', [PageController::class, 'destroy'])->middleware('permission:pages.delete');
 
-        Route::apiResource('navigations', NavigationController::class)
-            ->middleware('permission:navigation.view|navigation.create|navigation.edit|navigation.delete');
-        Route::apiResource('theme-parts', ThemePartController::class)
-            ->middleware('permission:themes.view|themes.manage');
-        Route::apiResource('layouts', LayoutController::class)
-            ->middleware('permission:layouts.view|layouts.manage');
+        Route::get('navigations', [NavigationController::class, 'index'])->middleware('permission:navigation.view');
+        Route::post('navigations', [NavigationController::class, 'store'])->middleware('permission:navigation.create');
+        Route::get('navigations/{navigation}', [NavigationController::class, 'show'])->middleware('permission:navigation.view');
+        Route::put('navigations/{navigation}', [NavigationController::class, 'update'])->middleware('permission:navigation.edit');
+        Route::patch('navigations/{navigation}', [NavigationController::class, 'update'])->middleware('permission:navigation.edit');
+        Route::delete('navigations/{navigation}', [NavigationController::class, 'destroy'])->middleware('permission:navigation.delete');
+        Route::get('theme-parts', [ThemePartController::class, 'index'])->middleware('permission:themes.view');
+        Route::post('theme-parts', [ThemePartController::class, 'store'])->middleware('permission:themes.manage');
+        Route::get('theme-parts/{theme_part}', [ThemePartController::class, 'show'])->middleware('permission:themes.view');
+        Route::put('theme-parts/{theme_part}', [ThemePartController::class, 'update'])->middleware('permission:themes.manage');
+        Route::patch('theme-parts/{theme_part}', [ThemePartController::class, 'update'])->middleware('permission:themes.manage');
+        Route::delete('theme-parts/{theme_part}', [ThemePartController::class, 'destroy'])->middleware('permission:themes.manage');
+        Route::get('layouts', [LayoutController::class, 'index'])->middleware('permission:layouts.view');
+        Route::post('layouts', [LayoutController::class, 'store'])->middleware('permission:layouts.manage');
+        Route::get('layouts/{layout}', [LayoutController::class, 'show'])->middleware('permission:layouts.view');
+        Route::put('layouts/{layout}', [LayoutController::class, 'update'])->middleware('permission:layouts.manage');
+        Route::patch('layouts/{layout}', [LayoutController::class, 'update'])->middleware('permission:layouts.manage');
+        Route::delete('layouts/{layout}', [LayoutController::class, 'destroy'])->middleware('permission:layouts.manage');
 
         // Theme Customization (Phase 6) - Tenant
         Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active'])
@@ -114,13 +130,15 @@ Route::middleware([
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy'])
             ->middleware('permission:view users');
 
-        // Media management
-        Route::apiResource('media', MediaController::class)->except(['update'])
-            ->middleware('permission:media.view|media.manage');
+        // Media management — per-action permission checks
+        Route::get('media', [MediaController::class, 'index'])->middleware('permission:media.view');
+        Route::post('media', [MediaController::class, 'store'])->middleware('permission:media.manage');
+        Route::get('media/{media}', [MediaController::class, 'show'])->middleware('permission:media.view');
+        Route::delete('media/{media}', [MediaController::class, 'destroy'])->middleware('permission:media.manage');
         Route::apiResource('media-folders', MediaFolderController::class)
             ->middleware('permission:media.manage');
         Route::get('media-folders-tree', [MediaFolderController::class, 'tree'])
-            ->middleware('permission:media.view|media.manage');
+            ->middleware('permission:media.view');
 
         // User role management
         Route::post('users/{user}/roles', [UserController::class, 'assignRole'])->middleware('permission:manage users');

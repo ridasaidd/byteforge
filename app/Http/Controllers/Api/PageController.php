@@ -42,25 +42,28 @@ class PageController extends Controller
             ? Page::whereNull('tenant_id')
             : Page::where('tenant_id', $tenantId);
 
-        // Apply filters
-        if ($request->has('status')) {
+        // Apply filters — whitelist values to avoid silent empty results on typos
+        $validStatuses   = ['draft', 'published', 'archived'];
+        $validPageTypes  = ['general', 'home', 'about', 'contact', 'blog', 'service', 'product', 'custom'];
+
+        if ($request->has('status') && in_array($request->input('status'), $validStatuses, true)) {
             $query->where('status', $request->input('status'));
         }
 
-        if ($request->has('page_type')) {
+        if ($request->has('page_type') && in_array($request->input('page_type'), $validPageTypes, true)) {
             $query->where('page_type', $request->input('page_type'));
         }
 
         // Search
         if ($request->has('search')) {
-            $search = $request->input('search');
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
             });
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $pages = $query->orderBy('sort_order')
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
@@ -252,7 +255,7 @@ class PageController extends Controller
             ],
             'page_type' => 'sometimes|required|string|in:general,home,about,contact,blog,service,product,custom',
             'puck_data' => 'nullable|array',
-            'page_css' => 'nullable|string',
+            'page_css' => 'nullable|string|max:65535',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
             'is_homepage' => 'boolean',

@@ -13,7 +13,7 @@
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', '{{ $settings->ga4_measurement_id }}');
+  gtag('config', @js($settings->ga4_measurement_id));
 </script>
 @endif
 
@@ -24,7 +24,7 @@
   new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
   j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-  })(window,document,'script','dataLayer','{{ $settings->gtm_container_id }}');
+  })(window,document,'script','dataLayer',@js($settings->gtm_container_id));
 </script>
 @endif
 
@@ -35,7 +35,7 @@
     c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
     t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
     y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
-  })(window,document,"clarity","script","{{ $settings->clarity_project_id }}");
+  })(window,document,"clarity","script",@js($settings->clarity_project_id));
 </script>
 @endif
 
@@ -55,7 +55,7 @@
   t.src=v;s=b.getElementsByTagName(e)[0];
   s.parentNode.insertBefore(t,s)}(window, document,'script',
   'https://connect.facebook.net/en_US/fbevents.js');
-  fbq('init', '{{ $settings->meta_pixel_id }}');
+  fbq('init', @js($settings->meta_pixel_id));
   fbq('track', 'PageView');
 </script>
 <noscript><img height="1" width="1" style="display:none"

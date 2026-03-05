@@ -2,27 +2,13 @@
 
 namespace Tests\Feature;
 
-use App\Models\Layout;
-use App\Models\Page;
 use App\Models\Theme;
 use App\Models\ThemePart;
-use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Laravel\Passport\Passport;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ThemePartApiTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Tests use actingAsSuperadmin() helper to authenticate
-    }
-
     #[Test]
     public function it_can_list_theme_parts()
     {

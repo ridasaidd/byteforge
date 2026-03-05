@@ -32,6 +32,11 @@ class PlatformAnalyticsController extends Controller
      */
     public function overview(Request $request): JsonResponse
     {
+        $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'],
+            'to'   => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+
         $from = $request->has('from')
             ? Carbon::parse($request->input('from'))->startOfDay()
             : now()->subDays(30)->startOfDay();
@@ -64,6 +69,11 @@ class PlatformAnalyticsController extends Controller
      */
     public function tenantsOverview(Request $request): JsonResponse
     {
+        $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'],
+            'to'   => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+
         $from = $request->has('from')
             ? Carbon::parse($request->input('from'))->startOfDay()
             : now()->subDays(30)->startOfDay();

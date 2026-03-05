@@ -25,6 +25,15 @@ class CreateUserAction
             'role' => 'required|string|exists:roles,name',
         ])->validate();
 
+        // Prevent direct creation of users with protected system roles.
+        // assignRoles() enforces the same list — both paths must agree.
+        $protectedRoles = ['superadmin'];
+        if (in_array(strtolower($validated['role']), array_map('strtolower', $protectedRoles), true)) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'role' => ['Cannot assign a protected system role.'],
+            ]);
+        }
+
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],

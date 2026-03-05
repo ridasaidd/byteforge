@@ -4,6 +4,7 @@ namespace App\Http\Requests\Tenant;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class UploadImageRequest extends FormRequest
 {
@@ -22,7 +23,15 @@ class UploadImageRequest extends FormRequest
                 'mimes:jpeg,jpg,png,gif,webp,svg',
                 'max:10240', // 10MB in kilobytes
             ],
-            'folder_id' => ['nullable', 'integer', 'exists:media_folders,id'],
+            'folder_id' => [
+                'nullable', 'integer',
+                // Scope to current tenant — prevents uploading into
+                // another tenant's folder (cross-tenant IDOR).
+                Rule::exists('media_folders', 'id')->where(function ($query) {
+                    $tenantId = tenancy()->initialized ? tenancy()->tenant->id : null;
+                    $query->where('tenant_id', $tenantId);
+                }),
+            ],
             'title' => ['nullable', 'string', 'max:255'],
             'alt_text' => ['nullable', 'string', 'max:500'],
             'description' => ['nullable', 'string', 'max:1000'],

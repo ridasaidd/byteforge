@@ -3,15 +3,12 @@
 namespace Tests\Unit\Services;
 
 use App\Models\AnalyticsEvent;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class AnalyticsEventScopesTest extends TestCase
 {
-    use DatabaseTransactions;
-
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------

@@ -33,7 +33,7 @@ class SuperadminController extends Controller
 
     public function storeTenant(Request $request)
     {
-        $tenant = CreateTenantAction::run($request->all());
+        $tenant = CreateTenantAction::run($request->only(['name', 'domain']));
 
         return response()->json(['data' => $tenant], 201);
     }
@@ -56,7 +56,7 @@ class SuperadminController extends Controller
 
     public function updateTenant(Request $request, Tenant $tenant)
     {
-        $updated = UpdateTenantAction::run($tenant, $request->all());
+        $updated = UpdateTenantAction::run($tenant, $request->only(['name', 'domain']));
 
         return response()->json(['data' => $updated]);
     }
@@ -81,7 +81,7 @@ class SuperadminController extends Controller
 
     public function storeUser(Request $request)
     {
-        $user = CreateUserAction::run($request->all());
+        $user = CreateUserAction::run($request->only(['name', 'email', 'password', 'password_confirmation', 'role']));
 
         return response()->json(['data' => $user], 201);
     }
@@ -105,7 +105,7 @@ class SuperadminController extends Controller
 
     public function updateUser(Request $request, User $user)
     {
-        $updated = UpdateUserAction::run($user, $request->all());
+        $updated = UpdateUserAction::run($user, $request->only(['name', 'email', 'password', 'password_confirmation', 'role']));
 
         return response()->json(['data' => $updated]);
     }
@@ -145,14 +145,17 @@ class SuperadminController extends Controller
         }
 
         if ($request->filled('event')) {
-            $query->where('event', $request->input('event'));
+            $validEvents = ['created', 'updated', 'deleted', 'restored'];
+            if (in_array($request->input('event'), $validEvents, true)) {
+                $query->where('event', $request->input('event'));
+            }
         }
 
-        if ($request->filled('causer_id')) {
-            $query->where('causer_id', $request->input('causer_id'));
+        if ($request->filled('causer_id') && is_numeric($request->input('causer_id'))) {
+            $query->where('causer_id', (int) $request->input('causer_id'));
         }
 
-        $perPage = (int) $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $activities = $query->paginate($perPage);
 
         return response()->json([
@@ -216,9 +219,9 @@ class SuperadminController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            \Log::error('Failed to load settings', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Failed to load settings',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -231,12 +234,12 @@ class SuperadminController extends Controller
             'support_email' => 'nullable|email|max:255',
             'company_name' => 'nullable|string|max:255',
             'max_tenants_per_user' => 'sometimes|required|integer|min:1|max:100',
-            // Phase 9.6 — Analytics integrations
-            'ga4_measurement_id' => 'nullable|string|max:255',
-            'gtm_container_id' => 'nullable|string|max:255',
-            'clarity_project_id' => 'nullable|string|max:255',
-            'plausible_domain' => 'nullable|string|max:255',
-            'meta_pixel_id' => 'nullable|string|max:255',
+            // Phase 9.6 — Analytics integrations (strict format to prevent script injection)
+            'ga4_measurement_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+            'gtm_container_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+            'clarity_project_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+            'plausible_domain' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9\.\-]+$/'],
+            'meta_pixel_id' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]+$/'],
         ]);
 
         if ($validator->fails()) {
@@ -321,9 +324,9 @@ class SuperadminController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            \Log::error('Failed to update settings', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Failed to update settings',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }

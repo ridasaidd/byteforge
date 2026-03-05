@@ -2,27 +2,19 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
-use Laravel\Passport\Passport;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class MediaSecurityTest extends TestCase
 {
-    use DatabaseTransactions;
-
 
     protected function setUp(): void
     {
         parent::setUp();
 
         Storage::fake('public');
-
-        // Use seeded superadmin user (from TestFixturesSeeder)
-        $this->user = User::where('email', 'superadmin@byteforge.se')->first();
     }
 
     #[Test]

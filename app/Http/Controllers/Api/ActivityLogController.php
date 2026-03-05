@@ -34,16 +34,19 @@ class ActivityLogController extends Controller
 
         // Filter by event (created, updated, deleted)
         if ($request->has('event')) {
-            $query->where('event', $request->event);
+            $validEvents = ['created', 'updated', 'deleted', 'restored'];
+            if (in_array($request->input('event'), $validEvents, true)) {
+                $query->where('event', $request->input('event'));
+            }
         }
 
         // Filter by causer (user who made the change)
-        if ($request->has('causer_id')) {
-            $query->where('causer_id', $request->causer_id);
+        if ($request->has('causer_id') && is_numeric($request->input('causer_id'))) {
+            $query->where('causer_id', (int) $request->input('causer_id'));
         }
 
-        // Pagination
-        $perPage = $request->input('per_page', 15);
+        // Pagination — cap at 100 to prevent large table-scan responses
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $activities = $query->paginate($perPage);
 
         return response()->json([

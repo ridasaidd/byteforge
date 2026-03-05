@@ -20,11 +20,24 @@ class ThemeCssController extends Controller
     }
 
     /**
+     * Allowed CSS section names. Prevents path traversal via the {section} route parameter.
+     */
+    private const ALLOWED_SECTIONS = [
+        'variables', 'header', 'footer', 'typography', 'colors', 'spacing',
+        'components', 'layout', 'navigation', 'hero', 'content', 'cards',
+        'forms', 'buttons', 'utilities', 'custom',
+    ];
+
+    /**
      * Save CSS for a specific theme section
      * POST /api/superadmin/themes/{id}/sections/{section}
      */
     public function saveSection(Request $request, Theme $theme, string $section): JsonResponse
     {
+        if (!in_array($section, self::ALLOWED_SECTIONS, true)) {
+            return response()->json(['message' => 'Invalid section name.'], 422);
+        }
+
         if (!$request->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',
@@ -62,6 +75,10 @@ class ThemeCssController extends Controller
      */
     public function getSection(Request $request, Theme $theme, string $section): JsonResponse
     {
+        if (!in_array($section, self::ALLOWED_SECTIONS, true)) {
+            return response()->json(['message' => 'Invalid section name.'], 422);
+        }
+
         if (!$request->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',
@@ -123,8 +140,9 @@ class ThemeCssController extends Controller
 
             return response()->json(['cssUrl' => $cssUrl]);
         } catch (\Exception $e) {
+            \Log::error('Theme publish failed', ['theme_id' => $theme->id, 'error' => $e->getMessage()]);
             throw ValidationException::withMessages([
-                'publish' => $e->getMessage(),
+                'publish' => 'Failed to publish theme. Please try again.',
             ]);
         }
     }
