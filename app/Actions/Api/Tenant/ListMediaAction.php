@@ -73,6 +73,6 @@ class ListMediaAction
             $query->where('media.model_type', $filters['model_type']);
         }
 
-        return $query->paginate($filters['per_page'] ?? 15);
+        return $query->paginate(min((int) ($filters['per_page'] ?? 15), 100));
     }
 }

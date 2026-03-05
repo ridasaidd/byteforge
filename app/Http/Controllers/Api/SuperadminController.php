@@ -145,11 +145,14 @@ class SuperadminController extends Controller
         }
 
         if ($request->filled('event')) {
-            $query->where('event', $request->input('event'));
+            $validEvents = ['created', 'updated', 'deleted', 'restored'];
+            if (in_array($request->input('event'), $validEvents, true)) {
+                $query->where('event', $request->input('event'));
+            }
         }
 
-        if ($request->filled('causer_id')) {
-            $query->where('causer_id', $request->input('causer_id'));
+        if ($request->filled('causer_id') && is_numeric($request->input('causer_id'))) {
+            $query->where('causer_id', (int) $request->input('causer_id'));
         }
 
         $perPage = min((int) $request->input('per_page', 15), 100);
