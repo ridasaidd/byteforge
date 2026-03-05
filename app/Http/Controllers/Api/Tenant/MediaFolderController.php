@@ -8,6 +8,7 @@ use App\Http\Requests\Tenant\CreateFolderRequest;
 use App\Models\MediaFolder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class MediaFolderController extends Controller
 {
@@ -100,13 +101,23 @@ class MediaFolderController extends Controller
                         ->where('name', $value)
                         ->where('parent_id', $folder->parent_id)
                         ->where('id', '!=', $folder->id);
-                    
+
                     if ($query->exists()) {
                         $fail('A folder with this name already exists in this location.');
                     }
                 },
             ],
-            'parent_id' => ['sometimes', 'nullable', 'integer', 'exists:media_folders,id'],
+            'parent_id' => [
+                'sometimes',
+                'nullable',
+                'integer',
+                // Scope exists check to the current tenant — prevents cross-tenant
+                // folder reparenting which would expose Tenant A's folder in Tenant B's tree
+                // (since the children() relationship has no tenant scope).
+                Rule::exists('media_folders', 'id')->where(function ($query) use ($tenantId) {
+                    $query->where('tenant_id', $tenantId);
+                }),
+            ],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'metadata' => ['sometimes', 'nullable', 'array'],
         ]);
