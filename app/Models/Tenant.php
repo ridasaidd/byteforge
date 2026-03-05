@@ -29,7 +29,6 @@ class Tenant extends BaseTenant
     }
 
     protected $fillable = [
-        'id',
         'name',
         'slug',
         'data',

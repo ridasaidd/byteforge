@@ -35,9 +35,9 @@ class SettingsController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            \Log::error('Failed to load tenant settings', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Settings not found for this tenant',
-                'error' => $e->getMessage(),
             ], 404);
         }
     }
@@ -57,12 +57,12 @@ class SettingsController extends Controller
             'social_links.*' => 'string|max:500',
             'seo_meta' => 'sometimes|array|max:20',
             'seo_meta.*' => 'nullable|string|max:500',
-            // Phase 9.6 — Analytics integrations
-            'ga4_measurement_id' => 'nullable|string|max:255',
-            'gtm_container_id' => 'nullable|string|max:255',
-            'clarity_project_id' => 'nullable|string|max:255',
-            'plausible_domain' => 'nullable|string|max:255',
-            'meta_pixel_id' => 'nullable|string|max:255',
+            // Phase 9.6 — Analytics integrations (strict format to prevent script injection)
+            'ga4_measurement_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+            'gtm_container_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+            'clarity_project_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
+            'plausible_domain' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9\.\-]+$/'],
+            'meta_pixel_id' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]+$/'],
         ]);
 
         if ($validator->fails()) {
@@ -157,9 +157,9 @@ class SettingsController extends Controller
                 ],
             ]);
         } catch (\Exception $e) {
+            \Log::error('Failed to update tenant settings', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Failed to update settings',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }

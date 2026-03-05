@@ -35,21 +35,21 @@ class TrackController extends Controller
 
     public function store(Request $request): Response|JsonResponse
     {
-        $request->validate([
+        $validated = $request->validate([
             'event_type' => [
                 'required',
                 'string',
                 'in:' . implode(',', self::ALLOWED_PUBLIC_EVENTS),
             ],
-            'properties'           => ['sometimes', 'array'],
+            'properties'           => ['sometimes', 'array', 'max:10'],
             'properties.page_id'   => ['sometimes', 'integer'],
             'properties.slug'      => ['sometimes', 'string', 'max:255'],
             'properties.title'     => ['sometimes', 'string', 'max:255'],
         ]);
 
         $this->analyticsService->record(
-            $request->input('event_type'),
-            $request->input('properties', []),
+            $validated['event_type'],
+            $validated['properties'] ?? [],
         );
 
         return response()->noContent();

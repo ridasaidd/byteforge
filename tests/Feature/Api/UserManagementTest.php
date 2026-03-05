@@ -3,28 +3,14 @@
 namespace Tests\Feature\Api;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Laravel\Passport\Passport;
-use Tests\TestCase;
 use Illuminate\Support\Facades\Hash;
+use Tests\TestCase;
 
 class UserManagementTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected User $superadmin;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-
-        // Use seeded superadmin user (from TestFixturesSeeder)
-        $this->superadmin = User::where('email', 'superadmin@byteforge.se')->first();
-    }
 
     public function test_can_list_users(): void
     {
-        Passport::actingAs($this->superadmin);
 
         User::factory()->count(3)->create();
 
@@ -41,7 +27,6 @@ class UserManagementTest extends TestCase
 
     public function test_can_create_user(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $data = [
             'name' => 'New User',
@@ -69,7 +54,6 @@ class UserManagementTest extends TestCase
 
     public function test_cannot_create_user_without_name(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'email' => 'test@example.com',
@@ -83,7 +67,6 @@ class UserManagementTest extends TestCase
 
     public function test_cannot_create_user_without_email(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'name' => 'Test User',
@@ -97,7 +80,6 @@ class UserManagementTest extends TestCase
 
     public function test_cannot_create_user_with_duplicate_email(): void
     {
-        Passport::actingAs($this->superadmin);
 
         User::factory()->create(['email' => 'existing@example.com']);
 
@@ -114,7 +96,6 @@ class UserManagementTest extends TestCase
 
     public function test_cannot_create_user_with_mismatched_password(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
             'name' => 'Test User',
@@ -129,7 +110,6 @@ class UserManagementTest extends TestCase
 
     public function test_can_show_single_user(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $user = User::factory()->create(['name' => 'Test User']);
 
@@ -147,7 +127,6 @@ class UserManagementTest extends TestCase
 
     public function test_can_update_user(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $user = User::factory()->create(['name' => 'Old Name']);
 
@@ -167,7 +146,6 @@ class UserManagementTest extends TestCase
 
     public function test_can_update_user_password(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $user = User::factory()->create();
 
@@ -184,7 +162,6 @@ class UserManagementTest extends TestCase
 
     public function test_can_delete_user(): void
     {
-        Passport::actingAs($this->superadmin);
 
         $user = User::factory()->create();
 
@@ -203,11 +180,16 @@ class UserManagementTest extends TestCase
         $response->assertStatus(401);
     }
 
-    public function test_requires_superadmin_role(): void
+    public function test_requires_manage_users_permission(): void
     {
-        // Regular user without superadmin role - should get 403
-        $regularUser = User::factory()->create();
-        $response = $this->actingAs($regularUser, 'api')->getJson('/api/superadmin/users');
+        // User with no permissions should be rejected
+        $user = \App\Models\User::factory()->create();
+        $response = $this->actingAs($user, 'api')->postJson('/api/superadmin/users', [
+            'name' => 'Test',
+            'email' => 'forbidden@example.com',
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+        ]);
         $response->assertStatus(403);
     }
 }

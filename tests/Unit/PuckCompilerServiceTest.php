@@ -5,18 +5,14 @@ namespace Tests\Unit;
 use App\Models\Layout;
 use App\Models\Navigation;
 use App\Models\Page;
-use App\Models\Tenant;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Services\PuckCompilerService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class PuckCompilerServiceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected PuckCompilerService $compiler;
 
     protected function setUp(): void

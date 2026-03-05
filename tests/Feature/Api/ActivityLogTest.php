@@ -2,11 +2,6 @@
 
 namespace Tests\Feature\Api;
 
-use App\Models\Page;
-use App\Models\Tenant;
-use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Laravel\Passport\Passport;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -19,14 +14,6 @@ use Tests\TestCase;
  */
 class ActivityLogTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
-    }
-
     #[Test]
     public function page_creation_is_logged()
     {

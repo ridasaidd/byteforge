@@ -62,9 +62,10 @@ class ListMediaAction
 
         // Search by name
         if (! empty($filters['search'])) {
-            $query->where(function ($q) use ($filters) {
-                $q->where('media.name', 'like', '%'.$filters['search'].'%')
-                    ->orWhere('media.file_name', 'like', '%'.$filters['search'].'%');
+            $search = str_replace(['%', '_'], ['\%', '\_'], $filters['search']);
+            $query->where(function ($q) use ($search) {
+                $q->where('media.name', 'like', '%'.$search.'%')
+                    ->orWhere('media.file_name', 'like', '%'.$search.'%');
             });
         }
 

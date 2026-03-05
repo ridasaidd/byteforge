@@ -56,7 +56,7 @@ class PageController extends Controller
 
         // Search
         if ($request->has('search')) {
-            $search = $request->input('search');
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
@@ -255,7 +255,7 @@ class PageController extends Controller
             ],
             'page_type' => 'sometimes|required|string|in:general,home,about,contact,blog,service,product,custom',
             'puck_data' => 'nullable|array',
-            'page_css' => 'nullable|string',
+            'page_css' => 'nullable|string|max:65535',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
             'is_homepage' => 'boolean',

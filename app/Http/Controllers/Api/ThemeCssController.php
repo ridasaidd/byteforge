@@ -140,8 +140,9 @@ class ThemeCssController extends Controller
 
             return response()->json(['cssUrl' => $cssUrl]);
         } catch (\Exception $e) {
+            \Log::error('Theme publish failed', ['theme_id' => $theme->id, 'error' => $e->getMessage()]);
             throw ValidationException::withMessages([
-                'publish' => $e->getMessage(),
+                'publish' => 'Failed to publish theme. Please try again.',
             ]);
         }
     }

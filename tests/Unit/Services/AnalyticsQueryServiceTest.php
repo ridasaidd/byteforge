@@ -5,7 +5,6 @@ namespace Tests\Unit\Services;
 use App\Models\AnalyticsEvent;
 use App\Services\AnalyticsQueryService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -16,8 +15,6 @@ use Tests\TestCase;
  */
 class AnalyticsQueryServiceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     private AnalyticsQueryService $service;
 
     protected function setUp(): void

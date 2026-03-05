@@ -53,21 +53,43 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:manage users');
             Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:manage users');
 
-            // Pages management (for central public site)
-            Route::apiResource('pages', \App\Http\Controllers\Api\PageController::class)
-                ->middleware('permission:pages.view|pages.create|pages.edit|pages.delete');
+            // Pages management (for central public site) — per-action permission checks
+            Route::get('pages', [\App\Http\Controllers\Api\PageController::class, 'index'])->middleware('permission:pages.view');
+            Route::post('pages', [\App\Http\Controllers\Api\PageController::class, 'store'])->middleware('permission:pages.create');
+            Route::get('pages/{page}', [\App\Http\Controllers\Api\PageController::class, 'show'])->middleware('permission:pages.view');
+            Route::put('pages/{page}', [\App\Http\Controllers\Api\PageController::class, 'update'])->middleware('permission:pages.edit');
+            Route::patch('pages/{page}', [\App\Http\Controllers\Api\PageController::class, 'update'])->middleware('permission:pages.edit');
+            Route::delete('pages/{page}', [\App\Http\Controllers\Api\PageController::class, 'destroy'])->middleware('permission:pages.delete');
 
-            // Navigation management (for central public site)
-            Route::apiResource('navigations', \App\Http\Controllers\Api\NavigationController::class)
-                ->middleware('permission:navigation.view|navigation.create|navigation.edit|navigation.delete');
+            // Navigation management (for central public site) — per-action permission checks
+            Route::get('navigations', [\App\Http\Controllers\Api\NavigationController::class, 'index'])->middleware('permission:navigation.view');
+            Route::post('navigations', [\App\Http\Controllers\Api\NavigationController::class, 'store'])->middleware('permission:navigation.create');
+            Route::get('navigations/{navigation}', [\App\Http\Controllers\Api\NavigationController::class, 'show'])->middleware('permission:navigation.view');
+            Route::put('navigations/{navigation}', [\App\Http\Controllers\Api\NavigationController::class, 'update'])->middleware('permission:navigation.edit');
+            Route::patch('navigations/{navigation}', [\App\Http\Controllers\Api\NavigationController::class, 'update'])->middleware('permission:navigation.edit');
+            Route::delete('navigations/{navigation}', [\App\Http\Controllers\Api\NavigationController::class, 'destroy'])->middleware('permission:navigation.delete');
 
-            // Theme parts and layouts management
-            Route::apiResource('theme-parts', \App\Http\Controllers\Api\ThemePartController::class)
-                ->middleware('permission:themes.manage|themes.view');
-            Route::apiResource('page-templates', \App\Http\Controllers\Api\PageTemplateController::class)
-                ->middleware('permission:templates.view|templates.manage');
-            Route::apiResource('layouts', \App\Http\Controllers\Api\LayoutController::class)
-                ->middleware('permission:layouts.view|layouts.manage');
+            // Theme parts management — per-action permission checks
+            Route::get('theme-parts', [\App\Http\Controllers\Api\ThemePartController::class, 'index'])->middleware('permission:themes.view');
+            Route::post('theme-parts', [\App\Http\Controllers\Api\ThemePartController::class, 'store'])->middleware('permission:themes.manage');
+            Route::get('theme-parts/{theme_part}', [\App\Http\Controllers\Api\ThemePartController::class, 'show'])->middleware('permission:themes.view');
+            Route::put('theme-parts/{theme_part}', [\App\Http\Controllers\Api\ThemePartController::class, 'update'])->middleware('permission:themes.manage');
+            Route::patch('theme-parts/{theme_part}', [\App\Http\Controllers\Api\ThemePartController::class, 'update'])->middleware('permission:themes.manage');
+            Route::delete('theme-parts/{theme_part}', [\App\Http\Controllers\Api\ThemePartController::class, 'destroy'])->middleware('permission:themes.manage');
+            // Page templates management — per-action permission checks
+            Route::get('page-templates', [\App\Http\Controllers\Api\PageTemplateController::class, 'index'])->middleware('permission:templates.view');
+            Route::post('page-templates', [\App\Http\Controllers\Api\PageTemplateController::class, 'store'])->middleware('permission:templates.manage');
+            Route::get('page-templates/{page_template}', [\App\Http\Controllers\Api\PageTemplateController::class, 'show'])->middleware('permission:templates.view');
+            Route::put('page-templates/{page_template}', [\App\Http\Controllers\Api\PageTemplateController::class, 'update'])->middleware('permission:templates.manage');
+            Route::patch('page-templates/{page_template}', [\App\Http\Controllers\Api\PageTemplateController::class, 'update'])->middleware('permission:templates.manage');
+            Route::delete('page-templates/{page_template}', [\App\Http\Controllers\Api\PageTemplateController::class, 'destroy'])->middleware('permission:templates.manage');
+            // Layouts management — per-action permission checks
+            Route::get('layouts', [\App\Http\Controllers\Api\LayoutController::class, 'index'])->middleware('permission:layouts.view');
+            Route::post('layouts', [\App\Http\Controllers\Api\LayoutController::class, 'store'])->middleware('permission:layouts.manage');
+            Route::get('layouts/{layout}', [\App\Http\Controllers\Api\LayoutController::class, 'show'])->middleware('permission:layouts.view');
+            Route::put('layouts/{layout}', [\App\Http\Controllers\Api\LayoutController::class, 'update'])->middleware('permission:layouts.manage');
+            Route::patch('layouts/{layout}', [\App\Http\Controllers\Api\LayoutController::class, 'update'])->middleware('permission:layouts.manage');
+            Route::delete('layouts/{layout}', [\App\Http\Controllers\Api\LayoutController::class, 'destroy'])->middleware('permission:layouts.manage');
 
             // Themes management (available endpoint unused; commented to avoid stale frontend calls)
             // Route::get('themes/available', [\App\Http\Controllers\Api\ThemeController::class, 'available'])
@@ -90,8 +112,13 @@ foreach (config('tenancy.central_domains') as $domain) {
 
             // Route for importing themes (commented out)
             // Route::post('themes/import', [\App\Http\Controllers\Api\ThemeController::class, 'import']);
-            Route::apiResource('themes', \App\Http\Controllers\Api\ThemeController::class)
-                ->middleware('permission:themes.manage|themes.view');
+            // Themes management — per-action permission checks
+            Route::get('themes', [\App\Http\Controllers\Api\ThemeController::class, 'index'])->middleware('permission:themes.view');
+            Route::post('themes', [\App\Http\Controllers\Api\ThemeController::class, 'store'])->middleware('permission:themes.manage');
+            Route::get('themes/{theme}', [\App\Http\Controllers\Api\ThemeController::class, 'show'])->middleware('permission:themes.view');
+            Route::put('themes/{theme}', [\App\Http\Controllers\Api\ThemeController::class, 'update'])->middleware('permission:themes.manage');
+            Route::patch('themes/{theme}', [\App\Http\Controllers\Api\ThemeController::class, 'update'])->middleware('permission:themes.manage');
+            Route::delete('themes/{theme}', [\App\Http\Controllers\Api\ThemeController::class, 'destroy'])->middleware('permission:themes.manage');
 
             // Theme CSS management (section saves, publish)
             Route::post('themes/{theme}/sections/{section}', [ThemeCssController::class, 'saveSection'])
@@ -152,18 +179,18 @@ foreach (config('tenancy.central_domains') as $domain) {
         // Media Management (Central) - using central storage, not tenant-scoped
         Route::middleware(['auth:api'])->prefix('superadmin')->group(function () {
             Route::get('media', [\App\Http\Controllers\Api\MediaController::class, 'index'])
-                ->middleware('permission:media.view|media.manage');
+                ->middleware('permission:media.view');
             Route::post('media', [\App\Http\Controllers\Api\MediaController::class, 'store'])
                 ->middleware('permission:media.manage');
             Route::get('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'show'])
-                ->middleware('permission:media.view|media.manage');
+                ->middleware('permission:media.view');
             Route::delete('media/{media}', [\App\Http\Controllers\Api\MediaController::class, 'destroy'])
                 ->middleware('permission:media.manage');
 
             Route::apiResource('media-folders', \App\Http\Controllers\Api\Tenant\MediaFolderController::class)
                 ->middleware('permission:media.manage');
             Route::get('media-folders-tree', [\App\Http\Controllers\Api\Tenant\MediaFolderController::class, 'tree'])
-                ->middleware('permission:media.view|media.manage');
+                ->middleware('permission:media.view');
         });
 
         // Public routes

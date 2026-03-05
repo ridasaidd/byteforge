@@ -5,11 +5,8 @@ namespace Tests\Feature\Api;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Models\ThemePlaceholder;
-use App\Models\Tenant;
-use App\Models\User;
 use App\Services\ThemeService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
-use Laravel\Passport\Passport;
+use Tests\Support\TestUsers;
 use Tests\TestCase;
 
 /**
@@ -24,12 +21,6 @@ use Tests\TestCase;
  */
 class ThemeCustomizationApiTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected User $superadminUser;
-    protected User $viewerUser;
-    protected User $tenantOwnerUser;
-    protected Tenant $tenantOne;
     protected Theme $theme;
     protected ThemeService $themeService;
 
@@ -38,14 +29,6 @@ class ThemeCustomizationApiTest extends TestCase
         parent::setUp();
 
         $this->themeService = $this->app->make(ThemeService::class);
-
-        // Get existing central users (seeded by TestFixturesSeeder via parent::setUp)
-        $this->superadminUser = User::where('email', 'superadmin@byteforge.se')->first();
-        $this->viewerUser = User::where('email', 'viewer@byteforge.se')->first();
-
-        // Get tenant fixtures
-        $this->tenantOne = Tenant::where('slug', 'tenant-one')->first();
-        $this->tenantOwnerUser = User::where('email', 'owner@tenant-one.byteforge.se')->first();
 
         // Create a theme blueprint with placeholders
         $this->theme = Theme::factory()->create([
@@ -78,7 +61,7 @@ class ThemeCustomizationApiTest extends TestCase
         // Activate theme for central - this creates theme_parts
         $this->themeService->activateTheme('test-theme', null);
 
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         $response = $this->postJson("/api/themes/{$this->theme->id}/customization/settings", [
             'css' => ':root { --primary-500: #ff0000; }',
@@ -105,7 +88,7 @@ class ThemeCustomizationApiTest extends TestCase
      */
     public function test_cannot_customize_without_activation(): void
     {
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         // Don't activate - theme_parts don't exist yet
         $response = $this->postJson("/api/themes/{$this->theme->id}/customization/settings", [
@@ -126,7 +109,7 @@ class ThemeCustomizationApiTest extends TestCase
         // Activate theme for central
         $this->themeService->activateTheme('test-theme', null);
 
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         $response = $this->postJson("/api/themes/{$this->theme->id}/customization/header", [
             'css' => '.header { background: blue; }',
@@ -153,7 +136,7 @@ class ThemeCustomizationApiTest extends TestCase
         // Activate theme for central
         $this->themeService->activateTheme('test-theme', null);
 
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         $response = $this->postJson("/api/themes/{$this->theme->id}/customization/footer", [
             'css' => '.footer { color: green; }',
@@ -180,7 +163,7 @@ class ThemeCustomizationApiTest extends TestCase
         // Activate theme for central
         $this->themeService->activateTheme('test-theme', null);
 
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         // Try to modify 'info' section (not allowed)
         $response = $this->postJson("/api/themes/{$this->theme->id}/customization/info", [
@@ -207,7 +190,7 @@ class ThemeCustomizationApiTest extends TestCase
             'slug' => 'test-settings',
             'settings_css' => ':root { --primary: blue; }',
             'status' => 'published',
-            'created_by' => $this->superadminUser->id,
+            'created_by' => TestUsers::centralSuperadmin()->id,
         ]);
 
         $headerPart = ThemePart::whereNull('tenant_id')
@@ -222,7 +205,7 @@ class ThemeCustomizationApiTest extends TestCase
             ->first();
         $footerPart->update(['settings_css' => '.footer { color: green; }']);
 
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         $response = $this->getJson("/api/themes/{$this->theme->id}/customization");
 
@@ -244,7 +227,7 @@ class ThemeCustomizationApiTest extends TestCase
         // Activate theme
         $this->themeService->activateTheme('test-theme', null);
 
-        Passport::actingAs($this->viewerUser);
+        $this->actingAsCentralViewer();
 
         $response = $this->postJson("/api/themes/{$this->theme->id}/customization/settings", [
             'css' => ':root { --hack: red; }',
@@ -258,7 +241,7 @@ class ThemeCustomizationApiTest extends TestCase
      */
     public function test_tenant_and_central_have_isolated_parts(): void
     {
-        $tenantId = $this->tenantOne->id;
+        $tenantId = $this->getTenant('tenant-one')->id;
 
         // Activate for both central and tenant
         $this->themeService->activateTheme('test-theme', null);
@@ -277,7 +260,7 @@ class ThemeCustomizationApiTest extends TestCase
         $this->assertEquals(2, $tenantParts);  // header + footer
 
         // Modify central's header
-        Passport::actingAs($this->superadminUser);
+        $this->actingAsSuperadmin();
 
         $this->postJson("/api/themes/{$this->theme->id}/customization/header", [
             'puck_data' => ['root' => ['props' => ['title' => 'Central Header']], 'content' => []],

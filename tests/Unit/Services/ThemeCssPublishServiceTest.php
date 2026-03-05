@@ -5,20 +5,17 @@ namespace Tests\Unit\Services;
 use App\Models\Theme;
 use App\Services\ThemeCssSectionService;
 use App\Services\ThemeCssPublishService;
-use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Storage;
+use Tests\TestCase;
 
-class ThemeCssPublishServiceTest extends BaseTestCase
+class ThemeCssPublishServiceTest extends TestCase
 {
-    use \Illuminate\Foundation\Testing\RefreshDatabase;
-
     private ThemeCssSectionService $sectionService;
     private ThemeCssPublishService $publishService;
 
     protected function setUp(): void
     {
         parent::setUp();
-        // Don't run seeders for this unit test
         Storage::fake('public');
 
         $this->sectionService = new ThemeCssSectionService();

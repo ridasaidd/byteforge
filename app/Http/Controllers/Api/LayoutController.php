@@ -41,7 +41,7 @@ class LayoutController extends Controller
 
         // Search
         if ($request->has('search')) {
-            $search = $request->input('search');
+            $search = str_replace(['%', '_'], ['\%', '\_'], $request->input('search'));
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");

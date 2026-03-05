@@ -51,10 +51,25 @@ class RoleController extends Controller
     // Update a role
     public function update(Request $request, Role $role): JsonResponse
     {
+        // Prevent modifying protected system roles
+        if (in_array($role->name, self::PROTECTED_ROLES, true)) {
+            return response()->json([
+                'message' => 'Cannot modify a protected system role.',
+            ], 403);
+        }
+
         $data = $request->validate([
             'name' => 'sometimes|string|unique:roles,name,' . $role->id,
             'guard_name' => 'sometimes|string',
         ]);
+
+        // Prevent renaming a role TO a protected name
+        if (isset($data['name']) && in_array(strtolower($data['name']), array_map('strtolower', self::PROTECTED_ROLES), true)) {
+            return response()->json([
+                'message' => 'Cannot rename a role to a reserved name.',
+            ], 403);
+        }
+
         $role->update($data);
         return response()->json($role);
     }

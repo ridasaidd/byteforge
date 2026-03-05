@@ -24,12 +24,13 @@ class CreateTenantAction
             'domain' => 'required|string|max:255|unique:domains,domain',
         ])->validate();
 
-        // Create tenant
-        $tenant = Tenant::create([
-            'id' => (string) Str::uuid(),
+        // Create tenant — assign id directly (not via mass assignment)
+        $tenant = new Tenant([
             'name' => $validated['name'],
             'slug' => Str::slug($validated['name']),
         ]);
+        $tenant->id = (string) Str::uuid();
+        $tenant->save();
 
         // Create domain for the tenant
         $domain = Domain::create([

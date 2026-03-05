@@ -4,7 +4,6 @@ namespace Tests\Feature\Api;
 
 use App\Models\AnalyticsEvent;
 use App\Models\Page;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -32,8 +31,6 @@ use Tests\TestCase;
  */
 class PageViewTrackingTest extends TestCase
 {
-    use DatabaseTransactions;
-
     // =========================================================================
     // getBySlug — page.viewed event
     // =========================================================================

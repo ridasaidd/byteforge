@@ -64,6 +64,14 @@ class RoleAssignmentController extends Controller
             ], 403);
         }
 
+        // Prevent modifying roles of users who currently hold a protected role
+        $currentProtected = array_intersect($user->roles->pluck('name')->toArray(), self::PROTECTED_ROLES);
+        if (!empty($currentProtected)) {
+            return response()->json([
+                'message' => 'Cannot modify roles of a user with protected role(s): ' . implode(', ', $currentProtected),
+            ], 403);
+        }
+
         $oldRoles = $user->roles->pluck('name')->toArray();
         $user->syncRoles($data['roles']);
         $user->load('roles');

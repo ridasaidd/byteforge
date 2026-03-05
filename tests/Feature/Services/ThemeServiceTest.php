@@ -5,16 +5,12 @@ namespace Tests\Feature\Services;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Models\ThemePlaceholder;
-use App\Models\User;
 use App\Services\ThemeService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 class ThemeServiceTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected ThemeService $themeService;
     protected Theme $theme;
 

@@ -25,7 +25,7 @@ class ListUsersAction
 
         // Search
         if (isset($filters['search'])) {
-            $search = $filters['search'];
+            $search = str_replace(['%', '_'], ['\%', '\_'], $filters['search']);
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");

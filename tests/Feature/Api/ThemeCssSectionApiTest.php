@@ -28,9 +28,9 @@ class ThemeCssSectionApiTest extends TestCase
         $theme = Theme::factory()->create(['id' => 500]);
         $this->sectionService->initializeThemeFolder($theme);
 
-        $superadmin = $this->getCentralUser('superadmin');
+        
 
-        $response = $this->actingAs($superadmin, 'api')
+        $response = $this->actingAsSuperadmin()
             ->postJson("/api/superadmin/themes/{$theme->id}/sections/variables", [
                 'css' => ':root { --color-primary: #3b82f6; }',
             ]);
@@ -51,9 +51,9 @@ class ThemeCssSectionApiTest extends TestCase
         $css = '.header { background: #fff; }';
         $this->sectionService->saveSectionCss($theme->id, 'header', $css);
 
-        $superadmin = $this->getCentralUser('superadmin');
+        
 
-        $response = $this->actingAs($superadmin, 'api')
+        $response = $this->actingAsSuperadmin()
             ->getJson("/api/superadmin/themes/{$theme->id}/sections/header");
 
         $response->assertStatus(200);
@@ -66,9 +66,9 @@ class ThemeCssSectionApiTest extends TestCase
         $theme = Theme::factory()->create(['id' => 502]);
         $this->sectionService->initializeThemeFolder($theme);
 
-        $superadmin = $this->getCentralUser('superadmin');
+        
 
-        $response = $this->actingAs($superadmin, 'api')
+        $response = $this->actingAsSuperadmin()
             ->getJson("/api/superadmin/themes/{$theme->id}/publish/validate");
 
         $response->assertStatus(200);
@@ -88,9 +88,9 @@ class ThemeCssSectionApiTest extends TestCase
         $this->sectionService->saveSectionCss($theme->id, 'header', '.header { }');
         $this->sectionService->saveSectionCss($theme->id, 'footer', '.footer { }');
 
-        $superadmin = $this->getCentralUser('superadmin');
+        
 
-        $response = $this->actingAs($superadmin, 'api')
+        $response = $this->actingAsSuperadmin()
             ->getJson("/api/superadmin/themes/{$theme->id}/publish/validate");
 
         $response->assertStatus(200);
@@ -110,9 +110,9 @@ class ThemeCssSectionApiTest extends TestCase
         $this->sectionService->saveSectionCss($theme->id, 'header', '.header { }');
         $this->sectionService->saveSectionCss($theme->id, 'footer', '.footer { }');
 
-        $superadmin = $this->getCentralUser('superadmin');
+        
 
-        $response = $this->actingAs($superadmin, 'api')
+        $response = $this->actingAsSuperadmin()
             ->postJson("/api/superadmin/themes/{$theme->id}/publish");
 
         $response->assertStatus(200);
@@ -131,9 +131,9 @@ class ThemeCssSectionApiTest extends TestCase
         // Only add one section
         $this->sectionService->saveSectionCss($theme->id, 'variables', ':root { }');
 
-        $superadmin = $this->getCentralUser('superadmin');
+        
 
-        $response = $this->actingAs($superadmin, 'api')
+        $response = $this->actingAsSuperadmin()
             ->postJson("/api/superadmin/themes/{$theme->id}/publish");
 
         $response->assertStatus(422);
@@ -148,9 +148,9 @@ class ThemeCssSectionApiTest extends TestCase
 
         // Use the viewer user created by TestFixturesSeeder
         // Viewer role only has themes.view, not themes.manage
-        $viewerUser = $this->getCentralUser('viewer');
+        
 
-        $response = $this->actingAs($viewerUser, 'api')
+        $response = $this->actingAsCentralViewer()
             ->postJson("/api/superadmin/themes/{$theme->id}/sections/variables", [
                 'css' => ':root { }',
             ]);

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Models\Theme;
 use App\Services\ThemeCssGeneratorService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 /**
@@ -18,8 +17,6 @@ use Tests\TestCase;
  */
 class PuckComponentCssVariablesTest extends TestCase
 {
-    use DatabaseTransactions;
-
     protected ThemeCssGeneratorService $service;
 
     protected function setUp(): void

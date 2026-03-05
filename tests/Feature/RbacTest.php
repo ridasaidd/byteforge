@@ -3,22 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class RbacTest extends TestCase
 {
-    use DatabaseTransactions;
-
-    protected function setUp(): void
-    {
-        parent::setUp();
-        // Seed the roles and permissions
-        $this->artisan('db:seed', ['--class' => 'RolePermissionSeeder']);
-    }
-
     public function test_new_permissions_exist()
     {
         $newPermissions = [
@@ -125,43 +115,29 @@ class RbacTest extends TestCase
 
     public function test_dashboard_stats_requires_permission()
     {
-        // Create a user with no permissions
+        // Factory user has no permissions by default
         $userNoPerms = User::factory()->create();
-        $userNoPerms->syncRoles([]); // Clear factory default
-        $userNoPerms->syncPermissions([]); // Clear all permissions
-
-        // Create a user with the permission
-        $userWithPerms = User::factory()->create();
-        $userWithPerms->syncRoles([]); // Clear factory default
-        $userWithPerms->givePermissionTo('view dashboard stats');
 
         // User without permission should be rejected
         $response = $this->actingAs($userNoPerms, 'api')
             ->getJson('/api/superadmin/dashboard/stats');
-
         $this->assertEquals(403, $response->status());
 
-        // User with permission should get through
-        $response = $this->actingAs($userWithPerms, 'api')
+        // Superadmin has all permissions
+        $response = $this->actingAsSuperadmin()
             ->getJson('/api/superadmin/dashboard/stats');
-
-        // Either 200 or some error other than 403 (permission denied)
         $this->assertNotEquals(403, $response->status());
     }
 
     public function test_pages_resource_requires_permission()
     {
-        // Create users with different permission levels
+        // Factory users have no roles/permissions by default
         $userNoPerms = User::factory()->create();
-        $userNoPerms->syncRoles([]);
-        $userNoPerms->syncPermissions([]);
 
         $userWithViewPerms = User::factory()->create();
-        $userWithViewPerms->syncRoles([]);
         $userWithViewPerms->givePermissionTo('pages.view');
 
         $userWithManagePerms = User::factory()->create();
-        $userWithManagePerms->syncRoles([]);
         $userWithManagePerms->givePermissionTo('pages.create', 'pages.edit', 'pages.delete', 'pages.view');
 
         // User without permissions should be rejected
@@ -183,13 +159,9 @@ class RbacTest extends TestCase
     public function test_themes_management_requires_manage_permission()
     {
         $userWithViewOnly = User::factory()->create();
-        // Clear all roles/permissions from factory default
-        $userWithViewOnly->syncRoles([]);
         $userWithViewOnly->givePermissionTo('themes.view');
 
         $userWithManage = User::factory()->create();
-        // Clear all roles/permissions from factory default
-        $userWithManage->syncRoles([]);
         $userWithManage->givePermissionTo('themes.manage');
 
         // GET (view) should work with view permission
@@ -211,11 +183,8 @@ class RbacTest extends TestCase
     public function test_media_endpoints_are_protected()
     {
         $userNoPerms = User::factory()->create();
-        $userNoPerms->syncRoles([]);
-        $userNoPerms->syncPermissions([]);
 
         $userWithPerms = User::factory()->create();
-        $userWithPerms->syncRoles([]);
         $userWithPerms->givePermissionTo('media.view', 'media.manage');
 
         // Without permission

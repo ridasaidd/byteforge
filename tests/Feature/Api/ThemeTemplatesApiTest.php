@@ -4,9 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Theme;
 use App\Models\PageTemplate;
-use Laravel\Passport\Passport;
 use Tests\TestCase;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 
 /**
  * Phase 6 Step 7: Theme Templates API Tests
@@ -16,14 +14,12 @@ use Illuminate\Foundation\Testing\DatabaseTransactions;
  */
 class ThemeTemplatesApiTest extends TestCase
 {
-    use DatabaseTransactions;
-
     /**
      * Test that getting templates from active theme returns page_templates
      */
     public function test_get_active_templates_returns_page_templates(): void
     {
-        Passport::actingAs($this->getCentralUser('superadmin'));
+        $this->actingAsSuperadmin();
 
         // Create active theme with templates
         $theme = Theme::factory()->create([
@@ -56,7 +52,7 @@ class ThemeTemplatesApiTest extends TestCase
      */
     public function test_get_active_templates_excludes_inactive_templates(): void
     {
-        Passport::actingAs($this->getCentralUser('superadmin'));
+        $this->actingAsSuperadmin();
 
         $theme = Theme::factory()->create([
             'is_active' => true,
@@ -89,7 +85,7 @@ class ThemeTemplatesApiTest extends TestCase
      */
     public function test_get_active_templates_only_from_active_theme(): void
     {
-        Passport::actingAs($this->getCentralUser('superadmin'));
+        $this->actingAsSuperadmin();
 
         // Active theme
         $activeTheme = Theme::factory()->create([
@@ -127,7 +123,7 @@ class ThemeTemplatesApiTest extends TestCase
      */
     public function test_get_active_templates_returns_empty_when_no_templates(): void
     {
-        Passport::actingAs($this->getCentralUser('superadmin'));
+        $this->actingAsSuperadmin();
 
         Theme::factory()->create([
             'is_active' => true,
@@ -145,7 +141,7 @@ class ThemeTemplatesApiTest extends TestCase
      */
     public function test_get_active_templates_scoped_to_tenant(): void
     {
-        Passport::actingAs($this->getCentralUser('superadmin'));
+        $this->actingAsSuperadmin();
 
         // Use an actual tenant from test fixtures
         $tenant = $this->getTenant('tenant-one');

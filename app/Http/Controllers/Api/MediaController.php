@@ -128,14 +128,10 @@ class MediaController extends Controller
         } catch (\Exception $e) {
             \Log::error('Media upload failed', [
                 'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'message' => 'Failed to upload media',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -204,9 +200,9 @@ class MediaController extends Controller
                 'message' => 'Media deleted successfully',
             ]);
         } catch (\Exception $e) {
+            \Log::error('Media deletion failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Failed to delete media',
-                'error' => $e->getMessage(),
             ], 500);
         }
     }

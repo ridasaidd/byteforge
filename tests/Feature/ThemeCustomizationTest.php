@@ -3,13 +3,10 @@
 namespace Tests\Feature;
 
 use App\Models\Theme;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class ThemeCustomizationTest extends TestCase
 {
-    use DatabaseTransactions;
-
     /**
      * Test that themes table has customization CSS columns
      *

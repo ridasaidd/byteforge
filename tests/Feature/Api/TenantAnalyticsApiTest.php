@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Api;
 
-use Illuminate\Foundation\Testing\DatabaseTransactions;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -33,8 +32,6 @@ use Tests\TestCase;
  */
 class TenantAnalyticsApiTest extends TestCase
 {
-    use DatabaseTransactions;
-
     #[Test]
     public function tenant_owner_can_access_tenant_analytics(): void
     {
