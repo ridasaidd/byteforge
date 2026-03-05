@@ -120,10 +120,18 @@ class LayoutController extends Controller
                     return $query->where('tenant_id', $tenantId);
                 }),
             ],
-            'header_id' => 'nullable|exists:theme_parts,id',
-            'footer_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_left_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_right_id' => 'nullable|exists:theme_parts,id',
+            'header_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'footer_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_left_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_right_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
             'status' => 'required|string|in:draft,published',
         ]);
 
@@ -261,10 +269,18 @@ class LayoutController extends Controller
                     return $query->where('tenant_id', $tenantId);
                 })->ignore($id),
             ],
-            'header_id' => 'nullable|exists:theme_parts,id',
-            'footer_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_left_id' => 'nullable|exists:theme_parts,id',
-            'sidebar_right_id' => 'nullable|exists:theme_parts,id',
+            'header_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'footer_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_left_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
+            'sidebar_right_id' => ['nullable', Rule::exists('theme_parts', 'id')->where(function ($query) use ($tenantId) {
+                return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
+            })],
             'status' => 'sometimes|required|string|in:draft,published',
         ]);
 

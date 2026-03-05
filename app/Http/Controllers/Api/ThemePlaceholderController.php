@@ -139,6 +139,10 @@ class ThemePlaceholderController extends Controller
      */
     public function destroy(Theme $theme, string $section): JsonResponse
     {
+        if (!in_array($section, self::ALLOWED_SECTIONS, true)) {
+            return response()->json(['message' => 'Invalid section.'], 422);
+        }
+
         if (!request()->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',

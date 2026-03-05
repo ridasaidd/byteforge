@@ -19,7 +19,10 @@ class ListNavigationsAction
             : Navigation::where('tenant_id', $tenantId);
 
         if (isset($filters['status'])) {
-            $query->where('status', $filters['status']);
+            $validStatuses = ['draft', 'published'];
+            if (in_array($filters['status'], $validStatuses, true)) {
+                $query->where('status', $filters['status']);
+            }
         }
 
         $navigations = $query->orderBy('sort_order')
