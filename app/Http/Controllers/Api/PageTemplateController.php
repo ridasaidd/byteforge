@@ -55,7 +55,7 @@ class PageTemplateController extends Controller
             });
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $pageTemplates = $query->orderBy('created_at', 'desc')
             ->paginate($perPage);
 

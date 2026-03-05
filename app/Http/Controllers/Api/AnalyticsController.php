@@ -35,6 +35,11 @@ class AnalyticsController extends Controller
      */
     public function overview(Request $request): JsonResponse
     {
+        $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'],
+            'to'   => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+
         /** @var string $tenantId */
         $tenantId = (string) tenant('id');
 
@@ -65,6 +70,11 @@ class AnalyticsController extends Controller
      */
     public function pages(Request $request): JsonResponse
     {
+        $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'],
+            'to'   => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+
         /** @var string $tenantId */
         $tenantId = (string) tenant('id');
 
@@ -120,6 +130,11 @@ class AnalyticsController extends Controller
 
     private function resolvePeriod(Request $request): array
     {
+        $request->validate([
+            'from' => ['sometimes', 'date_format:Y-m-d'],
+            'to'   => ['sometimes', 'date_format:Y-m-d'],
+        ]);
+
         $from = $request->has('from')
             ? Carbon::parse($request->input('from'))->startOfDay()
             : now()->subDays(30)->startOfDay();

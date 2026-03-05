@@ -23,7 +23,7 @@ class UpdateNavigationRequest extends FormRequest
     {
         return [
             'name' => 'sometimes|string|max:255',
-            'slug' => 'sometimes|string|max:255',
+            'slug' => ['sometimes', 'string', 'max:255', 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'structure' => 'sometimes|array',
             'status' => 'sometimes|in:draft,published',
             'sort_order' => 'sometimes|integer|min:0',

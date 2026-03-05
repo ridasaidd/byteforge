@@ -32,8 +32,10 @@ class LayoutController extends Controller
             ? Layout::whereNull('tenant_id')
             : Layout::where('tenant_id', $tenantId);
 
-        // Apply filters
-        if ($request->has('status')) {
+        // Whitelist filter values
+        $validStatuses = ['draft', 'published', 'archived'];
+
+        if ($request->has('status') && in_array($request->input('status'), $validStatuses, true)) {
             $query->where('status', $request->input('status'));
         }
 
@@ -46,7 +48,7 @@ class LayoutController extends Controller
             });
         }
 
-        $perPage = $request->input('per_page', 15);
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $layouts = $query->with(['header', 'footer', 'sidebarLeft', 'sidebarRight'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);

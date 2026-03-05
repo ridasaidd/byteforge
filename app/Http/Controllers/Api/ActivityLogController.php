@@ -42,8 +42,8 @@ class ActivityLogController extends Controller
             $query->where('causer_id', $request->causer_id);
         }
 
-        // Pagination
-        $perPage = $request->input('per_page', 15);
+        // Pagination — cap at 100 to prevent large table-scan responses
+        $perPage = min((int) $request->input('per_page', 15), 100);
         $activities = $query->paginate($perPage);
 
         return response()->json([

@@ -19,6 +19,11 @@ use Illuminate\Http\Request;
  */
 class ThemePlaceholderController extends Controller
 {
+    /**
+     * Allowed placeholder section names — prevents uncontrolled DB value injection.
+     */
+    private const ALLOWED_SECTIONS = ['header', 'footer', 'sidebar', 'sidebar_left', 'sidebar_right', 'settings', 'hero', 'content'];
+
     public function index(Theme $theme): JsonResponse
     {
         if (!request()->user()->hasPermissionTo('themes.manage')) {
@@ -47,6 +52,10 @@ class ThemePlaceholderController extends Controller
      */
     public function show(Theme $theme, string $section): JsonResponse
     {
+        if (!in_array($section, self::ALLOWED_SECTIONS, true)) {
+            return response()->json(['message' => 'Invalid section.'], 422);
+        }
+
         if (!request()->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',
@@ -81,6 +90,10 @@ class ThemePlaceholderController extends Controller
      */
     public function store(Request $request, Theme $theme, string $section): JsonResponse
     {
+        if (!in_array($section, self::ALLOWED_SECTIONS, true)) {
+            return response()->json(['message' => 'Invalid section.'], 422);
+        }
+
         if (!$request->user()->hasPermissionTo('themes.manage')) {
             return response()->json([
                 'message' => 'Unauthorized: You do not have permission to manage themes.',
