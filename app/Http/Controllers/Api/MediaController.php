@@ -8,6 +8,7 @@ use App\Actions\Api\Tenant\UploadMediaAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\UploadMediaRequest;
 use App\Models\Media;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -199,6 +200,10 @@ class MediaController extends Controller
             return response()->json([
                 'message' => 'Media deleted successfully',
             ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Media not found',
+            ], 404);
         } catch (\Exception $e) {
             \Log::error('Media deletion failed', ['error' => $e->getMessage()]);
             return response()->json([

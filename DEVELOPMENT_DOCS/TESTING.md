@@ -1,6 +1,6 @@
 # ByteForge Testing Guide
 
-Last updated: January 31, 2026
+Last updated: March 6, 2026
 
 ---
 
@@ -9,7 +9,7 @@ Last updated: January 31, 2026
 ByteForge uses a comprehensive testing strategy with both backend (PHPUnit/Laravel) and frontend (Vitest/React Testing Library) tests.
 
 **Current Status:**
-- ✅ **Backend:** 150+ tests passing (PHPUnit)
+- ✅ **Backend:** 217 tests passing, 14 skipped (PHPUnit 12.x)
 - ✅ **Frontend:** 700+ tests passing (Vitest)
 
 ---
@@ -38,13 +38,19 @@ npm run test:coverage  # With coverage report
 
 ### Database Strategy
 
-Tests use **Laravel's RefreshDatabase** trait with automatic seeding:
+Tests use **`DatabaseTransactions`** with **pre-seeded data** (not `RefreshDatabase`):
+
 - **Database:** Tests run against `byteforge` MariaDB (not in-memory SQLite)
-- **Seeding:** `TestFixturesSeeder` runs automatically (`$seed = true`)
-- **Isolation:** Each test runs in a transaction that rolls back
-- **Activity Logging:** Disabled during tests to avoid UUID/bigint mismatch
+- **Seeding:** `TestFixturesSeeder` must be run **once** before the test suite via `php artisan migrate:fresh --seed`. Tests do **not** re-seed on every run.
+- **Isolation:** Each test runs inside a DB transaction that rolls back on tearDown. Seeded data (users, roles, tenants) persists across tests; data created during a test disappears automatically.
+- **Activity Logging:** Disabled in `TestCase::setUp()` to avoid UUID/bigint column mismatch on the `activity_log` table.
+- **Error Handler Safety:** `TestCase` snapshots and restores PHP error/exception handler stacks to prevent PHPUnit "risky test" warnings caused by Symfony ErrorHandler.
+
+> **Important:** If you see "table not found" or missing seeded data errors, run `php artisan migrate:fresh --seed` once. You do **not** need to re-run this between test executions — `DatabaseTransactions` handles isolation.
 
 ### Test Users
+
+All seeded users have the password `password`.
 
 **Central Users (platform admins):**
 
@@ -63,28 +69,48 @@ Tests use **Laravel's RefreshDatabase** trait with automatic seeding:
 | `editor@tenant-X.byteforge.se` | Edit | `$this->actingAsTenantEditor('tenant-one')` |
 | `viewer@tenant-X.byteforge.se` | View only | `$this->actingAsTenantViewer('tenant-one')` |
 
+You can also use the generic role helper: `$this->actingAsCentralRole('admin')`
+
 **Seeded Tenants:**
 - `tenant-one` → `tenant-one.byteforge.se`
 - `tenant-two` → `tenant-two.byteforge.se`
 - `tenant-three` → `tenant-three.byteforge.se`
 
-**All passwords:** `password`
+**Direct user lookup (for assertions):**
+```php
+use Tests\Support\TestUsers;
+
+$user    = TestUsers::centralSuperadmin();
+$owner   = TestUsers::tenantOwner('tenant-one');
+$tenant  = TestUsers::tenant('tenant-one');
+```
 
 ### Test Organization
 
 ```
 tests/
+├── Central/
+│   └── Feature/Api/      # Central-specific API tests (e.g., AuthApiTest)
 ├── Feature/
-│   ├── Api/           # API endpoint tests
-│   │   ├── PageApiTest.php
-│   │   ├── ThemeApiTest.php
-│   │   └── MediaApiTest.php
-│   └── Auth/          # Authentication tests
-├── Unit/              # Unit tests for services/utilities
-└── TestCase.php       # Base test class with helpers
+│   ├── Api/              # API endpoint tests (media, pages, themes, analytics, etc.)
+│   ├── Services/         # Service integration tests
+│   ├── ApiRoutesTest.php # Route permission matrix tests
+│   ├── RbacTest.php      # RBAC verification
+│   └── RolesPermissionsTest.php
+├── Unit/
+│   ├── Services/         # Unit tests for service classes
+│   └── ExampleTest.php
+├── Support/
+│   ├── TestUsers.php         # Static helpers for seeded user lookup
+│   ├── WithAuthentication.php # Auth helper trait (actingAs* methods)
+│   ├── WithTenancy.php        # Tenant context helper trait
+│   └── AssertsApi.php         # API assertion helpers
+└── TestCase.php              # Base test class (all tests extend this)
 ```
 
 ### Writing Backend Tests
+
+**Use seeded users — do NOT create users in tests** unless testing user creation itself. The helpers return real seeded users with proper roles and permissions already assigned.
 
 ```php
 <?php
@@ -92,7 +118,6 @@ tests/
 namespace Tests\Feature\Api;
 
 use Tests\TestCase;
-use App\Models\Theme;
 
 class ThemeApiTest extends TestCase
 {
@@ -104,16 +129,42 @@ class ThemeApiTest extends TestCase
             ->assertJsonStructure(['data' => [['id', 'name', 'slug']]]);
     }
 
-    public function test_tenant_cannot_delete_active_theme(): void
+    public function test_viewer_cannot_manage_themes(): void
     {
-        $theme = Theme::factory()->active()->create();
-
-        $this->actingAsTenantOwner('tenant-one')
-            ->deleteJson("/api/themes/{$theme->id}")
+        $this->actingAsCentralViewer()
+            ->postJson('/api/superadmin/themes', ['name' => 'Test'])
             ->assertForbidden();
     }
 }
 ```
+
+**Testing within tenant context:**
+
+```php
+public function test_tenant_owner_can_list_pages(): void
+{
+    $this->actingAsTenantOwner('tenant-one')
+        ->getJson('/api/pages')
+        ->assertOk();
+}
+
+// Or use withinTenant() for manual context management:
+public function test_tenant_isolation(): void
+{
+    $this->withinTenant('tenant-one', function () {
+        $this->actingAsTenantOwner('tenant-one')
+            ->getJson('/api/pages')
+            ->assertOk();
+    });
+}
+```
+
+**Key rules for new tests:**
+1. Extend `Tests\TestCase` — it provides `DatabaseTransactions`, auth helpers, and tenancy helpers automatically.
+2. Use `$this->actingAs*()` helpers — they return `$this` for fluent chaining.
+3. Do not use `RefreshDatabase` — the base class already uses `DatabaseTransactions`.
+4. Do not call seeders inside tests — data is pre-seeded.
+5. Data created during a test (e.g., a new Page) is rolled back automatically after the test.
 
 ---
 
