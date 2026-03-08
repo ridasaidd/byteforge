@@ -48,7 +48,7 @@ Last updated: March 8, 2026
 
 ---
 
-### M2: Payments Core (IN PROGRESS)
+### M2: Payments Core ✅ COMPLETE
 
 **Phase 10: Stripe + Swish, products/prices, tenant-scoped**
 
@@ -58,7 +58,7 @@ Last updated: March 8, 2026
 - Checkout flows and refund handling
 - Fires `payment.*` events into analytics pipeline (activates revenue widgets automatically)
 
-**Backend progress (Mar 8, 2026):**
+**Delivered (Mar 8, 2026):**
 - ✅ 10.1 Foundation schema/models/contracts/packages
 - ✅ 10.2 Central billing APIs + webhook lifecycle sync
 - ✅ 10.3 Tenant payment-provider config APIs
@@ -67,19 +67,37 @@ Last updated: March 8, 2026
 - ✅ 10.6 Klarna gateway/session-authorize-capture flow
 - ✅ 10.7 Payment/refund orchestration + tenant payment APIs + analytics events
 
+**Closeout hardening (Mar 8, 2026):**
+- ✅ Webhook idempotency guard + processed event tracking
+- ✅ Webhook route rate limiting
+- ✅ Disabled Cashier default `/stripe/webhook` route (wrong model target for tenancy)
+- ✅ Checkout-return subscription sync path
+
 **Verification status:**
-- Full backend suite run completed with `286 passed`, `15 skipped` (current suite policy treats warnings/skips as non-zero process exit).
+- Full regression run completed with `304 passed`, `15 skipped`.
 
-**Remaining to close Phase 10:**
-- Manual provider sandbox verification (Stripe, Swish MSS, Klarna Playground)
-- Final QA pass + docs/verification checklist sign-off
-
-**Est:** Backend core complete; frontend/manual closeout next
-**Status:** In progress
+**Merged:** `feature/phase10-frontend` -> `main` (`8473575`)
+**Status:** Complete
 
 ---
 
-### M3: Booking Integration (AFTER Phase 10)
+### M3: Dashboard Translation (NEXT)
+
+**Phase 10.8: Localization / i18n for central + tenant dashboards**
+
+**Scope:**
+- Add i18n infrastructure for React dashboard apps
+- Extract hardcoded strings into locale dictionaries
+- Ship Swedish (`sv`) + English (`en`) locales
+- Persist language preference per user/session
+- Localize formatting for dates/times/numbers/currency
+
+**Est:** 1-2 weeks
+**Status:** Planned, next active focus
+
+---
+
+### M4: Booking Integration
 
 **Phase 11: Port booking system into multi-tenant CMS**
 
@@ -90,11 +108,11 @@ Last updated: March 8, 2026
 - Fires `booking.*` events into analytics pipeline (activates booking widgets automatically)
 
 **Est:** 6–8 weeks (booking logic exists, integration focus)  
-**Status:** Planned, waiting for Phase 9 + 10
+**Status:** Planned, starts after M3
 
 ---
 
-### M4: Advanced Analytics (FUTURE)
+### M5: Advanced Analytics (FUTURE)
 - Booking analytics: revenue trends, peak hours, popular services
 - Platform analytics: subscription revenue, feature adoption
 - Aggregation cron jobs for pre-computed roll-ups
@@ -102,7 +120,7 @@ Last updated: March 8, 2026
 
 ---
 
-### M5: Platform Enhancements (FUTURE)
+### M6: Platform Enhancements (FUTURE)
 - Tenant dashboard access (scoped pages, media, themes for tenant users)
 - Subscription billing and usage quotas
 - Navigation drag-and-drop tree UI

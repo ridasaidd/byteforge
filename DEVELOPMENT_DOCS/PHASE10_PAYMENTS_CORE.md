@@ -1,7 +1,7 @@
 # Phase 10: Payments Core
 
-**Status**: In Progress (backend + frontend code complete; manual sandbox verification pending)  
-**Branch**: `feature/phase10-payments`  
+**Status**: Complete (implemented, verified in sandbox, merged to `main`)  
+**Branch**: `main` (merged via `8473575`)  
 **Depends on**: Phase 9 Analytics Foundation (complete, merged `6f7bd1d`)  
 **Unblocks**: Phase 11 (Booking Integration)  
 **Last Updated**: March 8, 2026
@@ -452,7 +452,7 @@ Gate 1 ──► Gate 2 ──► Gate 3 ──► Gate 4 ──► Gate 5 ─�
 
 **Gate 5** (before marking phase done): `PaymentService` orchestrator resolves gateways correctly, analytics events fire with correct properties/tenant_id, refund flow works end-to-end, payment list/detail API returns correct data scoped to tenant.
 
-**Gate 6**: Broad backend suite executed (`286 passed`, `15 skipped`). Current phpunit warning/skip handling causes non-zero process exit; payment regressions are green and status docs are updated.
+**Gate 6**: Full regression suite executed successfully (`304 passed`, `15 skipped`) with billing/payment regressions green.
 
 ---
 
@@ -568,9 +568,9 @@ const STATUS_PARTIALLY_REFUNDED  = 'partially_refunded';
 
 ---
 
-## Sub-Phase 10.2 — Central Billing: Subscription Management 🚧 IN PROGRESS
+## Sub-Phase 10.2 — Central Billing: Subscription Management ✅ COMPLETE
 
-**Progress update (March 8, 2026):** Core service/controller/actions/routes are implemented. Billing tests are green (`BillingServiceTest`, `BillingControllerTest`, `CashierWebhookTest`, `EnforceFeatureLimitsActionTest`) with `23` passing tests.
+**Completion update (March 8, 2026):** Central billing service/controller/routes are complete and merged. Webhook processing includes subscription upsert + idempotency guard + rate limiting, and billing tests are green (`25` passing tests across `BillingServiceTest`, `BillingControllerTest`, `CashierWebhookTest`).
 
 ### TDD Order
 

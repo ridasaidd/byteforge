@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: March 8, 2026 (Phase 10 backend + frontend implemented; manual provider verification pending)
+Last updated: March 8, 2026 (Phase 10 complete and merged to main)
 Current branch: `main`
 
 ## Snapshot
@@ -17,7 +17,7 @@ Current branch: `main`
 - **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
 - **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
 - **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
-- **Phase 10 Payments Core:** ✅ **backend + frontend implemented** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, and dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`). Full backend regression executed: `286 passed`, `15 skipped` (suite exits non-zero due warning/skip policy in current test setup).
+- **Phase 10 Payments Core:** ✅ **COMPLETE + merged** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`), webhook idempotency/rate-limiting hardening, and checkout-return subscription sync. Full regression executed: `304 passed`, `15 skipped`.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -81,20 +81,19 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Phase 10: Payments Core (IN PROGRESS)**
+### **Next Priority: Dashboard Translation (Localization / i18n)**
 
 **Summary:**
-- Stripe + Swish integration, webhook handling
-- Products/prices model, tenant-scoped
-- Fires `payment.*` events into analytics pipeline (activates revenue widgets automatically)
+- Introduce localization framework for central + tenant dashboards
+- Extract hardcoded UI strings into translation dictionaries (start with Swedish + English)
+- Add user/admin locale selection and persistence
+- Ensure date/time/number/currency formatting follows selected locale
 
-**Note:** `payment.*` and `booking.*` constants pre-registered in `AnalyticsEvent`. `spatie/laravel-stats` already installed.
-
-**Status**: Backend and frontend implemented; provider sandbox/manual verification pending
+**Status**: Planned (recommended next active phase)
 
 ---
 
-### **Phase 11: Booking Integration (AFTER Phase 10)**
+### **Phase 11: Booking Integration**
 
 **Summary:**
 - Integrate existing booking system into multi-tenant CMS
@@ -144,11 +143,12 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 - ✅ Documentation plan committed and merged (`333ac10`)
 - ✅ Feature implementation commit merged (`0b1df8c`)
 
-**March 8, 2026 (Phase 10 Backend Progress):**
-- ✅ Completed backend sub-phases 10.1-10.7 (billing + provider config + Stripe/Swish/Klarna + payment/refund orchestration)
-- ✅ Added backend tests for provider validation, gateways, payment flows, analytics, payment APIs, and refunds
-- ✅ Ran broad backend regression: `286 passed`, `15 skipped`; non-zero exit due warning/skip handling in current suite
-- ⚠️ Remaining to close full Phase 10: frontend billing/payment pages and manual sandbox verification flows
+**March 8, 2026 (Phase 10 Complete):**
+- ✅ Completed sub-phases 10.1-10.7 (billing + provider config + Stripe/Swish/Klarna + payment/refund orchestration)
+- ✅ Completed frontend dashboard pages for central/tenant payment management
+- ✅ Hardened central Stripe webhook flow (idempotency table, duplicate-event skip, route throttling, Cashier default webhook route disabled)
+- ✅ Added checkout-return subscription sync to avoid stale "Free" state when webhook delivery is delayed
+- ✅ Regression green after merge: `304 passed`, `15 skipped`
 
 **February 2, 2026 (Phase 7 - Font System Complete):**
 - ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation
