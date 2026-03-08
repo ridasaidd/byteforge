@@ -1,6 +1,6 @@
 # Phase 10: Payments Core
 
-**Status**: In Progress (`10.1`-`10.7` backend complete; frontend/manual closeout pending)  
+**Status**: In Progress (backend + frontend code complete; manual sandbox verification pending)  
 **Branch**: `feature/phase10-payments`  
 **Depends on**: Phase 9 Analytics Foundation (complete, merged `6f7bd1d`)  
 **Unblocks**: Phase 11 (Booking Integration)  
@@ -58,6 +58,59 @@ Adding a new provider = implement `PaymentGatewayContract` + register in resolve
 | Credential storage | Encrypted JSON in DB | `encrypted:array` Eloquent cast; no plaintext keys at rest |
 | Webhook auth | Provider signatures | Not Laravel auth; Stripe signature, Swish cert, Klarna HMAC |
 | Card data storage | Never | Stripe Elements, Klarna widget, Swish app — PCI compliant |
+
+---
+
+## Key Configuration (Central vs Tenant Stripe)
+
+### 1) Central billing Stripe keys (ByteForge bills tenants)
+
+Configured in backend environment variables used by Cashier:
+
+- `STRIPE_KEY`
+- `STRIPE_SECRET`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_STARTER` (Price ID for Starter base plan)
+- `STRIPE_PRICE_BUSINESS` (Price ID for Business base plan)
+
+Source of truth in code:
+
+- `config/cashier.php`
+
+Example `.env` entries:
+
+```dotenv
+STRIPE_KEY=pk_test_...
+STRIPE_SECRET=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+CASHIER_CURRENCY=sek
+```
+
+These keys power:
+
+- central plan checkout (`/api/superadmin/billing/checkout`)
+- central portal (`/api/superadmin/billing/portal`)
+- central Stripe webhook (`/api/stripe/webhook`)
+
+### 2) Tenant payment Stripe keys (tenants charge their own customers)
+
+Configured per-tenant in CMS UI:
+
+- `Tenant CMS -> Payment Providers -> Stripe`
+- fields: `publishable_key`, `secret_key`, optional `webhook_secret`
+
+Stored encrypted in `tenant_payment_providers.credentials` and used by tenant payment endpoints.
+
+These keys power:
+
+- tenant Stripe intent creation (`/api/payments/stripe/create-intent`)
+- tenant Stripe webhook (`/api/payments/stripe/webhook`)
+
+### 3) Important relationship between the two
+
+- Central Stripe keys are for **platform billing** (tenant subscriptions/add-ons).
+- Tenant Stripe keys are for **tenant commerce** (customer payments).
+- For tenants to accept payments, the tenant must have the `payments` add-on active and configure tenant Stripe credentials.
 
 ---
 

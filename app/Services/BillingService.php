@@ -69,12 +69,23 @@ class BillingService
 
         $currentPlan = Plan::query()->bySlug('free')->first();
 
-        // Track selected base plan in tenant data until full webhook sync logic is added.
-        $selectedPlanSlug = data_get($tenant->data, 'billing.plan_slug');
-        if (is_string($selectedPlanSlug) && $selectedPlanSlug !== '') {
-            $matchedPlan = Plan::query()->bySlug($selectedPlanSlug)->first();
-            if ($matchedPlan) {
-                $currentPlan = $matchedPlan;
+        // Source of truth for paid plan is the subscription base price from Stripe/Cashier.
+        $subscriptionStripePrice = is_object($subscription) ? data_get($subscription, 'stripe_price') : null;
+        if (is_string($subscriptionStripePrice) && $subscriptionStripePrice !== '') {
+            $planFromSubscription = Plan::query()->where('stripe_price_id', $subscriptionStripePrice)->first();
+            if ($planFromSubscription) {
+                $currentPlan = $planFromSubscription;
+            }
+        }
+
+        // Backward-compatible fallback while older rows may not have subscription price hydrated.
+        if (!$currentPlan || $currentPlan->slug === 'free') {
+            $selectedPlanSlug = data_get($tenant->data, 'billing.plan_slug');
+            if (is_string($selectedPlanSlug) && $selectedPlanSlug !== '') {
+                $matchedPlan = Plan::query()->bySlug($selectedPlanSlug)->first();
+                if ($matchedPlan) {
+                    $currentPlan = $matchedPlan;
+                }
             }
         }
 
@@ -89,11 +100,29 @@ class BillingService
             'trial_ends_at' => $tenant->trial_ends_at?->toISOString(),
             'active_addons' => $activeAddons,
             'monthly_total' => $monthlyTotal,
+            'currency' => strtoupper((string) config('cashier.currency', 'usd')),
         ];
     }
 
     public function createCheckout(Tenant $tenant, Plan $plan, string $successUrl, string $cancelUrl): array
     {
+        $isFreePlan = (int) $plan->price_monthly === 0 && (int) $plan->price_yearly === 0;
+
+        if ($isFreePlan) {
+            return [
+                'checkout_url' => null,
+                'mode' => 'free',
+                'message' => 'Free plan selected. No Stripe checkout is required.',
+            ];
+        }
+
+        if (!is_string(config('cashier.key')) || trim((string) config('cashier.key')) === ''
+            || !is_string(config('cashier.secret')) || trim((string) config('cashier.secret')) === '') {
+            throw ValidationException::withMessages([
+                'stripe' => 'Stripe billing is not configured. Set STRIPE_KEY and STRIPE_SECRET.',
+            ]);
+        }
+
         if (!$plan->stripe_price_id) {
             throw ValidationException::withMessages([
                 'plan' => 'Selected plan is not billable via Stripe.',
@@ -125,6 +154,71 @@ class BillingService
         return [
             'portal_url' => $tenant->billingPortalUrl($returnUrl),
         ];
+    }
+
+    /**
+     * Sync subscription state from Stripe API for a given tenant.
+     * Called after checkout return to ensure local DB is up-to-date
+     * even if the webhook hasn't arrived yet.
+     */
+    public function syncSubscription(Tenant $tenant): array
+    {
+        $subscription = $tenant->subscription('default');
+
+        // If Cashier already has a subscription row, just make sure it's fresh.
+        if ($subscription) {
+            return [
+                'synced' => true,
+                'status' => $subscription->stripe_status,
+            ];
+        }
+
+        // No local subscription row yet. Try to find one via Stripe API.
+        $stripeId = $tenant->stripe_id;
+        if (!is_string($stripeId) || $stripeId === '') {
+            return ['synced' => false, 'reason' => 'no_stripe_customer'];
+        }
+
+        try {
+            $stripeSubscriptions = \Stripe\Subscription::all(
+                ['customer' => $stripeId, 'limit' => 5, 'status' => 'all'],
+                ['api_key' => config('cashier.secret')]
+            );
+        } catch (\Throwable $e) {
+            return ['synced' => false, 'reason' => 'stripe_api_error'];
+        }
+
+        foreach ($stripeSubscriptions->data as $stripeSub) {
+            $existing = DB::table('subscriptions')
+                ->where('stripe_id', $stripeSub->id)
+                ->exists();
+
+            if ($existing) {
+                continue;
+            }
+
+            $priceId = $stripeSub->items->data[0]->price->id ?? null;
+            $resolvedPrice = is_string($priceId)
+                ? Plan::query()->where('stripe_price_id', $priceId)->value('stripe_price_id')
+                : null;
+
+            DB::table('subscriptions')->insert([
+                'tenant_id' => (string) $tenant->id,
+                'type' => 'default',
+                'stripe_id' => $stripeSub->id,
+                'stripe_status' => $stripeSub->status,
+                'stripe_price' => $resolvedPrice,
+                'quantity' => null,
+                'trial_ends_at' => null,
+                'ends_at' => $stripeSub->canceled_at
+                    ? date('Y-m-d H:i:s', $stripeSub->canceled_at)
+                    : null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return ['synced' => true, 'status' => 'refreshed_from_stripe'];
     }
 
     public function activateAddon(Tenant $tenant, Addon $addon): array
@@ -264,8 +358,51 @@ class BillingService
             ->where('stripe_id', $stripeSubscriptionId)
             ->first();
 
+        $items = data_get($subscriptionObject, 'items.data');
+        $priceIds = [];
+        if (is_array($items)) {
+            $priceIds = collect($items)
+                ->map(fn ($item) => is_array($item) ? data_get($item, 'price.id') : null)
+                ->filter(fn ($id) => is_string($id) && $id !== '')
+                ->values()
+                ->all();
+        }
+
+        $resolvedBasePlanPriceId = Plan::query()
+            ->whereIn('stripe_price_id', $priceIds)
+            ->value('stripe_price_id');
+
         if (!$row) {
-            return;
+            $customerId = data_get($subscriptionObject, 'customer');
+            if (!is_string($customerId) || $customerId === '') {
+                return;
+            }
+
+            $tenant = Tenant::query()->where('stripe_id', $customerId)->first();
+            if (!$tenant) {
+                return;
+            }
+
+            DB::table('subscriptions')->insert([
+                'tenant_id' => (string) $tenant->id,
+                'type' => 'default',
+                'stripe_id' => $stripeSubscriptionId,
+                'stripe_status' => (string) data_get($subscriptionObject, 'status', 'incomplete'),
+                'stripe_price' => $resolvedBasePlanPriceId,
+                'quantity' => null,
+                'trial_ends_at' => null,
+                'ends_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            $row = DB::table('subscriptions')
+                ->where('stripe_id', $stripeSubscriptionId)
+                ->first();
+
+            if (!$row) {
+                return;
+            }
         }
 
         $status = data_get($subscriptionObject, 'status', $row->stripe_status ?? 'incomplete');
@@ -288,19 +425,13 @@ class BillingService
             ->where('id', $row->id)
             ->update([
                 'stripe_status' => (string) $status,
+                'stripe_price' => $resolvedBasePlanPriceId,
                 'trial_ends_at' => $trialEndsAt,
                 'ends_at' => $endsAt,
                 'updated_at' => now(),
             ]);
 
-        $items = data_get($subscriptionObject, 'items.data');
-        if (is_array($items)) {
-            $priceIds = collect($items)
-                ->map(fn ($item) => is_array($item) ? data_get($item, 'price.id') : null)
-                ->filter(fn ($id) => is_string($id) && $id !== '')
-                ->values()
-                ->all();
-
+        if (!empty($priceIds)) {
             $this->syncTenantAddonsFromStripeItems((string) $row->tenant_id, $priceIds);
         }
     }

@@ -186,4 +186,144 @@ class CashierWebhookTest extends TestCase
                 ->value('deactivated_at')
         );
     }
+
+    #[Test]
+    public function webhook_creates_subscription_row_when_missing_using_tenant_stripe_customer_id(): void
+    {
+        config()->set('cashier.webhook.secret', self::SECRET);
+
+        $tenant = Tenant::query()->where('slug', 'tenant-two')->firstOrFail();
+        DB::table('tenants')
+            ->where('id', (string) $tenant->id)
+            ->update(['stripe_id' => 'cus_webhook_new_row']);
+
+        Addon::query()->updateOrCreate(
+            ['slug' => 'webhook-created-row-addon'],
+            [
+                'name' => 'Webhook Created Row Addon',
+                'description' => 'Addon for created subscription flow',
+                'stripe_price_id' => 'price_webhook_created_row_addon',
+                'price_monthly' => 1500,
+                'currency' => 'SEK',
+                'feature_flag' => 'webhook_created_row_addon',
+                'is_active' => true,
+                'sort_order' => 95,
+            ]
+        );
+
+        $payloadArray = [
+            'id' => 'evt_created_row',
+            'object' => 'event',
+            'type' => 'customer.subscription.created',
+            'data' => [
+                'object' => [
+                    'id' => 'sub_created_from_webhook',
+                    'object' => 'subscription',
+                    'customer' => 'cus_webhook_new_row',
+                    'status' => 'active',
+                    'items' => [
+                        'data' => [
+                            ['price' => ['id' => 'price_webhook_created_row_addon']],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $payload = json_encode($payloadArray, JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp . '.' . $payload, self::SECRET);
+        $header = sprintf('t=%d,v1=%s', $timestamp, $signature);
+
+        $response = $this->call(
+            'POST',
+            '/api/stripe/webhook',
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_STRIPE_SIGNATURE' => $header,
+            ],
+            $payload,
+        );
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('subscriptions', [
+            'tenant_id' => (string) $tenant->id,
+            'stripe_id' => 'sub_created_from_webhook',
+            'stripe_status' => 'active',
+        ]);
+    }
+
+    #[Test]
+    public function webhook_skips_duplicate_event_via_idempotency(): void
+    {
+        config()->set('cashier.webhook.secret', self::SECRET);
+
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+
+        DB::table('subscriptions')->insert([
+            'tenant_id' => (string) $tenant->id,
+            'type' => 'default',
+            'stripe_id' => 'sub_idempotency_test',
+            'stripe_status' => 'incomplete',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $payloadArray = [
+            'id' => 'evt_idempotency_check',
+            'object' => 'event',
+            'type' => 'customer.subscription.updated',
+            'data' => [
+                'object' => [
+                    'id' => 'sub_idempotency_test',
+                    'object' => 'subscription',
+                    'status' => 'active',
+                    'items' => ['data' => []],
+                ],
+            ],
+        ];
+
+        $payload = json_encode($payloadArray, JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp . '.' . $payload, self::SECRET);
+        $header = sprintf('t=%d,v1=%s', $timestamp, $signature);
+
+        // First request — should process
+        $response = $this->call('POST', '/api/stripe/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_STRIPE_SIGNATURE' => $header,
+        ], $payload);
+
+        $response->assertOk();
+        $this->assertDatabaseHas('subscriptions', [
+            'stripe_id' => 'sub_idempotency_test',
+            'stripe_status' => 'active',
+        ]);
+        $this->assertDatabaseHas('processed_stripe_events', [
+            'stripe_event_id' => 'evt_idempotency_check',
+        ]);
+
+        // Mutate subscription back to incomplete manually to prove it wasn't re-processed
+        DB::table('subscriptions')
+            ->where('stripe_id', 'sub_idempotency_test')
+            ->update(['stripe_status' => 'past_due']);
+
+        // Second request — same event ID, should be skipped
+        $response2 = $this->call('POST', '/api/stripe/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_STRIPE_SIGNATURE' => $header,
+        ], $payload);
+
+        $response2->assertOk()->assertJson(['skipped' => 'duplicate']);
+
+        // Status should remain past_due because the event was skipped
+        $this->assertDatabaseHas('subscriptions', [
+            'stripe_id' => 'sub_idempotency_test',
+            'stripe_status' => 'past_due',
+        ]);
+    }
 }

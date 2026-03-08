@@ -12,11 +12,23 @@ import { SettingsPage } from './components/pages/SettingsPage';
 import { ProfilePage } from './components/pages/ProfilePage';
 import { AccountSettingsPage } from './components/pages/AccountSettingsPage';
 import { PlatformAnalyticsPage } from './components/pages/PlatformAnalyticsPage';
+import { BillingPage } from './components/pages/BillingPage';
 import RolesPermissionsPage from './components/pages/RolesPermissionsPage';
 import MediaLibraryPage from './components/pages/MediaLibraryPage';
 import { centralMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
+
+function PermissionGate({ permission, children }: { permission: string; children: JSX.Element }) {
+  const { hasPermission } = usePermissions();
+
+  if (!hasPermission(permission)) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return children;
+}
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -65,6 +77,14 @@ function ProtectedRoutes() {
               <Route path="roles-permissions" element={<RolesPermissionsPage />} />
               <Route path="activity" element={<ActivityLogPage />} />
               <Route path="analytics" element={<PlatformAnalyticsPage />} />
+              <Route
+                path="billing"
+                element={(
+                  <PermissionGate permission="view billing">
+                    <BillingPage />
+                  </PermissionGate>
+                )}
+              />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="account" element={<AccountSettingsPage />} />

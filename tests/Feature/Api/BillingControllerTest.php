@@ -148,7 +148,7 @@ class BillingControllerTest extends TestCase
 
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
 
-        $response = $this->actingAsCentralViewer()->postJson('/api/superadmin/billing/addons/' . $addon->id . '/activate?tenant_id=' . $tenant->id);
+        $response = $this->actingAsCentralViewer()->postJson('/api/superadmin/billing/addons/' . $addon->slug . '/activate?tenant_id=' . $tenant->id);
 
         $response->assertForbidden();
     }
@@ -256,7 +256,7 @@ class BillingControllerTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $activate = $this->actingAsSuperadmin()->postJson('/api/superadmin/billing/addons/' . $addon->id . '/activate?tenant_id=' . $tenant->id);
+        $activate = $this->actingAsSuperadmin()->postJson('/api/superadmin/billing/addons/' . $addon->slug . '/activate?tenant_id=' . $tenant->id);
         $activate->assertOk()->assertJsonPath('data.status', 'activated');
 
         $this->assertDatabaseHas('tenant_addons', [
@@ -265,7 +265,7 @@ class BillingControllerTest extends TestCase
             'deactivated_at' => null,
         ]);
 
-        $deactivate = $this->actingAsSuperadmin()->postJson('/api/superadmin/billing/addons/' . $addon->id . '/deactivate?tenant_id=' . $tenant->id);
+        $deactivate = $this->actingAsSuperadmin()->postJson('/api/superadmin/billing/addons/' . $addon->slug . '/deactivate?tenant_id=' . $tenant->id);
         $deactivate->assertOk()->assertJsonPath('data.status', 'deactivated');
 
         $this->assertNotNull(

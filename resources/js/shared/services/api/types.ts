@@ -465,3 +465,112 @@ export interface CrossTenantOverviewResponse {
   period:       AnalyticsPeriod;
   generated_at: string;
 }
+
+// ─── Payments & Billing (Phase 10) ─────────────────────────────────────────
+
+export type PaymentProviderCode = 'stripe' | 'swish' | 'klarna';
+export type PaymentProviderMode = 'test' | 'live';
+
+export interface TenantPaymentProvider {
+  provider: PaymentProviderCode;
+  is_active: boolean;
+  mode: PaymentProviderMode;
+  credentials_summary?: Record<string, string>;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UpsertTenantPaymentProviderData {
+  tenant_id: string;
+  credentials: Record<string, string>;
+  is_active?: boolean;
+  mode?: PaymentProviderMode;
+}
+
+export interface TestTenantPaymentProviderData {
+  tenant_id: string;
+  credentials: Record<string, string>;
+}
+
+export interface PaymentRecord {
+  id: number;
+  tenant_id: string;
+  provider: PaymentProviderCode;
+  provider_transaction_id: string;
+  status: string;
+  amount: number;
+  currency: string;
+  customer_email: string | null;
+  customer_name: string | null;
+  metadata: Record<string, unknown> | null;
+  provider_response: Record<string, unknown> | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentListFilters {
+  status?: string;
+  provider?: PaymentProviderCode;
+  from?: string;
+  to?: string;
+  per_page?: number;
+  page?: number;
+}
+
+export interface RefundRecord {
+  id: number;
+  payment_id: number;
+  amount: number;
+  status: string;
+  reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RefundPaymentData {
+  amount: number;
+  reason?: string;
+}
+
+export interface BillingPlan {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  price_monthly: number;
+  currency: string;
+}
+
+export interface BillingAddon {
+  id: number;
+  slug: string;
+  name: string;
+  description: string | null;
+  price_monthly: number;
+  currency: string;
+  feature_flag?: string;
+  is_purchased: boolean;
+}
+
+export interface BillingSubscriptionSummary {
+  plan: { name: string; slug: string } | null;
+  status: string | null;
+  current_period_end: string | null;
+  cancel_at_period_end?: boolean;
+  trial_ends_at?: string | null;
+  active_addons?: Array<{ name: string; slug: string; activated_at: string | null }>;
+  monthly_total: number;
+}
+
+export interface BillingCheckoutData {
+  tenant_id: string;
+  plan_slug: string;
+  success_url: string;
+  cancel_url: string;
+}
+
+export interface BillingPortalData {
+  tenant_id: string;
+  return_url: string;
+}

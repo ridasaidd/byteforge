@@ -180,6 +180,43 @@ class BillingServiceTest extends TestCase
         $this->assertEquals('free', $summary['plan']['slug']);
         $this->assertEquals(2000, $summary['monthly_total']);
         $this->assertEquals('inactive', $summary['status']);
+        $this->assertArrayHasKey('currency', $summary);
+    }
+
+    #[Test]
+    public function it_prefers_subscription_stripe_price_when_resolving_current_plan(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+
+        Plan::query()->updateOrCreate(
+            ['slug' => 'starter-summary-plan'],
+            [
+                'name' => 'Starter Summary Plan',
+                'stripe_price_id' => 'price_summary_starter',
+                'price_monthly' => 14900,
+                'price_yearly' => 149000,
+                'currency' => 'SEK',
+                'limits' => ['max_pages' => 25],
+                'is_active' => true,
+                'sort_order' => 20,
+            ]
+        );
+
+        DB::table('subscriptions')->insert([
+            'tenant_id' => (string) $tenant->id,
+            'type' => 'default',
+            'stripe_id' => 'sub_summary_plan_resolution',
+            'stripe_status' => 'active',
+            'stripe_price' => 'price_summary_starter',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $summary = $this->service->getSubscriptionSummary($tenant->fresh());
+
+        $this->assertEquals('starter-summary-plan', $summary['plan']['slug']);
+        $this->assertEquals(14900, $summary['monthly_total']);
+        $this->assertEquals('active', $summary['status']);
     }
 
     #[Test]
@@ -261,5 +298,36 @@ class BillingServiceTest extends TestCase
         $this->assertNotNull(
             TenantAddon::query()->where('tenant_id', (string) $tenant->id)->where('addon_id', $addon->id)->first()?->deactivated_at
         );
+    }
+
+    #[Test]
+    public function it_allows_selecting_free_plan_without_stripe_checkout(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+
+        $plan = Plan::query()->updateOrCreate(
+            ['slug' => 'free-checkout'],
+            [
+                'name' => 'Free Checkout',
+                'stripe_price_id' => null,
+                'price_monthly' => 0,
+                'price_yearly' => 0,
+                'currency' => 'SEK',
+                'limits' => ['max_pages' => 1],
+                'is_active' => true,
+                'sort_order' => 900,
+            ]
+        );
+
+        $result = $this->service->createCheckout(
+            $tenant,
+            $plan,
+            'https://byteforge.se/dashboard/billing?checkout=success',
+            'https://byteforge.se/dashboard/billing?checkout=cancel'
+        );
+
+        $this->assertArrayHasKey('checkout_url', $result);
+        $this->assertNull($result['checkout_url']);
+        $this->assertSame('free', $result['mode']);
     }
 }
