@@ -8,7 +8,10 @@ use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
 use App\Http\Controllers\Api\PageController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\TenantPaymentProviderController;
 use App\Http\Controllers\Api\Tenant\MediaFolderController;
 use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\ThemePartController;
@@ -86,6 +89,11 @@ Route::middleware([
     Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
         ->middleware('throttle:60,1');
 
+    // Provider callbacks/webhooks (no auth)
+    Route::post('payments/stripe/webhook', [PaymentWebhookController::class, 'stripe']);
+    Route::post('payments/swish/callback', [PaymentWebhookController::class, 'swish']);
+    Route::post('payments/klarna/callback', [PaymentWebhookController::class, 'klarna']);
+
     // Protected tenant routes - require authentication
     Route::middleware('auth:api')->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
@@ -159,5 +167,42 @@ Route::middleware([
             Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');  // empty until Phase 11
             Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');   // empty until Phase 10
         });
+
+        // Payment provider configuration (Phase 10.3)
+        Route::prefix('payment-providers')->group(function () {
+            Route::get('/', [TenantPaymentProviderController::class, 'index'])->middleware('permission:payments.view');
+            Route::post('/', [TenantPaymentProviderController::class, 'store'])->middleware('permission:payments.manage');
+            Route::put('{provider}', [TenantPaymentProviderController::class, 'update'])->middleware('permission:payments.manage');
+            Route::delete('{provider}', [TenantPaymentProviderController::class, 'destroy'])->middleware('permission:payments.manage');
+            Route::post('{provider}/test', [TenantPaymentProviderController::class, 'testConnection'])->middleware('permission:payments.manage');
+        });
+
+        // Stripe payments (Phase 10.4)
+        Route::post('payments/stripe/create-intent', [PaymentController::class, 'createStripeIntent'])
+            ->middleware('permission:payments.manage');
+
+        // Swish payments (Phase 10.5)
+        Route::post('payments/swish/create', [PaymentController::class, 'createSwishPayment'])
+            ->middleware('permission:payments.manage');
+        Route::get('payments/swish/{id}/status', [PaymentController::class, 'swishStatus'])
+            ->middleware('permission:payments.view');
+
+        // Klarna payments (Phase 10.6)
+        Route::post('payments/klarna/create-session', [PaymentController::class, 'createKlarnaSession'])
+            ->middleware('permission:payments.manage');
+        Route::post('payments/klarna/authorize', [PaymentController::class, 'authorizeKlarna'])
+            ->middleware('permission:payments.manage');
+        Route::post('payments/klarna/capture/{id}', [PaymentController::class, 'captureKlarna'])
+            ->middleware('permission:payments.manage');
+
+        // Payment history + refunds (Phase 10.7)
+        Route::get('payments', [PaymentController::class, 'index'])
+            ->middleware('permission:payments.view');
+        Route::get('payments/{payment}', [PaymentController::class, 'show'])
+            ->whereNumber('payment')
+            ->middleware('permission:payments.view');
+        Route::post('payments/{payment}/refund', [PaymentController::class, 'refund'])
+            ->whereNumber('payment')
+            ->middleware('permission:payments.refund');
     });
 });

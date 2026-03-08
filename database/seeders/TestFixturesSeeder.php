@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Addon;
+use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -41,6 +43,7 @@ class TestFixturesSeeder extends Seeder
         $this->call(RolePermissionSeeder::class);
 
         $this->createTenantRoles();
+        $this->seedBillingDefaults();
         $this->createTenants();
         $this->createCentralUsers();
         $this->createTenantUsers();
@@ -66,6 +69,7 @@ class TestFixturesSeeder extends Seeder
                 'templates.view', 'templates.manage',
                 'media.view', 'media.manage',
                 'view analytics',
+                'payments.view', 'payments.manage', 'payments.refund',
             ],
             'tenant_editor' => [
                 'pages.create', 'pages.edit', 'pages.view',
@@ -75,6 +79,7 @@ class TestFixturesSeeder extends Seeder
                 'templates.view',
                 'media.view', 'media.manage',
                 'view analytics',
+                'payments.view',
             ],
             'tenant_viewer' => [
                 'pages.view',
@@ -94,6 +99,104 @@ class TestFixturesSeeder extends Seeder
             $role->syncPermissions($perms);
             $this->command->info("  ✓ {$roleName}");
         }
+    }
+
+    /**
+     * Seed base plans and add-ons used by Phase 10 billing.
+     */
+    private function seedBillingDefaults(): void
+    {
+        $this->command->info("\n💳 Seeding billing defaults...");
+
+        $plans = [
+            [
+                'name' => 'Free',
+                'slug' => 'free',
+                'price_monthly' => 0,
+                'price_yearly' => 0,
+                'currency' => 'SEK',
+                'limits' => ['max_pages' => 5, 'max_media_mb' => 500, 'max_users' => 2, 'custom_domain' => false],
+                'is_active' => true,
+                'sort_order' => 1,
+            ],
+            [
+                'name' => 'Starter',
+                'slug' => 'starter',
+                'price_monthly' => 14900,
+                'price_yearly' => 149000,
+                'currency' => 'SEK',
+                'limits' => ['max_pages' => 25, 'max_media_mb' => 5000, 'max_users' => 5, 'custom_domain' => true],
+                'is_active' => true,
+                'sort_order' => 2,
+            ],
+            [
+                'name' => 'Business',
+                'slug' => 'business',
+                'price_monthly' => 39900,
+                'price_yearly' => 399000,
+                'currency' => 'SEK',
+                'limits' => ['max_pages' => 999999, 'max_media_mb' => 50000, 'max_users' => 999999, 'custom_domain' => true],
+                'is_active' => true,
+                'sort_order' => 3,
+            ],
+        ];
+
+        foreach ($plans as $plan) {
+            Plan::updateOrCreate(['slug' => $plan['slug']], $plan);
+        }
+
+        $addons = [
+            [
+                'name' => 'Booking System',
+                'slug' => 'booking',
+                'description' => 'Appointment scheduling, calendar, and booking management',
+                'stripe_price_id' => 'price_booking_placeholder',
+                'price_monthly' => 9900,
+                'currency' => 'SEK',
+                'feature_flag' => 'booking',
+                'is_active' => true,
+                'sort_order' => 1,
+            ],
+            [
+                'name' => 'Payment Processing',
+                'slug' => 'payments',
+                'description' => 'Stripe, Swish, and Klarna payment capabilities',
+                'stripe_price_id' => 'price_payments_placeholder',
+                'price_monthly' => 7900,
+                'currency' => 'SEK',
+                'feature_flag' => 'payments',
+                'is_active' => true,
+                'sort_order' => 2,
+            ],
+            [
+                'name' => 'Analytics Pro',
+                'slug' => 'analytics-pro',
+                'description' => 'Advanced analytics, exports, and custom reports',
+                'stripe_price_id' => 'price_analytics_pro_placeholder',
+                'price_monthly' => 4900,
+                'currency' => 'SEK',
+                'feature_flag' => 'analytics_pro',
+                'is_active' => true,
+                'sort_order' => 3,
+            ],
+            [
+                'name' => 'Priority Support',
+                'slug' => 'priority-support',
+                'description' => 'Fast-track support handling',
+                'stripe_price_id' => 'price_priority_support_placeholder',
+                'price_monthly' => 9900,
+                'currency' => 'SEK',
+                'feature_flag' => 'priority_support',
+                'is_active' => true,
+                'sort_order' => 4,
+            ],
+        ];
+
+        foreach ($addons as $addon) {
+            Addon::updateOrCreate(['slug' => $addon['slug']], $addon);
+        }
+
+        $this->command->info('  ✓ plans and add-ons seeded');
     }
 
     private function createTenants(): void
@@ -175,6 +278,7 @@ class TestFixturesSeeder extends Seeder
                 'templates.view', 'templates.manage',
                 'media.view', 'media.manage',
                 'view analytics',
+                'payments.view', 'payments.manage', 'payments.refund',
             ],
             'editor' => [
                 'pages.create', 'pages.edit', 'pages.view',
@@ -184,6 +288,7 @@ class TestFixturesSeeder extends Seeder
                 'templates.view',
                 'media.view', 'media.manage',
                 'view analytics',
+                'payments.view',
             ],
             'viewer' => [
                 'pages.view',

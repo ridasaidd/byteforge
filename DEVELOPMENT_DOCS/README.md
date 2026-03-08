@@ -2,7 +2,7 @@
 
 This folder contains organized documentation for the ByteForge multi-tenant CMS platform.
 
-Last updated: March 3, 2026
+Last updated: March 6, 2026
 
 ---
 
@@ -21,8 +21,7 @@ Last updated: March 3, 2026
 ### 📋 Status & Planning
 - [CURRENT_STATUS.md](CURRENT_STATUS.md) - Current state, completed features, next steps
 - [ROADMAP.md](ROADMAP.md) - Milestones and priorities
-- [PHASE9_ANALYTICS_FOUNDATION.md](PHASE9_ANALYTICS_FOUNDATION.md) - **Current phase: Analytics event pipeline plan**
-- [PHASE9_EXECUTION_CHECKLIST.md](PHASE9_EXECUTION_CHECKLIST.md) - **Active: TDD gates, anti-drift rules, file list per sub-phase**
+- [PHASE10_PAYMENTS_CORE.md](PHASE10_PAYMENTS_CORE.md) - **Current phase: Payments (Stripe + Swish + Klarna), central billing, tenant payment gateway**
 - [PHASE7_FONT_SYSTEM_COMPLETE.md](PHASE7_FONT_SYSTEM_COMPLETE.md) - Completed font system implementation summary
 - [NAVIGATION_REFACTOR_PLAN.md](NAVIGATION_REFACTOR_PLAN.md) - Navigation v2 architecture and refactor plan (implemented)
 

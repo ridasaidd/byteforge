@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Laravel\Cashier\Billable;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Stancl\Tenancy\Database\Models\Domain;
@@ -10,7 +11,9 @@ use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
 
 class Tenant extends BaseTenant
 {
-    use HasFactory, LogsActivity;
+    use HasFactory;
+    use LogsActivity;
+    use Billable;
 
     /**
      * Get the domains for the tenant.
@@ -25,7 +28,15 @@ class Tenant extends BaseTenant
      */
     public static function getCustomColumns(): array
     {
-        return ['id', 'name', 'slug'];
+        return [
+            'id',
+            'name',
+            'slug',
+            'stripe_id',
+            'pm_type',
+            'pm_last_four',
+            'trial_ends_at',
+        ];
     }
 
     protected $fillable = [

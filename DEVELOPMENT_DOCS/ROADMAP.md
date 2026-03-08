@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: March 4, 2026
+Last updated: March 8, 2026
 
 —
 
@@ -48,7 +48,7 @@ Last updated: March 4, 2026
 
 ---
 
-### M2: Payments Core (ACTIVE NEXT)
+### M2: Payments Core (IN PROGRESS)
 
 **Phase 10: Stripe + Swish, products/prices, tenant-scoped**
 
@@ -58,8 +58,24 @@ Last updated: March 4, 2026
 - Checkout flows and refund handling
 - Fires `payment.*` events into analytics pipeline (activates revenue widgets automatically)
 
-**Est:** 1–2 weeks  
-**Status:** Planned
+**Backend progress (Mar 8, 2026):**
+- ✅ 10.1 Foundation schema/models/contracts/packages
+- ✅ 10.2 Central billing APIs + webhook lifecycle sync
+- ✅ 10.3 Tenant payment-provider config APIs
+- ✅ 10.4 Stripe gateway + webhook flow
+- ✅ 10.5 Swish gateway + callback flow
+- ✅ 10.6 Klarna gateway/session-authorize-capture flow
+- ✅ 10.7 Payment/refund orchestration + tenant payment APIs + analytics events
+
+**Verification status:**
+- Full backend suite run completed with `286 passed`, `15 skipped` (current suite policy treats warnings/skips as non-zero process exit).
+
+**Remaining to close Phase 10:**
+- Frontend pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`) and API clients
+- Manual provider sandbox verification (Stripe, Swish MSS, Klarna Playground)
+
+**Est:** Backend core complete; frontend/manual closeout next
+**Status:** In progress
 
 ---
 

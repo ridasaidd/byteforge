@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: March 5, 2026 (Phase 9 Analytics Foundation — complete, Phase 10 Payments next)
+Last updated: March 8, 2026 (Phase 10 backend payments core through 10.7 complete; frontend/manual closeout pending)
 Current branch: `main`
 
 ## Snapshot
@@ -17,6 +17,7 @@ Current branch: `main`
 - **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
 - **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
 - **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
+- **Phase 10 Payments Core (backend):** ✅ **10.1-10.7 complete** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring. Full backend regression executed: `286 passed`, `15 skipped` (suite exits non-zero due warning/skip policy in current test setup).
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -80,7 +81,7 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Phase 10: Payments Core (ACTIVE NEXT)**
+### **Phase 10: Payments Core (IN PROGRESS)**
 
 **Summary:**
 - Stripe + Swish integration, webhook handling
@@ -89,7 +90,7 @@ Testing status (Feb 2, 2026):
 
 **Note:** `payment.*` and `booking.*` constants pre-registered in `AnalyticsEvent`. `spatie/laravel-stats` already installed.
 
-**Status**: Planned
+**Status**: Backend complete through 10.7; frontend pages and provider sandbox/manual verification pending
 
 ---
 
@@ -142,6 +143,12 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 - ✅ Navigation component architecture simplified and aligned with shared field/CSS builder patterns
 - ✅ Documentation plan committed and merged (`333ac10`)
 - ✅ Feature implementation commit merged (`0b1df8c`)
+
+**March 8, 2026 (Phase 10 Backend Progress):**
+- ✅ Completed backend sub-phases 10.1-10.7 (billing + provider config + Stripe/Swish/Klarna + payment/refund orchestration)
+- ✅ Added backend tests for provider validation, gateways, payment flows, analytics, payment APIs, and refunds
+- ✅ Ran broad backend regression: `286 passed`, `15 skipped`; non-zero exit due warning/skip handling in current suite
+- ⚠️ Remaining to close full Phase 10: frontend billing/payment pages and manual sandbox verification flows
 
 **February 2, 2026 (Phase 7 - Font System Complete):**
 - ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\PlatformAnalyticsController;
 use App\Http\Controllers\Api\SuperadminController;
 use App\Http\Controllers\Api\ThemeCssController;
@@ -174,6 +175,17 @@ foreach (config('tenancy.central_domains') as $domain) {
 
             // Assign roles to a user
             Route::post('users/{user}/roles', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignRoles'])->middleware('permission:manage users');
+
+            // Central billing (Phase 10.2)
+            Route::prefix('billing')->group(function () {
+                Route::get('plans', [BillingController::class, 'plans'])->middleware('permission:view billing');
+                Route::get('addons', [BillingController::class, 'addons'])->middleware('permission:view billing');
+                Route::get('subscription', [BillingController::class, 'subscription'])->middleware('permission:view billing');
+                Route::post('checkout', [BillingController::class, 'checkout'])->middleware('permission:manage billing');
+                Route::post('addons/{addon}/activate', [BillingController::class, 'activateAddon'])->middleware('permission:manage billing');
+                Route::post('addons/{addon}/deactivate', [BillingController::class, 'deactivateAddon'])->middleware('permission:manage billing');
+                Route::get('portal', [BillingController::class, 'portal'])->middleware('permission:manage billing');
+            });
         });
 
         // Media Management (Central) - using central storage, not tenant-scoped
@@ -211,6 +223,9 @@ foreach (config('tenancy.central_domains') as $domain) {
         // Public analytics beacon (no auth, rate-limited)
         Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
             ->middleware('throttle:60,1');
+
+        // Stripe webhook endpoint (central billing)
+        Route::post('stripe/webhook', [BillingController::class, 'handleWebhook']);
 
     });
 }

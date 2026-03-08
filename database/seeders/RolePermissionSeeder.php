@@ -36,6 +36,10 @@ class RolePermissionSeeder extends Seeder
             'view settings', 'manage settings',
             // Analytics & dashboard
             'view analytics', 'view platform analytics', 'view dashboard stats',
+            // Billing (central)
+            'view billing', 'manage billing',
+            // Payments (tenant)
+            'payments.view', 'payments.manage', 'payments.refund',
         ];
 
         // Create permissions for both web and api guards
@@ -63,6 +67,7 @@ class RolePermissionSeeder extends Seeder
                 'view analytics', 'view platform analytics', 'view dashboard stats',
                 'view activity logs',
                 'view settings', 'manage settings',
+                'view billing',
             ],
             'support' => [
                 'pages.view', 'navigation.view', 'themes.view', 'layouts.view', 'templates.view', 'media.view',
