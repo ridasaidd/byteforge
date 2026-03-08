@@ -20,6 +20,9 @@ export { media } from './api/media';
 export { mediaFolders } from './api/mediaFolders';
 export { themes } from './api/themes';
 export { stats } from './api/stats';
+export { billingApi } from './api/billing';
+export { paymentProviders } from './api/paymentProviders';
+export { paymentsApi } from './api/payments';
 
 // Aggregate API object for backward compatibility
 import { auth } from './api/auth';
@@ -32,6 +35,9 @@ import { media } from './api/media';
 import { mediaFolders } from './api/mediaFolders';
 import { themes } from './api/themes';
 import { stats } from './api/stats';
+import { billingApi } from './api/billing';
+import { paymentProviders } from './api/paymentProviders';
+import { paymentsApi } from './api/payments';
 
 /**
  * Aggregated API object for convenient access to all API modules
@@ -57,4 +63,7 @@ export const api = {
   mediaFolders,
   themes,
   stats,
+  billingApi,
+  paymentProviders,
+  paymentsApi,
 };

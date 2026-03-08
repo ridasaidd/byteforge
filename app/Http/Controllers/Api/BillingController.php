@@ -9,6 +9,7 @@ use App\Models\Tenant;
 use App\Services\BillingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Stripe\Exception\SignatureVerificationException;
@@ -101,6 +102,15 @@ class BillingController extends Controller
         return response()->json($this->billingService->getPortalUrl($tenant, $validated['return_url']));
     }
 
+    public function syncSubscription(Request $request): JsonResponse
+    {
+        $tenant = $this->resolveTenant($request);
+
+        return response()->json([
+            'data' => $this->billingService->syncSubscription($tenant),
+        ]);
+    }
+
     public function handleWebhook(Request $request): JsonResponse
     {
         $secret = (string) config('cashier.webhook.secret', '');
@@ -114,7 +124,32 @@ class BillingController extends Controller
             return response()->json(['message' => 'Invalid Stripe payload.'], 400);
         }
 
+        // Idempotency: skip events already processed
+        $eventId = $event->id;
+        if (is_string($eventId) && $eventId !== '') {
+            $alreadyProcessed = DB::table('processed_stripe_events')
+                ->where('stripe_event_id', $eventId)
+                ->exists();
+
+            if ($alreadyProcessed) {
+                return response()->json([
+                    'received' => true,
+                    'event' => $event->type,
+                    'skipped' => 'duplicate',
+                ]);
+            }
+        }
+
         $this->billingService->processStripeWebhook($event->toArray());
+
+        // Record event as processed
+        if (is_string($eventId) && $eventId !== '') {
+            DB::table('processed_stripe_events')->insert([
+                'stripe_event_id' => $eventId,
+                'event_type' => $event->type,
+                'processed_at' => now(),
+            ]);
+        }
 
         return response()->json([
             'received' => true,

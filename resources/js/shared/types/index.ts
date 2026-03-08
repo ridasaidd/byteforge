@@ -17,6 +17,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  tenant_id?: string;
   avatar?: string;
   roles?: Role[];
   permissions?: Permission[];

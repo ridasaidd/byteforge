@@ -2,10 +2,21 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage } from './components/pages';
+import { DashboardPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, PaymentProvidersPage, PaymentsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { tenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
+import { usePermissions } from '@/shared/hooks/usePermissions';
+
+function PermissionGate({ permission, children }: { permission: string; children: JSX.Element }) {
+  const { hasPermission } = usePermissions();
+
+  if (!hasPermission(permission)) {
+    return <Navigate to="/cms" replace />;
+  }
+
+  return children;
+}
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -46,6 +57,22 @@ function ProtectedRoutes() {
           <Route path="/cms" element={<DashboardPage />} />
           <Route path="/cms/pages" element={<PagesPage />} />
           <Route path="/cms/analytics" element={<AnalyticsPage />} />
+          <Route
+            path="/cms/payments/providers"
+            element={(
+              <PermissionGate permission="payments.view">
+                <PaymentProvidersPage />
+              </PermissionGate>
+            )}
+          />
+          <Route
+            path="/cms/payments"
+            element={(
+              <PermissionGate permission="payments.view">
+                <PaymentsPage />
+              </PermissionGate>
+            )}
+          />
           <Route path="/cms/settings" element={<SettingsPage />} />
           {/* TODO: Add other routes */}
           <Route path="/" element={<Navigate to="/cms" replace />} />

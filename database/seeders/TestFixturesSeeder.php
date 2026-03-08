@@ -122,6 +122,7 @@ class TestFixturesSeeder extends Seeder
             [
                 'name' => 'Starter',
                 'slug' => 'starter',
+                'stripe_price_id' => config('cashier.prices.starter') ?: null,
                 'price_monthly' => 14900,
                 'price_yearly' => 149000,
                 'currency' => 'SEK',
@@ -132,6 +133,7 @@ class TestFixturesSeeder extends Seeder
             [
                 'name' => 'Business',
                 'slug' => 'business',
+                'stripe_price_id' => config('cashier.prices.business') ?: null,
                 'price_monthly' => 39900,
                 'price_yearly' => 399000,
                 'currency' => 'SEK',

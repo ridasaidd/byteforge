@@ -10,6 +10,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Cashier\Cashier;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -18,7 +19,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Disable Cashier's default /stripe/webhook route — it targets the User model
+        // which is wrong for this multi-tenant setup. We use our own webhook handler
+        // at /api/stripe/webhook via BillingController::handleWebhook instead.
+        Cashier::ignoreRoutes();
     }
 
     /**

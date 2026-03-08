@@ -182,9 +182,10 @@ foreach (config('tenancy.central_domains') as $domain) {
                 Route::get('addons', [BillingController::class, 'addons'])->middleware('permission:view billing');
                 Route::get('subscription', [BillingController::class, 'subscription'])->middleware('permission:view billing');
                 Route::post('checkout', [BillingController::class, 'checkout'])->middleware('permission:manage billing');
-                Route::post('addons/{addon}/activate', [BillingController::class, 'activateAddon'])->middleware('permission:manage billing');
-                Route::post('addons/{addon}/deactivate', [BillingController::class, 'deactivateAddon'])->middleware('permission:manage billing');
+                Route::post('addons/{addon:slug}/activate', [BillingController::class, 'activateAddon'])->middleware('permission:manage billing');
+                Route::post('addons/{addon:slug}/deactivate', [BillingController::class, 'deactivateAddon'])->middleware('permission:manage billing');
                 Route::get('portal', [BillingController::class, 'portal'])->middleware('permission:manage billing');
+                Route::post('sync', [BillingController::class, 'syncSubscription'])->middleware('permission:manage billing');
             });
         });
 
@@ -224,8 +225,9 @@ foreach (config('tenancy.central_domains') as $domain) {
         Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
             ->middleware('throttle:60,1');
 
-        // Stripe webhook endpoint (central billing)
-        Route::post('stripe/webhook', [BillingController::class, 'handleWebhook']);
+        // Stripe webhook endpoint (central billing) — rate-limited to prevent flood
+        Route::post('stripe/webhook', [BillingController::class, 'handleWebhook'])
+            ->middleware('throttle:120,1');
 
     });
 }

@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: March 8, 2026 (Phase 10 backend payments core through 10.7 complete; frontend/manual closeout pending)
+Last updated: March 8, 2026 (Phase 10 backend + frontend implemented; manual provider verification pending)
 Current branch: `main`
 
 ## Snapshot
@@ -17,7 +17,7 @@ Current branch: `main`
 - **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
 - **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
 - **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
-- **Phase 10 Payments Core (backend):** ✅ **10.1-10.7 complete** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring. Full backend regression executed: `286 passed`, `15 skipped` (suite exits non-zero due warning/skip policy in current test setup).
+- **Phase 10 Payments Core:** ✅ **backend + frontend implemented** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, and dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`). Full backend regression executed: `286 passed`, `15 skipped` (suite exits non-zero due warning/skip policy in current test setup).
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -90,7 +90,7 @@ Testing status (Feb 2, 2026):
 
 **Note:** `payment.*` and `booking.*` constants pre-registered in `AnalyticsEvent`. `spatie/laravel-stats` already installed.
 
-**Status**: Backend complete through 10.7; frontend pages and provider sandbox/manual verification pending
+**Status**: Backend and frontend implemented; provider sandbox/manual verification pending
 
 ---
 

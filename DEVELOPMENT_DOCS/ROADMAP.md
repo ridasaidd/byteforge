@@ -71,8 +71,8 @@ Last updated: March 8, 2026
 - Full backend suite run completed with `286 passed`, `15 skipped` (current suite policy treats warnings/skips as non-zero process exit).
 
 **Remaining to close Phase 10:**
-- Frontend pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`) and API clients
 - Manual provider sandbox verification (Stripe, Swish MSS, Klarna Playground)
+- Final QA pass + docs/verification checklist sign-off
 
 **Est:** Backend core complete; frontend/manual closeout next
 **Status:** In progress
