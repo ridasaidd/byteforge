@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: March 8, 2026 (Phase 10 complete and merged to main)
+Last updated: March 14, 2026 (Phase 11 complete and merged to main)
 Current branch: `main`
 
 ## Snapshot
@@ -18,6 +18,7 @@ Current branch: `main`
 - **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
 - **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
 - **Phase 10 Payments Core:** ✅ **COMPLETE + merged** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`), webhook idempotency/rate-limiting hardening, and checkout-return subscription sync. Full regression executed: `304 passed`, `15 skipped`.
+- **Phase 11 Dashboard Translation (i18n):** ✅ **COMPLETE + merged** — i18next + react-i18next infrastructure, 15 namespaces across `en/sv/ar`, user locale persistence (`preferred_locale` + `PATCH /auth/locale`), central + tenant dashboard string extraction/localization, Swedish character corrections (proper `å/ä/ö`), and RTL support (logical CSS classes + directional icon handling).
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -81,19 +82,7 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Next Priority: Dashboard Translation (Localization / i18n)**
-
-**Summary:**
-- Introduce localization framework for central + tenant dashboards
-- Extract hardcoded UI strings into translation dictionaries (start with Swedish + English)
-- Add user/admin locale selection and persistence
-- Ensure date/time/number/currency formatting follows selected locale
-
-**Status**: Planned (recommended next active phase)
-
----
-
-### **Phase 11: Booking Integration**
+### **Next Priority: Phase 12 Booking Integration**
 
 **Summary:**
 - Integrate existing booking system into multi-tenant CMS
@@ -149,6 +138,12 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 - ✅ Hardened central Stripe webhook flow (idempotency table, duplicate-event skip, route throttling, Cashier default webhook route disabled)
 - ✅ Added checkout-return subscription sync to avoid stale "Free" state when webhook delivery is delayed
 - ✅ Regression green after merge: `304 passed`, `15 skipped`
+
+**March 14, 2026 (Phase 11 Complete):**
+- ✅ Completed dashboard translation for central + tenant apps (English/Swedish/Arabic)
+- ✅ Added locale persistence end-to-end (`preferred_locale`, locale middleware, `/auth/locale` API, selector wiring)
+- ✅ Added RTL support hardening (logical Tailwind properties + directional icon mirroring)
+- ✅ Archived completed planning docs under `archive/completed-phases/`
 
 **February 2, 2026 (Phase 7 - Font System Complete):**
 - ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation

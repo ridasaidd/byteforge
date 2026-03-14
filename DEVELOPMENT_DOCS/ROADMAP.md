@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: March 8, 2026
+Last updated: March 14, 2026
 
 —
 
@@ -25,6 +25,9 @@ Last updated: March 8, 2026
 - ✅ **Phase 7: Font System** - Self-hosted variable fonts, RichText, storefront parity (Feb 2)
 - ✅ **Phase 8: Page System Refactor** - Header/footer/layout decoupled from legacy page columns (Feb 2)
 - ✅ **Navigation v2 Refactor** - Field-group driven navigation architecture merged to `main` (Mar 3)
+- ✅ **Phase 9: Analytics Foundation** - Event pipeline, tenant/central dashboards, third-party integrations (Mar 5)
+- ✅ **Phase 10: Payments Core** - Central billing + tenant providers + payment/refund orchestration (Mar 8)
+- ✅ **Phase 11: Dashboard Translation (i18n)** - `en/sv/ar`, locale persistence, RTL hardening (Mar 14)
 
 —
 
@@ -81,9 +84,9 @@ Last updated: March 8, 2026
 
 ---
 
-### M3: Dashboard Translation (NEXT)
+### M3: Dashboard Translation ✅ COMPLETE (Mar 14, 2026)
 
-**Phase 10.8: Localization / i18n for central + tenant dashboards**
+**Phase 11: Localization / i18n for central + tenant dashboards**
 
 **Scope:**
 - Add i18n infrastructure for React dashboard apps
@@ -92,14 +95,14 @@ Last updated: March 8, 2026
 - Persist language preference per user/session
 - Localize formatting for dates/times/numbers/currency
 
-**Est:** 1-2 weeks
-**Status:** Planned, next active focus
+**Status:** Complete and archived
+**Archived plan:** See [archive/completed-phases/PHASE11_DASHBOARD_TRANSLATION.md](./archive/completed-phases/PHASE11_DASHBOARD_TRANSLATION.md)
 
 ---
 
-### M4: Booking Integration
+### M4: Booking Integration (NEXT)
 
-**Phase 11: Port booking system into multi-tenant CMS**
+**Phase 12: Port booking system into multi-tenant CMS**
 
 **Scope:**
 - Port appointment/scheduling models to multi-tenant
@@ -107,8 +110,8 @@ Last updated: March 8, 2026
 - Build `<BookingWidget>` Puck component
 - Fires `booking.*` events into analytics pipeline (activates booking widgets automatically)
 
-**Est:** 6–8 weeks (booking logic exists, integration focus)  
-**Status:** Planned, starts after M3
+**Est:** 6-8 weeks (booking logic exists, integration focus)
+**Status:** Planned, next active phase
 
 ---
 
@@ -116,7 +119,7 @@ Last updated: March 8, 2026
 - Booking analytics: revenue trends, peak hours, popular services
 - Platform analytics: subscription revenue, feature adoption
 - Aggregation cron jobs for pre-computed roll-ups
-- **Unlocked automatically** once Phase 9 + 11 are complete
+- **Unlocked automatically** once Phase 9 + 12 are complete
 
 ---
 
