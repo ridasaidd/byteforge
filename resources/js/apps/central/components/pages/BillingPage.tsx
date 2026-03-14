@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ExternalLink, RefreshCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '@/shared/hooks';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -42,6 +43,7 @@ function getStringField(field: string, payload: Record<string, unknown>): string
 
 export function BillingPage() {
   const { toast } = useToast();
+  const { t } = useTranslation('billing');
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
   const canManageBilling = hasPermission('manage billing');
@@ -58,14 +60,14 @@ export function BillingPage() {
       billingApi.syncSubscription(tenantId).then(() => {
         queryClient.invalidateQueries({ queryKey: ['billing-subscription', tenantId] });
         queryClient.invalidateQueries({ queryKey: ['billing-addons', tenantId] });
-        toast({ title: 'Subscription synced', description: 'Plan status refreshed from Stripe.' });
+        toast({ title: t('subscription_synced_title'), description: t('subscription_synced_description') });
         // Clean up the URL param
         const url = new URL(window.location.href);
         url.searchParams.delete('checkout');
         window.history.replaceState({}, '', url.toString());
       });
     }
-  }, [tenantId, queryClient, toast]);
+  }, [tenantId, queryClient, toast, t]);
 
   const tenantsQuery = useQuery({
     queryKey: ['billing-tenant-list'],
@@ -121,22 +123,22 @@ export function BillingPage() {
       if (mode === 'free') {
         queryClient.invalidateQueries({ queryKey: ['billing-subscription', tenantId] });
         toast({
-          title: 'Free plan selected',
-          description: message || 'No Stripe checkout is required for the free plan.',
+          title: t('free_plan_selected_title'),
+          description: message || t('free_plan_selected_description'),
         });
 
         return;
       }
 
       toast({
-        title: 'Checkout created',
-        description: url ? 'Stripe Checkout opened in a new tab.' : 'Checkout session created.',
+        title: t('checkout_created_title'),
+        description: url ? t('checkout_created_description_opened') : t('checkout_created_description_created'),
       });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Checkout failed',
-        description: getErrorMessage(error, 'Could not create checkout session.'),
+        title: t('checkout_failed_title'),
+        description: getErrorMessage(error, t('checkout_failed_description')),
         variant: 'destructive',
       });
     },
@@ -154,14 +156,14 @@ export function BillingPage() {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
       toast({
-        title: 'Billing portal ready',
-        description: url ? 'Billing portal opened in a new tab.' : 'Portal URL returned by API.',
+        title: t('billing_portal_ready_title'),
+        description: url ? t('billing_portal_ready_description_opened') : t('billing_portal_ready_description_returned'),
       });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Portal request failed',
-        description: getErrorMessage(error, 'Could not open billing portal.'),
+        title: t('portal_request_failed_title'),
+        description: getErrorMessage(error, t('portal_request_failed_description')),
         variant: 'destructive',
       });
     },
@@ -176,14 +178,14 @@ export function BillingPage() {
       queryClient.invalidateQueries({ queryKey: ['billing-addons', tenantId] });
       queryClient.invalidateQueries({ queryKey: ['billing-subscription', tenantId] });
       toast({
-        title: 'Add-on updated',
-        description: 'Add-on state changed successfully.',
+        title: t('addon_updated_title'),
+        description: t('addon_updated_description'),
       });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Add-on update failed',
-        description: getErrorMessage(error, 'Could not update add-on.'),
+        title: t('addon_update_failed_title'),
+        description: getErrorMessage(error, t('addon_update_failed_description')),
         variant: 'destructive',
       });
     },
@@ -194,20 +196,20 @@ export function BillingPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Billing" description="Manage plans, add-ons, and Stripe portal access" />
+      <PageHeader title={t('central_title')} description={t('central_description')} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Tenant Context</CardTitle>
-          <CardDescription>Select the tenant ID to manage billing data.</CardDescription>
+          <CardTitle>{t('tenant_context')}</CardTitle>
+          <CardDescription>{t('tenant_context_description')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-[1fr_auto]">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="tenant_picker">Tenant</Label>
+              <Label htmlFor="tenant_picker">{t('tenant')}</Label>
               <Select value={tenantId} onValueChange={setTenantId}>
                 <SelectTrigger id="tenant_picker" className="w-full">
-                  <SelectValue placeholder="Select a tenant" />
+                  <SelectValue placeholder={t('select_tenant')} />
                 </SelectTrigger>
                 <SelectContent>
                   {(tenantsQuery.data || []).map((tenant) => (
@@ -220,12 +222,12 @@ export function BillingPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="tenant_id">Tenant ID (manual override)</Label>
+              <Label htmlFor="tenant_id">{t('tenant_id_manual')}</Label>
               <Input
                 id="tenant_id"
                 value={tenantId}
                 onChange={(e) => setTenantId(e.target.value)}
-                placeholder="tenant-uuid"
+                placeholder={t('tenant_id_placeholder')}
               />
             </div>
           </div>
@@ -239,8 +241,8 @@ export function BillingPage() {
               }}
               disabled={!tenantId}
             >
-              <RefreshCcw className="h-4 w-4 mr-2" />
-              Refresh Tenant Billing
+              <RefreshCcw className="h-4 w-4 me-2" />
+              {t('refresh_tenant_billing')}
             </Button>
           </div>
         </CardContent>
@@ -248,18 +250,18 @@ export function BillingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Plans</CardTitle>
-          <CardDescription>Available base plans for tenant subscriptions.</CardDescription>
+          <CardTitle>{t('plans')}</CardTitle>
+          <CardDescription>{t('plans_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {!canManageBilling && (
             <p className="text-sm text-muted-foreground">
-              You can view billing data, but checkout, add-on changes, and portal actions require <code>manage billing</code>.
+              {t('manage_billing_required')} <code>manage billing</code>.
             </p>
           )}
 
           {plansQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading plans...</p>
+            <p className="text-sm text-muted-foreground">{t('loading_plans')}</p>
           ) : (
             (plansQuery.data || []).map((plan) => {
               const isCurrentPlan = currentPlanSlug === plan.slug;
@@ -268,15 +270,15 @@ export function BillingPage() {
                 <div key={plan.slug} className="rounded-md border p-3 flex items-center justify-between gap-4">
                   <div>
                   <p className="font-medium">{plan.name}</p>
-                  <p className="text-sm text-muted-foreground">{plan.description || 'No description'}</p>
-                  <p className="text-sm mt-1">{formatAmount(plan.price_monthly, plan.currency)} / month</p>
+                  <p className="text-sm text-muted-foreground">{plan.description || t('no_description')}</p>
+                  <p className="text-sm mt-1">{formatAmount(plan.price_monthly, plan.currency)} / {t('month')}</p>
                   </div>
                   <Button
                     onClick={() => checkoutMutation.mutate(plan.slug)}
                     disabled={!tenantId || checkoutMutation.isPending || !canManageBilling || isCurrentPlan}
                     variant={isCurrentPlan ? 'outline' : 'default'}
                   >
-                    {isCurrentPlan ? 'Current Plan' : 'Choose Plan'}
+                    {isCurrentPlan ? t('current_plan') : t('choose_plan')}
                   </Button>
                 </div>
               );
@@ -287,70 +289,70 @@ export function BillingPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Subscription Summary</CardTitle>
-          <CardDescription>Current billing status for selected tenant.</CardDescription>
+          <CardTitle>{t('subscription_summary')}</CardTitle>
+          <CardDescription>{t('subscription_summary_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {!tenantId ? (
-            <p className="text-sm text-muted-foreground">Enter a tenant ID to load subscription details.</p>
+            <p className="text-sm text-muted-foreground">{t('enter_tenant_for_subscription')}</p>
           ) : subscriptionQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading subscription...</p>
+            <p className="text-sm text-muted-foreground">{t('loading_subscription')}</p>
           ) : subscriptionQuery.data ? (
             <>
               <p className="text-sm">
-                Plan: <span className="font-medium">{subscriptionQuery.data.plan?.name || 'n/a'}</span>
+                {t('plan')}: <span className="font-medium">{subscriptionQuery.data.plan?.name || t('na')}</span>
               </p>
               <p className="text-sm">
-                Status: <Badge variant="outline">{subscriptionQuery.data.status || 'inactive'}</Badge>
+                {t('status')}: <Badge variant="outline">{subscriptionQuery.data.status || t('inactive')}</Badge>
               </p>
               <p className="text-sm">
-                Monthly total: {formatAmount(subscriptionQuery.data.monthly_total || 0, subscriptionQuery.data.currency || 'USD')}
+                {t('monthly_total')}: {formatAmount(subscriptionQuery.data.monthly_total || 0, plansQuery.data?.[0]?.currency || 'USD')}
               </p>
               <Button
                 variant="secondary"
                 onClick={() => portalMutation.mutate()}
                 disabled={portalMutation.isPending || !canManageBilling}
               >
-                <ExternalLink className="h-4 w-4 mr-2" />
-                Open Stripe Portal
+                <ExternalLink className="h-4 w-4 me-2" />
+                {t('open_stripe_portal')}
               </Button>
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">No subscription data returned.</p>
+            <p className="text-sm text-muted-foreground">{t('no_subscription_data')}</p>
           )}
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Add-ons</CardTitle>
-          <CardDescription>Enable or disable tenant add-ons.</CardDescription>
+          <CardTitle>{t('addons')}</CardTitle>
+          <CardDescription>{t('addons_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {tenantId && subscriptionQuery.data && !canActivateAddons && (
             <p className="text-sm text-muted-foreground">
-              Add-ons require an active paid base subscription. Select a paid plan and complete Stripe checkout first.
+              {t('addons_require_active_paid')}
             </p>
           )}
 
           {!tenantId ? (
-            <p className="text-sm text-muted-foreground">Enter a tenant ID to manage add-ons.</p>
+            <p className="text-sm text-muted-foreground">{t('enter_tenant_for_addons')}</p>
           ) : addonsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading add-ons...</p>
+            <p className="text-sm text-muted-foreground">{t('loading_addons')}</p>
           ) : (
             (addonsQuery.data || []).map((addon) => (
               <div key={addon.slug} className="rounded-md border p-3 flex items-center justify-between gap-4">
                 <div>
                   <p className="font-medium">{addon.name}</p>
-                  <p className="text-sm text-muted-foreground">{addon.description || 'No description'}</p>
-                  <p className="text-sm mt-1">{formatAmount(addon.price_monthly, addon.currency)} / month</p>
+                  <p className="text-sm text-muted-foreground">{addon.description || t('no_description')}</p>
+                  <p className="text-sm mt-1">{formatAmount(addon.price_monthly, addon.currency)} / {t('month')}</p>
                 </div>
                 <Button
                   variant={addon.is_purchased ? 'outline' : 'default'}
                   onClick={() => addonToggleMutation.mutate({ addon: addon.slug, active: addon.is_purchased })}
                   disabled={addonToggleMutation.isPending || !canManageBilling || (!addon.is_purchased && !canActivateAddons)}
                 >
-                  {addon.is_purchased ? 'Deactivate' : 'Activate'}
+                  {addon.is_purchased ? t('deactivate') : t('activate')}
                 </Button>
               </div>
             ))

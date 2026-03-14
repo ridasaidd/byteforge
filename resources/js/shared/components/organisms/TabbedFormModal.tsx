@@ -111,7 +111,7 @@ export function TabbedFormModal<T extends z.ZodType>({
           <div key={field.name} className="space-y-2">
             <Label htmlFor={field.name}>
               {field.label}
-              {field.required && <span className="text-destructive ml-1">*</span>}
+              {field.required && <span className="text-destructive ms-1">*</span>}
             </Label>
             <Textarea
               id={field.name}
@@ -133,7 +133,7 @@ export function TabbedFormModal<T extends z.ZodType>({
           <div key={field.name} className="space-y-2">
             <Label htmlFor={field.name}>
               {field.label}
-              {field.required && <span className="text-destructive ml-1">*</span>}
+              {field.required && <span className="text-destructive ms-1">*</span>}
             </Label>
             <Select
               value={(watch(fieldName) as unknown) as string}
@@ -171,7 +171,7 @@ export function TabbedFormModal<T extends z.ZodType>({
             <div className="space-y-1 leading-none">
               <Label htmlFor={field.name}>
                 {field.label}
-                {field.required && <span className="text-destructive ml-1">*</span>}
+                {field.required && <span className="text-destructive ms-1">*</span>}
               </Label>
               {field.description && (
                 <p className="text-sm text-muted-foreground">{field.description}</p>
@@ -188,7 +188,7 @@ export function TabbedFormModal<T extends z.ZodType>({
           <div key={field.name} className="space-y-2">
             <Label htmlFor={field.name}>
               {field.label}
-              {field.required && <span className="text-destructive ml-1">*</span>}
+              {field.required && <span className="text-destructive ms-1">*</span>}
             </Label>
             <Input
               id={field.name}
@@ -240,7 +240,7 @@ export function TabbedFormModal<T extends z.ZodType>({
               {cancelText}
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
               {submitText}
             </Button>
           </DialogFooter>

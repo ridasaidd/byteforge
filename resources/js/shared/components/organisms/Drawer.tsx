@@ -3,6 +3,7 @@ import { X, LucideIcon } from 'lucide-react';
 import { Button } from '../ui/button';
 import { cn } from '@/lib/utils';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useTranslation } from 'react-i18next';
 
 export interface MenuItem {
   label: string;
@@ -24,6 +25,7 @@ interface DrawerProps {
 
 export function Drawer({ isOpen, onClose, menuItems }: DrawerProps) {
   const location = useLocation();
+  const { t } = useTranslation('common');
   const { hasAnyPermission, hasAllPermissions, hasAnyRole, hasAllRoles } = usePermissions();
 
   // Treat dashboard root as exact match to avoid highlighting it on all child routes
@@ -81,7 +83,7 @@ export function Drawer({ isOpen, onClose, menuItems }: DrawerProps) {
       >
         {/* Mobile Header */}
         <div className="flex h-14 items-center justify-between border-b px-4 md:hidden">
-          <span className="font-semibold">Menu</span>
+          <span className="font-semibold">{t('menu')}</span>
           <Button variant="ghost" size="icon" onClick={onClose}>
             <X className="h-5 w-5" />
           </Button>

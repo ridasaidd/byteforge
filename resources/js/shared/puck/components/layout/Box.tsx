@@ -1,4 +1,4 @@
-import { ComponentConfig } from '@puckeditor/core';
+import { ComponentConfig, type Fields } from '@puckeditor/core';
 import React from 'react';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
@@ -111,7 +111,7 @@ export function BoxComponent({
   wrap = 'nowrap',
   flexGap = { mobile: { value: '16', unit: 'px' } },
   numColumns = { mobile: 2 },
-  gridGap = { mobile: 16 },
+  gridGap = { mobile: { value: '16', unit: 'px' } },
   alignItems = 'stretch',
   width,
   maxWidth,
@@ -172,7 +172,7 @@ export function BoxComponent({
     justify,
     align,
     wrap,
-    gap: flexGap,
+    flexGap,
     numColumns,
     gridGap,
     alignItems,
@@ -253,7 +253,7 @@ export const Box: ComponentConfig<BoxProps> = {
     ...effectsFields,
     // 8. Advanced (least used)
     ...advancedFields,
-  },
+  } as Fields<BoxProps, {}>,
 
   // Use factory function for conditional fields - no manual logic
   resolveFields: createConditionalResolver(
@@ -316,7 +316,7 @@ export const Box: ComponentConfig<BoxProps> = {
       effectsFields,
       advancedFields
     ),
-  },
+  } as Partial<BoxProps>,
 
   render: (props) => <BoxComponent {...props} />,
 };

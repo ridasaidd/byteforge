@@ -15,10 +15,11 @@ import { PlatformAnalyticsPage } from './components/pages/PlatformAnalyticsPage'
 import { BillingPage } from './components/pages/BillingPage';
 import RolesPermissionsPage from './components/pages/RolesPermissionsPage';
 import MediaLibraryPage from './components/pages/MediaLibraryPage';
-import { centralMenuItems } from './config/menu';
+import { useCentralMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 
 function PermissionGate({ permission, children }: { permission: string; children: JSX.Element }) {
   const { hasPermission } = usePermissions();
@@ -32,11 +33,13 @@ function PermissionGate({ permission, children }: { permission: string; children
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { t } = useTranslation('common');
+  const centralMenuItems = useCentralMenuItems();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">{t('loading')}</div>
       </div>
     );
   }

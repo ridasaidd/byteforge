@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { clearAuthToken, getAuthToken } from './tokenStorage';
+import i18n from '@/i18n';
 
 class HttpService {
   private client: AxiosInstance;
@@ -26,6 +27,12 @@ class HttpService {
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        const locale = i18n.resolvedLanguage || i18n.language;
+        if (locale) {
+          config.headers['Accept-Language'] = locale;
+        }
+
         return config;
       },
       (error) => Promise.reject(error)
@@ -75,6 +82,11 @@ class HttpService {
 
   async put<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response: AxiosResponse<T> = await this.client.put(url, data, config);
+    return response.data;
+  }
+
+  async patch<T>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
+    const response: AxiosResponse<T> = await this.client.patch(url, data, config);
     return response.data;
   }
 

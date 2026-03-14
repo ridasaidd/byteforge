@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { X } from 'lucide-react';
 import { registerOverlayPortal } from '@puckeditor/core';
 import type { MenuItem } from '@/shared/services/api/navigations';

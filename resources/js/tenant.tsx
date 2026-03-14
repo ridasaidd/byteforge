@@ -2,7 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TenantApp } from '@/apps/tenant/App';
-import { AuthProvider } from '@/shared/context/AuthContext';
+import { AuthProvider } from '@/shared/context/AuthContext.tsx';
+import { I18nDirectionProvider } from '@/i18n/I18nDirectionProvider';
+import '@/i18n';
 import './bootstrap';
 import '../css/app.css';
 
@@ -25,9 +27,11 @@ if (!rootElement) {
 ReactDOM.createRoot(rootElement).render(
     <React.StrictMode>
         <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-                <TenantApp />
-            </AuthProvider>
+      <I18nDirectionProvider>
+        <AuthProvider>
+          <TenantApp />
+        </AuthProvider>
+      </I18nDirectionProvider>
         </QueryClientProvider>
     </React.StrictMode>
 );

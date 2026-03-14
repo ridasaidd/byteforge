@@ -1,5 +1,6 @@
 import { ChevronRight, Home, Folder, Plus } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MediaFolder } from '@/shared/services/api';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -29,6 +30,7 @@ export function FolderNavigation({
   onCreateFolder,
   className,
 }: FolderNavigationProps) {
+  const { t } = useTranslation('media');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
 
@@ -87,7 +89,7 @@ export function FolderNavigation({
 
           {breadcrumbs.map((folder, index) => (
             <div key={folder.id} className="flex items-center gap-2">
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              <ChevronRight className="w-4 h-4 text-muted-foreground rtl:rotate-180" />
               <Button
                 variant="ghost"
                 size="sm"
@@ -97,7 +99,7 @@ export function FolderNavigation({
                   index === breadcrumbs.length - 1 && 'bg-muted'
                 )}
               >
-                <Folder className="w-4 h-4 mr-2" />
+                <Folder className="w-4 h-4 me-2" />
                 {folder.name}
               </Button>
             </div>
@@ -120,14 +122,14 @@ export function FolderNavigation({
               }}
             >
               <SelectTrigger className="w-[200px] h-8">
-                <SelectValue placeholder="Jump to folder..." />
+                <SelectValue placeholder={t('jump_to_folder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="root">Root</SelectItem>
+                <SelectItem value="root">{t('root')}</SelectItem>
                 {childFolders.map((folder) => (
                   <SelectItem key={folder.id} value={folder.id.toString()}>
                     <div className="flex items-center">
-                      <Folder className="w-4 h-4 mr-2" />
+                      <Folder className="w-4 h-4 me-2" />
                       {folder.name}
                     </div>
                   </SelectItem>
@@ -144,8 +146,8 @@ export function FolderNavigation({
               onClick={() => setIsCreateModalOpen(true)}
               className="h-8"
             >
-              <Plus className="w-4 h-4 mr-2" />
-              New Folder
+              <Plus className="w-4 h-4 me-2" />
+              {t('new_folder')}
             </Button>
           )}
         </div>
@@ -155,14 +157,14 @@ export function FolderNavigation({
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Folder</DialogTitle>
+            <DialogTitle>{t('create_folder_title')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="folder-name">Folder Name</Label>
+              <Label htmlFor="folder-name">{t('folder_name_label')}</Label>
               <Input
                 id="folder-name"
-                placeholder="Enter folder name..."
+                placeholder={t('folder_name_placeholder')}
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
                 onKeyDown={(e) => {
@@ -174,17 +176,17 @@ export function FolderNavigation({
             </div>
             {currentFolder && (
               <div className="text-sm text-muted-foreground">
-                Will be created inside: <span className="font-medium">{currentFolder.name}</span>
+                {t('folder_created_inside', { name: currentFolder.name })}
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
-              <Folder className="w-4 h-4 mr-2" />
-              Create
+              <Folder className="w-4 h-4 me-2" />
+              {t('create_folder_btn')}
             </Button>
           </DialogFooter>
         </DialogContent>

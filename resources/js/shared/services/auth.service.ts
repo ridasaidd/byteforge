@@ -12,6 +12,11 @@ interface LoginResponse {
   token: string;
 }
 
+interface UpdateLocaleResponse {
+  message: string;
+  locale: 'en' | 'sv' | 'ar';
+}
+
 export const authService = {
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     const response = await http.post<LoginResponse>('/auth/login', credentials);
@@ -48,6 +53,10 @@ export const authService = {
 
   async deleteAvatar(): Promise<{ user: User }> {
     return http.delete<{ user: User }>('/auth/avatar');
+  },
+
+  async updateLocale(locale: 'en' | 'sv' | 'ar'): Promise<UpdateLocaleResponse> {
+    return http.patch<UpdateLocaleResponse>('/auth/locale', { locale });
   },
 
   getToken(): string | null {

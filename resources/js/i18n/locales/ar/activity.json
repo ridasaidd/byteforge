@@ -1,0 +1,12 @@
+{
+  "title": "سجل النشاط",
+  "description": "النشاط الأخير على مستوى النظام",
+  "no_description": "(لا يوجد وصف)",
+  "system": "النظام",
+  "no_activity": "لا يوجد نشاط بعد",
+  "no_activity_description": "سيظهر نشاط النظام هنا",
+  "col_description": "الوصف",
+  "col_event": "الحدث",
+  "col_by": "بواسطة",
+  "col_at": "الوقت"
+}

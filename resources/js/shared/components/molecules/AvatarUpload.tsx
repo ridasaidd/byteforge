@@ -161,7 +161,7 @@ export function AvatarUpload({
           onClick={handleClick}
           disabled={isUploading}
         >
-          <Upload className="w-4 h-4 mr-2" />
+          <Upload className="w-4 h-4 me-2" />
           {displayAvatar ? 'Change' : 'Upload'} Avatar
         </Button>
       </div>

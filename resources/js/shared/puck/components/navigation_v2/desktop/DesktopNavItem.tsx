@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { registerOverlayPortal } from '@puckeditor/core';

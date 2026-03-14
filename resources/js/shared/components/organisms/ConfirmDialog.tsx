@@ -57,7 +57,7 @@ export function ConfirmDialog({
             <div className="flex-1 space-y-2">
               <DialogTitle>{title}</DialogTitle>
               {description && (
-                <DialogDescription className="text-left">
+                <DialogDescription className="text-start">
                   {description}
                 </DialogDescription>
               )}
@@ -77,7 +77,7 @@ export function ConfirmDialog({
             onClick={handleConfirm}
             disabled={isLoading}
           >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isLoading && <Loader2 className="me-2 h-4 w-4 animate-spin" />}
             {confirmText}
           </Button>
         </DialogFooter>

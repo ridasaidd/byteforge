@@ -1,0 +1,12 @@
+{
+  "title": "Activity Log",
+  "description": "Recent system-wide activity",
+  "no_description": "(no description)",
+  "system": "System",
+  "no_activity": "No activity yet",
+  "no_activity_description": "System activity will appear here",
+  "col_description": "Description",
+  "col_event": "Event",
+  "col_by": "By",
+  "col_at": "At"
+}

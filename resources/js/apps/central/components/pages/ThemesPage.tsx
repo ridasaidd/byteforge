@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Card } from '@/shared/components/molecules/Card';
 import { Button } from '@/shared/components/ui/button';
@@ -37,23 +38,17 @@ export function ThemesPage() {
   const [confirmAction, setConfirmAction] = useState<{ type: 'activate' | 'reset'; theme: Theme } | null>(null);
   const [confirmCountdown, setConfirmCountdown] = useState(5);
   const { toast } = useToast();
+  const { t } = useTranslation('themes');
 
   const loadThemes = async () => {
     try {
       setIsLoading(true);
-      const [themesList, active] = await Promise.all([
-        themes.list(),
-        themes.active()
-      ]);
+      const [themesList, active] = await Promise.all([themes.list(), themes.active()]);
 
       setAllThemes(themesList.data);
       setActiveTheme(active.data);
     } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to load themes',
-        variant: 'destructive',
-      });
+      toast({ title: t('error'), description: t('failed_load'), variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -75,13 +70,8 @@ export function ThemesPage() {
     return () => clearInterval(interval);
   }, [confirmAction]);
 
-  const handleActivate = (theme: Theme) => {
-    setConfirmAction({ type: 'activate', theme });
-  };
-
-  const handleReset = (theme: Theme) => {
-    setConfirmAction({ type: 'reset', theme });
-  };
+  const handleActivate = (theme: Theme) => setConfirmAction({ type: 'activate', theme });
+  const handleReset = (theme: Theme) => setConfirmAction({ type: 'reset', theme });
 
   const handleConfirmAction = async () => {
     if (!confirmAction) return;
@@ -89,98 +79,61 @@ export function ThemesPage() {
     try {
       if (confirmAction.type === 'activate') {
         await themes.activate({ slug: confirmAction.theme.slug });
-        toast({
-          title: 'Success',
-          description: 'Theme activated successfully',
-        });
+        toast({ title: t('success'), description: t('activated_success') });
       }
 
       if (confirmAction.type === 'reset') {
         await themes.reset(confirmAction.theme.id);
-        toast({
-          title: 'Success',
-          description: 'Theme reset to blueprint defaults',
-        });
+        toast({ title: t('success'), description: t('reset_success') });
       }
 
       await loadThemes();
       setConfirmAction(null);
     } catch {
       toast({
-        title: 'Error',
-        description: confirmAction.type === 'activate'
-          ? 'Failed to activate theme'
-          : 'Failed to reset theme',
+        title: t('error'),
+        description: confirmAction.type === 'activate' ? t('failed_activate') : t('failed_reset'),
         variant: 'destructive',
       });
     }
   };
 
   const handleDuplicate = async (id: number) => {
-    const name = prompt('Enter a name for the duplicated theme:');
+    const name = prompt(t('duplicate_name_prompt'));
     if (!name) return;
 
     try {
       await themes.duplicate(id, { name });
-      toast({
-        title: 'Success',
-        description: 'Theme duplicated successfully',
-      });
+      toast({ title: t('success'), description: t('duplicated_success') });
       await loadThemes();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to duplicate theme',
-        variant: 'destructive',
-      });
+      toast({ title: t('error'), description: t('failed_duplicate'), variant: 'destructive' });
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this theme?')) return;
+    const deletingTheme = allThemes.find((theme) => theme.id === id);
+    if (!confirm(t('delete_theme_confirm', { name: deletingTheme?.name ?? '' }))) return;
 
     try {
       await themes.delete(id);
-      toast({
-        title: 'Success',
-        description: 'Theme deleted successfully',
-      });
+      toast({ title: t('success'), description: t('deleted_success') });
       await loadThemes();
     } catch {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete theme',
-        variant: 'destructive',
-      });
+      toast({ title: t('error'), description: t('failed_delete'), variant: 'destructive' });
     }
   };
 
-
-
-  const handleCreateTheme = () => {
-    navigate('/dashboard/themes/new/builder');
-  };
-
-  const handleEditTheme = (themeId: number) => {
-    navigate(`/dashboard/themes/${themeId}/builder`);
-  };
-
-  const handleCustomizeTheme = (themeId: number) => {
-    navigate(`/dashboard/themes/${themeId}/customize`);
-  };
-
-  const isThemeActive = (slug: string) => {
-    return activeTheme?.slug === slug;
-  };
+  const handleCreateTheme = () => navigate('/dashboard/themes/new/builder');
+  const handleEditTheme = (themeId: number) => navigate(`/dashboard/themes/${themeId}/builder`);
+  const handleCustomizeTheme = (themeId: number) => navigate(`/dashboard/themes/${themeId}/customize`);
+  const isThemeActive = (slug: string) => activeTheme?.slug === slug;
 
   if (isLoading) {
     return (
       <div className="p-6">
-        <PageHeader
-          title="Themes"
-          description="Manage your site themes"
-        />
-        <div className="mt-6 text-center text-gray-500">Loading themes...</div>
+        <PageHeader title={t('title')} description={t('loading_description')} />
+        <div className="mt-6 text-center text-gray-500">{t('loading')}</div>
       </div>
     );
   }
@@ -188,12 +141,12 @@ export function ThemesPage() {
   return (
     <div className="p-6">
       <PageHeader
-        title="Themes"
-        description="Manage and activate your site themes"
+        title={t('title')}
+        description={t('description')}
         actions={
           <Button variant="default" size="sm" onClick={handleCreateTheme}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Theme
+            <Plus className="w-4 h-4 me-2" />
+            {t('create_theme')}
           </Button>
         }
       />
@@ -201,40 +154,35 @@ export function ThemesPage() {
       <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {confirmAction?.type === 'activate' ? 'Switch Theme?' : 'Reset Theme to Blueprint?'}
-            </DialogTitle>
+            <DialogTitle>{confirmAction?.type === 'activate' ? t('switch_theme_title') : t('reset_theme_title')}</DialogTitle>
             <DialogDescription>
-              {confirmAction?.type === 'activate'
-                ? 'Switching themes will overwrite current customizations (colors, spacing, typography, header, and footer). This action cannot be undone.'
-                : 'This will remove all customizations and restore blueprint defaults (colors, spacing, typography, header, and footer). This action cannot be undone.'}
+              {confirmAction?.type === 'activate' ? t('switch_theme_desc') : t('reset_theme_desc')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmAction(null)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setConfirmAction(null)}>{t('cancel')}</Button>
             <Button
               variant={confirmAction?.type === 'reset' ? 'destructive' : 'default'}
               disabled={confirmCountdown > 0}
               onClick={handleConfirmAction}
             >
               {confirmCountdown > 0
-                ? `${confirmAction?.type === 'activate' ? 'Switch' : 'Reset'} (${confirmCountdown}s)`
-                : confirmAction?.type === 'activate' ? 'Switch Theme' : 'Reset Theme'}
+                ? (confirmAction?.type === 'activate'
+                  ? t('switch_countdown', { seconds: confirmCountdown })
+                  : t('reset_countdown', { seconds: confirmCountdown }))
+                : (confirmAction?.type === 'activate' ? t('switch_btn') : t('reset_btn'))}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* All Themes */}
       <div className="mt-6">
         {allThemes.length === 0 ? (
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
-            <p className="text-gray-500 mb-4">No themes available</p>
+            <p className="text-gray-500 mb-4">{t('no_themes')}</p>
             <Button onClick={handleCreateTheme} variant="outline">
-              <Plus className="w-4 h-4 mr-2" />
-              Create your first theme
+              <Plus className="w-4 h-4 me-2" />
+              {t('create_first_theme')}
             </Button>
           </div>
         ) : (
@@ -247,8 +195,8 @@ export function ThemesPage() {
                       <h3 className="font-semibold">{theme.name}</h3>
                       {isThemeActive(theme.slug) && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          <Check className="w-3 h-3 mr-1" />
-                          Active
+                          <Check className="w-3 h-3 me-1" />
+                          {t('active_badge')}
                         </span>
                       )}
                     </div>
@@ -278,58 +226,33 @@ export function ThemesPage() {
                     />
                   ) : (
                     <div className="w-full h-40 rounded-md border border-dashed flex items-center justify-center text-sm text-gray-500">
-                      No preview image
+                      {t('no_preview')}
                     </div>
                   )}
                 </div>
 
                 <div className="flex gap-2 flex-wrap">
                   {!isThemeActive(theme.slug) && (
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleActivate(theme)}
-                      className="flex-1 min-w-[100px]"
-                    >
-                      Activate
+                    <Button variant="secondary" size="sm" onClick={() => handleActivate(theme)} className="flex-1 min-w-[100px]">
+                      {t('activate')}
                     </Button>
                   )}
 
                   {isThemeActive(theme.slug) && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleCustomizeTheme(theme.id)}
-                      className="flex-1 min-w-[120px]"
-                    >
-                      Customize
+                    <Button variant="default" size="sm" onClick={() => handleCustomizeTheme(theme.id)} className="flex-1 min-w-[120px]">
+                      {t('customize')}
                     </Button>
                   )}
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEditTheme(theme.id)}
-                    title="Edit Theme"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleEditTheme(theme.id)} title={t('edit_icon_title')}>
                     <Edit className="w-4 h-4" />
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleReset(theme)}
-                    title="Reset to blueprint"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleReset(theme)} title={t('reset_icon_title')}>
                     <RotateCcw className="w-4 h-4" />
                   </Button>
 
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDuplicate(theme.id)}
-                    title="Duplicate"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleDuplicate(theme.id)} title={t('duplicate_icon_title')}>
                     <Copy className="w-4 h-4" />
                   </Button>
 
@@ -338,7 +261,7 @@ export function ThemesPage() {
                     size="sm"
                     onClick={() => handleDelete(theme.id)}
                     className="text-red-600 hover:text-red-700"
-                    title={isThemeActive(theme.slug) ? 'Cannot delete active theme' : 'Delete'}
+                    title={isThemeActive(theme.slug) ? t('cannot_delete_active') : t('delete_icon_title')}
                     disabled={isThemeActive(theme.slug)}
                   >
                     <Trash2 className="w-4 h-4" />

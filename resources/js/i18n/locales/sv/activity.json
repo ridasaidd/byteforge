@@ -1,0 +1,12 @@
+{
+  "title": "Aktivitetslogg",
+  "description": "Senaste aktivitet i systemet",
+  "no_description": "(ingen beskrivning)",
+  "system": "System",
+  "no_activity": "Ingen aktivitet ännu",
+  "no_activity_description": "Systemaktivitet visas här",
+  "col_description": "Beskrivning",
+  "col_event": "Händelse",
+  "col_by": "Av",
+  "col_at": "Tidpunkt"
+}

@@ -111,17 +111,6 @@ export function BorderRadiusControl({
     marginBottom: '4px',
   };
 
-  // Calculate the average for slider display when not linked
-  const sliderValue = isLinked
-    ? value.topLeft
-    : Math.round(
-        (parseFloat(value.topLeft || '0') +
-          parseFloat(value.topRight || '0') +
-          parseFloat(value.bottomRight || '0') +
-          parseFloat(value.bottomLeft || '0')) /
-          4
-      ).toString();
-
   return (
     <FieldLabel label={field.label || 'Border Radius'}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -217,10 +206,10 @@ export function BorderRadiusControl({
                       fontWeight: isActive ? '600' : '400',
                       color: isActive ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-05)',
                     }}
-                    title={`${key}: ${presetValue}`}
+                    title={`${key}: ${String(presetValue)}`}
                   >
-                    <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{key}</div>
-                    <div style={{ fontSize: '9px', marginTop: '2px' }}>{presetValue}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.7, textTransform: 'capitalize' }}>{String(key)}</div>
+                    <div style={{ fontSize: '9px', marginTop: '2px' }}>{String(presetValue)}</div>
                   </button>
                 );
               })}

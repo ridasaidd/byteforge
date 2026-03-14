@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { ArrowUpDown, Loader2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Button } from '@/shared/components/ui/button';
 import { Skeleton } from '@/shared/components/ui/skeleton';
@@ -53,6 +54,8 @@ export function DataTable<T extends Record<string, unknown>>({
   actions,
   className,
 }: DataTableProps<T>) {
+  const { t } = useTranslation('common');
+
   // Loading state
   if (isLoading) {
     return (
@@ -64,7 +67,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 {columns.map((column) => (
                   <TableHead key={column.key}>{column.label}</TableHead>
                 ))}
-                {actions && <TableHead className="w-[100px]">Actions</TableHead>}
+                {actions && <TableHead className="w-[100px]">{t('actions')}</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -120,13 +123,13 @@ export function DataTable<T extends Record<string, unknown>>({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="-ml-3 h-8 data-[state=open]:bg-accent"
+                      className="-ms-3 h-8 data-[state=open]:bg-accent"
                       onClick={() => handleSort(column.key)}
                     >
                       <span>{column.label}</span>
                       <ArrowUpDown
                         className={cn(
-                          'ml-2 h-4 w-4',
+                          'ms-2 h-4 w-4',
                           sortBy === column.key ? 'text-primary' : 'text-muted-foreground'
                         )}
                       />
@@ -136,7 +139,7 @@ export function DataTable<T extends Record<string, unknown>>({
                   )}
                 </TableHead>
               ))}
-              {actions && <TableHead className="w-[100px]">Actions</TableHead>}
+              {actions && <TableHead className="w-[100px]">{t('actions')}</TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>

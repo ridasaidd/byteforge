@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, PlugZap, Save, TestTube2, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { useAuth } from '@/shared/hooks/useAuth';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -17,28 +18,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 const PROVIDERS: PaymentProviderCode[] = ['stripe', 'swish', 'klarna'];
 
-type CredentialField = {
-  key: string;
-  label: string;
-  placeholder?: string;
-  secret?: boolean;
-};
-
-const CREDENTIAL_FIELDS: Record<PaymentProviderCode, CredentialField[]> = {
+const CREDENTIAL_FIELDS: Record<PaymentProviderCode, Array<{ key: string; secret?: boolean }>> = {
   stripe: [
-    { key: 'secret_key', label: 'Secret Key', placeholder: 'sk_test_...', secret: true },
-    { key: 'publishable_key', label: 'Publishable Key', placeholder: 'pk_test_...' },
-    { key: 'webhook_secret', label: 'Webhook Secret', placeholder: 'whsec_...', secret: true },
+    { key: 'secret_key', secret: true },
+    { key: 'publishable_key' },
+    { key: 'webhook_secret', secret: true },
   ],
   swish: [
-    { key: 'merchant_swish_number', label: 'Merchant Swish Number', placeholder: '4671234768' },
-    { key: 'certificate', label: 'Certificate (PEM)', placeholder: '-----BEGIN CERTIFICATE-----', secret: true },
-    { key: 'private_key', label: 'Private Key (PEM)', placeholder: '-----BEGIN PRIVATE KEY-----', secret: true },
+    { key: 'merchant_swish_number' },
+    { key: 'certificate', secret: true },
+    { key: 'private_key', secret: true },
   ],
   klarna: [
-    { key: 'username', label: 'Username', placeholder: 'Klarna API Username' },
-    { key: 'password', label: 'Password', placeholder: 'Klarna API Password', secret: true },
-    { key: 'base_url', label: 'Base URL', placeholder: 'https://api.playground.klarna.com' },
+    { key: 'username' },
+    { key: 'password', secret: true },
+    { key: 'base_url' },
   ],
 };
 
@@ -59,6 +53,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 }
 
 export function PaymentProvidersPage() {
+  const { t } = useTranslation('billing');
   const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
@@ -103,15 +98,15 @@ export function PaymentProvidersPage() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId) {
-        throw new Error('Tenant ID is required.');
+        throw new Error(t('tenant_id_required'));
       }
 
       if (!canManageProviders) {
-        throw new Error('Missing permission: payments.manage');
+        throw new Error(t('missing_manage_permission'));
       }
 
       if (Object.keys(credentials).length === 0) {
-        throw new Error('At least one credential field is required.');
+        throw new Error(t('at_least_one_credential_required'));
       }
 
       const payload = {
@@ -130,14 +125,14 @@ export function PaymentProvidersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-payment-providers'] });
       toast({
-        title: 'Provider saved',
-        description: 'Payment provider settings were updated.',
+        title: t('provider_saved_title'),
+        description: t('provider_saved_description'),
       });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Save failed',
-        description: getErrorMessage(error, 'Could not save provider settings.'),
+        title: t('save_failed_title'),
+        description: getErrorMessage(error, t('save_failed_description')),
         variant: 'destructive',
       });
     },
@@ -146,11 +141,11 @@ export function PaymentProvidersPage() {
   const testMutation = useMutation({
     mutationFn: async () => {
       if (!tenantId) {
-        throw new Error('Tenant ID is required.');
+        throw new Error(t('tenant_id_required'));
       }
 
       if (!canManageProviders) {
-        throw new Error('Missing permission: payments.manage');
+        throw new Error(t('missing_manage_permission'));
       }
 
       return paymentProviders.testConnection(provider, {
@@ -161,15 +156,15 @@ export function PaymentProvidersPage() {
     onSuccess: (response) => {
       const valid = Boolean(response.data.valid);
       toast({
-        title: valid ? 'Connection test passed' : 'Connection test failed',
-        description: String(response.data.message || 'Provider responded.'),
+        title: valid ? t('connection_test_passed') : t('connection_test_failed'),
+        description: String(response.data.message || t('provider_responded')),
         variant: valid ? 'default' : 'destructive',
       });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Test failed',
-        description: getErrorMessage(error, 'Could not test provider credentials.'),
+        title: t('test_failed_title'),
+        description: getErrorMessage(error, t('test_failed_description')),
         variant: 'destructive',
       });
     },
@@ -178,11 +173,11 @@ export function PaymentProvidersPage() {
   const deleteMutation = useMutation({
     mutationFn: (rowProvider: PaymentProviderCode) => {
       if (!tenantId) {
-        throw new Error('Tenant ID is required.');
+        throw new Error(t('tenant_id_required'));
       }
 
       if (!canManageProviders) {
-        throw new Error('Missing permission: payments.manage');
+        throw new Error(t('missing_manage_permission'));
       }
 
       return paymentProviders.remove(rowProvider, tenantId);
@@ -190,14 +185,14 @@ export function PaymentProvidersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-payment-providers'] });
       toast({
-        title: 'Provider removed',
-        description: 'Payment provider config was removed.',
+        title: t('provider_removed_title'),
+        description: t('provider_removed_description'),
       });
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Remove failed',
-        description: getErrorMessage(error, 'Could not remove provider.'),
+        title: t('remove_failed_title'),
+        description: getErrorMessage(error, t('remove_failed_description')),
         variant: 'destructive',
       });
     },
@@ -206,29 +201,29 @@ export function PaymentProvidersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payment Providers"
-        description="Configure Stripe, Swish, and Klarna credentials for this tenant"
+        title={t('payment_providers_title')}
+        description={t('payment_providers_description')}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>Configured Providers</CardTitle>
+          <CardTitle>{t('configured_providers')}</CardTitle>
           <CardDescription>
-            Provider setup requires the Payment Processing add-on to be enabled.
+            {t('configured_providers_description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading providers...</p>
+            <p className="text-sm text-muted-foreground">{t('loading_providers')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Mode</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Credentials</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('provider')}</TableHead>
+                  <TableHead>{t('mode')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('credentials')}</TableHead>
+                  <TableHead className="text-end">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -238,25 +233,25 @@ export function PaymentProvidersPage() {
                     ? Object.entries(row.credentials_summary)
                         .map(([k, v]) => `${k}: ${v}`)
                         .join(', ')
-                    : 'Not configured';
+                    : t('not_configured');
 
                   return (
                     <TableRow key={rowProvider}>
-                      <TableCell className="font-medium capitalize">{rowProvider}</TableCell>
-                      <TableCell>{row?.mode || 'n/a'}</TableCell>
+                      <TableCell className="font-medium">{t(`provider_${rowProvider}`)}</TableCell>
+                      <TableCell>{row?.mode ? t(`mode_${row.mode}`) : t('na')}</TableCell>
                       <TableCell>
-                        {row?.is_active ? <Badge>Active</Badge> : <Badge variant="outline">Inactive</Badge>}
+                        {row?.is_active ? <Badge>{t('active')}</Badge> : <Badge variant="outline">{t('inactive')}</Badge>}
                       </TableCell>
                       <TableCell className="max-w-[420px] truncate text-muted-foreground">{summary}</TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-end">
                         <Button
                           variant="ghost"
                           size="sm"
                           disabled={!row || deleteMutation.isPending || !canManageProviders}
                           onClick={() => deleteMutation.mutate(rowProvider)}
                         >
-                          <Trash2 className="h-4 w-4 mr-1" />
-                          Remove
+                          <Trash2 className="h-4 w-4 me-1" />
+                          {t('remove')}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -270,33 +265,33 @@ export function PaymentProvidersPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Configure Provider</CardTitle>
-          <CardDescription>Save or update provider credentials with guided fields.</CardDescription>
+          <CardTitle>{t('configure_provider')}</CardTitle>
+          <CardDescription>{t('configure_provider_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!canManageProviders && (
             <p className="text-sm text-muted-foreground">
-              You can view providers, but updating credentials requires the <code>payments.manage</code> permission.
+              {t('manage_providers_required')}
             </p>
           )}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="tenant_id">Tenant ID</Label>
+              <Label htmlFor="tenant_id">{t('tenant_id')}</Label>
               <Input
                 id="tenant_id"
                 value={tenantId}
                 onChange={(e) => setTenantId(e.target.value)}
-                placeholder="tenant-uuid"
+                placeholder={t('tenant_id_placeholder')}
                 disabled={hasFixedTenantId}
               />
               {hasFixedTenantId && (
-                <p className="text-xs text-muted-foreground">Tenant ID is auto-filled from your session.</p>
+                <p className="text-xs text-muted-foreground">{t('tenant_id_autofilled')}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="provider">Provider</Label>
+              <Label htmlFor="provider">{t('provider')}</Label>
               <select
                 id="provider"
                 value={provider}
@@ -306,14 +301,14 @@ export function PaymentProvidersPage() {
               >
                 {PROVIDERS.map((p) => (
                   <option key={p} value={p}>
-                    {p}
+                    {t(`provider_${p}`)}
                   </option>
                 ))}
               </select>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="mode">Mode</Label>
+              <Label htmlFor="mode">{t('mode')}</Label>
               <select
                 id="mode"
                 value={mode}
@@ -321,8 +316,8 @@ export function PaymentProvidersPage() {
                 className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
                 disabled={!canManageProviders}
               >
-                <option value="test">test</option>
-                <option value="live">live</option>
+                <option value="test">{t('mode_test')}</option>
+                <option value="live">{t('mode_live')}</option>
               </select>
             </div>
 
@@ -335,14 +330,14 @@ export function PaymentProvidersPage() {
                 className="h-4 w-4"
                 disabled={!canManageProviders}
               />
-              <Label htmlFor="is_active">Provider active</Label>
+              <Label htmlFor="is_active">{t('provider_active')}</Label>
             </div>
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
             {CREDENTIAL_FIELDS[provider].map((field) => (
               <div className="space-y-2" key={field.key}>
-                <Label htmlFor={`credential_${field.key}`}>{field.label}</Label>
+                <Label htmlFor={`credential_${field.key}`}>{t(field.key)}</Label>
                 <Input
                   id={`credential_${field.key}`}
                   type={field.secret ? 'password' : 'text'}
@@ -353,7 +348,7 @@ export function PaymentProvidersPage() {
                       [field.key]: e.target.value,
                     }));
                   }}
-                  placeholder={field.placeholder}
+                  placeholder={t(`${field.key}_placeholder`)}
                   disabled={!canManageProviders}
                 />
               </div>
@@ -362,16 +357,16 @@ export function PaymentProvidersPage() {
 
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !canManageProviders}>
-              <Save className="h-4 w-4 mr-2" />
-              {saveMutation.isPending ? 'Saving...' : 'Save Provider'}
+              <Save className="h-4 w-4 me-2" />
+              {saveMutation.isPending ? t('saving') : t('save_provider')}
             </Button>
             <Button
               variant="outline"
               onClick={() => testMutation.mutate()}
               disabled={testMutation.isPending || !canManageProviders}
             >
-              <TestTube2 className="h-4 w-4 mr-2" />
-              {testMutation.isPending ? 'Testing...' : 'Test Connection'}
+              <TestTube2 className="h-4 w-4 me-2" />
+              {testMutation.isPending ? t('testing') : t('test_connection')}
             </Button>
             <Button
               variant="secondary"
@@ -379,17 +374,17 @@ export function PaymentProvidersPage() {
               onClick={() => {
                 setCredentials(defaultCredentialsFor(provider));
                 toast({
-                  title: 'Template reset',
-                  description: 'Credentials template was reset.',
+                  title: t('template_reset_title'),
+                  description: t('template_reset_description'),
                 });
               }}
             >
-              <PlugZap className="h-4 w-4 mr-2" />
-              Reset Template
+              <PlugZap className="h-4 w-4 me-2" />
+              {t('reset_template')}
             </Button>
-            <Badge variant="outline" className="ml-auto">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              {providerMap.size} configured
+            <Badge variant="outline" className="ms-auto">
+              <CheckCircle2 className="h-3 w-3 me-1" />
+              {t('configured_count', { count: providerMap.size })}
             </Badge>
           </div>
         </CardContent>

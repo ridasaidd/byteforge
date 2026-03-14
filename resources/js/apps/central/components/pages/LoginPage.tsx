@@ -6,6 +6,7 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Logo } from '@/shared/components/atoms/Logo';
+import { useTranslation } from 'react-i18next';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
+  const { t } = useTranslation('auth');
   const navigate = useNavigate();
 
   const handleSubmit = async (e: FormEvent) => {
@@ -23,8 +25,9 @@ export function LoginPage() {
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (err) {
-      setError('Invalid email or password');
+    } catch (err: unknown) {
+      const apiError = err as { response?: { data?: { message?: string } } };
+      setError(apiError.response?.data?.message || t('invalid_credentials'));
       console.error('Login error:', err);
     } finally {
       setLoading(false);
@@ -39,20 +42,20 @@ export function LoginPage() {
             <Logo size="lg" />
           </div>
           <div className="text-center">
-            <CardTitle className="text-2xl">ByteForge Central</CardTitle>
+            <CardTitle className="text-2xl">{t('login_title')}</CardTitle>
             <CardDescription className="mt-2">
-              Sign in to access the admin dashboard
+              {t('login_description')}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('email')}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder={t('email_placeholder')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -60,7 +63,7 @@ export function LoginPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t('password')}</Label>
               <Input
                 id="password"
                 type="password"
@@ -77,11 +80,11 @@ export function LoginPage() {
               </div>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? t('signing_in') : t('sign_in')}
             </Button>
           </form>
           <div className="mt-6 text-center text-sm text-muted-foreground">
-            <p>Test credentials: admin@byteforge.se / password</p>
+            <p>{t('test_credentials')}</p>
           </div>
         </CardContent>
       </Card>

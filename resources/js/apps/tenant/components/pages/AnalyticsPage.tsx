@@ -1,19 +1,8 @@
-/**
- * Tenant Analytics Dashboard — Sub-phase 9.4
- *
- * Shows analytics for the current tenant:
- *   • Total events KPI card
- *   • Events by type — BarChart (shadcn + recharts)
- *   • Page views over time — AreaChart (empty until /api/analytics/pages is populated in 9.3+)
- *   • Booking / Revenue placeholders (Phase 11 / Phase 10)
- *
- * Date range: 7d / 30d / 90d tabs (drives from/to query params).
- * Data source: GET /api/analytics/overview
- */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Activity, BookOpen, DollarSign, Eye } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { analyticsApi, rangeFromPreset } from '@/shared/services/api/analytics';
 import type { AnalyticsRangePreset } from '@/shared/services/api/types';
@@ -27,17 +16,6 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from '@/shared/components/ui/chart';
-
-// ─── Chart config ─────────────────────────────────────────────────────────────
-
-const eventChartConfig: ChartConfig = {
-  count: {
-    label: 'Events',
-    color: 'hsl(var(--primary))',
-  },
-};
-
-// ─── Sub-components ──────────────────────────────────────────────────────────
 
 function RangeSelector({
   value,
@@ -77,11 +55,7 @@ function StatCard({
         <Icon className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        {loading ? (
-          <Skeleton className="h-8 w-24" />
-        ) : (
-          <div className="text-2xl font-bold">{value.toLocaleString()}</div>
-        )}
+        {loading ? <Skeleton className="h-8 w-24" /> : <div className="text-2xl font-bold">{value.toLocaleString()}</div>}
         <p className="text-xs text-muted-foreground mt-1">{description}</p>
       </CardContent>
     </Card>
@@ -107,88 +81,73 @@ function ComingSoonCard({ title, description, icon: Icon }: {
   );
 }
 
-// ─── Main page ─────────────────────────────────────────────────────────────────
-
 export function AnalyticsPage() {
   const [preset, setPreset] = useState<AnalyticsRangePreset>('30d');
+  const { t } = useTranslation('analytics');
 
   const { from, to } = rangeFromPreset(preset);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['analytics', 'tenant', 'overview', preset],
-    queryFn:  () => analyticsApi.getTenantOverview(from, to),
-    staleTime: 5 * 60 * 1000, // 5 min
+    queryFn: () => analyticsApi.getTenantOverview(from, to),
+    staleTime: 5 * 60 * 1000,
   });
 
-  // Transform by_type → recharts data
   const byTypeData = data
     ? Object.entries(data.data.by_type)
         .map(([type, count]: [string, number]) => ({ type, count }))
         .sort((a, b) => b.count - a.count)
     : [];
 
+  const eventChartConfig: ChartConfig = {
+    count: { label: t('events_label'), color: 'hsl(var(--primary))' },
+  };
+
   const isEmpty = !isLoading && byTypeData.length === 0;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <PageHeader
-          title="Analytics"
-          description="Activity overview for your site"
-        />
+        <PageHeader title={t('title')} description={t('description')} />
         <RangeSelector value={preset} onChange={setPreset} />
       </div>
 
-      {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Total Events"
+          title={t('total_events')}
           value={data?.data.total_events ?? 0}
-          description={`Last ${preset}`}
+          description={t('total_events_desc', { preset })}
           icon={Activity}
           loading={isLoading}
         />
         <StatCard
-          title="Page Views"
+          title={t('page_views')}
           value={data?.data.by_type['page.viewed'] ?? 0}
-          description="Public page loads"
+          description={t('page_views_desc')}
           icon={Eye}
           loading={isLoading}
         />
-        <ComingSoonCard
-          title="Bookings"
-          description="Available in Phase 11"
-          icon={BookOpen}
-        />
-        <ComingSoonCard
-          title="Revenue"
-          description="Available in Phase 10"
-          icon={DollarSign}
-        />
+        <ComingSoonCard title={t('bookings')} description={t('bookings_coming')} icon={BookOpen} />
+        <ComingSoonCard title={t('revenue')} description={t('revenue_coming')} icon={DollarSign} />
       </div>
 
-      {/* Events by type chart */}
       <Card>
         <CardHeader>
-          <CardTitle>Events by type</CardTitle>
-          <CardDescription>
-            {data ? `${data.period.from} → ${data.period.to}` : 'Loading…'}
-          </CardDescription>
+          <CardTitle>{t('events_by_type')}</CardTitle>
+          <CardDescription>{data ? `${data.period.from} → ${data.period.to}` : t('loading')}</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading && <Skeleton className="h-48 w-full" />}
 
           {isError && (
-            <p className="text-sm text-destructive py-8 text-center">
-              Failed to load analytics data.
-            </p>
+            <p className="text-sm text-destructive py-8 text-center">{t('failed_load')}</p>
           )}
 
           {isEmpty && !isError && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Activity className="h-10 w-10 mb-3 opacity-30" />
-              <p className="text-sm">No events recorded in the selected period.</p>
-              <p className="text-xs mt-1">Try selecting a wider date range.</p>
+              <p className="text-sm">{t('no_events')}</p>
+              <p className="text-xs mt-1">{t('no_events_hint')}</p>
             </div>
           )}
 
@@ -202,20 +161,9 @@ export function AnalyticsPage() {
               >
                 <CartesianGrid horizontal={false} />
                 <XAxis type="number" tickLine={false} axisLine={false} />
-                <YAxis
-                  type="category"
-                  dataKey="type"
-                  tickLine={false}
-                  axisLine={false}
-                  width={140}
-                  tickFormatter={(v: string) => v}
-                />
+                <YAxis type="category" dataKey="type" tickLine={false} axisLine={false} width={140} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar
-                  dataKey="count"
-                  fill="var(--color-count)"
-                  radius={[0, 4, 4, 0]}
-                />
+                <Bar dataKey="count" fill="var(--color-count)" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ChartContainer>
           )}

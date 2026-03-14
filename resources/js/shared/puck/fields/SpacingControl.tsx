@@ -256,10 +256,10 @@ export function SpacingControl({
                       fontWeight: isActive ? '600' : '400',
                       color: isActive ? 'var(--puck-color-azure-04)' : 'var(--puck-color-grey-05)',
                     }}
-                    title={`${label}: ${presetValue}`}
+                    title={`${String(label)}: ${String(presetValue)}`}
                   >
-                    <div style={{ fontSize: '10px', opacity: 0.7 }}>{label}</div>
-                    <div style={{ fontSize: '9px', marginTop: '2px' }}>{presetValue}</div>
+                    <div style={{ fontSize: '10px', opacity: 0.7 }}>{String(label)}</div>
+                    <div style={{ fontSize: '9px', marginTop: '2px' }}>{String(presetValue)}</div>
                   </button>
                 );
               })}

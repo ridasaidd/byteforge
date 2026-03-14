@@ -1,4 +1,5 @@
 import { useForm } from 'react-hook-form';
+import { useMemo } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,21 +11,17 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Form Schema
 // ============================================================================
 
-const passwordSchema = z.object({
-  current_password: z.string().min(1, 'Current password is required'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  password_confirmation: z.string().min(8, 'Password confirmation is required'),
-}).refine((data) => data.password === data.password_confirmation, {
-  message: "Passwords don't match",
-  path: ['password_confirmation'],
-});
-
-type PasswordFormData = z.infer<typeof passwordSchema>;
+type PasswordFormData = {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+};
 
 // ============================================================================
 // Component
@@ -32,7 +29,21 @@ type PasswordFormData = z.infer<typeof passwordSchema>;
 
 export function AccountSettingsPage() {
   const { toast } = useToast();
+  const { t } = useTranslation('auth');
   const queryClient = useQueryClient();
+
+  const passwordSchema = useMemo(
+    () =>
+      z.object({
+        current_password: z.string().min(1, t('current_password_required')),
+        password: z.string().min(8, t('password_min')),
+        password_confirmation: z.string().min(8, t('password_confirmation_required')),
+      }).refine((data) => data.password === data.password_confirmation, {
+        message: t('passwords_do_not_match'),
+        path: ['password_confirmation'],
+      }),
+    [t]
+  );
 
   // ============================================================================
   // Mutation to update password
@@ -43,8 +54,8 @@ export function AccountSettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['activity'] }); // Refresh activity log
       toast({
-        title: 'Password updated',
-        description: 'Your password has been changed successfully.',
+        title: t('password_updated_title'),
+        description: t('password_updated_description'),
       });
       form.reset();
     },
@@ -52,10 +63,10 @@ export function AccountSettingsPage() {
       const apiError = error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
       const errorMessage = apiError.response?.data?.errors?.current_password?.[0]
         || apiError.response?.data?.message
-        || 'Failed to update password';
+        || t('failed_update_password');
 
       toast({
-        title: 'Error',
+        title: t('error_title'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -90,8 +101,8 @@ export function AccountSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Account Settings"
-        description="Manage your account security and preferences"
+        title={t('account_settings')}
+        description={t('account_settings_description')}
       />
 
       <div className="grid gap-6 md:grid-cols-2">
@@ -100,16 +111,16 @@ export function AccountSettingsPage() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              <CardTitle>Change Password</CardTitle>
+              <CardTitle>{t('change_password')}</CardTitle>
             </div>
             <CardDescription>
-              Update your password to keep your account secure
+              {t('change_password_description')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="current_password">Current Password</Label>
+                <Label htmlFor="current_password">{t('current_password')}</Label>
                 <Input
                   id="current_password"
                   type="password"
@@ -124,7 +135,7 @@ export function AccountSettingsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">New Password</Label>
+                <Label htmlFor="password">{t('new_password')}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -137,12 +148,12 @@ export function AccountSettingsPage() {
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Must be at least 8 characters long
+                  {t('password_min_hint')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password_confirmation">Confirm New Password</Label>
+                <Label htmlFor="password_confirmation">{t('confirm_new_password')}</Label>
                 <Input
                   id="password_confirmation"
                   type="password"
@@ -161,8 +172,8 @@ export function AccountSettingsPage() {
                   type="submit"
                   disabled={updatePasswordMutation.isPending || !form.formState.isDirty}
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  {updatePasswordMutation.isPending ? 'Updating...' : 'Update Password'}
+                  <Save className="h-4 w-4 me-2" />
+                  {updatePasswordMutation.isPending ? t('updating') : t('update_password')}
                 </Button>
               </div>
             </form>
@@ -172,9 +183,9 @@ export function AccountSettingsPage() {
         {/* Security Tips Card */}
         <Card>
           <CardHeader>
-            <CardTitle>Security Tips</CardTitle>
+            <CardTitle>{t('security_tips')}</CardTitle>
             <CardDescription>
-              Keep your account secure
+              {t('security_tips_description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -184,7 +195,7 @@ export function AccountSettingsPage() {
                   1
                 </div>
                 <p className="text-muted-foreground">
-                  Use a strong password with at least 8 characters, including uppercase, lowercase, numbers, and symbols.
+                  {t('security_tip_1')}
                 </p>
               </div>
 
@@ -193,7 +204,7 @@ export function AccountSettingsPage() {
                   2
                 </div>
                 <p className="text-muted-foreground">
-                  Never share your password with anyone, including support staff.
+                  {t('security_tip_2')}
                 </p>
               </div>
 
@@ -202,7 +213,7 @@ export function AccountSettingsPage() {
                   3
                 </div>
                 <p className="text-muted-foreground">
-                  Change your password regularly and avoid reusing old passwords.
+                  {t('security_tip_3')}
                 </p>
               </div>
 
@@ -211,7 +222,7 @@ export function AccountSettingsPage() {
                   4
                 </div>
                 <p className="text-muted-foreground">
-                  Use a unique password for this account - don't use the same password across multiple sites.
+                  {t('security_tip_4')}
                 </p>
               </div>
             </div>
