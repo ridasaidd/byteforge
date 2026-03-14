@@ -40,7 +40,12 @@
     "node_modules",
     "vendor",
     "storage",
-    "bootstrap/cache"
+    "bootstrap/cache",
+    "resources/js/**/__tests__/**",
+    "resources/js/**/*.test.ts",
+    "resources/js/**/*.test.tsx",
+    "resources/js/**/*.old.ts",
+    "resources/js/**/*.old.tsx"
   ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

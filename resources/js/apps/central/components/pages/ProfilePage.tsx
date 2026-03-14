@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,23 +9,23 @@ import type { UpdateProfileData, User } from '@/shared/services/api/types';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { AvatarUpload } from '@/shared/components/molecules/AvatarUpload';
+import { LanguageSelector } from '@/shared/components/molecules/LanguageSelector';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Badge } from '@/shared/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Form Schema
 // ============================================================================
 
-const profileSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
-  email: z.string().email('Invalid email address').max(255, 'Email is too long'),
-});
-
-type ProfileFormData = z.infer<typeof profileSchema>;
+type ProfileFormData = {
+  name: string;
+  email: string;
+};
 
 // ============================================================================
 // Helper Functions
@@ -42,8 +42,18 @@ const formatRoleName = (role: string | { name: string }): string => {
 
 export function ProfilePage() {
   const { toast } = useToast();
+  const { t } = useTranslation('auth');
   const queryClient = useQueryClient();
   const { refetchUser } = useAuth();
+
+  const profileSchema = useMemo(
+    () =>
+      z.object({
+        name: z.string().min(1, t('name_required')).max(255, t('name_too_long')),
+        email: z.string().email(t('invalid_email')).max(255, t('email_too_long')),
+      }),
+    [t]
+  );
 
   // ============================================================================
   // Query to fetch user profile
@@ -70,15 +80,15 @@ export function ProfilePage() {
       // Update auth context
       queryClient.setQueryData(['profile'], response.user);
       toast({
-        title: 'Profile updated',
-        description: 'Your profile information has been saved successfully.',
+        title: t('profile_updated_title'),
+        description: t('profile_updated_description'),
       });
     },
     onError: (error: unknown) => {
       const apiError = error as { response?: { data?: { message?: string } } };
       toast({
-        title: 'Error',
-        description: apiError.response?.data?.message || 'Failed to update profile',
+        title: t('error_title'),
+        description: apiError.response?.data?.message || t('failed_update_profile'),
         variant: 'destructive',
       });
     },
@@ -99,16 +109,16 @@ export function ProfilePage() {
       refetchUser(); // Refresh auth context to update navbar avatar
       setIsUploadingAvatar(false);
       toast({
-        title: 'Avatar updated',
-        description: 'Your avatar has been uploaded successfully.',
+        title: t('avatar_updated_title'),
+        description: t('avatar_updated_description'),
       });
     },
     onError: (error: unknown) => {
       setIsUploadingAvatar(false);
       const apiError = error as { response?: { data?: { message?: string } } };
       toast({
-        title: 'Error',
-        description: apiError.response?.data?.message || 'Failed to upload avatar',
+        title: t('error_title'),
+        description: apiError.response?.data?.message || t('failed_upload_avatar'),
         variant: 'destructive',
       });
     },
@@ -122,16 +132,16 @@ export function ProfilePage() {
       refetchUser(); // Refresh auth context to update navbar avatar
       setIsDeletingAvatar(false);
       toast({
-        title: 'Avatar deleted',
-        description: 'Your avatar has been removed successfully.',
+        title: t('avatar_deleted_title'),
+        description: t('avatar_deleted_description'),
       });
     },
     onError: (error: unknown) => {
       setIsDeletingAvatar(false);
       const apiError = error as { response?: { data?: { message?: string } } };
       toast({
-        title: 'Error',
-        description: apiError.response?.data?.message || 'Failed to delete avatar',
+        title: t('error_title'),
+        description: apiError.response?.data?.message || t('failed_delete_avatar'),
         variant: 'destructive',
       });
     },
@@ -185,13 +195,13 @@ export function ProfilePage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Profile"
-          description="Manage your profile information"
+          title={t('profile_title')}
+          description={t('profile_manage_description')}
         />
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-center py-8">
-              <div className="text-muted-foreground">Loading profile...</div>
+              <div className="text-muted-foreground">{t('loading_profile')}</div>
             </div>
           </CardContent>
         </Card>
@@ -202,16 +212,16 @@ export function ProfilePage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Profile"
-        description="Manage your personal information and account details"
+        title={t('profile_title')}
+        description={t('profile_description')}
       />
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Profile Info Card */}
         <Card className="md:col-span-1">
           <CardHeader>
-            <CardTitle>Account Info</CardTitle>
-            <CardDescription>Your account details</CardDescription>
+            <CardTitle>{t('account_info')}</CardTitle>
+            <CardDescription>{t('account_details')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <AvatarUpload
@@ -230,7 +240,7 @@ export function ProfilePage() {
 
             {user?.roles && user.roles.length > 0 && (
               <div className="space-y-2">
-                <Label>Roles</Label>
+                <Label>{t('roles')}</Label>
                 <div className="flex flex-wrap gap-2">
                   {user.roles.map((role, index) => (
                     <Badge key={index} variant="secondary">
@@ -243,12 +253,12 @@ export function ProfilePage() {
 
             <div className="pt-4 space-y-2 text-sm text-muted-foreground border-t">
               <div className="flex justify-between">
-                <span>Account created</span>
-                <span>{user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}</span>
+                <span>{t('account_created')}</span>
+                <span>{user?.created_at ? new Date(user.created_at).toLocaleDateString() : t('na')}</span>
               </div>
               <div className="flex justify-between">
-                <span>Last updated</span>
-                <span>{user?.updated_at ? new Date(user.updated_at).toLocaleDateString() : 'N/A'}</span>
+                <span>{t('last_updated')}</span>
+                <span>{user?.updated_at ? new Date(user.updated_at).toLocaleDateString() : t('na')}</span>
               </div>
             </div>
           </CardContent>
@@ -257,18 +267,18 @@ export function ProfilePage() {
         {/* Edit Profile Form */}
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Edit Profile</CardTitle>
+            <CardTitle>{t('edit_profile')}</CardTitle>
             <CardDescription>
-              Update your profile information
+              {t('update_profile_information')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Full Name</Label>
+                <Label htmlFor="name">{t('full_name')}</Label>
                 <Input
                   id="name"
-                  placeholder="John Doe"
+                  placeholder={t('full_name_placeholder')}
                   {...form.register('name')}
                 />
                 {form.formState.errors.name && (
@@ -277,16 +287,16 @@ export function ProfilePage() {
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Your full name as it appears in the system
+                  {t('full_name_help')}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t('email_address')}</Label>
                 <Input
                   id="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder={t('email_address_placeholder')}
                   {...form.register('email')}
                 />
                 {form.formState.errors.email && (
@@ -295,7 +305,7 @@ export function ProfilePage() {
                   </p>
                 )}
                 <p className="text-sm text-muted-foreground">
-                  Your email address for login and notifications
+                  {t('email_address_help')}
                 </p>
               </div>
 
@@ -304,14 +314,25 @@ export function ProfilePage() {
                   type="submit"
                   disabled={updateMutation.isPending || !form.formState.isDirty}
                 >
-                  <Save className="h-4 w-4 mr-2" />
-                  {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  <Save className="h-4 w-4 me-2" />
+                  {updateMutation.isPending ? t('saving') : t('save_changes')}
                 </Button>
               </div>
             </form>
           </CardContent>
         </Card>
       </div>
+
+      {/* Language Preference */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('language_title')}</CardTitle>
+          <CardDescription>{t('language_description')}</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <LanguageSelector />
+        </CardContent>
+      </Card>
     </div>
   );
 }

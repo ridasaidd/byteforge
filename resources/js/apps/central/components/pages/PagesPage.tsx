@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import { pages as pagesApi } from '@/shared/services/api/pages';
 import { themes } from '@/shared/services/api/themes';
 import type { Page, CreatePageData, UpdatePageData, PageTemplate, ApiResponse } from '@/shared/services/api/types';
@@ -15,30 +16,23 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { useToast, useCrud } from '@/shared/hooks';
 
-// ============================================================================
-// Form Schema
-// ============================================================================
-
-const pageSchema = z.object({
-  title: z.string().min(1, 'Title is required').max(255, 'Title is too long'),
-  slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid slug format (use lowercase, numbers, and hyphens)').optional(),
-  page_type: z.enum(['general', 'home', 'about', 'contact', 'blog', 'service', 'product', 'custom']),
-  status: z.enum(['draft', 'published', 'archived']),
-  is_homepage: z.boolean().optional(),
-  meta_data: z.object({
-    meta_title: z.string().optional(),
-    meta_description: z.string().optional(),
-    meta_keywords: z.string().optional(),
-  }).optional(),
-});
-
-// ============================================================================
-// Component
-// ============================================================================
-
 export function PagesPage() {
+  const { t, i18n } = useTranslation('pages');
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const pageSchema = z.object({
+    title: z.string().min(1, t('title_required')).max(255, t('title_too_long')),
+    slug: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, t('slug_invalid')).optional(),
+    page_type: z.enum(['general', 'home', 'about', 'contact', 'blog', 'service', 'product', 'custom']),
+    status: z.enum(['draft', 'published', 'archived']),
+    is_homepage: z.boolean().optional(),
+    meta_data: z.object({
+      meta_title: z.string().optional(),
+      meta_description: z.string().optional(),
+      meta_keywords: z.string().optional(),
+    }).optional(),
+  });
 
   // State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -69,86 +63,86 @@ export function PagesPage() {
   const getFormTabs = (): FormTab[] => [
     {
       id: 'general',
-      label: 'General',
+      label: t('general_tab'),
       fields: [
         {
           name: 'title',
-          label: 'Page Title',
+          label: t('page_title_label'),
           type: 'text',
-          placeholder: 'About Us',
+          placeholder: t('page_title_placeholder'),
           required: true,
-          description: 'The title of the page',
+          description: t('page_title_description'),
         },
         {
           name: 'slug',
-          label: 'Slug',
+          label: t('slug'),
           type: 'text',
-          placeholder: 'about-us (optional - auto-generated from title)',
+          placeholder: t('slug_placeholder'),
           required: false,
-          description: 'URL-friendly version of the title',
+          description: t('slug_description'),
         },
         {
           name: 'page_type',
-          label: 'Page Type',
+          label: t('page_type'),
           type: 'select',
           required: true,
           options: [
-            { label: 'General', value: 'general' },
-            { label: 'Home', value: 'home' },
-            { label: 'About', value: 'about' },
-            { label: 'Contact', value: 'contact' },
-            { label: 'Blog', value: 'blog' },
-            { label: 'Service', value: 'service' },
-            { label: 'Product', value: 'product' },
-            { label: 'Custom', value: 'custom' },
+            { label: t('type_general'), value: 'general' },
+            { label: t('type_home'), value: 'home' },
+            { label: t('type_about'), value: 'about' },
+            { label: t('type_contact'), value: 'contact' },
+            { label: t('type_blog'), value: 'blog' },
+            { label: t('type_service'), value: 'service' },
+            { label: t('type_product'), value: 'product' },
+            { label: t('type_custom'), value: 'custom' },
           ],
-          description: 'The type of page content',
+          description: t('page_type_description'),
         },
         {
           name: 'status',
-          label: 'Status',
+          label: t('status'),
           type: 'select',
           required: true,
           options: [
-            { label: 'Draft', value: 'draft' },
-            { label: 'Published', value: 'published' },
-            { label: 'Archived', value: 'archived' },
+            { label: t('status_draft'), value: 'draft' },
+            { label: t('status_published'), value: 'published' },
+            { label: t('status_archived'), value: 'archived' },
           ],
-          description: 'Publication status',
+          description: t('status_description'),
         },
         {
           name: 'is_homepage',
-          label: 'Set as Homepage',
+          label: t('set_as_homepage'),
           type: 'checkbox',
           required: false,
-          description: 'Make this page the homepage',
+          description: t('set_as_homepage_description'),
         },
       ],
     },
     {
       id: 'seo',
-      label: 'SEO',
+      label: t('seo_tab'),
       fields: [
         {
           name: 'meta_data.meta_title',
-          label: 'SEO Title',
+          label: t('seo_title'),
           type: 'text',
-          placeholder: 'Optional - defaults to page title',
-          description: 'SEO meta title (for search engines)',
+          placeholder: t('seo_title_placeholder'),
+          description: t('seo_title_description'),
         },
         {
           name: 'meta_data.meta_description',
-          label: 'SEO Description',
+          label: t('seo_description'),
           type: 'textarea',
-          placeholder: 'A brief description for search engines',
-          description: 'SEO meta description',
+          placeholder: t('seo_description_placeholder'),
+          description: t('seo_description_text'),
         },
         {
           name: 'meta_data.meta_keywords',
-          label: 'SEO Keywords',
+          label: t('seo_keywords'),
           type: 'text',
-          placeholder: 'keyword1, keyword2, keyword3',
-          description: 'Comma-separated keywords',
+          placeholder: t('seo_keywords_placeholder'),
+          description: t('seo_keywords_description'),
         },
       ],
     },
@@ -162,10 +156,10 @@ export function PagesPage() {
     try {
       const response = await pagesData.create.mutateAsync(data as CreatePageData) as ApiResponse<Page>;
       toast({
-        title: 'Page created',
+        title: t('page_created_title'),
         description: creationType === 'template'
-          ? 'Page created with template content successfully.'
-          : 'Blank page created successfully.',
+          ? t('page_created_from_template')
+          : t('page_created_blank'),
       });
       setIsCreateModalOpen(false);
 
@@ -173,9 +167,9 @@ export function PagesPage() {
          navigate(`/dashboard/pages/${response.data.id}/edit`);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to create page';
+      const message = error instanceof Error ? error.message : t('create_failed');
       toast({
-        title: 'Error',
+        title: t('error_title'),
         description: message,
         variant: 'destructive',
       });
@@ -188,14 +182,14 @@ export function PagesPage() {
     try {
       pagesData.update.mutate({ id: editingPage.id, data: data as UpdatePageData });
       toast({
-        title: 'Page updated',
-        description: 'The page has been updated successfully.',
+        title: t('page_updated_title'),
+        description: t('page_updated_description'),
       });
       setEditingPage(null);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update page',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('update_failed'),
         variant: 'destructive',
       });
     }
@@ -207,14 +201,14 @@ export function PagesPage() {
     try {
   pagesData.delete.mutate(deletingPage.id);
       toast({
-        title: 'Page deleted',
-        description: 'The page has been deleted successfully.',
+        title: t('page_deleted_title'),
+        description: t('page_deleted_description'),
       });
       setDeletingPage(null);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete page',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('delete_failed'),
         variant: 'destructive',
       });
     }
@@ -240,18 +234,18 @@ export function PagesPage() {
   const columns: Column<Page>[] = [
     {
       key: 'title',
-      label: 'Title',
+      label: t('title'),
       sortable: true,
       render: (page) => (
         <div className="space-y-1">
           <button
             onClick={() => navigate(`/dashboard/pages/${page.id}/edit`)}
-            className="font-medium flex items-center gap-2 hover:text-primary transition-colors text-left"
+            className="font-medium flex items-center gap-2 hover:text-primary transition-colors text-start"
           >
             {page.title}
             {page.is_homepage && (
               <Badge variant="default" className="text-xs">
-                Homepage
+                {t('homepage')}
               </Badge>
             )}
           </button>
@@ -261,39 +255,39 @@ export function PagesPage() {
     },
     {
       key: 'page_type',
-      label: 'Type',
+      label: t('type'),
       render: (page) => (
         <Badge variant="outline" className="capitalize">
-          {page.page_type}
+          {t(`type_${page.page_type}`)}
         </Badge>
       ),
     },
     {
       key: 'status',
-      label: 'Status',
+      label: t('status'),
       render: (page) => (
         <Badge variant={getStatusBadgeVariant(page.status)} className="capitalize">
-          {page.status}
+          {t(`status_${page.status}`)}
         </Badge>
       ),
     },
     {
       key: 'published_at',
-      label: 'Published',
+      label: t('published'),
       render: (page) => (
         <span className="text-sm text-muted-foreground">
           {page.published_at
-            ? new Date(page.published_at).toLocaleDateString()
+            ? new Date(page.published_at).toLocaleDateString(i18n.language)
             : '—'}
         </span>
       ),
     },
     {
       key: 'updated_at',
-      label: 'Updated',
+      label: t('updated'),
       render: (page) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(page.updated_at).toLocaleDateString()}
+          {new Date(page.updated_at).toLocaleDateString(i18n.language)}
         </span>
       ),
     },
@@ -305,7 +299,7 @@ export function PagesPage() {
         <Button
           variant="ghost"
           size="sm"
-          title="View page"
+          title={t('view_page')}
           onClick={(e) => {
             e.stopPropagation();
             window.open(`/${page.slug}`, '_blank');
@@ -317,7 +311,7 @@ export function PagesPage() {
       <Button
         variant="ghost"
         size="sm"
-        title="Edit page"
+        title={t('edit_page')}
         onClick={(e) => {
           e.stopPropagation();
           setEditingPage(page);
@@ -328,7 +322,7 @@ export function PagesPage() {
       <Button
         variant="ghost"
         size="sm"
-        title="Delete page"
+        title={t('delete_page')}
         onClick={(e) => {
           e.stopPropagation();
           setDeletingPage(page);
@@ -346,12 +340,12 @@ export function PagesPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pages"
-        description="Manage your website pages and content"
+        title={t('page_title')}
+        description={t('page_description')}
         actions={
           <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Page
+            <Plus className="h-4 w-4 me-2" />
+            {t('create_page')}
           </Button>
         }
       />
@@ -360,8 +354,8 @@ export function PagesPage() {
   data={pagesData.list.data?.data || []}
         columns={columns}
   isLoading={pagesData.list.isLoading}
-  emptyMessage="No pages found"
-  emptyDescription="Create your first page to get started"
+  emptyMessage={t('empty_title')}
+  emptyDescription={t('empty_description')}
   actions={actions}
   currentPage={pagesData.list.data?.meta.current_page}
   totalPages={pagesData.list.data?.meta.last_page}
@@ -382,8 +376,8 @@ export function PagesPage() {
         open={!!editingPage}
         onOpenChange={(open: boolean) => !open && setEditingPage(null)}
         onSubmit={handleUpdate}
-        title="Edit Page"
-        description="Update page information"
+        title={t('edit_page_title')}
+        description={t('edit_page_description')}
         tabs={getFormTabs()}
         schema={pageSchema}
         defaultValues={editingPage ? {
@@ -395,7 +389,7 @@ export function PagesPage() {
           meta_data: editingPage.meta_data as { meta_title?: string; meta_description?: string; meta_keywords?: string } | undefined,
         } as never : undefined}
         isLoading={pagesData.update.isPending}
-        submitText="Save Changes"
+        submitText={t('save_changes')}
       />
 
       {/* Delete Confirmation */}
@@ -403,14 +397,16 @@ export function PagesPage() {
         open={!!deletingPage}
         onOpenChange={(open) => !open && setDeletingPage(null)}
         onConfirm={handleDelete}
-        title="Delete Page"
+        title={t('delete_page_title')}
         description={
-          <>
-            Are you sure you want to delete <strong>{deletingPage?.title}</strong>?
-            {' '}This action cannot be undone.
-          </>
+          <Trans
+            ns="pages"
+            i18nKey="delete_page_confirm"
+            values={{ name: deletingPage?.title ?? '' }}
+            components={{ strong: <strong /> }}
+          />
         }
-        confirmText="Delete"
+        confirmText={t('delete')}
         variant="destructive"
   isLoading={pagesData.delete.isPending}
       />

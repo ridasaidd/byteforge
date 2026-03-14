@@ -14,6 +14,7 @@ import {
 } from '@/shared/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { useToast, useEditorCssLoader } from '@/shared/hooks';
 import { useSettingsRuntimeCss } from '@/shared/hooks/useSettingsRuntimeCss';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
@@ -44,6 +45,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const { id } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { t, i18n } = useTranslation('themes');
   const { saveSection } = useThemeCssSectionSave();
   const isNew = !id || id === 'new';
   const isCustomizeMode = mode === 'customize';
@@ -259,8 +261,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       }
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to load theme',
+        title: t('error'),
+        description: t('failed_load'),
         variant: 'destructive',
       });
       navigate('/dashboard/themes');
@@ -273,8 +275,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
     // In customize mode, only require a theme ID (existing theme must be selected)
     if (isCustomizeMode && !id) {
       toast({
-        title: 'Validation Error',
-        description: 'Cannot customize without an existing theme',
+        title: t('validation_error_title'),
+        description: t('validation_customize_requires_existing'),
         variant: 'destructive',
       });
       return;
@@ -283,8 +285,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
     // In create mode, require theme name
     if (!isCustomizeMode && !themeName.trim()) {
       toast({
-        title: 'Validation Error',
-        description: 'Theme name is required',
+        title: t('validation_error_title'),
+        description: t('validation_theme_name_required'),
         variant: 'destructive',
       });
       return;
@@ -346,8 +348,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         }
 
         toast({
-          title: 'Success',
-          description: 'Theme customization saved successfully',
+          title: t('success'),
+          description: t('customization_saved_success'),
         });
       } else {
         // Create/update mode: use full theme creation/update flow
@@ -365,8 +367,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           themeId = String(response.data.id);
 
           toast({
-            title: 'Success',
-            description: 'Theme created successfully',
+            title: t('success'),
+            description: t('theme_created_success'),
           });
         } else {
           // Update existing theme
@@ -374,8 +376,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           themeId = id;
 
           toast({
-            title: 'Success',
-            description: 'Theme info saved successfully',
+            title: t('success'),
+            description: t('theme_info_saved_success'),
           });
         }
 
@@ -407,8 +409,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           } catch (cssError) {
             console.error('Failed to save header CSS:', cssError);
             toast({
-              title: 'Warning',
-              description: 'Theme saved but header CSS generation failed',
+              title: t('warning_title'),
+              description: t('header_css_generation_failed'),
               variant: 'destructive',
             });
           }
@@ -442,8 +444,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           } catch (cssError) {
             console.error('Failed to save footer CSS:', cssError);
             toast({
-              title: 'Warning',
-              description: 'Theme saved but footer CSS generation failed',
+              title: t('warning_title'),
+              description: t('footer_css_generation_failed'),
               variant: 'destructive',
             });
           }
@@ -461,8 +463,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         } catch (cssError) {
           console.error('Failed to save variables CSS:', cssError);
           toast({
-            title: 'Warning',
-            description: 'Theme saved but CSS variables generation failed',
+            title: t('warning_title'),
+            description: t('variables_css_generation_failed'),
             variant: 'destructive',
           });
         }
@@ -475,8 +477,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         } catch (publishError) {
           console.error('Failed to publish theme CSS:', publishError);
           toast({
-            title: 'Warning',
-            description: 'Theme saved but CSS publishing failed. Master CSS file not updated.',
+            title: t('warning_title'),
+            description: t('css_publish_failed'),
             variant: 'destructive',
           });
         }
@@ -489,8 +491,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
     } catch (error) {
       console.error('Save error:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to save theme',
+        title: t('error'),
+        description: t('failed_save_theme'),
         variant: 'destructive',
       });
     } finally {
@@ -520,8 +522,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       setTemplates(response.data);
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to load templates',
+        title: t('error'),
+        description: t('failed_load_templates'),
         variant: 'destructive',
       });
     } finally {
@@ -550,8 +552,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const handleSaveTemplate = async () => {
     if (!templateName.trim()) {
       toast({
-        title: 'Validation Error',
-        description: 'Template name is required',
+        title: t('validation_error_title'),
+        description: t('validation_template_name_required'),
         variant: 'destructive',
       });
       return;
@@ -559,8 +561,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
     if (isNew) {
       toast({
-        title: 'Error',
-        description: 'Please save the theme first before adding templates',
+        title: t('error'),
+        description: t('save_theme_before_templates'),
         variant: 'destructive',
       });
       return;
@@ -580,14 +582,14 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       if (editingTemplate) {
         savedTemplate = await pageTemplates.update(editingTemplate.id, templatePayload);
         toast({
-          title: 'Success',
-          description: 'Template updated successfully',
+          title: t('success'),
+          description: t('template_updated_success'),
         });
       } else {
         savedTemplate = await pageTemplates.create(templatePayload as CreatePageTemplateData);
         toast({
-          title: 'Success',
-          description: 'Template created successfully',
+          title: t('success'),
+          description: t('template_created_success'),
         });
       }
 
@@ -606,8 +608,8 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       } catch (error) {
         console.error('Failed to save template CSS:', error);
         toast({
-          title: 'Warning',
-          description: 'Template saved but CSS generation failed',
+          title: t('warning_title'),
+          description: t('template_css_generation_failed'),
           variant: 'default',
         });
       }
@@ -616,29 +618,29 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       loadTemplates();
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to save template',
+        title: t('error'),
+        description: t('failed_save_template'),
         variant: 'destructive',
       });
     }
   };
 
   const handleDeleteTemplate = async (template: PageTemplate) => {
-    if (!confirm(`Are you sure you want to delete "${template.name}"?`)) {
+    if (!confirm(t('delete_template_confirm', { name: template.name }))) {
       return;
     }
 
     try {
       await pageTemplates.delete(template.id);
       toast({
-        title: 'Success',
-        description: 'Template deleted successfully',
+        title: t('success'),
+        description: t('template_deleted_success'),
       });
       loadTemplates();
     } catch {
       toast({
-        title: 'Error',
-        description: 'Failed to delete template',
+        title: t('error'),
+        description: t('failed_delete_template'),
         variant: 'destructive',
       });
     }
@@ -670,16 +672,16 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
             size="sm"
             onClick={() => navigate('/dashboard/themes')}
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
+            <ArrowLeft className="h-4 w-4 me-2 rtl:rotate-180" />
+            {t('editor_back')}
           </Button>
           <div className="h-6 w-px bg-border" />
           <div>
             <h1 className="text-sm font-semibold">
-              {isNew ? 'Create New Theme' : themeName || 'Edit Theme'}
+              {isNew ? t('builder_create_new_theme') : themeName || t('builder_edit_theme')}
             </h1>
             <p className="text-xs text-muted-foreground">
-              Theme Builder
+              {t('builder_subtitle')}
             </p>
           </div>
         </div>
@@ -692,13 +694,13 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           >
             {isSaving ? (
               <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                <Loader2 className="h-4 w-4 me-2 animate-spin" />
+                {t('editor_saving')}
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
-                Save
+                <Save className="h-4 w-4 me-2" />
+                {t('editor_save')}
               </>
             )}
           </Button>
@@ -708,11 +710,11 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="w-full justify-start border-b rounded-none h-auto p-0">
-          {!isCustomizeMode && <TabsTrigger value="info" className="rounded-none">Info</TabsTrigger>}
-          <TabsTrigger value="settings" className="rounded-none">Settings</TabsTrigger>
-          <TabsTrigger value="header" className="rounded-none">Header</TabsTrigger>
-          <TabsTrigger value="footer" className="rounded-none">Footer</TabsTrigger>
-          {!isCustomizeMode && <TabsTrigger value="pages" className="rounded-none">Pages</TabsTrigger>}
+          {!isCustomizeMode && <TabsTrigger value="info" className="rounded-none">{t('tab_info')}</TabsTrigger>}
+          <TabsTrigger value="settings" className="rounded-none">{t('tab_settings')}</TabsTrigger>
+          <TabsTrigger value="header" className="rounded-none">{t('tab_header')}</TabsTrigger>
+          <TabsTrigger value="footer" className="rounded-none">{t('tab_footer')}</TabsTrigger>
+          {!isCustomizeMode && <TabsTrigger value="pages" className="rounded-none">{t('tab_pages')}</TabsTrigger>}
         </TabsList>
 
         {/* Info Tab */}
@@ -721,25 +723,25 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           <div className="max-w-2xl mx-auto space-y-6">
             <div>
               <label className="block text-sm font-medium mb-2">
-                Theme Name <span className="text-red-500">*</span>
+                {t('theme_name_label')} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={themeName}
                 onChange={(e) => setThemeName(e.target.value)}
-                placeholder="Enter theme name"
+                placeholder={t('theme_name_placeholder')}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Description
+                {t('description')}
               </label>
               <textarea
                 value={themeDescription}
                 onChange={(e) => setThemeDescription(e.target.value)}
-                placeholder="Enter theme description"
+                placeholder={t('theme_description_placeholder')}
                 rows={4}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
               />
@@ -747,7 +749,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
             <div>
               <label className="block text-sm font-medium mb-2">
-                Preview Image URL
+                {t('preview_image_url')}
               </label>
               <div className="flex flex-col gap-3">
                 <input
@@ -763,7 +765,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     type="button"
                     onClick={() => setIsMediaPickerOpen(true)}
                   >
-                    Select from Media Library
+                    {t('select_from_media_library')}
                   </Button>
                   {themePreviewImage && (
                     <Button
@@ -771,7 +773,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                       type="button"
                       onClick={() => setThemePreviewImage('')}
                     >
-                      Clear
+                      {t('clear')}
                     </Button>
                   )}
                 </div>
@@ -788,7 +790,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
               ) : (
                 <div className="mt-4">
                   <div className="max-w-md h-40 rounded-lg border border-dashed flex items-center justify-center text-sm text-gray-500">
-                    No preview image
+                    {t('no_preview')}
                   </div>
                 </div>
               )}
@@ -801,7 +803,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                 setThemePreviewImage(media.medium_url || media.url);
                 setIsMediaPickerOpen(false);
               }}
-              title="Select Theme Preview"
+              title={t('select_theme_preview')}
               allowedTypes={['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml']}
             />
           </div>
@@ -817,7 +819,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
               <div className="space-y-4">
                 {/* Primary Color */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Primary Color</label>
+                  <label className="block text-sm font-medium mb-2">{t('primary_color')}</label>
                   <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
@@ -829,7 +831,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                         className="h-5 w-5 rounded border"
                         style={{ backgroundColor: getColorValue('primary', '#222222') }}
                       />
-                      <span className="text-sm">Edit</span>
+                      <span className="text-sm">{t('edit')}</span>
                     </Button>
                     <span className="text-sm text-muted-foreground">
                       {getColorValue('primary', '#222222')}
@@ -839,7 +841,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
                 {/* Secondary Color */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Secondary Color</label>
+                  <label className="block text-sm font-medium mb-2">{t('secondary_color')}</label>
                   <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
@@ -851,7 +853,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                         className="h-5 w-5 rounded border"
                         style={{ backgroundColor: getColorValue('secondary', '#666666') }}
                       />
-                      <span className="text-sm">Edit</span>
+                      <span className="text-sm">{t('edit')}</span>
                     </Button>
                     <span className="text-sm text-muted-foreground">
                       {getColorValue('secondary', '#666666')}
@@ -861,7 +863,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
                 {/* Accent Color */}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Accent Color</label>
+                  <label className="block text-sm font-medium mb-2">{t('accent_color')}</label>
                   <div className="flex items-center gap-3">
                     <Button
                       variant="outline"
@@ -873,7 +875,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                         className="h-5 w-5 rounded border"
                         style={{ backgroundColor: getColorValue('accent', '#e0e0e0') }}
                       />
-                      <span className="text-sm">Edit</span>
+                      <span className="text-sm">{t('edit')}</span>
                     </Button>
                     <span className="text-sm text-muted-foreground">
                       {getColorValue('accent', '#e0e0e0')}
@@ -885,12 +887,12 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>
-                      {activeColorKey ? `${activeColorKey.charAt(0).toUpperCase()}${activeColorKey.slice(1)} Color` : 'Color'}
+                      {activeColorKey ? t(`color_dialog_${activeColorKey}`) : t('colors')}
                     </DialogTitle>
                   </DialogHeader>
                   {activeColorKey && (
                     <ColorPickerControlColorful
-                      field={{ label: `${activeColorKey} color` }}
+                      field={{ label: t(`color_dialog_${activeColorKey}`) }}
                       value={getColorValue(activeColorKey, '#000000')}
                       onChange={(value: ColorPickerValue) => {
                         const nextValue = value.type === 'custom'
@@ -902,7 +904,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                   )}
                   <DialogFooter>
                     <Button type="button" onClick={() => setActiveColorKey(null)}>
-                      Done
+                      {t('done')}
                     </Button>
                   </DialogFooter>
                 </DialogContent>
@@ -911,21 +913,21 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
             {/* Typography Section */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">Typography</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('typography')}</h2>
               <div className="space-y-6">
                 {/* Font Family Pickers */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {/* Sans Font */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Sans Font</label>
+                    <label className="block text-sm font-medium mb-2">{t('sans_font')}</label>
                     <FontFamilyPicker
                       category="sans"
-                      placeholder="Select a font..."
+                      placeholder={t('select_font')}
                       selectedFont={
                         (() => {
                           const val = ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('sans')];
                           return typeof val === 'string' ? val : (val as Record<string, unknown>)?.name as string | undefined;
-                        })() || 'System Default'
+                        })() || t('system_default')
                       }
                       onSelect={(fontName) => setThemeData({
                         ...themeData,
@@ -942,15 +944,15 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
                   {/* Serif Font */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Serif Font</label>
+                    <label className="block text-sm font-medium mb-2">{t('serif_font')}</label>
                     <FontFamilyPicker
                       category="serif"
-                      placeholder="Select a font..."
+                      placeholder={t('select_font')}
                       selectedFont={
                         (() => {
                           const val = ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('serif')];
                           return typeof val === 'string' ? val : (val as Record<string, unknown>)?.name as string | undefined;
-                        })() || 'System Serif'
+                        })() || t('system_serif')
                       }
                       onSelect={(fontName) => setThemeData({
                         ...themeData,
@@ -967,15 +969,15 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
                   {/* Mono Font */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Mono Font</label>
+                    <label className="block text-sm font-medium mb-2">{t('mono_font')}</label>
                     <FontFamilyPicker
                       category="mono"
-                      placeholder="Select a font..."
+                      placeholder={t('select_font')}
                       selectedFont={
                         (() => {
                           const val = ((themeData.typography as Record<string, unknown>)?.fontFamily as Record<string, unknown>)?.[('mono')];
                           return typeof val === 'string' ? val : (val as Record<string, unknown>)?.name as string | undefined;
-                        })() || 'System Monospace'
+                        })() || t('system_monospace')
                       }
                       onSelect={(fontName) => setThemeData({
                         ...themeData,
@@ -1005,7 +1007,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                 {/* Font Sizes */}
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-2">Base Font Size (px)</label>
+                    <label className="block text-sm font-medium mb-2">{t('base_font_size')}</label>
                     <input
                       type="number"
                       value={((themeData.typography as Record<string, unknown>)?.fontSize as Record<string, unknown>)?.[('base')] as string || '16'}
@@ -1026,7 +1028,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">Large Font Size (px)</label>
+                    <label className="block text-sm font-medium mb-2">{t('large_font_size')}</label>
                     <input
                       type="number"
                       value={((themeData.typography as Record<string, unknown>)?.fontSize as Record<string, unknown>)?.[('lg')] as string || '18'}
@@ -1047,7 +1049,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-2">XL Font Size (px)</label>
+                    <label className="block text-sm font-medium mb-2">{t('xl_font_size')}</label>
                     <input
                       type="number"
                       value={((themeData.typography as Record<string, unknown>)?.fontSize as Record<string, unknown>)?.[('xl')] as string || '20'}
@@ -1073,13 +1075,13 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
             {/* Spacing Section */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">Spacing (px)</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('spacing')}</h2>
               <div className="space-y-4">
                 {([
-                  { key: '0', label: 'None (0)', fallback: '0' },
-                  { key: '4', label: 'Small (4)', fallback: '16' },
-                  { key: '8', label: 'Medium (8)', fallback: '32' },
-                  { key: '16', label: 'Large (16)', fallback: '64' },
+                  { key: '0', label: t('spacing_none'), fallback: '0' },
+                  { key: '4', label: t('spacing_small'), fallback: '16' },
+                  { key: '8', label: t('spacing_medium'), fallback: '32' },
+                  { key: '16', label: t('spacing_large'), fallback: '64' },
                 ] as const).map(({ key, label, fallback }) => {
                   const value = ((themeData.spacing as Record<string, unknown>)?.[key] as string) || fallback;
                   const numericValue = Number(value) || 0;
@@ -1117,11 +1119,11 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
             {/* Border Radius Section */}
             <div>
-              <h2 className="text-lg font-semibold mb-4">Border Radius (px)</h2>
+              <h2 className="text-lg font-semibold mb-4">{t('border_radius')}</h2>
               <div className="space-y-4">
                 {([
-                  { key: 'base', label: 'Base Radius', fallback: '4' },
-                  { key: 'full', label: 'Full Radius', fallback: '9999' },
+                  { key: 'base', label: t('base_radius'), fallback: '4' },
+                  { key: 'full', label: t('full_radius'), fallback: '9999' },
                 ] as const).map(({ key, label, fallback }) => {
                   const value = ((themeData.borderRadius as Record<string, unknown>)?.[key] as string) || fallback;
                   const numericValue = Number(value) || 0;
@@ -1158,8 +1160,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
             {/* Info Box */}
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                <strong>Note:</strong> These settings will be applied to all Puck components when designing pages.
-                Save the theme to apply changes.
+                <strong>{t('note_label')}</strong> {t('settings_info_text')}
               </p>
             </div>
           </div>
@@ -1201,22 +1202,22 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                     size="sm"
                     onClick={() => setIsTemplateEditorOpen(false)}
                   >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back to Templates
+                    <ArrowLeft className="h-4 w-4 me-2 rtl:rotate-180" />
+                    {t('back_to_templates')}
                   </Button>
                   <div className="h-6 w-px bg-border" />
                   <div>
                     <h2 className="text-sm font-semibold">
-                      {editingTemplate ? 'Edit Template' : 'New Template'}
+                      {editingTemplate ? t('edit_template') : t('new_template')}
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                      {templateName || 'Untitled Template'}
+                      {templateName || t('untitled_template')}
                     </p>
                   </div>
                 </div>
                 <Button onClick={handleSaveTemplate} size="sm">
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Template
+                  <Save className="h-4 w-4 me-2" />
+                  {t('save_template')}
                 </Button>
               </div>
 
@@ -1225,37 +1226,37 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                 <div className="max-w-4xl mx-auto grid grid-cols-3 gap-4">
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Template Name <span className="text-red-500">*</span>
+                      {t('template_name')} <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       value={templateName}
                       onChange={(e) => setTemplateName(e.target.value)}
-                      placeholder="e.g. Homepage, About Page"
+                      placeholder={t('template_name_placeholder')}
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Category
+                      {t('template_category')}
                     </label>
                     <input
                       type="text"
                       value={templateCategory}
                       onChange={(e) => setTemplateCategory(e.target.value)}
-                      placeholder="e.g. Landing, Blog"
+                      placeholder={t('template_category_placeholder')}
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-medium mb-1">
-                      Description
+                      {t('description')}
                     </label>
                     <input
                       type="text"
                       value={templateDescription}
                       onChange={(e) => setTemplateDescription(e.target.value)}
-                      placeholder="Brief description"
+                      placeholder={t('template_description_placeholder')}
                       className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
@@ -1279,21 +1280,21 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
               <div className="max-w-6xl mx-auto">
                 <div className="flex items-center justify-between mb-6">
                   <div>
-                    <h2 className="text-lg font-semibold">Page Templates</h2>
+                    <h2 className="text-lg font-semibold">{t('page_templates_title')}</h2>
                     <p className="text-sm text-muted-foreground">
-                      Create page templates for this theme
+                      {t('page_templates_description')}
                     </p>
                   </div>
                   <Button onClick={handleAddTemplate} disabled={isNew}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Template
+                    <Plus className="h-4 w-4 me-2" />
+                    {t('add_template')}
                   </Button>
                 </div>
 
                 {isNew && (
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
                     <p className="text-sm text-yellow-800">
-                      Please save the theme first before adding page templates.
+                      {t('save_theme_before_templates')}
                     </p>
                   </div>
                 )}
@@ -1304,10 +1305,10 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                   </div>
                 ) : templates.length === 0 ? (
                   <div className="text-center py-12 border-2 border-dashed rounded-lg">
-                    <p className="text-muted-foreground mb-4">No page templates yet</p>
+                    <p className="text-muted-foreground mb-4">{t('no_page_templates')}</p>
                     <Button onClick={handleAddTemplate} disabled={isNew} variant="outline">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create your first template
+                      <Plus className="h-4 w-4 me-2" />
+                      {t('create_first_template')}
                     </Button>
                   </div>
                 ) : (
@@ -1326,7 +1327,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                               </span>
                             )}
                           </div>
-                          <div className="flex gap-1 ml-2">
+                          <div className="flex gap-1 ms-2">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1349,7 +1350,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
                           </p>
                         )}
                         <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
-                          Updated {new Date(template.updated_at).toLocaleDateString()}
+                          {t('updated_label')} {new Date(template.updated_at).toLocaleDateString(i18n.language)}
                         </div>
                       </div>
                     ))}

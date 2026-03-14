@@ -1,4 +1,3 @@
-import React from 'react';
 import type { MenuItem } from '@/shared/services/api/navigations';
 import type { MobileVariant } from '../shared/navTypes';
 import { DrawerNav } from './DrawerNav';

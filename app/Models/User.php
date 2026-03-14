@@ -48,6 +48,7 @@ class User extends Authenticatable implements OAuthenticatable, HasMedia
     protected $fillable = [
         'name',
         'email',
+        'preferred_locale',
         'password',
     ];
 

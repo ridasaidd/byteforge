@@ -38,7 +38,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className }:
         disabled={currentPage === 1}
         className="h-8 w-8 p-0"
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className="h-4 w-4 rtl:rotate-180" />
       </Button>
 
       {visiblePages.map((page, index) => {
@@ -70,7 +70,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className }:
         disabled={currentPage === totalPages}
         className="h-8 w-8 p-0"
       >
-        <ChevronRight className="h-4 w-4" />
+        <ChevronRight className="h-4 w-4 rtl:rotate-180" />
       </Button>
     </div>
   );

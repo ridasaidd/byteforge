@@ -9,6 +9,7 @@ type ApiService<T, CreateData, UpdateData> = {
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { z } from 'zod';
+import { Trans, useTranslation } from 'react-i18next';
 import { tenants as tenantsApi } from '@/shared/services/api/tenants';
 import type { Tenant, CreateTenantData, UpdateTenantData } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
@@ -19,43 +20,36 @@ import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { useToast, useCrud } from '@/shared/hooks';
 
-// ============================================================================
-// Form Schema
-// ============================================================================
-
-const tenantSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
-  domain: z.string().min(1, 'Domain is required').regex(
-    /^[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i,
-    'Invalid domain format'
-  ),
-});
-
-const formFields: FormField[] = [
-  {
-    name: 'name',
-    label: 'Tenant Name',
-    type: 'text',
-    placeholder: 'Acme Corporation',
-    required: true,
-    description: 'The name of the tenant organization',
-  },
-  {
-    name: 'domain',
-    label: 'Domain',
-    type: 'text',
-    placeholder: 'acme.example.com',
-    required: true,
-    description: 'The domain where this tenant will be accessible',
-  },
-];
-
-// ============================================================================
-// Component
-// ============================================================================
-
 export function TenantsPage() {
+  const { t, i18n } = useTranslation('tenants');
   const { toast } = useToast();
+
+  const tenantSchema = z.object({
+    name: z.string().min(1, t('name_required')).max(255, t('name_too_long')),
+    domain: z.string().min(1, t('domain_required')).regex(
+      /^[a-z0-9]+([-.]{1}[a-z0-9]+)*\.[a-z]{2,}$/i,
+      t('invalid_domain')
+    ),
+  });
+
+  const formFields: FormField[] = [
+    {
+      name: 'name',
+      label: t('tenant_name'),
+      type: 'text',
+      placeholder: t('tenant_name_placeholder'),
+      required: true,
+      description: t('tenant_name_description'),
+    },
+    {
+      name: 'domain',
+      label: t('domain'),
+      type: 'text',
+      placeholder: t('domain_placeholder'),
+      required: true,
+      description: t('domain_description'),
+    },
+  ];
 
   // State
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -79,14 +73,14 @@ export function TenantsPage() {
     try {
   tenantsData.create.mutate(data);
       toast({
-        title: 'Tenant created',
-        description: 'The tenant has been created successfully.',
+        title: t('tenant_created_title'),
+        description: t('tenant_created_description'),
       });
       setIsCreateModalOpen(false);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create tenant',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('create_failed'),
         variant: 'destructive',
       });
     }
@@ -98,14 +92,14 @@ export function TenantsPage() {
     try {
   tenantsData.update.mutate({ id: editingTenant.id, data });
       toast({
-        title: 'Tenant updated',
-        description: 'The tenant has been updated successfully.',
+        title: t('tenant_updated_title'),
+        description: t('tenant_updated_description'),
       });
       setEditingTenant(null);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update tenant',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('update_failed'),
         variant: 'destructive',
       });
     }
@@ -117,14 +111,14 @@ export function TenantsPage() {
     try {
   tenantsData.delete.mutate(deletingTenant.id);
       toast({
-        title: 'Tenant deleted',
-        description: 'The tenant has been deleted successfully.',
+        title: t('tenant_deleted_title'),
+        description: t('tenant_deleted_description'),
       });
       setDeletingTenant(null);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete tenant',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('delete_failed'),
         variant: 'destructive',
       });
     }
@@ -137,7 +131,7 @@ export function TenantsPage() {
   const columns: Column<Tenant>[] = [
     {
       key: 'name',
-      label: 'Name',
+      label: t('name'),
       sortable: true,
       render: (tenant) => (
         <div className="font-medium">{tenant.name}</div>
@@ -145,14 +139,14 @@ export function TenantsPage() {
     },
     {
       key: 'slug',
-      label: 'Slug',
+      label: t('slug'),
       render: (tenant) => (
         <Badge variant="outline">{tenant.slug}</Badge>
       ),
     },
     {
       key: 'domain',
-      label: 'Domain',
+      label: t('domain'),
       render: (tenant) => (
         <a
           href={`https://${tenant.domain}`}
@@ -167,10 +161,10 @@ export function TenantsPage() {
     },
     {
       key: 'created_at',
-      label: 'Created',
+      label: t('created'),
       render: (tenant) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(tenant.created_at).toLocaleDateString()}
+          {new Date(tenant.created_at).toLocaleDateString(i18n.language)}
         </span>
       ),
     },
@@ -208,12 +202,12 @@ export function TenantsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tenants"
-        description="Manage tenant organizations and their configurations"
+        title={t('page_title')}
+        description={t('page_description')}
         actions={
           <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Tenant
+            <Plus className="h-4 w-4 me-2" />
+            {t('create_tenant')}
           </Button>
         }
       />
@@ -222,8 +216,8 @@ export function TenantsPage() {
   data={tenantsData.list.data?.data || []}
         columns={columns}
   isLoading={tenantsData.list.isLoading}
-  emptyMessage="No tenants found"
-        emptyDescription="Create your first tenant to get started"
+      emptyMessage={t('empty_title')}
+        emptyDescription={t('empty_description')}
         actions={actions}
   currentPage={tenantsData.list.data?.meta.current_page}
   totalPages={tenantsData.list.data?.meta.last_page}
@@ -235,12 +229,12 @@ export function TenantsPage() {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSubmit={handleCreate}
-        title="Create Tenant"
-        description="Add a new tenant organization"
+        title={t('create_tenant_title')}
+        description={t('create_tenant_description')}
         fields={formFields}
         schema={tenantSchema}
   isLoading={tenantsData.create.isPending}
-        submitText="Create"
+        submitText={t('create')}
       />
 
       {/* Edit Modal */}
@@ -248,13 +242,13 @@ export function TenantsPage() {
         open={!!editingTenant}
         onOpenChange={(open) => !open && setEditingTenant(null)}
         onSubmit={handleUpdate}
-        title="Edit Tenant"
-        description="Update tenant information"
+        title={t('edit_tenant_title')}
+        description={t('edit_tenant_description')}
         fields={formFields}
         schema={tenantSchema}
         defaultValues={editingTenant || undefined}
   isLoading={tenantsData.update.isPending}
-        submitText="Save Changes"
+        submitText={t('save_changes')}
       />
 
       {/* Delete Confirmation */}
@@ -262,14 +256,16 @@ export function TenantsPage() {
         open={!!deletingTenant}
         onOpenChange={(open) => !open && setDeletingTenant(null)}
         onConfirm={handleDelete}
-        title="Delete Tenant"
+        title={t('delete_tenant_title')}
         description={
-          <>
-            Are you sure you want to delete <strong>{deletingTenant?.name}</strong>?
-            {' '}This action cannot be undone. All data associated with this tenant will be permanently deleted.
-          </>
+          <Trans
+            ns="tenants"
+            i18nKey="delete_tenant_confirm"
+            values={{ name: deletingTenant?.name ?? '' }}
+            components={{ strong: <strong /> }}
+          />
         }
-        confirmText="Delete"
+        confirmText={t('delete')}
         variant="destructive"
   isLoading={tenantsData.delete.isPending}
       />

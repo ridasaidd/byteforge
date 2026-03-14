@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import { Render, type Data } from '@puckeditor/core';
+import { useTranslation } from 'react-i18next';
 import { config } from '../pages/puck-components';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
+import type { Theme } from '@/shared/services/api/types';
 
 interface Page {
   id: number;
@@ -30,6 +32,7 @@ interface Page {
 }
 
 export function PublicPage() {
+  const { t } = useTranslation('public');
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
   const isHomepage = location.pathname === '/';
@@ -51,11 +54,11 @@ export function PublicPage() {
           // Fetch page by slug
           response = await fetch(`/api/pages/public/${slug}`);
         } else {
-          throw new Error('No slug provided');
+          throw new Error(t('no_slug'));
         }
 
         if (!response.ok) {
-          throw new Error('Page not found');
+          throw new Error(t('not_found'));
         }
 
         const result = await response.json();
@@ -75,19 +78,19 @@ export function PublicPage() {
           }),
         }).catch(() => { /* tracking must never break page load */ });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load page');
+        setError(err instanceof Error ? err.message : t('failed_load'));
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchPage();
-  }, [slug, isHomepage]);
+  }, [slug, isHomepage, t]);
 
   // Set page title and meta tags
   useEffect(() => {
     if (page) {
-      document.title = (page.meta_data?.title as string) || page.title || 'ByteForge';
+      document.title = (page.meta_data?.title as string) || page.title || t('default_title');
 
       // Set meta description
       const metaDescription = document.querySelector('meta[name="description"]');
@@ -109,7 +112,7 @@ export function PublicPage() {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
           <h1 style={{ fontSize: '3rem', fontWeight: 'bold', marginBottom: '1rem' }}>404</h1>
-          <p style={{ fontSize: '1.25rem', marginBottom: '2rem' }}>{error || 'Page not found'}</p>
+          <p style={{ fontSize: '1.25rem', marginBottom: '2rem' }}>{error || t('not_found')}</p>
           <a
             href="/"
             style={{
@@ -121,7 +124,7 @@ export function PublicPage() {
               textDecoration: 'none'
             }}
           >
-            Go Home
+            {t('go_home')}
           </a>
         </div>
       </div>
@@ -145,12 +148,24 @@ export function PublicPage() {
   };
 
   // Extract theme from metadata (if available)
-  const themeFromMetadata = pageData?.metadata?.theme ? {
-    id: pageData.metadata.theme.id,
-    name: pageData.metadata.theme.name,
-    slug: pageData.metadata.theme.slug,
-    theme_data: pageData.metadata.theme.data,
-  } : null;
+  const themeFromMetadata: Theme | null = pageData?.metadata?.theme
+    ? {
+        id: pageData.metadata.theme.id,
+        tenant_id: null,
+        name: pageData.metadata.theme.name,
+        slug: pageData.metadata.theme.slug,
+        base_theme: null,
+        theme_data: pageData.metadata.theme.data,
+        is_active: true,
+        is_system_theme: true,
+        description: null,
+        preview_image: null,
+        author: null,
+        version: '1.0.0',
+        created_at: '',
+        updated_at: '',
+      }
+    : null;
 
   return (
     <ThemeProvider initialTheme={themeFromMetadata}>
@@ -163,7 +178,7 @@ export function PublicPage() {
         ) : (
           <div style={{ minHeight: '100vh', padding: '4rem 1rem' }}>
             <h1 style={{ fontSize: '2.25rem', fontWeight: 'bold', marginBottom: '1rem' }}>{page.title}</h1>
-            <p>This page is empty. Please edit it in the dashboard.</p>
+            <p>{t('empty_page')}</p>
           </div>
         )}
     </ThemeProvider>

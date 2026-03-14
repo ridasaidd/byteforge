@@ -55,10 +55,8 @@ import {
   ResponsivePositionControl,
   ResponsivePositionValue,
   ResponsivePositionOffsetControl,
-  PositionOffsetValue,
   ResponsivePositionOffsetValue,
   ResponsiveTransformControl,
-  TransformValue,
   ResponsiveTransformValue,
   ResponsiveOverflowControl,
   ResponsiveOverflowValue,
@@ -70,8 +68,6 @@ import {
   ResponsiveGridColumnsValue,
   ResponsiveGridGapControl,
   ResponsiveGridGapValue,
-  GapControl,
-  GapValue,
   ResponsiveGapControl,
   ResponsiveGapValue,
   ResponsiveVisibilityControl,
@@ -755,7 +751,7 @@ export const advancedFields = {
   customCss: {
     type: 'custom' as const,
     label: 'Custom CSS',
-    render: ({ field, value, onChange }: { field: { label?: string }; value?: string | null; onChange: (value: string) => void }) => {
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: string; onChange: (value: string) => void }) => {
       const safeValue = value ?? '';
       return (
         <FieldLabel label={field.label || 'Custom CSS'}>

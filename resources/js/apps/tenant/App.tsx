@@ -4,9 +4,10 @@ import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import { DashboardPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, PaymentProvidersPage, PaymentsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
-import { tenantMenuItems } from './config/menu';
+import { useTenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useTranslation } from 'react-i18next';
 
 function PermissionGate({ permission, children }: { permission: string; children: JSX.Element }) {
   const { hasPermission } = usePermissions();
@@ -20,11 +21,13 @@ function PermissionGate({ permission, children }: { permission: string; children
 
 function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { t } = useTranslation('common');
+  const tenantMenuItems = useTenantMenuItems();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
+        <div className="text-lg">{t('loading')}</div>
       </div>
     );
   }

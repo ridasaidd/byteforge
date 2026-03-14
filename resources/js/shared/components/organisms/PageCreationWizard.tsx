@@ -7,6 +7,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Card } from '@/shared/components/ui/card';
+import { useTranslation } from 'react-i18next';
 import type { PageTemplate } from '@/shared/services/api/types';
 
 export interface PageCreationData {
@@ -38,6 +39,7 @@ export function PageCreationWizard({
   templates = [],
   isLoading = false,
 }: PageCreationWizardProps) {
+  const { t } = useTranslation('pages');
   const [creationType, setCreationType] = useState<'scratch' | 'template'>('scratch');
   const [title, setTitle] = useState('');
   const [slug, setSlug] = useState('');
@@ -105,9 +107,9 @@ export function PageCreationWizard({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Create New Page</DialogTitle>
+          <DialogTitle>{t('wizard_title')}</DialogTitle>
           <DialogDescription>
-            Choose how you want to start building your page
+            {t('wizard_description')}
           </DialogDescription>
         </DialogHeader>
 
@@ -122,9 +124,9 @@ export function PageCreationWizard({
             >
               <div className="flex flex-col items-center text-center gap-2">
                 <FileText className="h-8 w-8 text-primary" />
-                <h3 className="font-semibold">Start from Scratch</h3>
+                <h3 className="font-semibold">{t('start_from_scratch')}</h3>
                 <p className="text-xs text-muted-foreground">
-                  Begin with a blank canvas
+                  {t('start_from_scratch_description')}
                 </p>
               </div>
             </Card>
@@ -137,9 +139,9 @@ export function PageCreationWizard({
             >
               <div className="flex flex-col items-center text-center gap-2">
                 <Sparkles className="h-8 w-8 text-primary" />
-                <h3 className="font-semibold">Use Theme Template</h3>
+                <h3 className="font-semibold">{t('use_theme_template')}</h3>
                 <p className="text-xs text-muted-foreground">
-                  Start with pre-designed content
+                  {t('use_theme_template_description')}
                 </p>
               </div>
             </Card>
@@ -148,10 +150,10 @@ export function PageCreationWizard({
           {/* Page Details Form */}
           <div className="space-y-4 mb-6">
             <div className="space-y-2">
-              <Label htmlFor="page-title">Page Title *</Label>
+              <Label htmlFor="page-title">{t('wizard_page_title')} *</Label>
               <Input
                 id="page-title"
-                placeholder="e.g., About Us, Contact, Services"
+                placeholder={t('wizard_page_title_placeholder')}
                 value={title}
                 onChange={(e) => handleTitleChange(e.target.value)}
               />
@@ -159,29 +161,29 @@ export function PageCreationWizard({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="page-slug">URL Slug *</Label>
+                <Label htmlFor="page-slug">{t('wizard_url_slug')} *</Label>
                 <Input
                   id="page-slug"
-                  placeholder="e.g., about-us"
+                  placeholder={t('wizard_url_slug_placeholder')}
                   value={slug}
                   onChange={(e) => setSlug(e.target.value)}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="page-type">Page Type</Label>
+                <Label htmlFor="page-type">{t('wizard_page_type')}</Label>
                 <Select value={pageType} onValueChange={setPageType}>
                   <SelectTrigger id="page-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="general">General</SelectItem>
-                    <SelectItem value="home">Homepage</SelectItem>
-                    <SelectItem value="about">About</SelectItem>
-                    <SelectItem value="contact">Contact</SelectItem>
-                    <SelectItem value="service">Services</SelectItem>
-                    <SelectItem value="blog">Blog</SelectItem>
-                    <SelectItem value="product">Product</SelectItem>
+                    <SelectItem value="general">{t('type_general')}</SelectItem>
+                    <SelectItem value="home">{t('type_home')}</SelectItem>
+                    <SelectItem value="about">{t('type_about')}</SelectItem>
+                    <SelectItem value="contact">{t('type_contact')}</SelectItem>
+                    <SelectItem value="service">{t('type_service')}</SelectItem>
+                    <SelectItem value="blog">{t('type_blog')}</SelectItem>
+                    <SelectItem value="product">{t('type_product')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -195,7 +197,7 @@ export function PageCreationWizard({
                 checked={isHomepage}
                 onChange={(e) => handleHomepageChange(e.target.checked)}
               />
-              <Label htmlFor="is-homepage">Set as homepage</Label>
+              <Label htmlFor="is-homepage">{t('wizard_set_homepage')}</Label>
             </div>
           </div>
 
@@ -203,12 +205,12 @@ export function PageCreationWizard({
           {creationType === 'template' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <Label>Choose a Template</Label>
+                <Label>{t('choose_template')}</Label>
                 <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-auto">
                   <TabsList>
                     {categories.map((cat) => (
                       <TabsTrigger key={cat} value={cat} className="capitalize">
-                        {cat}
+                        {cat === 'all' ? t('all_categories') : cat === 'uncategorized' ? t('uncategorized') : cat}
                       </TabsTrigger>
                     ))}
                   </TabsList>
@@ -245,7 +247,7 @@ export function PageCreationWizard({
                   ))
                 ) : (
                   <p className="text-sm text-muted-foreground col-span-2 text-center py-8">
-                    No templates available in this category
+                    {t('no_templates_in_category')}
                   </p>
                 )}
               </div>
@@ -260,13 +262,13 @@ export function PageCreationWizard({
             onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Cancel
+            {t('cancel')}
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={!title.trim() || (creationType === 'template' && !selectedTemplate) || isLoading}
           >
-            {isLoading ? 'Creating...' : 'Create Page'}
+            {isLoading ? t('creating') : t('create_page')}
           </Button>
         </div>
       </DialogContent>

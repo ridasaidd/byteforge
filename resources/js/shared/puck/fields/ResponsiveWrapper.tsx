@@ -116,7 +116,8 @@ export function ResponsiveWrapper<T>({
   // Fallback gracefully when not inside <Puck> (e.g., during unit tests)
   let puckWidth: number | undefined;
   try {
-    puckWidth = usePuck((s) => s.appState.ui.viewports.current.width);
+    const width = usePuck((s) => s.appState.ui.viewports.current.width);
+    puckWidth = typeof width === 'number' ? width : undefined;
   } catch {
     puckWidth = undefined;
   }

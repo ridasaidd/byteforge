@@ -39,9 +39,9 @@ export function PageEditorPreview({
             onEditSection(section);
           }}
         >
-          <Edit className="w-3 h-3 mr-2" />
+          <Edit className="w-3 h-3 me-2" />
           Edit {label} in Customizer
-          <ExternalLink className="w-3 h-3 ml-2 opacity-50" />
+          <ExternalLink className="w-3 h-3 ms-2 opacity-50" />
         </Button>
       </div>
     );

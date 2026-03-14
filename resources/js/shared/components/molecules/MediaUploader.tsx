@@ -1,5 +1,6 @@
 import { Upload, X, File as FileIcon } from 'lucide-react';
 import { useState, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/components/ui/button';
 import { Progress } from '@/shared/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ export function MediaUploader({
   multiple = true,
   className,
 }: MediaUploaderProps) {
+  const { t } = useTranslation('media');
   const [isDragging, setIsDragging] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,7 +35,7 @@ export function MediaUploader({
   const handleFiles = useCallback(async (files: FileList | null) => {
     const validateFile = (file: File): string | null => {
       if (maxSize && file.size > maxSize * 1024 * 1024) {
-        return `File exceeds maximum size of ${maxSize}MB`;
+        return t('file_too_large', { size: maxSize });
       }
       return null;
     };
@@ -89,7 +91,7 @@ export function MediaUploader({
               ? {
                   ...uf,
                   status: 'error' as const,
-                  error: error instanceof Error ? error.message : 'Upload failed',
+                  error: error instanceof Error ? error.message : t('file_too_large', { size: maxSize }),
                 }
               : uf
           )
@@ -150,11 +152,11 @@ export function MediaUploader({
           <Upload className="w-8 h-8 text-primary" />
         </div>
         <div className="text-center space-y-1">
-          <p className="text-sm font-medium">Drop files to upload</p>
-          <p className="text-xs text-muted-foreground">or click to browse</p>
+          <p className="text-sm font-medium">{t('drop_files')}</p>
+          <p className="text-xs text-muted-foreground">{t('browse')}</p>
         </div>
         <p className="text-xs text-muted-foreground">
-          Maximum file size: {maxSize}MB
+          {t('max_file_size', { size: maxSize })}
         </p>
       </div>
 
@@ -203,7 +205,7 @@ export function MediaUploader({
               )}
 
               {uploadingFile.status === 'success' && (
-                <p className="text-xs text-green-600">Upload complete!</p>
+                <p className="text-xs text-green-600">{t('upload_complete')}</p>
               )}
 
               {uploadingFile.status === 'error' && (

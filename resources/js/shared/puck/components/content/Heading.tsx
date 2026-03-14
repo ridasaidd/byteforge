@@ -130,15 +130,6 @@ function HeadingComponent({
     '6': 'var(--font-weight-medium, 500)',
   };
 
-  const levelFontWeightResolveMap: Record<string, string> = {
-    '1': 'typography.fontWeight.bold',
-    '2': 'typography.fontWeight.bold',
-    '3': 'typography.fontWeight.semibold',
-    '4': 'typography.fontWeight.semibold',
-    '5': 'typography.fontWeight.medium',
-    '6': 'typography.fontWeight.medium',
-  };
-
   // Resolve font weight - prefer CSS variables for theme defaults
   const resolvedFontWeight =
     fontWeight?.type === 'custom'

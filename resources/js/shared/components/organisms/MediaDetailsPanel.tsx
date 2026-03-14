@@ -1,5 +1,6 @@
 import { X, Copy, Download, Trash2, Check, File } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Media } from '@/shared/services/api';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -15,6 +16,7 @@ interface MediaDetailsPanelProps {
 }
 
 export function MediaDetailsPanel({ media, onClose, onDelete, className }: MediaDetailsPanelProps) {
+  const { t, i18n } = useTranslation('media');
   const [copiedUrl, setCopiedUrl] = useState(false);
 
   if (!media) return null;
@@ -32,14 +34,14 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
   };
 
   const handleDelete = () => {
-    if (onDelete && confirm(`Delete "${media.name}"? This action cannot be undone.`)) {
+    if (onDelete && confirm(t('delete_file_confirm', { name: media.name }))) {
       onDelete(media);
       onClose();
     }
   };
 
   const formatDate = (date: string) => {
-    return new Date(date).toLocaleDateString('en-US', {
+    return new Date(date).toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -52,7 +54,7 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
     <div className={cn('flex flex-col h-full bg-card border-l', className)}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b">
-        <h3 className="font-semibold">File Details</h3>
+        <h3 className="font-semibold">{t('file_details')}</h3>
         <Button variant="ghost" size="sm" onClick={onClose} className="h-8 w-8 p-0">
           <X className="w-4 h-4" />
         </Button>
@@ -62,7 +64,7 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* Preview */}
         <div className="space-y-2">
-          <Label>Preview</Label>
+          <Label>{t('preview')}</Label>
           <div className="aspect-square bg-muted rounded-lg overflow-hidden flex items-center justify-center">
             {isImage ? (
               <img src={media.url} alt={media.name} className="w-full h-full object-contain" />
@@ -77,28 +79,28 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
         {/* File Information */}
         <div className="space-y-4">
           <div>
-            <Label className="text-xs text-muted-foreground">File Name</Label>
+            <Label className="text-xs text-muted-foreground">{t('file_name_label')}</Label>
             <p className="text-sm font-medium break-all">{media.file_name}</p>
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground">File Type</Label>
+            <Label className="text-xs text-muted-foreground">{t('file_type_label')}</Label>
             <p className="text-sm">{media.mime_type}</p>
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground">File Size</Label>
+            <Label className="text-xs text-muted-foreground">{t('file_size_label')}</Label>
             <p className="text-sm">{media.human_readable_size}</p>
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground">Uploaded</Label>
+            <Label className="text-xs text-muted-foreground">{t('uploaded_label')}</Label>
             <p className="text-sm">{formatDate(media.created_at)}</p>
           </div>
 
           {media.custom_properties && Object.keys(media.custom_properties).length > 0 && (
             <div>
-              <Label className="text-xs text-muted-foreground">Custom Properties</Label>
+              <Label className="text-xs text-muted-foreground">{t('custom_properties_label')}</Label>
               <pre className="text-xs bg-muted p-2 rounded-md overflow-auto">
                 {JSON.stringify(media.custom_properties, null, 2)}
               </pre>
@@ -110,19 +112,19 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
 
         {/* File URL */}
         <div className="space-y-2">
-          <Label htmlFor="file-url">File URL</Label>
+          <Label htmlFor="file-url">{t('file_url_label')}</Label>
           <div className="flex gap-2">
             <Input id="file-url" value={media.url} readOnly className="text-xs" />
             <Button variant="outline" size="sm" onClick={copyUrl} className="flex-shrink-0">
               {copiedUrl ? (
                 <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Copied!
+                  <Check className="w-4 h-4 me-2" />
+                  {t('copied')}
                 </>
               ) : (
                 <>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
+                  <Copy className="w-4 h-4 me-2" />
+                  {t('copy')}
                 </>
               )}
             </Button>
@@ -132,7 +134,7 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
         {/* Thumbnail URL (if exists) */}
         {media.thumbnail_url && (
           <div className="space-y-2">
-            <Label htmlFor="thumbnail-url">Thumbnail URL</Label>
+            <Label htmlFor="thumbnail-url">{t('thumbnail_url_label')}</Label>
             <div className="flex gap-2">
               <Input id="thumbnail-url" value={media.thumbnail_url} readOnly className="text-xs" />
               <Button
@@ -153,13 +155,13 @@ export function MediaDetailsPanel({ media, onClose, onDelete, className }: Media
       {/* Footer Actions */}
       <div className="p-4 border-t space-y-2">
         <Button variant="outline" className="w-full" onClick={() => window.open(media.url, '_blank')}>
-          <Download className="w-4 h-4 mr-2" />
-          Download
+          <Download className="w-4 h-4 me-2" />
+          {t('download')}
         </Button>
         {onDelete && (
           <Button variant="destructive" className="w-full" onClick={handleDelete}>
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete File
+            <Trash2 className="w-4 h-4 me-2" />
+            {t('delete_file_btn')}
           </Button>
         )}
       </div>

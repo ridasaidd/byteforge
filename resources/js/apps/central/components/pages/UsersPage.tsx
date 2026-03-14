@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
+import { Trans, useTranslation } from 'react-i18next';
 import { api, type User, type CreateUserData, type UpdateUserData } from '@/shared/services/api';
 import { rolesApi } from '@/shared/services/rolesPermissionsApi';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
@@ -45,6 +46,7 @@ const getRoleName = (roles: (string | { name: string })[] | undefined): string =
 // ============================================================================
 
 export function UsersPage() {
+  const { t, i18n } = useTranslation('users');
   const { toast } = useToast();
 
   // State
@@ -63,9 +65,9 @@ export function UsersPage() {
     if (!rolesQuery.data) return [];
     return rolesQuery.data.map((role) => ({
       value: role.name,
-      label: `${role.name.charAt(0).toUpperCase()}${role.name.slice(1)}`,
+      label: t(`role_${role.name}`),
     }));
-  }, [rolesQuery.data]);
+  }, [rolesQuery.data, t]);
 
   // Dynamic role names for validation
   const roleNames = useMemo(() => rolesQuery.data?.map(r => r.name) ?? [], [rolesQuery.data]);
@@ -74,96 +76,96 @@ export function UsersPage() {
   const createUserSchema = useMemo(() => {
     const roleEnum = roleNames.length > 0 ? roleNames : ['admin', 'support', 'viewer'];
     return z.object({
-      name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
-      email: z.string().email('Invalid email address').max(255, 'Email is too long'),
-      password: z.string().min(8, 'Password must be at least 8 characters'),
-      password_confirmation: z.string().min(8, 'Password confirmation is required'),
-      role: z.enum(roleEnum as [string, ...string[]], { errorMap: () => ({ message: 'Please select a role' }) }),
+      name: z.string().min(1, t('name_required')).max(255, t('name_too_long')),
+      email: z.string().email(t('invalid_email')).max(255, t('email_too_long')),
+      password: z.string().min(8, t('password_min')),
+      password_confirmation: z.string().min(8, t('password_confirmation_required')),
+      role: z.enum(roleEnum as [string, ...string[]], { errorMap: () => ({ message: t('select_role') }) }),
     }).refine((data) => data.password === data.password_confirmation, {
-      message: "Passwords don't match",
+      message: t('passwords_do_not_match'),
       path: ['password_confirmation'],
     });
-  }, [roleNames]);
+  }, [roleNames, t]);
 
   const updateUserSchema = useMemo(() => {
     const roleEnum = roleNames.length > 0 ? roleNames : ['admin', 'support', 'viewer'];
     return z.object({
-      name: z.string().min(1, 'Name is required').max(255, 'Name is too long'),
-      email: z.string().email('Invalid email address').max(255, 'Email is too long'),
-      role: z.enum(roleEnum as [string, ...string[]], { errorMap: () => ({ message: 'Please select a role' }) }),
+      name: z.string().min(1, t('name_required')).max(255, t('name_too_long')),
+      email: z.string().email(t('invalid_email')).max(255, t('email_too_long')),
+      role: z.enum(roleEnum as [string, ...string[]], { errorMap: () => ({ message: t('select_role') }) }),
     });
-  }, [roleNames]);
+  }, [roleNames, t]);
 
   // Dynamic form fields
   const createFormFields = useMemo(() => [
     {
       name: 'name',
-      label: 'Full Name',
+      label: t('full_name'),
       type: 'text' as const,
-      placeholder: 'John Doe',
+      placeholder: t('full_name_placeholder'),
       required: true,
-      description: 'The full name of the user',
+      description: t('full_name_description'),
     },
     {
       name: 'email',
-      label: 'Email Address',
+      label: t('email_address'),
       type: 'email' as const,
-      placeholder: 'john@example.com',
+      placeholder: t('email_placeholder'),
       required: true,
-      description: 'User email for login and notifications',
+      description: t('email_description'),
     },
     {
       name: 'role',
-      label: 'Role',
+      label: t('role'),
       type: 'select' as const,
       required: true,
-      description: 'User access level',
+      description: t('user_access_level'),
       options: roleOptions,
     },
     {
       name: 'password',
-      label: 'Password',
+      label: t('password'),
       type: 'password' as const,
-      placeholder: '••••••••',
+      placeholder: t('password_placeholder'),
       required: true,
-      description: 'Minimum 8 characters',
+      description: t('password_description'),
     },
     {
       name: 'password_confirmation',
-      label: 'Confirm Password',
+      label: t('confirm_password'),
       type: 'password' as const,
-      placeholder: '••••••••',
+      placeholder: t('password_placeholder'),
       required: true,
-      description: 'Must match password',
+      description: t('confirm_password_description'),
     },
-  ], [roleOptions]);
+  ], [roleOptions, t]);
 
   const updateFormFields = useMemo(() => [
     {
       name: 'name',
-      label: 'Full Name',
+      label: t('full_name'),
       type: 'text' as const,
-      placeholder: 'John Doe',
+      placeholder: t('full_name_placeholder'),
       required: true,
-      description: 'The full name of the user',
+      description: t('full_name_description'),
     },
     {
       name: 'email',
-      label: 'Email Address',
+      label: t('email_address'),
       type: 'email' as const,
-      placeholder: 'john@example.com',
+      placeholder: t('email_placeholder'),
       required: true,
-      description: 'User email for login and notifications',
+      description: t('email_description'),
     },
     {
       name: 'role',
-      label: 'Role',
+      label: t('role'),
       type: 'select' as const,
       required: true,
-      description: 'User access level',
+      description: t('user_access_level'),
       options: roleOptions,
     },
-  ], [roleOptions]);
+  ], [roleOptions, t]);
 
   // ============================================================================
   // CRUD Hook
@@ -183,14 +185,17 @@ export function UsersPage() {
     try {
       users.create.mutate(data);
       toast({
-        title: 'User created',
-        description: `${data.name} has been added as ${data.role}.`,
+        title: t('user_created_title'),
+        description: t('user_created_description', {
+          name: data.name,
+          role: t(`role_${data.role}`),
+        }),
       });
       setIsCreateModalOpen(false);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create user',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('create_failed'),
         variant: 'destructive',
       });
     }
@@ -202,14 +207,14 @@ export function UsersPage() {
     try {
       users.update.mutate({ id: editingUser.id, data });
       toast({
-        title: 'User updated',
-        description: `${data.name}'s profile has been updated.`,
+        title: t('user_updated_title'),
+        description: t('user_updated_description', { name: data.name }),
       });
       setEditingUser(null);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to update user',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('update_failed'),
         variant: 'destructive',
       });
     }
@@ -221,14 +226,14 @@ export function UsersPage() {
     try {
       users.delete.mutate(deletingUser.id);
       toast({
-        title: 'User deleted',
-        description: `${deletingUser.name} has been removed from the system.`,
+        title: t('user_deleted_title'),
+        description: t('user_deleted_description', { name: deletingUser.name }),
       });
       setDeletingUser(null);
     } catch (error) {
       toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to delete user',
+        title: t('error_title'),
+        description: error instanceof Error ? error.message : t('delete_failed'),
         variant: 'destructive',
       });
     }
@@ -241,7 +246,7 @@ export function UsersPage() {
   const columns: Column<User>[] = [
     {
       key: 'name',
-      label: 'Name',
+      label: t('name'),
       sortable: true,
       render: (user) => (
         <div>
@@ -252,22 +257,22 @@ export function UsersPage() {
     },
     {
       key: 'role',
-      label: 'Role',
+      label: t('role'),
       render: (user) => {
   const role = getRoleName(user.roles) || 'viewer';
         return (
           <Badge variant={getRoleColor(role)}>
-            {role.charAt(0).toUpperCase() + role.slice(1)}
+            {t(`role_${role}`)}
           </Badge>
         );
       },
     },
     {
       key: 'created_at',
-      label: 'Joined',
+      label: t('joined'),
       render: (user) => (
         <span className="text-sm text-muted-foreground">
-          {new Date(user.created_at).toLocaleDateString('en-US', {
+          {new Date(user.created_at).toLocaleDateString(i18n.language, {
             year: 'numeric',
             month: 'short',
             day: 'numeric',
@@ -318,12 +323,12 @@ export function UsersPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Users"
-        description="Manage central admin users and their access levels"
+        title={t('page_title')}
+        description={t('page_description')}
         actions={
           <Button onClick={() => setIsCreateModalOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create User
+            <Plus className="h-4 w-4 me-2" />
+            {t('create_user')}
           </Button>
         }
       />
@@ -332,8 +337,8 @@ export function UsersPage() {
         data={users.list.data?.data || []}
         columns={columns}
         isLoading={users.list.isLoading}
-        emptyMessage="No users found"
-        emptyDescription="Create your first admin user to get started"
+        emptyMessage={t('empty_title')}
+        emptyDescription={t('empty_description')}
         actions={actions}
         currentPage={users.list.data?.meta.current_page}
         totalPages={users.list.data?.meta.last_page}
@@ -345,12 +350,12 @@ export function UsersPage() {
         open={isCreateModalOpen}
         onOpenChange={setIsCreateModalOpen}
         onSubmit={handleCreate}
-        title="Create User"
-        description="Add a new admin user to the system"
+        title={t('create_user_title')}
+        description={t('create_user_description')}
         fields={createFormFields}
         schema={createUserSchema}
         isLoading={users.create.isPending}
-        submitText="Create User"
+        submitText={t('create_user')}
       />
 
       {/* Edit Modal */}
@@ -358,13 +363,13 @@ export function UsersPage() {
         open={!!editingUser}
         onOpenChange={(open) => !open && setEditingUser(null)}
         onSubmit={handleUpdate}
-        title="Edit User"
-        description="Update user information and role"
+        title={t('edit_user_title')}
+        description={t('edit_user_description')}
         fields={updateFormFields}
         schema={updateUserSchema}
         defaultValues={editDefaultValues}
         isLoading={users.update.isPending}
-        submitText="Save Changes"
+        submitText={t('save_changes')}
       />
 
       {/* Delete Confirmation */}
@@ -372,14 +377,16 @@ export function UsersPage() {
         open={!!deletingUser}
         onOpenChange={(open) => !open && setDeletingUser(null)}
         onConfirm={handleDelete}
-        title="Delete User"
+        title={t('delete_user_title')}
         description={
-          <>
-            Are you sure you want to delete <strong>{deletingUser?.name}</strong>?
-            {' '}This action cannot be undone. The user will lose access to the central admin dashboard.
-          </>
+          <Trans
+            ns="users"
+            i18nKey="delete_user_confirm"
+            values={{ name: deletingUser?.name ?? '' }}
+            components={{ strong: <strong /> }}
+          />
         }
-        confirmText="Delete User"
+        confirmText={t('delete_user')}
         variant="destructive"
         isLoading={users.delete.isPending}
       />

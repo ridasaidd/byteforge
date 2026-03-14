@@ -1,5 +1,6 @@
 import { Folder, MoreVertical, Edit2, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { MediaFolder } from '@/shared/services/api';
 import { cn } from '@/lib/utils';
 import { Button } from '@/shared/components/ui/button';
@@ -20,6 +21,7 @@ interface FolderCardProps {
 }
 
 export function FolderCard({ folder, onClick, onRename, onDelete, className }: FolderCardProps) {
+  const { t } = useTranslation('media');
   const [isRenaming, setIsRenaming] = useState(false);
   const [newName, setNewName] = useState(folder.name);
 
@@ -70,14 +72,14 @@ export function FolderCard({ folder, onClick, onRename, onDelete, className }: F
             <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               {onRename && (
                 <DropdownMenuItem onClick={handleRenameClick}>
-                  <Edit2 className="w-4 h-4 mr-2" />
-                  Rename
+                  <Edit2 className="w-4 h-4 me-2" />
+                  {t('rename')}
                 </DropdownMenuItem>
               )}
               {onDelete && (
                 <DropdownMenuItem onClick={handleDelete} className="text-destructive">
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Delete
+                  <Trash2 className="w-4 h-4 me-2" />
+                  {t('delete')}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

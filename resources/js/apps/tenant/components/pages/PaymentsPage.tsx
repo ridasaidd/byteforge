@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCcw, RotateCcw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 import { useToast } from '@/shared/hooks';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -26,14 +27,15 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return firstFieldError || apiError.response?.data?.message || fallback;
 }
 
-function formatAmount(amount: number, currency: string): string {
-  return new Intl.NumberFormat(undefined, {
+function formatAmount(amount: number, currency: string, locale: string): string {
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: currency.toUpperCase(),
   }).format(amount / 100);
 }
 
 export function PaymentsPage() {
+  const { t, i18n } = useTranslation('billing');
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
@@ -67,12 +69,12 @@ export function PaymentsPage() {
   const refundMutation = useMutation({
     mutationFn: () => {
       if (!refundPaymentId) {
-        throw new Error('No payment selected.');
+        throw new Error(t('no_payment_selected'));
       }
 
       const parsedAmount = Number(refundAmount);
       if (!Number.isInteger(parsedAmount) || parsedAmount <= 0) {
-        throw new Error('Refund amount must be a positive integer in minor units.');
+        throw new Error(t('refund_amount_positive_integer'));
       }
 
       return paymentsApi.refund(refundPaymentId, {
@@ -83,8 +85,8 @@ export function PaymentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-payments'] });
       toast({
-        title: 'Refund processed',
-        description: 'Refund request was submitted successfully.',
+        title: t('refund_processed_title'),
+        description: t('refund_processed_description'),
       });
       setRefundPaymentId(null);
       setRefundAmount('');
@@ -92,8 +94,8 @@ export function PaymentsPage() {
     },
     onError: (error: unknown) => {
       toast({
-        title: 'Refund failed',
-        description: getErrorMessage(error, 'Could not process refund.'),
+        title: t('refund_failed_title'),
+        description: getErrorMessage(error, t('refund_failed_description')),
         variant: 'destructive',
       });
     },
@@ -101,16 +103,16 @@ export function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Payments" description="Review transaction history and issue refunds" />
+      <PageHeader title={t('tenant_payments_title')} description={t('tenant_payments_description')} />
 
       <Card>
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>Filter by provider and payment status.</CardDescription>
+          <CardTitle>{t('filters')}</CardTitle>
+          <CardDescription>{t('filters_description')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-3">
           <div className="space-y-2">
-            <Label htmlFor="provider_filter">Provider</Label>
+            <Label htmlFor="provider_filter">{t('provider')}</Label>
             <select
               id="provider_filter"
               value={provider}
@@ -119,19 +121,19 @@ export function PaymentsPage() {
             >
               {PROVIDERS.map((p) => (
                 <option key={p || 'all'} value={p}>
-                  {p || 'all providers'}
+                  {p ? t(`provider_${p}`) : t('all_providers')}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="status_filter">Status</Label>
+            <Label htmlFor="status_filter">{t('status')}</Label>
             <Input
               id="status_filter"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              placeholder="completed, pending, refunded..."
+              placeholder={t('status_placeholder')}
             />
           </div>
 
@@ -142,8 +144,8 @@ export function PaymentsPage() {
                 queryClient.invalidateQueries({ queryKey: ['tenant-payments'] });
               }}
             >
-              <RefreshCcw className="h-4 w-4 mr-2" />
-              Refresh
+              <RefreshCcw className="h-4 w-4 me-2" />
+              {t('refresh')}
             </Button>
           </div>
         </CardContent>
@@ -151,45 +153,45 @@ export function PaymentsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Payment History</CardTitle>
-          <CardDescription>{data?.meta.total || 0} payment records found.</CardDescription>
+          <CardTitle>{t('payment_history')}</CardTitle>
+          <CardDescription>{t('payment_records_found', { count: data?.meta.total || 0 })}</CardDescription>
         </CardHeader>
         <CardContent>
           {!canRefund && (
             <p className="text-sm text-muted-foreground mb-3">
-              Refund actions require the <code>payments.refund</code> permission.
+              {t('refund_permission_required')}
             </p>
           )}
 
           {isLoading ? (
-            <p className="text-sm text-muted-foreground">Loading payments...</p>
+            <p className="text-sm text-muted-foreground">{t('loading_payments')}</p>
           ) : rows.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No payments found for the selected filters.</p>
+            <p className="text-sm text-muted-foreground">{t('no_payments_found')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Provider</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('id')}</TableHead>
+                  <TableHead>{t('provider')}</TableHead>
+                  <TableHead>{t('status')}</TableHead>
+                  <TableHead>{t('amount')}</TableHead>
+                  <TableHead>{t('customer')}</TableHead>
+                  <TableHead>{t('created')}</TableHead>
+                  <TableHead className="text-end">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {rows.map((row) => (
                   <TableRow key={row.id}>
                     <TableCell className="font-medium">#{row.id}</TableCell>
-                    <TableCell className="capitalize">{row.provider}</TableCell>
+                    <TableCell className="capitalize">{t(`provider_${row.provider}`)}</TableCell>
                     <TableCell>
                       <Badge variant={row.status === 'completed' ? 'default' : 'outline'}>{row.status}</Badge>
                     </TableCell>
-                    <TableCell>{formatAmount(row.amount, row.currency)}</TableCell>
-                    <TableCell>{row.customer_email || row.customer_name || 'n/a'}</TableCell>
-                    <TableCell>{new Date(row.created_at).toLocaleString()}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>{formatAmount(row.amount, row.currency, i18n.language)}</TableCell>
+                    <TableCell>{row.customer_email || row.customer_name || t('na')}</TableCell>
+                    <TableCell>{new Date(row.created_at).toLocaleString(i18n.language)}</TableCell>
+                    <TableCell className="text-end">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -200,8 +202,8 @@ export function PaymentsPage() {
                           setRefundReason('');
                         }}
                       >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Refund
+                        <RotateCcw className="h-4 w-4 me-1" />
+                        {t('refund')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -215,17 +217,17 @@ export function PaymentsPage() {
       <Dialog open={refundPaymentId !== null} onOpenChange={(open) => !open && setRefundPaymentId(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Refund Payment</DialogTitle>
+            <DialogTitle>{t('refund_payment')}</DialogTitle>
             <DialogDescription>
               {selectedPayment
-                ? `Issue a refund for payment #${selectedPayment.id} (${formatAmount(selectedPayment.amount, selectedPayment.currency)}).`
-                : 'Select a payment to refund.'}
+                ? `${t('issue_refund_for_payment')} #${selectedPayment.id} (${formatAmount(selectedPayment.amount, selectedPayment.currency, i18n.language)}).`
+                : t('select_payment_to_refund')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-3">
             <div className="space-y-2">
-              <Label htmlFor="refund_amount">Amount (minor units)</Label>
+              <Label htmlFor="refund_amount">{t('amount_minor_units')}</Label>
               <Input
                 id="refund_amount"
                 value={refundAmount}
@@ -235,22 +237,22 @@ export function PaymentsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="refund_reason">Reason (optional)</Label>
+              <Label htmlFor="refund_reason">{t('refund_reason_optional')}</Label>
               <Input
                 id="refund_reason"
                 value={refundReason}
                 onChange={(e) => setRefundReason(e.target.value)}
-                placeholder="Customer request"
+                placeholder={t('refund_reason_placeholder')}
               />
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setRefundPaymentId(null)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={() => refundMutation.mutate()} disabled={refundMutation.isPending}>
-              {refundMutation.isPending ? 'Processing...' : 'Submit Refund'}
+              {refundMutation.isPending ? t('processing') : t('submit_refund')}
             </Button>
           </DialogFooter>
         </DialogContent>

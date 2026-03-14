@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Menu, X } from 'lucide-react';
 import { registerOverlayPortal } from '@puckeditor/core';
 import type { ColorValue, FontWeightValue, ResponsiveFontSizeValue, ResponsiveValue } from '../../fields';

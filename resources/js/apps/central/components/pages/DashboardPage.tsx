@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import { stats, tenants, activity } from '@/shared/services/api';
 import { formatRelativeTime } from '@/shared/utils/date';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useTranslation } from 'react-i18next';
 
 function StatCard({
   title,
@@ -53,6 +54,7 @@ function getEventBadgeColor(event: string): 'default' | 'secondary' | 'destructi
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation('dashboard');
   const { hasPermission } = usePermissions();
 
   // Check permissions
@@ -87,34 +89,34 @@ export function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Dashboard"
-        description="Welcome to ByteForge Central Admin"
+        title={t('central_title')}
+        description={t('central_description')}
       />
 
       {/* Quick Actions */}
       <div className="flex flex-wrap gap-2 mb-6">
         {canManageTenants && (
           <Button onClick={() => navigate('/dashboard/tenants')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Tenant
+            <Plus className="h-4 w-4 me-2" />
+            {t('create_tenant')}
           </Button>
         )}
         {canManageUsers && (
           <Button variant="outline" onClick={() => navigate('/dashboard/users')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
+            <Plus className="h-4 w-4 me-2" />
+            {t('add_user')}
           </Button>
         )}
         {canViewActivity && (
           <Button variant="outline" onClick={() => navigate('/dashboard/activity')}>
-            <Activity className="h-4 w-4 mr-2" />
-            View Activity
+            <Activity className="h-4 w-4 me-2" />
+            {t('view_activity')}
           </Button>
         )}
         {canManageSettings && (
           <Button variant="outline" onClick={() => navigate('/dashboard/settings')}>
-            <Settings className="h-4 w-4 mr-2" />
-            Settings
+            <Settings className="h-4 w-4 me-2" />
+            {t('open_settings')}
           </Button>
         )}
       </div>
@@ -123,7 +125,7 @@ export function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
         {canViewTenants && (
           <StatCard
-            title="Total Tenants"
+            title={t('total_tenants')}
             value={statsData?.totalTenants ?? 0}
             icon={Building2}
             isLoading={statsLoading}
@@ -131,7 +133,7 @@ export function DashboardPage() {
         )}
         {canViewUsers && (
           <StatCard
-            title="Total Users"
+            title={t('total_users')}
             value={statsData?.totalUsers ?? 0}
             icon={Users}
             isLoading={statsLoading}
@@ -139,7 +141,7 @@ export function DashboardPage() {
         )}
         {canViewActivity && (
           <StatCard
-            title="Total Activity"
+            title={t('total_activity')}
             value={statsData?.recentActivityCount ?? 0}
             icon={Activity}
             isLoading={statsLoading}
@@ -147,7 +149,7 @@ export function DashboardPage() {
         )}
         {canViewTenants && (
           <StatCard
-            title="Pages"
+            title={t('pages')}
             value={statsData?.totalPages ?? 0}
             icon={FileText}
             isLoading={statsLoading}
@@ -160,15 +162,15 @@ export function DashboardPage() {
         {/* Recent Tenants */}
         {canViewTenants && (
           <Card
-            title="Recent Tenants"
-            description="Latest tenant registrations"
+            title={t('recent_tenants')}
+            description={t('recent_tenants_description')}
             actions={
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard/tenants')}
               >
-                View All
+                {t('view_all')}
               </Button>
             }
           >
@@ -201,7 +203,7 @@ export function DashboardPage() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Building2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No tenants yet</p>
+                <p>{t('no_tenants_yet')}</p>
               </div>
             )}
           </Card>
@@ -210,15 +212,15 @@ export function DashboardPage() {
         {/* System Activity */}
         {canViewActivity && (
           <Card
-            title="System Activity"
-            description="Recent system events"
+            title={t('system_activity')}
+            description={t('system_activity_description')}
             actions={
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard/activity')}
               >
-                View All
+                {t('view_all')}
               </Button>
             }
           >
@@ -244,7 +246,7 @@ export function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm truncate">{log.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {log.causer?.name || 'System'} • {formatRelativeTime(log.created_at)}
+                        {log.causer?.name || t('system')} • {formatRelativeTime(log.created_at)}
                       </p>
                     </div>
                   </div>
@@ -253,7 +255,7 @@ export function DashboardPage() {
             ) : (
               <div className="text-center py-8 text-muted-foreground">
                 <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p>No recent activity</p>
+                <p>{t('no_recent_activity')}</p>
               </div>
             )}
           </Card>

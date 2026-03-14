@@ -110,7 +110,7 @@ export function ColorPickerControlColorful({
     return colors;
   }, [theme]);
 
-  const handleThemeColorSelect = (token: string, swatchValue: string) => {
+  const handleThemeColorSelect = (swatchValue: string) => {
     lastSetValueRef.current = swatchValue;
     setCustomColor(swatchValue);
     setRgbaColor(toRgba(swatchValue));
@@ -194,7 +194,7 @@ export function ColorPickerControlColorful({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleThemeColorSelect(token, value);
+                      handleThemeColorSelect(value);
                     }}
                     title={`${label} (${value})`}
                     style={{
@@ -240,7 +240,7 @@ export function ColorPickerControlColorful({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleThemeColorSelect(token, value);
+                      handleThemeColorSelect(value);
                     }}
                     title={`${label} (${value})`}
                     style={{

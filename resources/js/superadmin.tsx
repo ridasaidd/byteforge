@@ -4,6 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/shared/context/AuthContext.tsx';
 import { CentralApp } from '@/apps/central/App';
+import { I18nDirectionProvider } from '@/i18n/I18nDirectionProvider';
+import '@/i18n';
 import './bootstrap';
 import '../css/app.css';
 
@@ -27,10 +29,12 @@ if (!rootElement) {
 createRoot(rootElement).render(
     <StrictMode>
         <QueryClientProvider client={queryClient}>
-            <AuthProvider>
-                <CentralApp />
-                <Toaster position="top-right" richColors />
-            </AuthProvider>
+            <I18nDirectionProvider>
+                <AuthProvider>
+                    <CentralApp />
+                    <Toaster position="top-right" richColors />
+                </AuthProvider>
+            </I18nDirectionProvider>
         </QueryClientProvider>
     </StrictMode>
 );

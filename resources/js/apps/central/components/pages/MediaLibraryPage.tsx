@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Upload } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { api, type Media, type MediaFolder, type MediaFilters } from '@/shared/services/api';
 import { MediaBrowser } from '@/shared/components/organisms/MediaBrowser';
 import { MediaDetailsPanel } from '@/shared/components/organisms/MediaDetailsPanel';
@@ -18,6 +19,7 @@ import {
 
 export default function MediaLibraryPage() {
   const { toast } = useToast();
+  const { t } = useTranslation('media');
   const queryClient = useQueryClient();
 
   // State
@@ -51,14 +53,14 @@ export default function MediaLibraryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media'] });
       toast({
-        title: 'Success',
-        description: 'File uploaded successfully',
+        title: t('success'),
+        description: t('file_uploaded'),
       });
     },
     onError: () => {
       toast({
-        title: 'Error',
-        description: 'Failed to upload file',
+        title: t('error'),
+        description: t('failed_upload'),
         variant: 'destructive',
       });
     },
@@ -70,14 +72,14 @@ export default function MediaLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media'] });
       setSelectedMedia(null);
       toast({
-        title: 'Success',
-        description: 'File deleted successfully',
+        title: t('success'),
+        description: t('file_deleted'),
       });
     },
     onError: () => {
       toast({
-        title: 'Error',
-        description: 'Failed to delete file',
+        title: t('error'),
+        description: t('failed_delete_file'),
         variant: 'destructive',
       });
     },
@@ -88,15 +90,15 @@ export default function MediaLibraryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media-folders'] });
       toast({
-        title: 'Success',
-        description: 'Folder created successfully',
+        title: t('success'),
+        description: t('folder_created'),
       });
     },
     onError: (error: unknown) => {
       const axiosError = error as { response?: { data?: { message?: string; errors?: { name?: string[] } } } };
-      const errorMessage = axiosError?.response?.data?.message || axiosError?.response?.data?.errors?.name?.[0] || 'Failed to create folder';
+      const errorMessage = axiosError?.response?.data?.message || axiosError?.response?.data?.errors?.name?.[0] || t('failed_create_folder');
       toast({
-        title: 'Error',
+        title: t('error'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -109,15 +111,15 @@ export default function MediaLibraryPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['media-folders'] });
       toast({
-        title: 'Success',
-        description: 'Folder renamed successfully',
+        title: t('success'),
+        description: t('folder_renamed'),
       });
     },
     onError: (error: unknown) => {
       const axiosError = error as { response?: { data?: { message?: string; errors?: { name?: string[] } } } };
-      const errorMessage = axiosError?.response?.data?.message || axiosError?.response?.data?.errors?.name?.[0] || 'Failed to rename folder';
+      const errorMessage = axiosError?.response?.data?.message || axiosError?.response?.data?.errors?.name?.[0] || t('failed_rename_folder');
       toast({
-        title: 'Error',
+        title: t('error'),
         description: errorMessage,
         variant: 'destructive',
       });
@@ -130,14 +132,14 @@ export default function MediaLibraryPage() {
       queryClient.invalidateQueries({ queryKey: ['media-folders'] });
       queryClient.invalidateQueries({ queryKey: ['media'] });
       toast({
-        title: 'Success',
-        description: 'Folder and all contents deleted successfully',
+        title: t('success'),
+        description: t('folder_deleted'),
       });
     },
     onError: () => {
       toast({
-        title: 'Error',
-        description: 'Failed to delete folder',
+        title: t('error'),
+        description: t('failed_delete_folder'),
         variant: 'destructive',
       });
     },
@@ -210,14 +212,14 @@ export default function MediaLibraryPage() {
       <div className="border-b p-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">Media Library</h1>
+            <h1 className="text-2xl font-bold">{t('title')}</h1>
             <p className="text-sm text-muted-foreground">
-              Manage your files, images, and media
+              {t('description')}
             </p>
           </div>
           <Button onClick={() => setIsUploadModalOpen(true)}>
-            <Upload className="w-4 h-4 mr-2" />
-            Upload Files
+            <Upload className="w-4 h-4 me-2" />
+            {t('upload_files')}
           </Button>
         </div>
       </div>
@@ -264,7 +266,7 @@ export default function MediaLibraryPage() {
       <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Upload Files</DialogTitle>
+            <DialogTitle>{t('upload_modal_title')}</DialogTitle>
           </DialogHeader>
           <MediaUploader
             onUpload={handleUpload}
@@ -273,7 +275,7 @@ export default function MediaLibraryPage() {
           />
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setIsUploadModalOpen(false)}>
-              Close
+              {t('close')}
             </Button>
           </div>
         </DialogContent>
@@ -283,14 +285,14 @@ export default function MediaLibraryPage() {
       <ConfirmDialog
         open={deleteConfirm !== null}
         onOpenChange={(open) => !open && setDeleteConfirm(null)}
-        title={deleteConfirm?.type === 'folder' ? 'Delete Folder' : 'Delete File'}
+        title={deleteConfirm?.type === 'folder' ? t('delete_folder_title') : t('delete_file_title')}
         description={
           deleteConfirm?.type === 'folder'
-            ? `Are you sure you want to delete "${(deleteConfirm.item as MediaFolder).name}"? This will permanently delete the folder and ALL its contents, including nested folders and files. This action cannot be undone.`
-            : `Are you sure you want to delete "${(deleteConfirm?.item as Media)?.name}"? This action cannot be undone.`
+            ? t('delete_folder_confirm', { name: (deleteConfirm.item as MediaFolder).name })
+            : t('delete_file_confirm', { name: (deleteConfirm?.item as Media)?.name })
         }
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText={deleteConfirm?.type === 'folder' ? t('delete_folder_title') : t('delete_file_title')}
+        cancelText={t('close')}
         variant="destructive"
         onConfirm={confirmDelete}
       />

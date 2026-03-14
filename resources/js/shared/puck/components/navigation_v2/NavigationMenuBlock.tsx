@@ -23,7 +23,6 @@ import {
   fontFamilyField,
   fontSizeField,
   fontWeightField,
-  textColorField,
   typographyAdvancedFields,
 } from '../../fields';
 import { NavigationMenuRenderer } from './NavigationMenuRenderer';
@@ -433,7 +432,6 @@ export const NavigationMenuBlock: ComponentConfig<NavigationMenuProps> = {
           )}
         />
       ),
-      defaultValue: { mobile: { type: 'custom' as const, value: '' } },
     },
     ...effectsFields,
     position: layoutAdvancedFields.position,

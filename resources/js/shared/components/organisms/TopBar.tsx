@@ -3,6 +3,7 @@ import { Logo } from '../atoms/Logo';
 import { SearchBox } from '../molecules/SearchBox';
 import { UserMenu } from './UserMenu';
 import { Button } from '../ui/button';
+import { useTranslation } from 'react-i18next';
 
 interface TopBarProps {
   siteName: string;
@@ -16,14 +17,18 @@ export function TopBar({
   siteName,
   onMenuToggle,
   onSearch,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder,
   showSearch = true,
 }: TopBarProps) {
+  const { t } = useTranslation('common');
+
   const handleSearch = (query: string) => {
     if (onSearch) {
       onSearch(query);
     }
   };
+
+  const resolvedSearchPlaceholder = searchPlaceholder || t('search');
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -51,7 +56,7 @@ export function TopBar({
           <div className="flex flex-1 items-center justify-center px-4">
             <SearchBox
               onSearch={handleSearch}
-              placeholder={searchPlaceholder}
+              placeholder={resolvedSearchPlaceholder}
               className="max-w-md w-full"
             />
           </div>
@@ -60,7 +65,7 @@ export function TopBar({
         {/* Spacer for mobile when no search */}
         {!showSearch && <div className="flex-1" />}
 
-        {/* User Menu */}
+        {/* User */}
         <UserMenu />
       </div>
     </header>

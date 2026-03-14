@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Trans, useTranslation } from 'react-i18next';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/shared/components/ui/dialog';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { rolesApi, permissionsApi, type RoleDto, type PermissionDto } from '@/shared/services/rolesPermissionsApi';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Can } from '@/shared/components/auth/Can';
-// Dialog components will be used in the next step for assignment UI
+import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
+import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import {
   Table,
   TableBody,
@@ -19,25 +21,28 @@ import { useToast } from '@/shared/hooks';
 
 type Role = RoleDto & { permissions?: PermissionDto[] };
 
-const RolesPermissionsPage: React.FC = () => {
+const RolesPermissionsPage = () => {
+  const { t } = useTranslation('access');
   const { toast } = useToast();
   const qc = useQueryClient();
   const [newRoleName, setNewRoleName] = useState('');
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [editName, setEditName] = useState('');
   const [activeTab, setActiveTab] = useState<'roles' | 'permissions'>('roles');
-  const [managePermRole, setManagePermRole] = useState<Role | null>(null)
-  const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set())
+  const [managePermRole, setManagePermRole] = useState<Role | null>(null);
+  const [selectedPerms, setSelectedPerms] = useState<Set<string>>(new Set());
+  const [deletingRole, setDeletingRole] = useState<Role | null>(null);
+  const [deletingPermission, setDeletingPermission] = useState<PermissionDto | null>(null);
 
   // Manage permissions dialog helpers
   const togglePerm = (permName: string) => {
     setSelectedPerms((prev) => {
-      const next = new Set(prev)
-      if (next.has(permName)) next.delete(permName)
-      else next.add(permName)
-      return next
-    })
-  }
+      const next = new Set(prev);
+      if (next.has(permName)) next.delete(permName);
+      else next.add(permName);
+      return next;
+    });
+  };
 
   // Permissions state
   const [newPermissionName, setNewPermissionName] = useState('');
@@ -55,9 +60,9 @@ const RolesPermissionsPage: React.FC = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['roles'] });
       setNewRoleName('');
-      toast({ title: 'Role created' });
+      toast({ title: t('role_created') });
     },
-  onError: (e: unknown) => toast({ title: 'Failed to create role', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_create_role'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const updateRole = useMutation({
@@ -66,29 +71,30 @@ const RolesPermissionsPage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ['roles'] });
       setEditingRole(null);
       setEditName('');
-      toast({ title: 'Role updated' });
+      toast({ title: t('role_updated') });
     },
-  onError: (e: unknown) => toast({ title: 'Failed to update role', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_update_role'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const deleteRole = useMutation({
     mutationFn: (id: number) => rolesApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['roles'] });
-      toast({ title: 'Role deleted' });
+      toast({ title: t('role_deleted') });
+      setDeletingRole(null);
     },
-  onError: (e: unknown) => toast({ title: 'Failed to delete role', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_delete_role'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const assignPermissions = useMutation({
     mutationFn: ({ id, permissions }: { id: number; permissions: string[] }) => rolesApi.assignPermissions(id, permissions),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['roles'] });
-      toast({ title: 'Permissions updated' });
+      toast({ title: t('permissions_updated') });
       setManagePermRole(null);
       setSelectedPerms(new Set());
     },
-    onError: (e: unknown) => toast({ title: 'Failed to update permissions', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_update_permissions'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const handleCreate = () => {
@@ -110,10 +116,9 @@ const RolesPermissionsPage: React.FC = () => {
     updateRole.mutate({ id: editingRole.id, name: editName.trim() });
   };
 
-  const handleDelete = (role: Role) => {
-    if (confirm(`Delete role "${role.name}"?`)) {
-      deleteRole.mutate(role.id);
-    }
+  const handleDeleteRole = () => {
+    if (!deletingRole) return;
+    deleteRole.mutate(deletingRole.id);
   };
 
   // Permissions list
@@ -127,9 +132,9 @@ const RolesPermissionsPage: React.FC = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['permissions'] });
       setNewPermissionName('');
-      toast({ title: 'Permission created' });
+      toast({ title: t('permission_created') });
     },
-    onError: (e: unknown) => toast({ title: 'Failed to create permission', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_create_permission'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const updatePermission = useMutation({
@@ -138,18 +143,19 @@ const RolesPermissionsPage: React.FC = () => {
       qc.invalidateQueries({ queryKey: ['permissions'] });
       setEditingPermission(null);
       setEditPermissionName('');
-      toast({ title: 'Permission updated' });
+      toast({ title: t('permission_updated') });
     },
-    onError: (e: unknown) => toast({ title: 'Failed to update permission', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_update_permission'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const deletePermission = useMutation({
     mutationFn: (id: number) => permissionsApi.delete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['permissions'] });
-      toast({ title: 'Permission deleted' });
+      toast({ title: t('permission_deleted') });
+      setDeletingPermission(null);
     },
-    onError: (e: unknown) => toast({ title: 'Failed to delete permission', description: e instanceof Error ? e.message : 'Unknown error', variant: 'destructive' }),
+    onError: (e: unknown) => toast({ title: t('failed_delete_permission'), description: e instanceof Error ? e.message : t('unknown_error'), variant: 'destructive' }),
   });
 
   const handleCreatePermission = () => {
@@ -171,22 +177,19 @@ const RolesPermissionsPage: React.FC = () => {
     updatePermission.mutate({ id: editingPermission.id, name: editPermissionName.trim() });
   };
 
-  const handleDeletePermission = (permission: PermissionDto) => {
-    if (confirm(`Delete permission "${permission.name}"?`)) {
-      deletePermission.mutate(permission.id);
-    }
+  const handleDeletePermission = () => {
+    if (!deletingPermission) return;
+    deletePermission.mutate(deletingPermission.id);
   };
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Manage Roles & Permissions</h1>
-      </div>
+      <PageHeader title={t('page_title')} description={t('page_description')} />
 
       {/* Tabs */}
       <div className="flex gap-2 border-b">
-        <Button variant={activeTab === 'roles' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('roles')}>Roles</Button>
-        <Button variant={activeTab === 'permissions' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('permissions')}>Permissions</Button>
+        <Button variant={activeTab === 'roles' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('roles')}>{t('roles_tab')}</Button>
+        <Button variant={activeTab === 'permissions' ? 'default' : 'outline'} size="sm" onClick={() => setActiveTab('permissions')}>{t('permissions_tab')}</Button>
       </div>
 
       {/* Roles CRUD */}
@@ -195,14 +198,14 @@ const RolesPermissionsPage: React.FC = () => {
         <Can permission="manage roles">
           <div className="flex gap-2">
             <Input
-              placeholder="New role name"
+              placeholder={t('new_role_placeholder')}
               value={newRoleName}
               onChange={(e) => setNewRoleName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               className="max-w-xs"
             />
             <Button onClick={handleCreate} disabled={!newRoleName.trim() || createRole.isPending}>
-              <Plus className="size-4" /> Create Role
+              <Plus className="size-4" /> {t('create_role')}
             </Button>
           </div>
         </Can>
@@ -211,9 +214,9 @@ const RolesPermissionsPage: React.FC = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Role</TableHead>
-                <TableHead>Guard</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>{t('role')}</TableHead>
+                <TableHead>{t('guard')}</TableHead>
+                <TableHead className="text-end">{t('actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -229,29 +232,29 @@ const RolesPermissionsPage: React.FC = () => {
                   <TableCell>
                     <span className="text-muted-foreground">{role.guard_name}</span>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
+                  <TableCell className="text-end space-x-2">
                     {editingRole?.id === role.id ? (
                       <Can permission="manage roles">
                         <>
-                          <Button size="sm" variant="secondary" onClick={() => setEditingRole(null)}>Cancel</Button>
-                          <Button size="sm" onClick={handleUpdate} disabled={updateRole.isPending}>Save</Button>
+                          <Button size="sm" variant="secondary" onClick={() => setEditingRole(null)}>{t('cancel')}</Button>
+                          <Button size="sm" onClick={handleUpdate} disabled={updateRole.isPending}>{t('save')}</Button>
                         </>
                       </Can>
                     ) : (
                       <>
                         <Can permission="manage roles">
                           <Button size="sm" variant="outline" onClick={() => startEdit(role)}>
-                            <Pencil className="size-4" /> Edit
+                            <Pencil className="size-4" /> {t('edit')}
                           </Button>
                         </Can>
                         <Can permission="manage roles">
                           <Button size="sm" variant="outline" onClick={() => { setManagePermRole(role); setSelectedPerms(new Set((role.permissions ?? []).map(p => p.name))); }}>
-                            Manage permissions
+                            {t('manage_permissions')}
                           </Button>
                         </Can>
                         <Can permission="manage roles">
-                          <Button size="sm" variant="destructive" onClick={() => handleDelete(role)} disabled={deleteRole.isPending}>
-                            <Trash2 className="size-4" /> Delete
+                          <Button size="sm" variant="destructive" onClick={() => setDeletingRole(role)} disabled={deleteRole.isPending}>
+                            <Trash2 className="size-4" /> {t('delete')}
                           </Button>
                         </Can>
                       </>
@@ -262,15 +265,15 @@ const RolesPermissionsPage: React.FC = () => {
             </TableBody>
           </Table>
           {rolesQuery.isLoading && (
-            <div className="p-4 text-sm text-muted-foreground">Loading roles…</div>
+            <div className="p-4 text-sm text-muted-foreground">{t('loading_roles')}</div>
           )}
           {rolesQuery.isError && (
             <div className="p-4 text-sm text-red-600">
-              Failed to load roles{rolesQuery.error instanceof Error ? `: ${rolesQuery.error.message}` : ''}.
+              {t('failed_load_roles')}{rolesQuery.error instanceof Error ? `: ${rolesQuery.error.message}` : ''}.
             </div>
           )}
           {rolesQuery.data && rolesQuery.data.length === 0 && (
-            <div className="p-4 text-sm text-muted-foreground">No roles yet.</div>
+            <div className="p-4 text-sm text-muted-foreground">{t('no_roles')}</div>
           )}
         </div>
       </div>
@@ -282,14 +285,14 @@ const RolesPermissionsPage: React.FC = () => {
           <Can permission="manage roles">
             <div className="flex gap-2">
               <Input
-                placeholder="New permission name"
+                placeholder={t('new_permission_placeholder')}
                 value={newPermissionName}
                 onChange={(e) => setNewPermissionName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleCreatePermission()}
                 className="max-w-xs"
               />
               <Button onClick={handleCreatePermission} disabled={!newPermissionName.trim() || createPermission.isPending}>
-                <Plus className="size-4" /> Create Permission
+                <Plus className="size-4" /> {t('create_permission')}
               </Button>
             </div>
           </Can>
@@ -298,9 +301,9 @@ const RolesPermissionsPage: React.FC = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Permission</TableHead>
-                  <TableHead>Guard</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead>{t('permission')}</TableHead>
+                  <TableHead>{t('guard')}</TableHead>
+                  <TableHead className="text-end">{t('actions')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -316,24 +319,24 @@ const RolesPermissionsPage: React.FC = () => {
                     <TableCell>
                       <span className="text-muted-foreground">{permission.guard_name}</span>
                     </TableCell>
-                    <TableCell className="text-right space-x-2">
+                    <TableCell className="text-end space-x-2">
                       {editingPermission?.id === permission.id ? (
                         <Can permission="manage roles">
                           <>
-                            <Button size="sm" variant="secondary" onClick={() => setEditingPermission(null)}>Cancel</Button>
-                            <Button size="sm" onClick={handleUpdatePermission} disabled={updatePermission.isPending}>Save</Button>
+                            <Button size="sm" variant="secondary" onClick={() => setEditingPermission(null)}>{t('cancel')}</Button>
+                            <Button size="sm" onClick={handleUpdatePermission} disabled={updatePermission.isPending}>{t('save')}</Button>
                           </>
                         </Can>
                       ) : (
                         <>
                           <Can permission="manage roles">
                             <Button size="sm" variant="outline" onClick={() => startEditPermission(permission)}>
-                              <Pencil className="size-4" /> Edit
+                              <Pencil className="size-4" /> {t('edit')}
                             </Button>
                           </Can>
                           <Can permission="manage roles">
-                            <Button size="sm" variant="destructive" onClick={() => handleDeletePermission(permission)} disabled={deletePermission.isPending}>
-                              <Trash2 className="size-4" /> Delete
+                            <Button size="sm" variant="destructive" onClick={() => setDeletingPermission(permission)} disabled={deletePermission.isPending}>
+                              <Trash2 className="size-4" /> {t('delete')}
                             </Button>
                           </Can>
                         </>
@@ -344,15 +347,15 @@ const RolesPermissionsPage: React.FC = () => {
               </TableBody>
             </Table>
             {permissionsQuery.isLoading && (
-              <div className="p-4 text-sm text-muted-foreground">Loading permissions…</div>
+              <div className="p-4 text-sm text-muted-foreground">{t('loading_permissions')}</div>
             )}
             {permissionsQuery.isError && (
               <div className="p-4 text-sm text-red-600">
-                Failed to load permissions{permissionsQuery.error instanceof Error ? `: ${permissionsQuery.error.message}` : ''}.
+                {t('failed_load_permissions')}{permissionsQuery.error instanceof Error ? `: ${permissionsQuery.error.message}` : ''}.
               </div>
             )}
             {permissionsQuery.data && permissionsQuery.data.length === 0 && (
-              <div className="p-4 text-sm text-muted-foreground">No permissions yet.</div>
+              <div className="p-4 text-sm text-muted-foreground">{t('no_permissions')}</div>
             )}
           </div>
         </div>
@@ -362,18 +365,18 @@ const RolesPermissionsPage: React.FC = () => {
         <Dialog open onOpenChange={(open) => { if (!open) { setManagePermRole(null); setSelectedPerms(new Set()); } }}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Manage permissions for "{managePermRole.name}"</DialogTitle>
+              <DialogTitle>{t('manage_permissions_for', { name: managePermRole.name })}</DialogTitle>
             </DialogHeader>
             <div className="max-h-80 overflow-auto space-y-2 py-2">
               {permissionsQuery.isLoading && (
-                <div className="text-sm text-muted-foreground">Loading permissions…</div>
+                <div className="text-sm text-muted-foreground">{t('loading_permissions')}</div>
               )}
               {permissionsQuery.isError && (
-                <div className="text-sm text-red-600">Failed to load permissions.</div>
+                <div className="text-sm text-red-600">{t('failed_load_permissions')}.</div>
               )}
               {permissionsQuery.data?.map((perm) => {
-                const id = `perm-${perm.id}`
-                const checked = selectedPerms.has(perm.name)
+                const id = `perm-${perm.id}`;
+                const checked = selectedPerms.has(perm.name);
                 return (
                   <label key={perm.id} htmlFor={id} className="flex items-center gap-2">
                     <input
@@ -386,23 +389,59 @@ const RolesPermissionsPage: React.FC = () => {
                     <span>{perm.name}</span>
                     <span className="text-muted-foreground text-xs">({perm.guard_name})</span>
                   </label>
-                )
+                );
               })}
               {permissionsQuery.data && permissionsQuery.data.length === 0 && (
-                <div className="text-sm text-muted-foreground">No permissions yet.</div>
+                <div className="text-sm text-muted-foreground">{t('no_permissions')}</div>
               )}
             </div>
             <DialogFooter>
-              <Button variant="secondary" onClick={() => { setManagePermRole(null); setSelectedPerms(new Set()); }}>Cancel</Button>
+              <Button variant="secondary" onClick={() => { setManagePermRole(null); setSelectedPerms(new Set()); }}>{t('cancel')}</Button>
               <Button onClick={() => {
                 if (!managePermRole) return;
-                const payload = Array.from(selectedPerms)
-                assignPermissions.mutate({ id: managePermRole.id, permissions: payload })
-              }}>Save</Button>
+                const payload = Array.from(selectedPerms);
+                assignPermissions.mutate({ id: managePermRole.id, permissions: payload });
+              }}>{t('save')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
+      <ConfirmDialog
+        open={!!deletingRole}
+        onOpenChange={(open) => !open && setDeletingRole(null)}
+        onConfirm={handleDeleteRole}
+        title={t('delete_role_title')}
+        description={
+          <Trans
+            ns="access"
+            i18nKey="delete_role_confirm"
+            values={{ name: deletingRole?.name ?? '' }}
+            components={{ strong: <strong /> }}
+          />
+        }
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
+        variant="destructive"
+        isLoading={deleteRole.isPending}
+      />
+      <ConfirmDialog
+        open={!!deletingPermission}
+        onOpenChange={(open) => !open && setDeletingPermission(null)}
+        onConfirm={handleDeletePermission}
+        title={t('delete_permission_title')}
+        description={
+          <Trans
+            ns="access"
+            i18nKey="delete_permission_confirm"
+            values={{ name: deletingPermission?.name ?? '' }}
+            components={{ strong: <strong /> }}
+          />
+        }
+        confirmText={t('delete')}
+        cancelText={t('cancel')}
+        variant="destructive"
+        isLoading={deletePermission.isPending}
+      />
     </div>
   );
 };

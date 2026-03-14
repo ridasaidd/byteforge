@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { api, type Media, type MediaFolder, type MediaFilters } from '@/shared/services/api';
 import { MediaBrowser } from './MediaBrowser';
 import { FolderNavigation } from './FolderNavigation';
@@ -23,9 +24,10 @@ export function MediaPickerModal({
   isOpen,
   onClose,
   onSelect,
-  title = 'Select Media',
+  title,
   allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'],
 }: MediaPickerModalProps) {
+  const { t } = useTranslation('media');
   const [selectedMedia, setSelectedMedia] = useState<Media[]>([]);
   const [currentFolder, setCurrentFolder] = useState<MediaFolder | null>(null);
   const [filters, setFilters] = useState<MediaFilters>({
@@ -88,7 +90,7 @@ export function MediaPickerModal({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title ?? t('select_media_title')}</DialogTitle>
         </DialogHeader>
 
         {/* Folder Navigation */}
@@ -119,21 +121,21 @@ export function MediaPickerModal({
           <div className="text-sm text-gray-600">
             {selectedMedia.length > 0 ? (
               <span>
-                Selected: <strong>{selectedMedia[0].file_name}</strong>
+                {t('picker_selected', { name: selectedMedia[0].file_name })}
               </span>
             ) : (
-              <span>Select an image from your media library</span>
+              <span>{t('picker_select_hint')}</span>
             )}
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleClose}>
-              Cancel
+              {t('picker_cancel')}
             </Button>
             <Button
               onClick={handleConfirmSelection}
               disabled={selectedMedia.length === 0}
             >
-              Select
+              {t('picker_select')}
             </Button>
           </div>
         </div>

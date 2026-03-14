@@ -36,5 +36,5 @@ export const themePlaceholders = {
    * Delete placeholder section
    */
   delete: (themeId: number | string, section: string) =>
-    http.remove<{ message: string }>(`/superadmin/themes/${themeId}/placeholders/${section}`),
+    http.delete<{ message: string }>(`/superadmin/themes/${themeId}/placeholders/${section}`),
 };

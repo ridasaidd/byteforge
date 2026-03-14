@@ -1,5 +1,4 @@
 import { http } from '../http';
-import type { PaginatedResponse, Tenant, User, ActivityLog, Page } from './types';
 
 export interface DashboardStats {
   totalTenants: number;

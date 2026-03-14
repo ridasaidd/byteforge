@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,26 +11,24 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Form Schema
 // ============================================================================
 
-const settingsSchema = z.object({
-  site_title: z.string().min(1, 'Site title is required').max(255),
-  site_description: z.string().max(500).nullable().or(z.literal('')),
-  logo_url: z.string().url('Must be a valid URL').max(255).nullable().or(z.literal('')),
-  favicon_url: z.string().url('Must be a valid URL').max(255).nullable().or(z.literal('')),
-  maintenance_mode: z.boolean(),
-  // Phase 9.6 — Analytics integrations
-  ga4_measurement_id: z.string().max(255).nullable().or(z.literal('')),
-  gtm_container_id: z.string().max(255).nullable().or(z.literal('')),
-  clarity_project_id: z.string().max(255).nullable().or(z.literal('')),
-  plausible_domain: z.string().max(255).nullable().or(z.literal('')),
-  meta_pixel_id: z.string().max(255).nullable().or(z.literal('')),
-});
-
-type SettingsFormData = z.infer<typeof settingsSchema>;
+type SettingsFormData = {
+  site_title: string;
+  site_description: string | null;
+  logo_url: string | null;
+  favicon_url: string | null;
+  maintenance_mode: boolean;
+  ga4_measurement_id: string | null;
+  gtm_container_id: string | null;
+  clarity_project_id: string | null;
+  plausible_domain: string | null;
+  meta_pixel_id: string | null;
+};
 
 // ============================================================================
 // Component
@@ -38,7 +36,21 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export function SettingsPage() {
   const { toast } = useToast();
+  const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
+
+  const settingsSchema = useMemo(() => z.object({
+    site_title: z.string().min(1, t('site_title_required')).max(255, t('site_title_too_long')),
+    site_description: z.string().max(500, t('site_description_too_long')).nullable().or(z.literal('')),
+    logo_url: z.string().url(t('invalid_url')).max(255, t('url_too_long')).nullable().or(z.literal('')),
+    favicon_url: z.string().url(t('invalid_url')).max(255, t('url_too_long')).nullable().or(z.literal('')),
+    maintenance_mode: z.boolean(),
+    ga4_measurement_id: z.string().max(255).nullable().or(z.literal('')),
+    gtm_container_id: z.string().max(255).nullable().or(z.literal('')),
+    clarity_project_id: z.string().max(255).nullable().or(z.literal('')),
+    plausible_domain: z.string().max(255).nullable().or(z.literal('')),
+    meta_pixel_id: z.string().max(255).nullable().or(z.literal('')),
+  }), [t]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
@@ -54,15 +66,15 @@ export function SettingsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-settings'] });
       toast({
-        title: 'Settings updated',
-        description: 'Your site settings have been saved successfully.',
+        title: t('updated_title'),
+        description: t('updated_description_tenant'),
       });
     },
     onError: (error: unknown) => {
       const apiError = error as { response?: { data?: { message?: string } } };
       toast({
-        title: 'Error',
-        description: apiError.response?.data?.message || 'Failed to update settings',
+        title: t('error_title'),
+        description: apiError.response?.data?.message || t('error_update'),
         variant: 'destructive',
       });
     },
@@ -119,11 +131,11 @@ export function SettingsPage() {
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Settings" description="Manage your site configuration" />
+        <PageHeader title={t('page_title')} description={t('tenant_description')} />
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-center py-8">
-              <div className="text-muted-foreground">Loading settings...</div>
+              <div className="text-muted-foreground">{t('loading')}</div>
             </div>
           </CardContent>
         </Card>
@@ -134,42 +146,42 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings"
-        description="Manage your site configuration and integrations"
+        title={t('page_title')}
+        description={t('tenant_description')}
       />
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* General */}
         <Card>
           <CardHeader>
-            <CardTitle>General</CardTitle>
-            <CardDescription>Basic site information</CardDescription>
+            <CardTitle>{t('general')}</CardTitle>
+            <CardDescription>{t('general_description_tenant')}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="site_title">Site Title</Label>
-              <Input id="site_title" placeholder="My Site" {...form.register('site_title')} />
+              <Label htmlFor="site_title">{t('site_title')}</Label>
+              <Input id="site_title" placeholder={t('site_title_placeholder')} {...form.register('site_title')} />
               {form.formState.errors.site_title && (
                 <p className="text-sm text-destructive">{form.formState.errors.site_title.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="site_description">Site Description</Label>
-              <Input id="site_description" placeholder="A short description of your site" {...form.register('site_description')} />
+              <Label htmlFor="site_description">{t('site_description')}</Label>
+              <Input id="site_description" placeholder={t('site_description_placeholder')} {...form.register('site_description')} />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="logo_url">Logo URL</Label>
-              <Input id="logo_url" placeholder="https://example.com/logo.png" {...form.register('logo_url')} />
+              <Label htmlFor="logo_url">{t('logo_url')}</Label>
+              <Input id="logo_url" placeholder={t('logo_url_placeholder')} {...form.register('logo_url')} />
               {form.formState.errors.logo_url && (
                 <p className="text-sm text-destructive">{form.formState.errors.logo_url.message}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="favicon_url">Favicon URL</Label>
-              <Input id="favicon_url" placeholder="https://example.com/favicon.ico" {...form.register('favicon_url')} />
+              <Label htmlFor="favicon_url">{t('favicon_url')}</Label>
+              <Input id="favicon_url" placeholder={t('favicon_url_placeholder')} {...form.register('favicon_url')} />
               {form.formState.errors.favicon_url && (
                 <p className="text-sm text-destructive">{form.formState.errors.favicon_url.message}</p>
               )}
@@ -180,15 +192,15 @@ export function SettingsPage() {
         {/* Site Status */}
         <Card>
           <CardHeader>
-            <CardTitle>Site Status</CardTitle>
-            <CardDescription>Control public access to your site</CardDescription>
+            <CardTitle>{t('site_status')}</CardTitle>
+            <CardDescription>{t('site_status_description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center justify-between space-x-2">
               <div className="space-y-0.5 flex-1">
-                <Label htmlFor="maintenance_mode">Maintenance Mode</Label>
+                <Label htmlFor="maintenance_mode">{t('maintenance_mode')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  When enabled, your public site displays a maintenance notice to visitors.
+                  {t('maintenance_mode_help')}
                 </p>
               </div>
               <input
@@ -207,41 +219,41 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart2 className="h-5 w-5" />
-              Analytics Integrations
+              {t('analytics_integrations')}
             </CardTitle>
             <CardDescription>
-              Third-party analytics scripts injected into your public storefront. Leave blank to disable a provider.
+              {t('analytics_integrations_description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="ga4_measurement_id">Google Analytics 4 — Measurement ID</Label>
+              <Label htmlFor="ga4_measurement_id">{t('ga4_label')}</Label>
               <Input id="ga4_measurement_id" placeholder="G-XXXXXXXXXX" {...form.register('ga4_measurement_id')} />
-              <p className="text-sm text-muted-foreground">Found in GA4 › Admin › Data Streams › your stream</p>
+              <p className="text-sm text-muted-foreground">{t('ga4_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="gtm_container_id">Google Tag Manager — Container ID</Label>
+              <Label htmlFor="gtm_container_id">{t('gtm_label')}</Label>
               <Input id="gtm_container_id" placeholder="GTM-XXXXXXX" {...form.register('gtm_container_id')} />
-              <p className="text-sm text-muted-foreground">Found in GTM › your workspace (top of page)</p>
+              <p className="text-sm text-muted-foreground">{t('gtm_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="clarity_project_id">Microsoft Clarity — Project ID</Label>
+              <Label htmlFor="clarity_project_id">{t('clarity_label')}</Label>
               <Input id="clarity_project_id" placeholder="xxxxxxxxxx" {...form.register('clarity_project_id')} />
-              <p className="text-sm text-muted-foreground">Found in Clarity › Settings › Overview</p>
+              <p className="text-sm text-muted-foreground">{t('clarity_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plausible_domain">Plausible Analytics — Domain</Label>
+              <Label htmlFor="plausible_domain">{t('plausible_label')}</Label>
               <Input id="plausible_domain" placeholder="yourdomain.com" {...form.register('plausible_domain')} />
-              <p className="text-sm text-muted-foreground">The domain you registered in Plausible (without https://)</p>
+              <p className="text-sm text-muted-foreground">{t('plausible_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="meta_pixel_id">Meta Pixel — Pixel ID</Label>
+              <Label htmlFor="meta_pixel_id">{t('meta_pixel_label')}</Label>
               <Input id="meta_pixel_id" placeholder="000000000000000" {...form.register('meta_pixel_id')} />
-              <p className="text-sm text-muted-foreground">Found in Meta Events Manager › your pixel</p>
+              <p className="text-sm text-muted-foreground">{t('meta_pixel_help')}</p>
             </div>
           </CardContent>
         </Card>
@@ -252,8 +264,8 @@ export function SettingsPage() {
             type="submit"
             disabled={updateMutation.isPending || !form.formState.isDirty}
           >
-            <Save className="h-4 w-4 mr-2" />
-            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+            <Save className="h-4 w-4 me-2" />
+            {updateMutation.isPending ? t('saving') : t('save_changes')}
           </Button>
         </div>
       </form>

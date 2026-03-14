@@ -22,6 +22,7 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::get('user', [AuthController::class, 'user'])->middleware('auth:api');
             Route::put('user', [AuthController::class, 'updateProfile'])->middleware('auth:api');
             Route::put('password', [AuthController::class, 'updatePassword'])->middleware('auth:api');
+            Route::patch('locale', [AuthController::class, 'updateLocale'])->middleware('auth:api');
             Route::post('avatar', [AuthController::class, 'uploadAvatar'])->middleware('auth:api');
             Route::delete('avatar', [AuthController::class, 'deleteAvatar'])->middleware('auth:api');
         });

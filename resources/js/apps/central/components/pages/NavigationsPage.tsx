@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Menu as MenuIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/components/ui/button';
+import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
+import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { navigations, type Navigation } from '@/shared/services/api/navigations';
 import { toast } from 'sonner';
 import { NavigationEditor } from '../navigation/NavigationEditor';
@@ -10,6 +13,8 @@ export function NavigationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [selectedNavigation, setSelectedNavigation] = useState<Navigation | null>(null);
+  const [deletingNavigation, setDeletingNavigation] = useState<Navigation | null>(null);
+  const { t } = useTranslation('navigations');
 
   const fetchNavigations = async () => {
     try {
@@ -18,7 +23,7 @@ export function NavigationsPage() {
       setNavigationList(response.data);
     } catch (error) {
       console.error('Failed to fetch navigations:', error);
-      toast.error('Failed to load navigations');
+      toast.error(t('failed_load'));
     } finally {
       setIsLoading(false);
     }
@@ -26,6 +31,7 @@ export function NavigationsPage() {
 
   useEffect(() => {
     fetchNavigations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleCreate = () => {
@@ -38,18 +44,17 @@ export function NavigationsPage() {
     setIsEditorOpen(true);
   };
 
-  const handleDelete = async (navigation: Navigation) => {
-    if (!confirm(`Are you sure you want to delete "${navigation.name}"?`)) {
-      return;
-    }
+  const handleDelete = async () => {
+    if (!deletingNavigation) return;
 
     try {
-      await navigations.delete(navigation.id);
-      toast.success('Navigation deleted successfully');
+      await navigations.delete(deletingNavigation.id);
+      toast.success(t('deleted_success'));
+      setDeletingNavigation(null);
       fetchNavigations();
     } catch (error) {
       console.error('Failed to delete navigation:', error);
-      toast.error('Failed to delete navigation');
+      toast.error(t('failed_delete'));
     }
   };
 
@@ -68,8 +73,8 @@ export function NavigationsPage() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4"></div>
-          <p className="text-gray-600">Loading navigations...</p>
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-4" />
+          <p className="text-gray-600">{t('loading')}</p>
         </div>
       </div>
     );
@@ -87,29 +92,25 @@ export function NavigationsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Navigation Menus</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Create and manage navigation menus for your site
-          </p>
-        </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          Create Navigation
-        </Button>
-      </div>
+      <PageHeader
+        title={t('title')}
+        description={t('description')}
+        actions={
+          <Button onClick={handleCreate}>
+            <Plus className="w-4 h-4 me-2" />
+            {t('create_navigation')}
+          </Button>
+        }
+      />
 
-      {/* Navigation List */}
       {navigationList.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
           <MenuIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No navigations yet</h3>
-          <p className="text-gray-600 mb-6">Get started by creating your first navigation menu.</p>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_navigations_title')}</h3>
+          <p className="text-gray-600 mb-6">{t('no_navigations_description')}</p>
           <Button onClick={handleCreate}>
-            <Plus className="w-4 h-4 mr-2" />
-            Create Navigation
+            <Plus className="w-4 h-4 me-2" />
+            {t('create_navigation')}
           </Button>
         </div>
       ) : (
@@ -135,9 +136,9 @@ export function NavigationsPage() {
                       {nav.status}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">Slug: {nav.slug}</p>
+                  <p className="text-sm text-gray-600 mb-3">{t('slug_label', { slug: nav.slug })}</p>
                   <div className="text-sm text-gray-500">
-                    {nav.structure?.length || 0} menu item{nav.structure?.length !== 1 ? 's' : ''}
+                    {t('menu_items_other', { count: nav.structure?.length || 0 })}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -146,13 +147,13 @@ export function NavigationsPage() {
                     size="sm"
                     onClick={() => handleEdit(nav)}
                   >
-                    <Edit className="w-4 h-4 mr-2" />
-                    Edit
+                    <Edit className="w-4 h-4 me-2" />
+                    {t('edit')}
                   </Button>
                   <Button
                     variant="destructive"
                     size="sm"
-                    onClick={() => handleDelete(nav)}
+                    onClick={() => setDeletingNavigation(nav)}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -162,6 +163,16 @@ export function NavigationsPage() {
           ))}
         </div>
       )}
+
+      <ConfirmDialog
+        open={!!deletingNavigation}
+        onOpenChange={(open) => !open && setDeletingNavigation(null)}
+        onConfirm={handleDelete}
+        title={t('delete')}
+        description={t('delete_confirm', { name: deletingNavigation?.name ?? '' })}
+        confirmText={t('delete')}
+        variant="destructive"
+      />
     </div>
   );
 }

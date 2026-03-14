@@ -1,5 +1,5 @@
 import { http } from '../http';
-import type { Theme, AvailableTheme, ThemeData, ActivateThemeData, CreateThemeData, UpdateThemeData, DuplicateThemeData, PageTemplate } from './types';
+import type { Theme, ThemeData, ActivateThemeData, CreateThemeData, UpdateThemeData, DuplicateThemeData, PageTemplate } from './types';
 
 export const themes = {
   /** Get active theme */

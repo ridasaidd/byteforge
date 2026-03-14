@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -11,26 +11,24 @@ import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks';
+import { useTranslation } from 'react-i18next';
 
 // ============================================================================
 // Form Schema
 // ============================================================================
 
-const settingsSchema = z.object({
-  site_name: z.string().min(1, 'Site name is required').max(255, 'Site name is too long'),
-  site_active: z.boolean(),
-  support_email: z.string().email('Invalid email address').max(255, 'Email is too long').nullable().or(z.literal('')),
-  company_name: z.string().max(255, 'Company name is too long').nullable().or(z.literal('')),
-  max_tenants_per_user: z.number().int().min(1, 'Must be at least 1').max(100, 'Maximum is 100'),
-  // Phase 9.6 — Analytics integrations
-  ga4_measurement_id: z.string().max(255).nullable().or(z.literal('')),
-  gtm_container_id: z.string().max(255).nullable().or(z.literal('')),
-  clarity_project_id: z.string().max(255).nullable().or(z.literal('')),
-  plausible_domain: z.string().max(255).nullable().or(z.literal('')),
-  meta_pixel_id: z.string().max(255).nullable().or(z.literal('')),
-});
-
-type SettingsFormData = z.infer<typeof settingsSchema>;
+type SettingsFormData = {
+  site_name: string;
+  site_active: boolean;
+  support_email: string | null;
+  company_name: string | null;
+  max_tenants_per_user: number;
+  ga4_measurement_id: string | null;
+  gtm_container_id: string | null;
+  clarity_project_id: string | null;
+  plausible_domain: string | null;
+  meta_pixel_id: string | null;
+};
 
 // ============================================================================
 // Component
@@ -38,7 +36,21 @@ type SettingsFormData = z.infer<typeof settingsSchema>;
 
 export function SettingsPage() {
   const { toast } = useToast();
+  const { t } = useTranslation('settings');
   const queryClient = useQueryClient();
+
+  const settingsSchema = useMemo(() => z.object({
+    site_name: z.string().min(1, t('site_name_required')).max(255, t('site_name_too_long')),
+    site_active: z.boolean(),
+    support_email: z.string().email(t('invalid_email')).max(255, t('email_too_long')).nullable().or(z.literal('')),
+    company_name: z.string().max(255, t('company_name_too_long')).nullable().or(z.literal('')),
+    max_tenants_per_user: z.number().int().min(1, t('min_tenants')).max(100, t('max_tenants')),
+    ga4_measurement_id: z.string().max(255).nullable().or(z.literal('')),
+    gtm_container_id: z.string().max(255).nullable().or(z.literal('')),
+    clarity_project_id: z.string().max(255).nullable().or(z.literal('')),
+    plausible_domain: z.string().max(255).nullable().or(z.literal('')),
+    meta_pixel_id: z.string().max(255).nullable().or(z.literal('')),
+  }), [t]);
 
   // ============================================================================
   // Query to fetch settings
@@ -63,15 +75,15 @@ export function SettingsPage() {
       queryClient.invalidateQueries({ queryKey: ['settings'] });
       queryClient.invalidateQueries({ queryKey: ['activity'] }); // Refresh activity log
       toast({
-        title: 'Settings updated',
-        description: 'General platform settings have been saved successfully.',
+        title: t('updated_title'),
+        description: t('updated_description_central'),
       });
     },
     onError: (error: unknown) => {
       const apiError = error as { response?: { data?: { message?: string } } };
       toast({
-        title: 'Error',
-        description: apiError.response?.data?.message || 'Failed to update settings',
+        title: t('error_title'),
+        description: apiError.response?.data?.message || t('error_update'),
         variant: 'destructive',
       });
     },
@@ -142,13 +154,13 @@ export function SettingsPage() {
     return (
       <div className="space-y-6">
         <PageHeader
-          title="Settings"
-          description="Manage platform-wide configuration"
+          title={t('page_title')}
+          description={t('central_description')}
         />
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center justify-center py-8">
-              <div className="text-muted-foreground">Loading settings...</div>
+              <div className="text-muted-foreground">{t('loading')}</div>
             </div>
           </CardContent>
         </Card>
@@ -159,25 +171,25 @@ export function SettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Settings"
-        description="Manage platform-wide configuration and policies"
+        title={t('page_title')}
+        description={t('central_description')}
       />
 
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         {/* General Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>General</CardTitle>
+            <CardTitle>{t('general')}</CardTitle>
             <CardDescription>
-              Basic platform information and branding
+              {t('general_description_central')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="site_name">Site Name</Label>
+              <Label htmlFor="site_name">{t('site_name')}</Label>
               <Input
                 id="site_name"
-                placeholder="ByteForge"
+                placeholder={t('site_name_placeholder')}
                 {...form.register('site_name')}
               />
               {form.formState.errors.site_name && (
@@ -186,15 +198,15 @@ export function SettingsPage() {
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                The name of your platform displayed across the application
+                {t('site_name_help')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company_name">Company Name</Label>
+              <Label htmlFor="company_name">{t('company_name')}</Label>
               <Input
                 id="company_name"
-                placeholder="ByteForge Inc."
+                placeholder={t('company_name_placeholder')}
                 {...form.register('company_name')}
               />
               {form.formState.errors.company_name && (
@@ -203,16 +215,16 @@ export function SettingsPage() {
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                Your organization or company name
+                {t('company_name_help')}
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="support_email">Support Email</Label>
+              <Label htmlFor="support_email">{t('support_email')}</Label>
               <Input
                 id="support_email"
                 type="email"
-                placeholder="support@byteforge.com"
+                placeholder={t('support_email_placeholder')}
                 {...form.register('support_email')}
               />
               {form.formState.errors.support_email && (
@@ -221,7 +233,7 @@ export function SettingsPage() {
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                Email address for customer support inquiries
+                {t('support_email_help')}
               </p>
             </div>
           </CardContent>
@@ -230,17 +242,17 @@ export function SettingsPage() {
         {/* Platform Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Platform</CardTitle>
+            <CardTitle>{t('platform')}</CardTitle>
             <CardDescription>
-              Platform-wide operational settings
+              {t('platform_description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between space-x-2">
               <div className="space-y-0.5 flex-1">
-                <Label htmlFor="site_active">Platform Active</Label>
+                <Label htmlFor="site_active">{t('platform_active')}</Label>
                 <p className="text-sm text-muted-foreground">
-                  Enable or disable the entire platform. When disabled, only admins can access the system.
+                  {t('platform_active_help')}
                 </p>
               </div>
               <input
@@ -253,7 +265,7 @@ export function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="max_tenants_per_user">Max Tenants Per User</Label>
+              <Label htmlFor="max_tenants_per_user">{t('max_tenants_per_user')}</Label>
               <Input
                 id="max_tenants_per_user"
                 type="number"
@@ -267,7 +279,7 @@ export function SettingsPage() {
                 </p>
               )}
               <p className="text-sm text-muted-foreground">
-                Maximum number of tenants a single user can create (1-100)
+                {t('max_tenants_per_user_help')}
               </p>
             </div>
           </CardContent>
@@ -278,61 +290,61 @@ export function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <BarChart2 className="h-5 w-5" />
-              Analytics Integrations
+              {t('analytics_integrations')}
             </CardTitle>
             <CardDescription>
-              Third-party analytics scripts injected into the public storefront. Leave blank to disable a provider.
+              {t('analytics_integrations_description')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="ga4_measurement_id">Google Analytics 4 — Measurement ID</Label>
+              <Label htmlFor="ga4_measurement_id">{t('ga4_label')}</Label>
               <Input
                 id="ga4_measurement_id"
                 placeholder="G-XXXXXXXXXX"
                 {...form.register('ga4_measurement_id')}
               />
-              <p className="text-sm text-muted-foreground">Found in GA4 › Admin › Data Streams › your stream</p>
+              <p className="text-sm text-muted-foreground">{t('ga4_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="gtm_container_id">Google Tag Manager — Container ID</Label>
+              <Label htmlFor="gtm_container_id">{t('gtm_label')}</Label>
               <Input
                 id="gtm_container_id"
                 placeholder="GTM-XXXXXXX"
                 {...form.register('gtm_container_id')}
               />
-              <p className="text-sm text-muted-foreground">Found in GTM › your workspace (top of page)</p>
+              <p className="text-sm text-muted-foreground">{t('gtm_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="clarity_project_id">Microsoft Clarity — Project ID</Label>
+              <Label htmlFor="clarity_project_id">{t('clarity_label')}</Label>
               <Input
                 id="clarity_project_id"
                 placeholder="xxxxxxxxxx"
                 {...form.register('clarity_project_id')}
               />
-              <p className="text-sm text-muted-foreground">Found in Clarity › Settings › Overview</p>
+              <p className="text-sm text-muted-foreground">{t('clarity_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="plausible_domain">Plausible Analytics — Domain</Label>
+              <Label htmlFor="plausible_domain">{t('plausible_label')}</Label>
               <Input
                 id="plausible_domain"
                 placeholder="byteforge.com"
                 {...form.register('plausible_domain')}
               />
-              <p className="text-sm text-muted-foreground">The domain you registered in Plausible (without https://)</p>
+              <p className="text-sm text-muted-foreground">{t('plausible_help')}</p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="meta_pixel_id">Meta Pixel — Pixel ID</Label>
+              <Label htmlFor="meta_pixel_id">{t('meta_pixel_label')}</Label>
               <Input
                 id="meta_pixel_id"
                 placeholder="000000000000000"
                 {...form.register('meta_pixel_id')}
               />
-              <p className="text-sm text-muted-foreground">Found in Meta Events Manager › your pixel</p>
+              <p className="text-sm text-muted-foreground">{t('meta_pixel_help')}</p>
             </div>
           </CardContent>
         </Card>
@@ -343,8 +355,8 @@ export function SettingsPage() {
             type="submit"
             disabled={updateMutation.isPending || !form.formState.isDirty}
           >
-            <Save className="h-4 w-4 mr-2" />
-            {updateMutation.isPending ? 'Saving...' : 'Save Changes'}
+            <Save className="h-4 w-4 me-2" />
+            {updateMutation.isPending ? t('saving') : t('save_changes')}
           </Button>
         </div>
       </form>

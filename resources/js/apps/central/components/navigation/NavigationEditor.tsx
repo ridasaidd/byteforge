@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Save, X, Plus, GripVertical, Trash2, ExternalLink, FileText, ChevronRight, ChevronDown } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -74,6 +75,7 @@ function SortableMenuItem({
   onIndent,
   onOutdent,
 }: SortableMenuItemProps) {
+  const { t } = useTranslation('navigations');
   const {
     attributes,
     listeners,
@@ -104,7 +106,7 @@ function SortableMenuItem({
         onClick={() => onToggleExpand(item.id)}
         className={`w-5 h-5 flex items-center justify-center ${hasChildren ? 'text-gray-600' : 'text-transparent pointer-events-none'}`}
       >
-        {hasChildren && (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />)}
+        {hasChildren && (isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4 rtl:rotate-180" />)}
       </button>
 
       <div className="flex-1">
@@ -119,7 +121,7 @@ function SortableMenuItem({
             variant="ghost"
             size="sm"
             onClick={() => onIndent(item.id)}
-            title="Indent"
+            title={t('indent')}
           >
             →
           </Button>
@@ -129,14 +131,14 @@ function SortableMenuItem({
             variant="ghost"
             size="sm"
             onClick={() => onOutdent(item.id)}
-            title="Outdent"
+            title={t('outdent')}
           >
             ←
           </Button>
         )}
 
         <Button variant="outline" size="sm" onClick={() => onEdit(item.id)}>
-          Edit
+          {t('edit')}
         </Button>
         <Button variant="destructive" size="sm" onClick={() => onDelete(item.id)}>
           <Trash2 className="w-4 h-4" />
@@ -147,6 +149,7 @@ function SortableMenuItem({
 }
 
 export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEditorProps) {
+  const { t } = useTranslation('navigations');
   const [name, setName] = useState(navigation?.name || '');
   const [slug, setSlug] = useState(navigation?.slug || '');
   const [status, setStatus] = useState<'draft' | 'published'>(navigation?.status || 'draft');
@@ -244,14 +247,14 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
         setPublishedPages(response.data);
       } catch (error) {
         console.error('Failed to fetch pages:', error);
-        toast.error('Failed to load pages');
+        toast.error(t('failed_load_pages'));
       } finally {
         setIsLoadingPages(false);
       }
     };
 
     fetchPages();
-  }, []);
+  }, [t]);
 
   // Generate slug from name
   const generateSlug = (text: string) => {
@@ -272,7 +275,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
     // Check if page is already in menu
     const exists = menuItems.some(item => item.page_id === page.id);
     if (exists) {
-      toast.error('Page already in menu');
+      toast.error(t('page_already_in_menu'));
       return;
     }
 
@@ -286,7 +289,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
       order: menuItems.length,
     };
     setMenuItems([...menuItems, newItem]);
-    toast.success('Page added to menu');
+    toast.success(t('page_added_to_menu'));
   };
 
   const handleAddCustomLink = () => {
@@ -312,7 +315,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
 
   const handleSaveCustomLink = () => {
     if (!customLabel.trim() || !customUrl.trim()) {
-      toast.error('Please enter both label and URL');
+      toast.error(t('enter_label_and_url'));
       return;
     }
 
@@ -323,7 +326,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
           ? { ...item, label: customLabel, url: customUrl, target: customTarget }
           : item
       ));
-      toast.success('Menu item updated');
+      toast.success(t('menu_item_updated'));
     } else {
       // Add new custom link
       const newItem: MenuItem = {
@@ -335,7 +338,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
         order: menuItems.length,
       };
       setMenuItems([...menuItems, newItem]);
-      toast.success('Custom link added');
+      toast.success(t('custom_link_added'));
     }
 
     setIsCustomLinkOpen(false);
@@ -357,7 +360,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
     const updatedHierarchy = removeItemAndChildren(hierarchy, id);
     const flatUpdated = flattenHierarchy(updatedHierarchy);
     setMenuItems(flatUpdated);
-    toast.success('Menu item removed');
+    toast.success(t('menu_item_removed'));
   };
 
   const handleToggleExpand = (id: string) => {
@@ -388,7 +391,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
         );
         // Auto-expand the parent
         setExpandedItems(prev => new Set(prev).add(prevItem.id));
-        toast.success('Item indented');
+        toast.success(t('item_indented'));
       }
     }
   };
@@ -402,7 +405,7 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
         setMenuItems(items =>
           items.map(i => i.id === id ? { ...i, parent_id: parent.parent_id } : i)
         );
-        toast.success('Item outdented');
+        toast.success(t('item_outdented'));
       }
     }
   };
@@ -465,12 +468,12 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
 
   const handleSave = async () => {
     if (!name.trim()) {
-      toast.error('Please enter a navigation name');
+      toast.error(t('enter_navigation_name'));
       return;
     }
 
     if (!slug.trim()) {
-      toast.error('Please enter a slug');
+      toast.error(t('enter_slug'));
       return;
     }
 
@@ -486,16 +489,16 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
 
       if (navigation) {
         await navigations.update(navigation.id, data);
-        toast.success('Navigation updated successfully');
+        toast.success(t('updated_success'));
       } else {
         await navigations.create(data);
-        toast.success('Navigation created successfully');
+        toast.success(t('created_success'));
       }
 
       onSave();
     } catch (error: unknown) {
       console.error('Failed to save navigation:', error);
-      toast.error('Failed to save navigation');
+      toast.error(t('failed_save'));
     } finally {
       setIsSaving(false);
     }
@@ -507,55 +510,55 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            {navigation ? 'Edit Navigation' : 'Create Navigation'}
+            {navigation ? t('edit_navigation') : t('create_navigation')}
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            {navigation ? `Editing: ${navigation.name}` : 'Create a new navigation menu'}
+            {navigation ? t('editing_navigation', { name: navigation.name }) : t('create_navigation_description')}
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={onCancel}>
-            <X className="w-4 h-4 mr-2" />
-            Cancel
+            <X className="w-4 h-4 me-2" />
+            {t('cancel')}
           </Button>
           <Button onClick={handleSave} disabled={isSaving}>
-            <Save className="w-4 h-4 mr-2" />
-            {isSaving ? 'Saving...' : 'Save'}
+            <Save className="w-4 h-4 me-2" />
+            {isSaving ? t('saving') : t('save')}
           </Button>
         </div>
       </div>
 
       {/* Settings */}
       <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Navigation Settings</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('navigation_settings')}</h2>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t('name')}</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => handleNameChange(e.target.value)}
-              placeholder="Main Menu"
+              placeholder={t('name_placeholder')}
             />
           </div>
           <div>
-            <Label htmlFor="slug">Slug</Label>
+            <Label htmlFor="slug">{t('slug')}</Label>
             <Input
               id="slug"
               value={slug}
               onChange={(e) => setSlug(e.target.value)}
-              placeholder="main-menu"
+              placeholder={t('slug_placeholder')}
             />
           </div>
           <div>
-            <Label htmlFor="status">Status</Label>
+            <Label htmlFor="status">{t('status')}</Label>
             <Select value={status} onValueChange={(value: 'draft' | 'published') => setStatus(value)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="published">Published</SelectItem>
+                <SelectItem value="draft">{t('status_draft')}</SelectItem>
+                <SelectItem value="published">{t('status_published')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -566,17 +569,17 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
       <div className="grid grid-cols-2 gap-6">
         {/* Left: Available Pages */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Published Pages</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('published_pages')}</h2>
 
           {isLoadingPages ? (
             <div className="text-center py-8 text-gray-500">
               <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mb-2"></div>
-              <p>Loading pages...</p>
+              <p>{t('loading_pages')}</p>
             </div>
           ) : publishedPages.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-              <p>No published pages yet</p>
+              <p>{t('no_published_pages')}</p>
             </div>
           ) : (
             <div className="space-y-2 max-h-96 overflow-y-auto">
@@ -594,8 +597,8 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
                     variant="outline"
                     onClick={() => handleAddPage(page)}
                   >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add
+                    <Plus className="w-3 h-3 me-1" />
+                    {t('add')}
                   </Button>
                 </div>
               ))}
@@ -608,25 +611,25 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
               className="w-full"
               onClick={handleAddCustomLink}
             >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Add Custom Link
+              <ExternalLink className="w-4 h-4 me-2" />
+              {t('add_custom_link')}
             </Button>
           </div>
         </div>
 
         {/* Right: Menu Structure */}
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Menu Structure</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{t('menu_structure')}</h2>
 
           {menuItems.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
-              <p className="mb-2">No menu items yet</p>
-              <p className="text-sm">Add pages from the left or create custom links</p>
+              <p className="mb-2">{t('no_menu_items')}</p>
+              <p className="text-sm">{t('menu_items_hint')}</p>
             </div>
           ) : (
             <div>
               <div className="text-sm text-gray-600 mb-3 flex items-center gap-2">
-                <span>💡 Tip: Use → and ← buttons to indent/outdent items, or drag to reorder</span>
+                <span>{t('menu_tip')}</span>
               </div>
               <DndContext
                 sensors={sensors}
@@ -668,46 +671,46 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
       <Dialog open={isCustomLinkOpen} onOpenChange={setIsCustomLinkOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{isEditingItem ? 'Edit Menu Item' : 'Add Custom Link'}</DialogTitle>
+            <DialogTitle>{isEditingItem ? t('edit_menu_item') : t('add_custom_link')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div>
-              <Label htmlFor="custom-label">Label</Label>
+              <Label htmlFor="custom-label">{t('label')}</Label>
               <Input
                 id="custom-label"
                 value={customLabel}
                 onChange={(e) => setCustomLabel(e.target.value)}
-                placeholder="Link text"
+                placeholder={t('label_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="custom-url">URL</Label>
+              <Label htmlFor="custom-url">{t('url')}</Label>
               <Input
                 id="custom-url"
                 value={customUrl}
                 onChange={(e) => setCustomUrl(e.target.value)}
-                placeholder="https://example.com or /about"
+                placeholder={t('url_placeholder')}
               />
             </div>
             <div>
-              <Label htmlFor="custom-target">Open in</Label>
+              <Label htmlFor="custom-target">{t('open_in')}</Label>
               <Select value={customTarget} onValueChange={(value: '_self' | '_blank') => setCustomTarget(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="_self">Same Window</SelectItem>
-                  <SelectItem value="_blank">New Tab</SelectItem>
+                  <SelectItem value="_self">{t('same_window')}</SelectItem>
+                  <SelectItem value="_blank">{t('new_tab')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCustomLinkOpen(false)}>
-              Cancel
+              {t('cancel')}
             </Button>
             <Button onClick={handleSaveCustomLink}>
-              {isEditingItem ? 'Update' : 'Add'}
+              {isEditingItem ? t('update') : t('add')}
             </Button>
           </DialogFooter>
         </DialogContent>

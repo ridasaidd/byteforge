@@ -2,6 +2,7 @@
 
 namespace Tests\Central\Feature\Api;
 
+use App\Models\User;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -39,7 +40,7 @@ class AuthApiTest extends TestCase
 
         // Laravel returns 422 validation error for credential failures
         $response->assertStatus(422)
-            ->assertJsonPath('message', 'The provided credentials are incorrect.');
+            ->assertJsonPath('message', trans('auth.failed'));
     }
 
     #[Test]
@@ -78,6 +79,22 @@ class AuthApiTest extends TestCase
         $response->assertOk()
             ->assertJsonStructure(['id', 'name', 'email'])
             ->assertJsonFragment(['email' => 'superadmin@byteforge.se']);
+    }
+
+    #[Test]
+    public function authenticated_user_can_update_preferred_locale(): void
+    {
+        $response = $this->actingAsSuperadmin()
+            ->patchJson('/api/auth/locale', [
+                'locale' => 'sv',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('locale', 'sv')
+            ->assertJsonPath('message', trans('Locale updated successfully'));
+
+        $user = User::query()->where('email', 'superadmin@byteforge.se')->firstOrFail();
+        $this->assertSame('sv', $user->preferred_locale);
     }
 
     #[Test]

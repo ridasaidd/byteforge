@@ -8,10 +8,26 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Laravel\Passport\Token as PassportToken;
 
 class AuthController extends Controller
 {
+    /**
+     * Return the authenticated API user as a concrete User model.
+     */
+    private function authenticatedUser(Request $request): User
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        return $user;
+    }
+
     /**
      * Login user and return token
      */
@@ -25,19 +41,20 @@ class AuthController extends Controller
         // Attempt authentication
         if (! Auth::attempt($request->only('email', 'password'))) {
             throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+                'email' => [__('auth.failed')],
             ]);
         }
 
         $user = Auth::user();
 
+        if (! $user instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
         // Create access token
-        // This seems to be a false positive error.
         $token = $user->createToken('web-token')->accessToken;
 
         return response()->json([
-            // This also seems to be a false positive error.
-            // @php-ignore
             'user' => $user->load('roles', 'permissions'),
             'token' => $token,
         ]);
@@ -76,10 +93,15 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->token()->revoke();
+        $user = $this->authenticatedUser($request);
+        $token = $user->token();
+
+        if ($token instanceof PassportToken) {
+            $token->revoke();
+        }
 
         return response()->json([
-            'message' => 'Successfully logged out',
+            'message' => __('Successfully logged out'),
         ]);
     }
 
@@ -88,10 +110,13 @@ class AuthController extends Controller
      */
     public function refresh(Request $request)
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Revoke old token
-        $user->token()->revoke();
+        $token = $user->token();
+        if ($token instanceof PassportToken) {
+            $token->revoke();
+        }
 
         // Create new token
         $token = $user->createToken('web-token')->accessToken;
@@ -106,7 +131,7 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        $user = $request->user()->load('roles.permissions', 'permissions');
+        $user = $this->authenticatedUser($request)->load('roles.permissions', 'permissions');
 
         // Add avatar URL to response
         $user->avatar = $user->avatar_url;
@@ -119,7 +144,7 @@ class AuthController extends Controller
      */
     public function updateProfile(Request $request)
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -143,7 +168,7 @@ class AuthController extends Controller
             ->log('Profile updated');
 
         return response()->json([
-            'message' => 'Profile updated successfully',
+            'message' => __('Profile updated successfully'),
             'user' => $user->load('roles', 'permissions'),
         ]);
     }
@@ -153,7 +178,7 @@ class AuthController extends Controller
      */
     public function updatePassword(Request $request)
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $validated = $request->validate([
             'current_password' => 'required|string',
@@ -179,7 +204,27 @@ class AuthController extends Controller
             ->log('Password changed');
 
         return response()->json([
-            'message' => 'Password updated successfully',
+            'message' => __('Password updated successfully'),
+        ]);
+    }
+
+    /**
+     * Update authenticated user's locale preference.
+     */
+    public function updateLocale(Request $request)
+    {
+        $validated = $request->validate([
+            'locale' => ['required', 'string', Rule::in(['en', 'sv', 'ar'])],
+        ]);
+
+        $user = $this->authenticatedUser($request);
+        $user->update([
+            'preferred_locale' => $validated['locale'],
+        ]);
+
+        return response()->json([
+            'message' => __('Locale updated successfully'),
+            'locale' => $validated['locale'],
         ]);
     }
 
@@ -188,7 +233,7 @@ class AuthController extends Controller
      */
     public function uploadAvatar(Request $request)
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         $validated = $request->validate([
             'avatar' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048', // Max 2MB
@@ -215,7 +260,7 @@ class AuthController extends Controller
         $user->avatar = $user->avatar_url;
 
         return response()->json([
-            'message' => 'Avatar uploaded successfully',
+            'message' => __('Avatar uploaded successfully'),
             'user' => $user,
             'avatar_url' => $user->avatar_url,
         ]);
@@ -226,7 +271,7 @@ class AuthController extends Controller
      */
     public function deleteAvatar(Request $request)
     {
-        $user = $request->user();
+        $user = $this->authenticatedUser($request);
 
         // Delete avatar
         $user->clearMediaCollection('avatar');
@@ -242,7 +287,7 @@ class AuthController extends Controller
         $user->avatar = null;
 
         return response()->json([
-            'message' => 'Avatar deleted successfully',
+            'message' => __('Avatar deleted successfully'),
             'user' => $user,
         ]);
     }

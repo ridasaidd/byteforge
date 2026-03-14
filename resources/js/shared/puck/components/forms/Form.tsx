@@ -1,5 +1,5 @@
 import type { ComponentConfig } from '@puckeditor/core';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { FormProvider } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
@@ -49,22 +49,6 @@ export interface FormProps {
 // CSS Maps
 // ============================================================================
 
-const justifyMap: Record<string, string> = {
-  start: 'flex-start', end: 'flex-end', center: 'center',
-  between: 'space-between', around: 'space-around', evenly: 'space-evenly',
-};
-
-const alignMap: Record<string, string> = {
-  start: 'flex-start', end: 'flex-end', center: 'center', stretch: 'stretch', baseline: 'baseline',
-};
-
-const shadowPresets: Record<string, string> = {
-  sm: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-  md: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-  lg: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-  xl: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-};
-
 // ============================================================================
 // Component
 // ============================================================================
@@ -72,7 +56,6 @@ const shadowPresets: Record<string, string> = {
 function FormComponent(props: FormProps) {
   const {
     id, formFields: FormFields, formName, submitAction, emailTo, webhookUrl,
-    successMessage, errorMessage,
     display, gap, direction, justify, align, width,
     backgroundColor, padding, margin, border, shadow, puck,
   } = props;
@@ -115,7 +98,7 @@ function FormComponent(props: FormProps) {
       direction,
       justify,
       align,
-      flexGap: { mobile: gap } as any,  // Convert gap string to responsive format
+      flexGap: { mobile: { value: gap, unit: 'px' } } as any,  // Convert gap string to responsive format
     });
     if (layoutCss) rules.push(layoutCss);
 

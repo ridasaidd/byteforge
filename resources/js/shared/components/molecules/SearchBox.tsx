@@ -62,7 +62,7 @@ export function SearchBox({
         placeholder={placeholder}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="pl-9 pr-20"
+        className="ps-9 pe-20"
       />
       <div className="absolute right-3 flex items-center gap-2">
         {query && (

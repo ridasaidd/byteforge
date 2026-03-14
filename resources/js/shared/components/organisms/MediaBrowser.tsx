@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Grid3x3, List, Search, Filter, X, Folder, MoreVertical, Edit2, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import type { Media, MediaFolder } from '@/shared/services/api';
 import { MediaCard } from '../molecules/MediaCard';
 import { FolderCard } from '../molecules/FolderCard';
@@ -45,11 +46,12 @@ export function MediaBrowser({
   onDeleteFolder,
   onDeleteMedia,
   isLoading = false,
-  emptyMessage = 'No media files found',
+  emptyMessage,
   currentPage = 1,
   totalPages = 1,
   onPageChange,
 }: MediaBrowserProps) {
+  const { t } = useTranslation('media');
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<FilterType>('all');
@@ -66,8 +68,8 @@ export function MediaBrowser({
       if (filterType === 'images' && !item.mime_type.startsWith('image/')) return false;
       if (filterType === 'videos' && !item.mime_type.startsWith('video/')) return false;
       if (filterType === 'audio' && !item.mime_type.startsWith('audio/')) return false;
-      if (filterType === 'documents' && 
-          !item.mime_type.includes('pdf') && 
+      if (filterType === 'documents' &&
+          !item.mime_type.includes('pdf') &&
           !item.mime_type.includes('document') &&
           !item.mime_type.includes('sheet') &&
           !item.mime_type.includes('text')) return false;
@@ -97,33 +99,33 @@ export function MediaBrowser({
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search files..."
+              placeholder={t('search_placeholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
+              className="ps-9"
             />
           </div>
 
           {/* Type Filter */}
           <Select value={filterType} onValueChange={(value) => setFilterType(value as FilterType)}>
             <SelectTrigger className="w-[140px]">
-              <Filter className="w-4 h-4 mr-2" />
+              <Filter className="w-4 h-4 me-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="images">Images</SelectItem>
-              <SelectItem value="videos">Videos</SelectItem>
-              <SelectItem value="audio">Audio</SelectItem>
-              <SelectItem value="documents">Documents</SelectItem>
+              <SelectItem value="all">{t('filter_all')}</SelectItem>
+              <SelectItem value="images">{t('filter_images')}</SelectItem>
+              <SelectItem value="videos">{t('filter_videos')}</SelectItem>
+              <SelectItem value="audio">{t('filter_audio')}</SelectItem>
+              <SelectItem value="documents">{t('filter_documents')}</SelectItem>
             </SelectContent>
           </Select>
 
           {/* Clear Filters */}
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" onClick={clearFilters}>
-              <X className="w-4 h-4 mr-2" />
-              Clear
+              <X className="w-4 h-4 me-2" />
+              {t('clear_filters')}
             </Button>
           )}
         </div>
@@ -152,10 +154,10 @@ export function MediaBrowser({
       {/* Results count */}
       {(filteredMedia.length > 0 || folders.length > 0) && (
         <p className="text-sm text-muted-foreground">
-          {folders.length > 0 && `${folders.length} folder${folders.length !== 1 ? 's' : ''}`}
-          {folders.length > 0 && filteredMedia.length > 0 && ' • '}
-          {filteredMedia.length > 0 && `${filteredMedia.length} file${filteredMedia.length !== 1 ? 's' : ''}`}
-          {selectedMedia.length > 0 && ` • ${selectedMedia.length} selected`}
+          {folders.length > 0 && t('count_folders', { count: folders.length })}
+          {folders.length > 0 && filteredMedia.length > 0 && ' \u2022 '}
+          {filteredMedia.length > 0 && t('count_files', { count: filteredMedia.length })}
+          {selectedMedia.length > 0 && ` \u2022 ${t('count_selected', { count: selectedMedia.length })}`}
         </p>
       )}
 
@@ -172,10 +174,10 @@ export function MediaBrowser({
           <div className="rounded-full bg-muted p-4 mb-4">
             <Search className="w-8 h-8 text-muted-foreground" />
           </div>
-          <p className="text-sm font-medium mb-1">{emptyMessage}</p>
+          <p className="text-sm font-medium mb-1">{emptyMessage || t('no_files')}</p>
           {hasActiveFilters && (
             <Button variant="link" onClick={clearFilters} className="mt-2">
-              Clear filters
+              {t('clear_filters_btn')}
             </Button>
           )}
         </div>
@@ -192,7 +194,7 @@ export function MediaBrowser({
               onDelete={onDeleteFolder}
             />
           ))}
-          
+
           {/* Then media files */}
           {filteredMedia.map((item) => (
             <MediaCard
@@ -211,10 +213,10 @@ export function MediaBrowser({
           <table className="w-full">
             <thead className="bg-muted/50 border-b">
               <tr>
-                <th className="text-left py-3 px-4 font-medium text-sm">Name</th>
-                <th className="text-left py-3 px-4 font-medium text-sm hidden md:table-cell">Type</th>
-                <th className="text-left py-3 px-4 font-medium text-sm hidden md:table-cell">Size</th>
-                <th className="text-left py-3 px-4 font-medium text-sm hidden lg:table-cell">Modified</th>
+                <th className="text-start py-3 px-4 font-medium text-sm">{t('list_col_name')}</th>
+                <th className="text-start py-3 px-4 font-medium text-sm hidden md:table-cell">{t('list_col_type')}</th>
+                <th className="text-start py-3 px-4 font-medium text-sm hidden md:table-cell">{t('list_col_size')}</th>
+                <th className="text-start py-3 px-4 font-medium text-sm hidden lg:table-cell">{t('list_col_modified')}</th>
                 <th className="w-12"></th>
               </tr>
             </thead>
@@ -232,7 +234,7 @@ export function MediaBrowser({
                       <span className="font-medium truncate">{folder.name}</span>
                     </div>
                   </td>
-                  <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">Folder</td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">{t('list_type_folder')}</td>
                   <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">—</td>
                   <td className="py-3 px-4 text-sm text-muted-foreground hidden lg:table-cell">
                     {new Date(folder.created_at).toLocaleDateString()}
@@ -251,15 +253,15 @@ export function MediaBrowser({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
                           {onRenameFolder && (
-                            <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); const newName = prompt('Enter new folder name:', folder.name); if (newName && newName.trim()) onRenameFolder(folder, newName.trim()); }}>
-                              <Edit2 className="w-4 h-4 mr-2" />
-                              Rename
+                            <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); const newName = prompt(t('rename_prompt'), folder.name); if (newName && newName.trim()) onRenameFolder(folder, newName.trim()); }}>
+                              <Edit2 className="w-4 h-4 me-2" />
+                              {t('rename')}
                             </DropdownMenuItem>
                           )}
                           {onDeleteFolder && (
                             <DropdownMenuItem onClick={(e: React.MouseEvent) => { e.stopPropagation(); onDeleteFolder(folder); }} className="text-destructive">
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
+                              <Trash2 className="w-4 h-4 me-2" />
+                              {t('delete')}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
@@ -268,7 +270,7 @@ export function MediaBrowser({
                   </td>
                 </tr>
               ))}
-              
+
               {/* Then media files */}
               {filteredMedia.map((item) => (
                 <tr
@@ -328,10 +330,10 @@ export function MediaBrowser({
             onClick={() => onPageChange?.(currentPage - 1)}
             disabled={currentPage === 1}
           >
-            Previous
+            {t('prev_page')}
           </Button>
           <span className="text-sm text-muted-foreground">
-            Page {currentPage} of {totalPages}
+            {t('page_of', { current: currentPage, total: totalPages })}
           </span>
           <Button
             variant="outline"
@@ -339,7 +341,7 @@ export function MediaBrowser({
             onClick={() => onPageChange?.(currentPage + 1)}
             disabled={currentPage === totalPages}
           >
-            Next
+            {t('next_page')}
           </Button>
         </div>
       )}
