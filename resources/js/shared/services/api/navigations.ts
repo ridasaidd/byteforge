@@ -40,29 +40,39 @@ export interface UpdateNavigationData {
   sort_order?: number;
 }
 
+function getApiScopePrefix(): string {
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/cms')) {
+    return '';
+  }
+
+  return '/superadmin';
+}
+
+const navigationsEndpoint = () => `${getApiScopePrefix()}/navigations`;
+
 export const navigations = {
   list: async (filters?: { status?: string }) => {
-    const response = await http.get<{ data: Navigation[] }>('/superadmin/navigations', filters as Record<string, string>);
+    const response = await http.get<{ data: Navigation[] }>(navigationsEndpoint(), filters as Record<string, string>);
     return response;
   },
 
   get: async (id: number) => {
-    const response = await http.get<{ data: Navigation }>(`/superadmin/navigations/${id}`);
+    const response = await http.get<{ data: Navigation }>(`${navigationsEndpoint()}/${id}`);
     return response;
   },
 
   create: async (data: CreateNavigationData) => {
-    const response = await http.post<{ message: string; data: Navigation }>('/superadmin/navigations', data);
+    const response = await http.post<{ message: string; data: Navigation }>(navigationsEndpoint(), data);
     return response;
   },
 
   update: async (id: number, data: UpdateNavigationData) => {
-    const response = await http.put<{ message: string; data: Navigation }>(`/superadmin/navigations/${id}`, data);
+    const response = await http.put<{ message: string; data: Navigation }>(`${navigationsEndpoint()}/${id}`, data);
     return response;
   },
 
   delete: async (id: number) => {
-    const response = await http.delete<{ message: string }>(`/superadmin/navigations/${id}`);
+    const response = await http.delete<{ message: string }>(`${navigationsEndpoint()}/${id}`);
     return response;
   },
 };

@@ -6,6 +6,8 @@ use App\Models\Addon;
 use App\Models\Plan;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Models\Membership;
+use App\Services\TenantRbacService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
@@ -47,6 +49,7 @@ class TestFixturesSeeder extends Seeder
         $this->createTenants();
         $this->createCentralUsers();
         $this->createTenantUsers();
+    $this->createTenantMemberships();
 
         activity()->enableLogging();
 
@@ -268,44 +271,18 @@ class TestFixturesSeeder extends Seeder
         $this->command->info("\n👥 Creating tenant users...");
 
         setPermissionsTeamId(null); // Clear team context
+        $tenantRbac = app(TenantRbacService::class);
 
         $tenantSlugs = ['tenant-one', 'tenant-two', 'tenant-three'];
 
-        $userTypes = [
-            'owner' => [
-                'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
-                'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
-                'themes.view', 'themes.manage', 'themes.activate',
-                'layouts.view', 'layouts.manage',
-                'templates.view', 'templates.manage',
-                'media.view', 'media.manage',
-                'view analytics',
-                'payments.view', 'payments.manage', 'payments.refund',
-            ],
-            'editor' => [
-                'pages.create', 'pages.edit', 'pages.view',
-                'navigation.create', 'navigation.edit', 'navigation.view',
-                'themes.view',
-                'layouts.view',
-                'templates.view',
-                'media.view', 'media.manage',
-                'view analytics',
-                'payments.view',
-            ],
-            'viewer' => [
-                'pages.view',
-                'navigation.view',
-                'themes.view',
-                'layouts.view',
-                'templates.view',
-                'media.view',
-            ],
-        ];
+        $userTypes = ['owner', 'editor', 'viewer'];
 
         foreach ($tenantSlugs as $slug) {
             $this->command->info("  {$slug}:");
+            $tenantId = str_replace('-', '_', $slug);
+            $tenantRbac->ensureTenantRoles($tenantId);
 
-            foreach ($userTypes as $type => $permissions) {
+            foreach ($userTypes as $type) {
                 $email = "{$type}@{$slug}.byteforge.se";
                 $name = ucfirst($type) . ' - ' . ucwords(str_replace('-', ' ', $slug));
 
@@ -319,11 +296,48 @@ class TestFixturesSeeder extends Seeder
                     ]
                 );
 
-                $user->syncPermissions($permissions);
+                $tenantRbac->syncUserRoleFromMembership($user, $tenantId, $type);
                 $this->command->info("    ✓ {$email}");
             }
         }
+
+        setPermissionsTeamId(null);
     }
+
+        private function createTenantMemberships(): void
+        {
+            $this->command->info("\n🔗 Creating tenant memberships...");
+
+            $tenantSlugs = ['tenant-one', 'tenant-two', 'tenant-three'];
+            $userTypes   = ['owner', 'editor', 'viewer'];
+
+            foreach ($tenantSlugs as $slug) {
+                $tenantId = str_replace('-', '_', $slug);
+                $tenant   = Tenant::find($tenantId);
+
+                if (! $tenant) {
+                    $this->command->warn("  ⚠ Tenant {$tenantId} not found, skipping memberships");
+                    continue;
+                }
+
+                foreach ($userTypes as $type) {
+                    $email = "{$type}@{$slug}.byteforge.se";
+                    $user  = User::where('email', $email)->first();
+
+                    if (! $user) {
+                        $this->command->warn("  ⚠ User {$email} not found, skipping membership");
+                        continue;
+                    }
+
+                    Membership::firstOrCreate(
+                        ['user_id' => $user->id, 'tenant_id' => $tenantId],
+                        ['role' => $type, 'status' => 'active']
+                    );
+
+                    $this->command->info("  ✓ {$email} → {$tenantId} ({$type})");
+                }
+            }
+        }
 
     private function printSummary(): void
     {

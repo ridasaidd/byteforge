@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useToast, useEditorCssLoader } from '@/shared/hooks';
 import { useSettingsRuntimeCss } from '@/shared/hooks/useSettingsRuntimeCss';
 import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
-import { themes } from '@/shared/services/api/themes';
+import { themes, tenantThemes } from '@/shared/services/api/themes';
 import { themePlaceholders } from '@/shared/services/api/themePlaceholders';
 import { pageTemplates } from '@/shared/services/api/pageTemplates';
 import { themeCssApi } from '@/shared/services/api/themeCss';
@@ -49,6 +49,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const { saveSection } = useThemeCssSectionSave();
   const isNew = !id || id === 'new';
   const isCustomizeMode = mode === 'customize';
+  const isTenantCms = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
   const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState(() => {
@@ -152,26 +153,55 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
     } as Theme;
   }, [id, themeName, themeData, isNew]);
 
+  const setEditorSectionCss = (section: 'settings' | 'header' | 'footer', css: string | null | undefined) => {
+    const styleId = `editor-${section}-css`;
+    let styleTag = document.getElementById(styleId) as HTMLStyleElement | null;
+
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = styleId;
+      styleTag.setAttribute('data-source', 'theme-customization-api');
+      document.head.appendChild(styleTag);
+    }
+
+    styleTag.textContent = css || '';
+  };
+
+  useEffect(() => {
+    if (!isCustomizeMode) {
+      return;
+    }
+
+    return () => {
+      ['settings', 'header', 'footer'].forEach((section) => {
+        const styleTag = document.getElementById(`editor-${section}-css`);
+        if (styleTag) {
+          styleTag.remove();
+        }
+      });
+    };
+  }, [isCustomizeMode]);
+
   // Load pre-generated CSS files for live preview in editor
   // CSS from files provides base styles, component runtime CSS cascades over it
   // Load CSS when theme is loaded (independent of active tab)
   useEditorCssLoader({
     themeId: id,
     section: 'settings',
-    enabled: !isNew && !isLoading,
+    enabled: !isNew && !isLoading && !isCustomizeMode,
     refreshTrigger: settingsRefreshTrigger,
   });
 
   useEditorCssLoader({
     themeId: id,
     section: 'header',
-    enabled: !isNew && !isLoading,
+    enabled: !isNew && !isLoading && !isCustomizeMode,
   });
 
   useEditorCssLoader({
     themeId: id,
     section: 'footer',
-    enabled: !isNew && !isLoading,
+    enabled: !isNew && !isLoading && !isCustomizeMode,
   });
 
   // Inject runtime CSS variables for live preview (always enabled when editing theme)
@@ -191,7 +221,9 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   const loadTheme = async () => {
     try {
       setIsLoading(true);
-      const response = await themes.get(Number(id));
+      const response = isTenantCms
+        ? await tenantThemes.get(Number(id))
+        : await themes.get(Number(id));
       const theme = response.data;
 
       setThemeName(theme.name);
@@ -240,6 +272,12 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
             setThemeData(theme.theme_data || themeData);
           }
 
+          // In customize mode, inject section CSS from API response instead of
+          // fetching static /storage files, which may be restricted on tenant domains.
+          setEditorSectionCss('settings', customization.settings_css);
+          setEditorSectionCss('header', customization.header_css);
+          setEditorSectionCss('footer', customization.footer_css);
+
           // Load header content
           if (customization.header_data) {
             const data = customization.header_data as Data;
@@ -265,7 +303,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         description: t('failed_load'),
         variant: 'destructive',
       });
-      navigate('/dashboard/themes');
+      navigate(isTenantCms ? '/cms/themes' : '/dashboard/themes');
     } finally {
       setIsLoading(false);
     }
@@ -485,7 +523,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
         // Navigate to the theme builder page if it was newly created
         if (isNew && themeId) {
-          navigate(`/dashboard/themes/${themeId}/builder`, { replace: true });
+          navigate(isTenantCms ? '/cms/themes' : `/dashboard/themes/${themeId}/builder`, { replace: true });
         }
       }
     } catch (error) {
@@ -670,7 +708,7 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate('/dashboard/themes')}
+            onClick={() => navigate(isTenantCms ? '/cms/themes' : '/dashboard/themes')}
           >
             <ArrowLeft className="h-4 w-4 me-2 rtl:rotate-180" />
             {t('editor_back')}

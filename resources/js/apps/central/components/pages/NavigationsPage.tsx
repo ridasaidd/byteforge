@@ -7,6 +7,7 @@ import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { navigations, type Navigation } from '@/shared/services/api/navigations';
 import { toast } from 'sonner';
 import { NavigationEditor } from '../navigation/NavigationEditor';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 
 export function NavigationsPage() {
   const [navigationList, setNavigationList] = useState<Navigation[]>([]);
@@ -15,6 +16,10 @@ export function NavigationsPage() {
   const [selectedNavigation, setSelectedNavigation] = useState<Navigation | null>(null);
   const [deletingNavigation, setDeletingNavigation] = useState<Navigation | null>(null);
   const { t } = useTranslation('navigations');
+  const { hasPermission } = usePermissions();
+  const canCreateNavigation = hasPermission('navigation.create');
+  const canEditNavigation = hasPermission('navigation.edit');
+  const canDeleteNavigation = hasPermission('navigation.delete');
 
   const fetchNavigations = async () => {
     try {
@@ -95,12 +100,12 @@ export function NavigationsPage() {
       <PageHeader
         title={t('title')}
         description={t('description')}
-        actions={
+        actions={canCreateNavigation ? (
           <Button onClick={handleCreate}>
             <Plus className="w-4 h-4 me-2" />
             {t('create_navigation')}
           </Button>
-        }
+        ) : undefined}
       />
 
       {navigationList.length === 0 ? (
@@ -108,10 +113,12 @@ export function NavigationsPage() {
           <MenuIcon className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">{t('no_navigations_title')}</h3>
           <p className="text-gray-600 mb-6">{t('no_navigations_description')}</p>
-          <Button onClick={handleCreate}>
-            <Plus className="w-4 h-4 me-2" />
-            {t('create_navigation')}
-          </Button>
+          {canCreateNavigation && (
+            <Button onClick={handleCreate}>
+              <Plus className="w-4 h-4 me-2" />
+              {t('create_navigation')}
+            </Button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">
@@ -141,23 +148,29 @@ export function NavigationsPage() {
                     {t('menu_items_other', { count: nav.structure?.length || 0 })}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleEdit(nav)}
-                  >
-                    <Edit className="w-4 h-4 me-2" />
-                    {t('edit')}
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => setDeletingNavigation(nav)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                {(canEditNavigation || canDeleteNavigation) && (
+                  <div className="flex items-center gap-2">
+                    {canEditNavigation && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEdit(nav)}
+                      >
+                        <Edit className="w-4 h-4 me-2" />
+                        {t('edit')}
+                      </Button>
+                    )}
+                    {canDeleteNavigation && (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setDeletingNavigation(nav)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Cashier\Cashier;
+use Laravel\Passport\Passport;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Tenancy may suffix storage_path() per tenant. Pin Passport keys to
+        // the central storage directory so token creation works on tenant domains.
+        Passport::loadKeysFrom(base_path('storage'));
+
         // Register observers
         Navigation::observe(NavigationObserver::class);
         ThemePart::observe(ThemePartObserver::class);

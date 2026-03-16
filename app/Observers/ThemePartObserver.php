@@ -39,8 +39,18 @@ class ThemePartObserver
             return;
         }
 
-        // Clear metadata cache for this tenant
-        Cache::forget("page_metadata_{$themePart->tenant_id}");
+        // Clear metadata cache for this tenant. In some environments, tenancy's
+        // cache bootstrapper may apply tags on stores that don't support tagging.
+        // Cache invalidation should never block customization saves.
+        try {
+            Cache::forget("page_metadata_{$themePart->tenant_id}");
+        } catch (\Throwable $e) {
+            Log::warning('ThemePartObserver cache invalidation skipped', [
+                'tenant_id' => $themePart->tenant_id,
+                'theme_part_id' => $themePart->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Check if the theme this part belongs to is active
         $isActiveTheme = \App\Models\Theme::where('id', $themePart->theme_id)

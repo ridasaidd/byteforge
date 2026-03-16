@@ -9,8 +9,9 @@ function isSupportedLocale(locale: string): locale is SupportedLocale {
 }
 
 export function AuthProvider({ children, initialUser = null }: { children: ReactNode; initialUser?: User | null }) {
+  const hasStoredToken = authService.isAuthenticated();
   const [user, setUser] = useState<User | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(!initialUser);
+  const [isLoading, setIsLoading] = useState(!initialUser && hasStoredToken);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -45,6 +46,8 @@ export function AuthProvider({ children, initialUser = null }: { children: React
     // by the resilient tokenStorage.ts layer.
     if (!initialUser && authService.isAuthenticated()) {
       fetchUser();
+    } else {
+      setIsLoading(false);
     }
   }, [initialUser, fetchUser]);
 

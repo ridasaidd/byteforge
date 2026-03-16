@@ -49,6 +49,9 @@ export const themes = {
 };
 
 export const tenantThemes = {
+  list: () => http.get<{ data: Theme[] }>('/themes'),
+  get: (id: number) => http.get<{ data: Theme }>(`/themes/${id}`),
   active: () => http.get<{ data: Theme }>('/themes/active'),
+  activate: (data: ActivateThemeData) => http.post<{ data: Theme; message: string }>('/themes/activate', data),
   getActiveTemplates: () => http.get<{ data: PageTemplate[] }>('/themes/active/templates'),
 };

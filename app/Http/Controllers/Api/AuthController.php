@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\TenantRbacService;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,25 @@ use Laravel\Passport\Token as PassportToken;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly TenantRbacService $tenantRbac,
+    ) {}
+
+    /**
+    * Build the authenticated user payload.
+     *
+     * @return array<string, mixed>
+     */
+    private function userPayload(User $user): array
+    {
+        $user->load('roles.permissions', 'permissions');
+
+        $payload = $user->toArray();
+        $payload['avatar'] = $user->avatar_url;
+
+        return $payload;
+    }
+
     /**
      * Return the authenticated API user as a concrete User model.
      */
@@ -51,11 +71,37 @@ class AuthController extends Controller
             abort(401, 'Unauthenticated.');
         }
 
+        // In tenant context, only active tenant members may login.
+        // Return the same generic auth error to avoid account enumeration.
+        if (tenancy()->initialized && tenancy()->tenant) {
+            $tenantId = (string) tenancy()->tenant->id;
+
+            $isActiveMember = $user->memberships()
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->exists();
+
+            if (! $isActiveMember) {
+                Auth::logout();
+
+                throw ValidationException::withMessages([
+                    'email' => [__('auth.failed')],
+                ]);
+            }
+
+            $membershipRole = $user->memberships()
+                ->where('tenant_id', $tenantId)
+                ->where('status', 'active')
+                ->value('role');
+
+            $this->tenantRbac->ensureUserRoleSynced($user, $tenantId, $membershipRole);
+        }
+
         // Create access token
         $token = $user->createToken('web-token')->accessToken;
 
         return response()->json([
-            'user' => $user->load('roles', 'permissions'),
+            'user' => $this->userPayload($user),
             'token' => $token,
         ]);
     }
@@ -83,7 +129,7 @@ class AuthController extends Controller
         $token = $user->createToken('web-token')->accessToken;
 
         return response()->json([
-            'user' => $user->load('roles', 'permissions'),
+            'user' => $this->userPayload($user),
             'token' => $token,
         ], 201);
     }
@@ -131,12 +177,9 @@ class AuthController extends Controller
      */
     public function user(Request $request)
     {
-        $user = $this->authenticatedUser($request)->load('roles.permissions', 'permissions');
+        $user = $this->authenticatedUser($request);
 
-        // Add avatar URL to response
-        $user->avatar = $user->avatar_url;
-
-        return response()->json($user);
+        return response()->json($this->userPayload($user));
     }
 
     /**

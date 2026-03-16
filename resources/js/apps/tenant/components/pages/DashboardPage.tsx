@@ -1,10 +1,18 @@
+import { useQuery } from '@tanstack/react-query';
 import { FileText, Image, Menu, Activity } from 'lucide-react';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { tenantDashboard } from '@/shared/services/api';
 import { useTranslation } from 'react-i18next';
 
 export function DashboardPage() {
   const { t } = useTranslation('dashboard');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['tenant-dashboard-stats'],
+    queryFn: () => tenantDashboard.getStats(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   return (
     <div className="space-y-6">
@@ -20,9 +28,9 @@ export function DashboardPage() {
             <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{isLoading ? '-' : (data?.totalPages ?? 0)}</div>
             <p className="text-xs text-muted-foreground">
-              {t('loading')}
+              {isLoading ? t('loading') : t('manage_pages')}
             </p>
           </CardContent>
         </Card>
@@ -33,9 +41,9 @@ export function DashboardPage() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{isLoading ? '-' : (data?.publishedPages ?? 0)}</div>
             <p className="text-xs text-muted-foreground">
-              {t('loading')}
+              {isLoading ? t('loading') : t('status_published', { ns: 'pages' })}
             </p>
           </CardContent>
         </Card>
@@ -46,9 +54,9 @@ export function DashboardPage() {
             <Image className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{isLoading ? '-' : (data?.mediaFiles ?? 0)}</div>
             <p className="text-xs text-muted-foreground">
-              {t('loading')}
+              {isLoading ? t('loading') : t('menu_media_library', { ns: 'common' })}
             </p>
           </CardContent>
         </Card>
@@ -59,9 +67,9 @@ export function DashboardPage() {
             <Menu className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">{isLoading ? '-' : (data?.menuItems ?? 0)}</div>
             <p className="text-xs text-muted-foreground">
-              {t('loading')}
+              {isLoading ? t('loading') : t('menu_navigation', { ns: 'common' })}
             </p>
           </CardContent>
         </Card>

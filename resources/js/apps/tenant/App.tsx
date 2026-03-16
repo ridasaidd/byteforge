@@ -2,8 +2,10 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, PaymentProvidersPage, PaymentsPage } from './components/pages';
+import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
+import { ProfilePage } from '@/apps/central/components/pages/ProfilePage';
+import { AccountSettingsPage } from '@/apps/central/components/pages/AccountSettingsPage';
 import { useTenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -13,7 +15,7 @@ function PermissionGate({ permission, children }: { permission: string; children
   const { hasPermission } = usePermissions();
 
   if (!hasPermission(permission)) {
-    return <Navigate to="/cms" replace />;
+    return <AccessDeniedPage />;
   }
 
   return children;
@@ -33,54 +35,133 @@ function ProtectedRoutes() {
   }
 
   if (!isAuthenticated) {
-    // Redirect to central login - fallback to current origin if env not set
-    const centralUrl = (import.meta as unknown as { env?: { VITE_CENTRAL_URL?: string } }).env?.VITE_CENTRAL_URL || window.location.origin;
-    window.location.href = `${centralUrl}/login`;
-    return null;
+    return <Navigate to="/login" replace />;
   }
 
   const handleSearch = (query: string) => {
     console.log('Search query:', query);
-    // TODO: Implement search functionality
   };
 
   return (
     <ThemeProvider>
-      <DashboardLayout
-        siteName="CMS"
-        menuItems={tenantMenuItems}
-        onSearch={handleSearch}
-      >
-        <Routes>
-          {/* Full Screen Editors - Without Layout */}
-          <Route path="/cms/theme/customize" element={<ThemeCustomizePage />} />
-          <Route path="/cms/pages/:id/edit" element={<PageEditorPage />} />
+      <Routes>
+        {/* Full Screen Editors - Without Layout */}
+        <Route
+          path="/cms/themes/:id/customize"
+          element={(
+            <PermissionGate permission="themes.view">
+              <ThemeCustomizePage />
+            </PermissionGate>
+          )}
+        />
+        <Route
+          path="/cms/pages/:id/edit"
+          element={(
+            <PermissionGate permission="pages.edit">
+              <PageEditorPage />
+            </PermissionGate>
+          )}
+        />
 
-          {/* All other routes with Dashboard Layout */}
-          <Route path="/cms" element={<DashboardPage />} />
-          <Route path="/cms/pages" element={<PagesPage />} />
-          <Route path="/cms/analytics" element={<AnalyticsPage />} />
-          <Route
-            path="/cms/payments/providers"
-            element={(
-              <PermissionGate permission="payments.view">
-                <PaymentProvidersPage />
-              </PermissionGate>
-            )}
-          />
-          <Route
-            path="/cms/payments"
-            element={(
-              <PermissionGate permission="payments.view">
-                <PaymentsPage />
-              </PermissionGate>
-            )}
-          />
-          <Route path="/cms/settings" element={<SettingsPage />} />
-          {/* TODO: Add other routes */}
-          <Route path="/" element={<Navigate to="/cms" replace />} />
-        </Routes>
-      </DashboardLayout>
+        {/* All other routes with Dashboard Layout */}
+        <Route
+          path="/*"
+          element={(
+            <DashboardLayout
+              siteName="CMS"
+              menuItems={tenantMenuItems}
+              onSearch={handleSearch}
+            >
+              <Routes>
+                <Route path="/cms" element={<DashboardPage />} />
+                <Route
+                  path="/cms/themes"
+                  element={(
+                    <PermissionGate permission="themes.view">
+                      <ThemesPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/pages"
+                  element={(
+                    <PermissionGate permission="pages.view">
+                      <PagesPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/analytics"
+                  element={(
+                    <PermissionGate permission="view analytics">
+                      <AnalyticsPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/media"
+                  element={(
+                    <PermissionGate permission="media.view">
+                      <MediaPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/navigation"
+                  element={(
+                    <PermissionGate permission="navigation.view">
+                      <NavigationPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/payments/providers"
+                  element={(
+                    <PermissionGate permission="payments.view">
+                      <PaymentProvidersPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/payments"
+                  element={(
+                    <PermissionGate permission="payments.view">
+                      <PaymentsPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/settings"
+                  element={(
+                    <PermissionGate permission="view settings">
+                      <SettingsPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/users"
+                  element={(
+                    <PermissionGate permission="view users">
+                      <UsersPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/roles-permissions"
+                  element={(
+                    <PermissionGate permission="view users">
+                      <RolesPermissionsPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route path="/cms/profile" element={<ProfilePage />} />
+                <Route path="/cms/account" element={<AccountSettingsPage />} />
+                <Route path="/" element={<Navigate to="/cms" replace />} />
+              </Routes>
+            </DashboardLayout>
+          )}
+        />
+      </Routes>
     </ThemeProvider>
   );
 }
@@ -94,6 +175,7 @@ export const TenantApp: FC = () => {
       }}
     >
       <Routes>
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/*" element={<ProtectedRoutes />} />
       </Routes>
     </BrowserRouter>
