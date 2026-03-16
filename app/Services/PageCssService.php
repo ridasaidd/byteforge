@@ -18,9 +18,14 @@ class PageCssService
     {
         $cacheKey = $this->getCacheKey($tenantId);
 
-        return Cache::remember($cacheKey, 3600, function () use ($tenantId) {
+        try {
+            return Cache::remember($cacheKey, 3600, function () use ($tenantId) {
+                return $this->fetchAndMergePagesCss($tenantId);
+            });
+        } catch (\Throwable $e) {
+            // Fallback for environments where cache tagging isn't supported.
             return $this->fetchAndMergePagesCss($tenantId);
-        });
+        }
     }
 
     /**
@@ -54,7 +59,11 @@ class PageCssService
     public function invalidateCache(?string $tenantId): void
     {
         $cacheKey = $this->getCacheKey($tenantId);
-        Cache::forget($cacheKey);
+        try {
+            Cache::forget($cacheKey);
+        } catch (\Throwable $e) {
+            // Non-fatal: stale cache is preferable to failing write operations.
+        }
     }
 
     /**

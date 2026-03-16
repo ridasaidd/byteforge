@@ -44,21 +44,11 @@ class HttpService {
       (error) => {
         if (error.response?.status === 401) {
           // Unauthorized - clear token and redirect to login.
-          // Resolve the login URL from VITE_CENTRAL_URL so tenant apps (which run
-          // on a different subdomain/domain) redirect to the central login page
-          // rather than a non-existent /login on the tenant domain.
           clearAuthToken();
 
           if (typeof window !== 'undefined') {
-            const centralUrl = (import.meta as unknown as { env?: { VITE_CENTRAL_URL?: string } }).env?.VITE_CENTRAL_URL;
-            const loginUrl = centralUrl ? `${centralUrl}/login` : '/login';
-
-            // Use pathname comparison for relative loginUrl (/login) and
-            // full href comparison for absolute central URLs, so we never
-            // redirect when already on the login page.
-            const alreadyOnLogin = centralUrl
-              ? window.location.href.startsWith(loginUrl)
-              : window.location.pathname === '/login';
+            const loginUrl = '/login';
+            const alreadyOnLogin = window.location.pathname === loginUrl;
 
             if (!alreadyOnLogin) {
               window.location.href = loginUrl;

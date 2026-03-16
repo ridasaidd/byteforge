@@ -26,7 +26,6 @@ class TenantPaymentProviderController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = Validator::make($request->all(), [
-            'tenant_id' => ['required', 'string', 'exists:tenants,id'],
             'provider' => ['required', 'string', 'in:stripe,swish,klarna'],
             'credentials' => ['required', 'array'],
             'is_active' => ['sometimes', 'boolean'],
@@ -55,7 +54,6 @@ class TenantPaymentProviderController extends Controller
     public function update(Request $request, string $provider): JsonResponse
     {
         $validated = Validator::make($request->all(), [
-            'tenant_id' => ['required', 'string', 'exists:tenants,id'],
             'credentials' => ['required', 'array'],
             'is_active' => ['sometimes', 'boolean'],
             'mode' => ['sometimes', 'string', 'in:test,live'],
@@ -92,7 +90,6 @@ class TenantPaymentProviderController extends Controller
     public function testConnection(Request $request, string $provider): JsonResponse
     {
         $validated = Validator::make($request->all(), [
-            'tenant_id' => ['required', 'string', 'exists:tenants,id'],
             'credentials' => ['required', 'array'],
         ])->validate();
 
@@ -105,12 +102,13 @@ class TenantPaymentProviderController extends Controller
 
     private function resolveTenant(Request $request): Tenant
     {
-        $validated = Validator::make($request->all(), [
-            'tenant_id' => ['required', 'string', 'exists:tenants,id'],
-        ])->validate();
-
         $currentTenantId = (string) (tenant('id') ?? '');
-        if ($currentTenantId === '' || $currentTenantId !== (string) $validated['tenant_id']) {
+        if ($currentTenantId === '') {
+            abort(403, 'Tenant context is required.');
+        }
+
+        $requestedTenantId = $request->input('tenant_id');
+        if (is_string($requestedTenantId) && $requestedTenantId !== '' && $requestedTenantId !== $currentTenantId) {
             abort(403, 'Cross-tenant access is not allowed.');
         }
 
@@ -119,6 +117,6 @@ class TenantPaymentProviderController extends Controller
             abort(403, 'User does not belong to this tenant.');
         }
 
-        return Tenant::query()->findOrFail($validated['tenant_id']);
+        return Tenant::query()->findOrFail($currentTenantId);
     }
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ThemeContext } from './theme-context';
-import { themes } from '@/shared/services/api/themes';
+import { themes, tenantThemes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
 
 interface ThemeProviderProps {
@@ -18,11 +18,20 @@ export function ThemeProvider({ children, initialTheme, injectCss = false }: The
     try {
       setIsLoading(true);
       setError(null);
-      const response = await themes.active();
+      const isTenantCms = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
+      const response = isTenantCms ? await tenantThemes.active() : await themes.active();
       setTheme(response.data);
-    } catch (err) {
-      setError(err as Error);
-      console.error('Failed to load active theme:', err);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+
+      // No active theme yet is a valid runtime state for new tenants.
+      if (status === 404) {
+        setTheme(null);
+        setError(null);
+      } else {
+        setError(err as Error);
+        console.error('Failed to load active theme:', err);
+      }
     } finally {
       setIsLoading(false);
     }

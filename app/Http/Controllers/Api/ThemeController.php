@@ -65,13 +65,42 @@ class ThemeController extends Controller
     {
         $tenantId = $this->getTenantId();
 
-        // Return all themes for this tenant/central scope
-        // For central (superadmin), show all themes (is_system_theme = true)
-        // For tenants, show themes available to them
-        $themes = Theme::forTenant($tenantId)
-            ->orderBy('is_active', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->get();
+        if ($tenantId === null) {
+            $themes = Theme::forTenant(null)
+                ->orderBy('is_active', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            return response()->json([
+                'data' => $themes,
+            ]);
+        }
+
+        $activeTheme = $this->themeService->getActiveTheme($tenantId);
+
+        // Slugs the tenant already has cloned — suppress matching system themes to avoid duplicates.
+        $clonedSlugs = Theme::where('tenant_id', $tenantId)->pluck('slug')->all();
+
+        // Tenant scope can use its own themes plus uncloned system themes.
+        $themes = Theme::query()
+            ->where(function ($query) use ($tenantId, $clonedSlugs) {
+                $query->where('tenant_id', $tenantId)
+                    ->orWhere(function ($system) use ($clonedSlugs) {
+                        $system->whereNull('tenant_id')
+                            ->where('is_system_theme', true);
+                        if (!empty($clonedSlugs)) {
+                            $system->whereNotIn('slug', $clonedSlugs);
+                        }
+                    });
+            })
+            ->orderByDesc('tenant_id')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Theme $theme) use ($activeTheme) {
+                $theme->is_active = $activeTheme !== null && $theme->id === $activeTheme->id;
+                return $theme;
+            })
+            ->values();
 
         return response()->json([
             'data' => $themes,
@@ -101,7 +130,13 @@ class ThemeController extends Controller
     public function active()
     {
         $tenantId = $this->getTenantId();
-        $theme = $this->themeService->getOrCreateDefaultTheme($tenantId);
+        $theme = $this->themeService->getActiveTheme($tenantId);
+
+        if (!$theme) {
+            return response()->json([
+                'message' => 'No active theme found',
+            ], 404);
+        }
 
         return response()->json([
             'data' => $theme,

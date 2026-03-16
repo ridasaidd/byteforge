@@ -41,6 +41,17 @@ class ThemeService
             return null;
         }
 
+        // When a tenant activates a system theme (tenant_id = null), clone it as a
+        // tenant-owned copy so getActiveTheme() can find it via tenant_id scoping.
+        // Re-use an existing tenant copy if one already exists for this slug.
+        if ($tenantId !== null && is_null($theme->tenant_id)) {
+            $existing = Theme::where('slug', $themeSlug)
+                ->where('tenant_id', $tenantId)
+                ->first();
+
+            $theme = $existing ?? $this->cloneSystemTheme($theme, $tenantId);
+        }
+
         // Copy placeholder content to theme_parts for this tenant/central
         // Only if theme_parts don't already exist for this scope
         $this->ensureThemePartsExist($theme, $tenantId);
@@ -130,6 +141,30 @@ class ThemeService
             ->get();
 
         foreach ($templates as $template) {
+            // In tenant scope, template slugs are unique per tenant.
+            // If a template already exists (same slug), relink/update it so the
+            // currently activated theme keeps its template bundle intact.
+            if ($tenantId !== null) {
+                $existingTemplate = \App\Models\PageTemplate::where('tenant_id', $tenantId)
+                    ->where('slug', $template->slug)
+                    ->first();
+
+                if ($existingTemplate) {
+                    $existingTemplate->update([
+                        'theme_id' => $theme->id,
+                        'name' => $template->name,
+                        'description' => $template->description,
+                        'category' => $template->category,
+                        'preview_image' => $template->preview_image,
+                        'puck_data' => $template->puck_data,
+                        'meta' => $template->meta,
+                        'is_active' => $template->is_active,
+                    ]);
+
+                    continue;
+                }
+            }
+
             \App\Models\PageTemplate::create([
                 'tenant_id' => $tenantId,
                 'theme_id' => $theme->id,
@@ -155,6 +190,8 @@ class ThemeService
     {
         return Theme::forTenant($tenantId)
             ->active()
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->first();
     }
 
@@ -331,7 +368,7 @@ class ThemeService
      */
     public function getTemplatesFromActiveTheme(?string $tenantId = null): array
     {
-        $theme = $this->getOrCreateDefaultTheme($tenantId);
+        $theme = $this->getActiveTheme($tenantId);
 
         if (!$theme) {
             return [];

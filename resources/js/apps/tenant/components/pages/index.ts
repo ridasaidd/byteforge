@@ -1,7 +1,14 @@
 export { DashboardPage } from './DashboardPage';
+export { AccessDeniedPage } from './AccessDeniedPage';
+export { LoginPage } from './LoginPage';
+export { ThemesPage } from './ThemesPage';
 export { PagesPage } from './PagesPage';
 export { PageEditorPage } from './PageEditorPage';
 export { AnalyticsPage } from './AnalyticsPage';
 export { SettingsPage } from './SettingsPage';
+export { MediaPage } from './MediaPage';
+export { NavigationPage } from './NavigationPage';
 export { PaymentProvidersPage } from './PaymentProvidersPage';
 export { PaymentsPage } from './PaymentsPage';
+export { UsersPage } from './UsersPage';
+export { RolesPermissionsPage } from './RolesPermissionsPage';

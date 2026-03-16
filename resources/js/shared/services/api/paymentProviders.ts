@@ -19,10 +19,8 @@ export const paymentProviders = {
   update: (provider: PaymentProviderCode, payload: UpsertTenantPaymentProviderData) =>
     http.put<ApiResponse<TenantPaymentProvider>>(`/payment-providers/${provider}`, payload),
 
-  remove: (provider: PaymentProviderCode, tenant_id: string) =>
-    http.delete<{ message: string }>(`/payment-providers/${provider}`, {
-      data: { tenant_id },
-    }),
+  remove: (provider: PaymentProviderCode) =>
+    http.delete<{ message: string }>(`/payment-providers/${provider}`),
 
   testConnection: (provider: PaymentProviderCode, payload: TestTenantPaymentProviderData) =>
     http.post<ApiResponse<Record<string, unknown>>>(`/payment-providers/${provider}/test`, payload),

@@ -481,14 +481,12 @@ export interface TenantPaymentProvider {
 }
 
 export interface UpsertTenantPaymentProviderData {
-  tenant_id: string;
   credentials: Record<string, string>;
   is_active?: boolean;
   mode?: PaymentProviderMode;
 }
 
 export interface TestTenantPaymentProviderData {
-  tenant_id: string;
   credentials: Record<string, string>;
 }
 

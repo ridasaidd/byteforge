@@ -10,6 +10,7 @@ import { FolderNavigation } from '@/shared/components/organisms/FolderNavigation
 import { ConfirmDialog } from '@/shared/components/molecules/ConfirmDialog';
 import { Button } from '@/shared/components/ui/button';
 import { useToast } from '@/shared/hooks/useToast';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,9 @@ import {
 export default function MediaLibraryPage() {
   const { toast } = useToast();
   const { t } = useTranslation('media');
+  const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
+  const canManageMedia = hasPermission('media.manage');
 
   // State
   const [selectedMedia, setSelectedMedia] = useState<Media | null>(null);
@@ -217,10 +220,12 @@ export default function MediaLibraryPage() {
               {t('description')}
             </p>
           </div>
-          <Button onClick={() => setIsUploadModalOpen(true)}>
-            <Upload className="w-4 h-4 me-2" />
-            {t('upload_files')}
-          </Button>
+          {canManageMedia && (
+            <Button onClick={() => setIsUploadModalOpen(true)}>
+              <Upload className="w-4 h-4 me-2" />
+              {t('upload_files')}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -229,7 +234,7 @@ export default function MediaLibraryPage() {
         currentFolder={currentFolder}
         folders={folders}
         onFolderChange={handleFolderChange}
-        onCreateFolder={handleCreateFolder}
+        onCreateFolder={canManageMedia ? handleCreateFolder : undefined}
       />
 
       {/* Main Content */}
@@ -244,9 +249,9 @@ export default function MediaLibraryPage() {
             onMediaClick={handleMediaClick}
             onSelectMedia={handleMediaClick}
             onFolderClick={handleFolderChange}
-            onRenameFolder={handleRenameFolder}
-            onDeleteFolder={handleDeleteFolder}
-            onDeleteMedia={handleDelete}
+            onRenameFolder={canManageMedia ? handleRenameFolder : undefined}
+            onDeleteFolder={canManageMedia ? handleDeleteFolder : undefined}
+            onDeleteMedia={canManageMedia ? handleDelete : undefined}
           />
         </div>
 
@@ -256,30 +261,32 @@ export default function MediaLibraryPage() {
             <MediaDetailsPanel
               media={selectedMedia}
               onClose={() => setSelectedMedia(null)}
-              onDelete={handleDelete}
+              onDelete={canManageMedia ? handleDelete : undefined}
             />
           </div>
         )}
       </div>
 
       {/* Upload Modal */}
-      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('upload_modal_title')}</DialogTitle>
-          </DialogHeader>
-          <MediaUploader
-            onUpload={handleUpload}
-            maxSize={20}
-            accept="image/*,video/*,audio/*,application/pdf,.doc,.docx"
-          />
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setIsUploadModalOpen(false)}>
-              {t('close')}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {canManageMedia && (
+        <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{t('upload_modal_title')}</DialogTitle>
+            </DialogHeader>
+            <MediaUploader
+              onUpload={handleUpload}
+              maxSize={20}
+              accept="image/*,video/*,audio/*,application/pdf,.doc,.docx"
+            />
+            <div className="flex justify-end">
+              <Button variant="outline" onClick={() => setIsUploadModalOpen(false)}>
+                {t('close')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog

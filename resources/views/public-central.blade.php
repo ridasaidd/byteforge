@@ -8,7 +8,7 @@
     <title>{{ config('app.name', 'ByteForge') }}</title>
 
     <!-- Storefront Base CSS - Browser defaults (undoes Tailwind resets, ensures consistent rendering) -->
-    <link rel="stylesheet" href="{{ asset('css/storefront-base.css') }}">
+    <link rel="stylesheet" href="/css/storefront-base.css">
 
     <!-- Phase 6: Theme CSS with Customization Support -->
     @isset($activeTheme)

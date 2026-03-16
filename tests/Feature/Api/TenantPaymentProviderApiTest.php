@@ -105,6 +105,31 @@ class TenantPaymentProviderApiTest extends TestCase
     }
 
     #[Test]
+    public function tenant_owner_can_create_provider_without_tenant_id_in_payload(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activatePaymentsAddonForTenant($tenant);
+
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/payment-providers'), [
+                'provider' => 'stripe',
+                'credentials' => [
+                    'publishable_key' => 'pk_test_1234567890abcdefgh',
+                    'secret_key' => 'sk_test_1234567890ijklmnop',
+                ],
+                'is_active' => true,
+                'mode' => 'test',
+            ]);
+
+        $create->assertCreated()->assertJsonPath('data.provider', 'stripe');
+
+        $this->assertDatabaseHas('tenant_payment_providers', [
+            'tenant_id' => (string) $tenant->id,
+            'provider' => 'stripe',
+        ]);
+    }
+
+    #[Test]
     public function cross_tenant_access_is_forbidden(): void
     {
         $tenantOne = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();

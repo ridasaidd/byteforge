@@ -100,9 +100,24 @@ Last updated: March 14, 2026
 
 ---
 
-### M4: Booking Integration (NEXT)
+### M4: Tenant Runtime Readiness (NEXT)
 
-**Phase 12: Port booking system into multi-tenant CMS**
+**Phase 12: Tenant storefront + auth + dashboard production readiness**
+
+**Scope:**
+- Finalize tenant login/runtime access model (tenant-first UX and redirects)
+- Validate tenant storefront runtime parity (theme/navigation/pages/css delivery)
+- Complete tenant dashboard route and permission gating hardening
+- Add tenant runtime QA gate (auth, isolation, permission, smoke coverage)
+
+**Est:** 1-2 weeks
+**Status:** Planned, next active phase
+
+---
+
+### M5: Booking Integration
+
+**Phase 13: Port booking system into multi-tenant CMS**
 
 **Scope:**
 - Port appointment/scheduling models to multi-tenant
@@ -111,19 +126,19 @@ Last updated: March 14, 2026
 - Fires `booking.*` events into analytics pipeline (activates booking widgets automatically)
 
 **Est:** 6-8 weeks (booking logic exists, integration focus)
-**Status:** Planned, next active phase
+**Status:** Planned, starts after M4
 
 ---
 
-### M5: Advanced Analytics (FUTURE)
+### M6: Advanced Analytics (FUTURE)
 - Booking analytics: revenue trends, peak hours, popular services
 - Platform analytics: subscription revenue, feature adoption
 - Aggregation cron jobs for pre-computed roll-ups
-- **Unlocked automatically** once Phase 9 + 12 are complete
+- **Unlocked automatically** once Phase 9 + 13 are complete
 
 ---
 
-### M6: Platform Enhancements (FUTURE)
+### M7: Platform Enhancements (FUTURE)
 - Tenant dashboard access (scoped pages, media, themes for tenant users)
 - Subscription billing and usage quotas
 - Navigation drag-and-drop tree UI

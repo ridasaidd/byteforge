@@ -5,8 +5,10 @@ namespace Database\Seeders;
 use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\TenantRbacService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\PermissionRegistrar;
 use Stancl\Tenancy\Database\Models\Domain;
 
 class FixedTestDataSeeder extends Seeder
@@ -21,6 +23,8 @@ class FixedTestDataSeeder extends Seeder
      */
     public function run(): void
     {
+        $tenantRbac = app(TenantRbacService::class);
+
         // Disable activity logging during seeding
         activity()->disableLogging();
 
@@ -137,6 +141,14 @@ class FixedTestDataSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+
+        $tenantRbac->ensureTenantRoles($tenantOne->id);
+        $tenantRbac->ensureTenantRoles($tenantTwo->id);
+        $tenantRbac->ensureTenantRoles($tenantThree->id);
+        $tenantRbac->syncUserRoleFromMembership($userMultiple, $tenantOne->id, 'owner');
+        $tenantRbac->syncUserRoleFromMembership($userMultiple, $tenantTwo->id, 'owner');
+        $tenantRbac->syncUserRoleFromMembership($userSingle, $tenantThree->id, 'owner');
+        app(PermissionRegistrar::class)->setPermissionsTeamId(null);
 
         $this->command->info('✓ Created memberships');
         $this->command->info('');

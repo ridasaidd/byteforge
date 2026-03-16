@@ -27,8 +27,16 @@ export default defineConfig({
         host: '0.0.0.0',  // Listen on all network interfaces
         port: 5173,
         strictPort: true,
+        // Allow tenant and central domains to fetch Vite dev assets.
+        cors: {
+            origin: [/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/, /^https?:\/\/([a-z0-9-]+\.)?byteforge\.se(:\d+)?$/],
+            credentials: true,
+        },
+        allowedHosts: ['localhost', '127.0.0.1', '.byteforge.se'],
         hmr: {
             host: 'byteforge.se',  // Your actual domain for HMR
+            protocol: 'ws',
+            port: 5173,
         },
     },
 });

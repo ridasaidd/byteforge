@@ -31,11 +31,13 @@ export function UserMenu() {
   };
 
   const handleProfile = () => {
-    navigate('/dashboard/profile');
+    const isTenant = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
+    navigate(isTenant ? '/cms/profile' : '/dashboard/profile');
   };
 
   const handleSettings = () => {
-    navigate('/dashboard/account');
+    const isTenant = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
+    navigate(isTenant ? '/cms/account' : '/dashboard/account');
   };
 
   return (

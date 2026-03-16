@@ -63,7 +63,7 @@ export function PageEditorPage() {
             headerData={headerData}
             footerData={footerData}
             config={baseConfig}
-            onEditSection={(section) => navigate(`/cms/theme/customize?section=${section}`)}
+            onEditSection={(section) => navigate(`/cms/themes?section=${section}`)}
           >
             <div
               style={{

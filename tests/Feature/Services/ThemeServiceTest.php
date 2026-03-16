@@ -46,19 +46,19 @@ class ThemeServiceTest extends TestCase
     {
         $tenantId = $this->getTenant('tenant-one')->id;
 
-        // Act: Activate the theme for the tenant
+        // Act: Activate the system theme for the tenant — a tenant-owned clone is created.
         $activeTheme = $this->themeService->activateTheme('test-theme', $tenantId);
 
-        // Assert: Same theme is returned (not cloned)
+        // Assert: A tenant-scoped clone is returned and is active.
         $this->assertNotNull($activeTheme);
-        $this->assertEquals($this->theme->id, $activeTheme->id);
+        $this->assertEquals($tenantId, $activeTheme->tenant_id);
         $this->assertTrue($activeTheme->is_active);
 
-        // Assert: Placeholders copied to ThemeParts for tenant scope
+        // Assert: Placeholders copied to ThemeParts scoped to the clone.
 
         // Header Part
         $headerPart = ThemePart::where('tenant_id', $tenantId)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $activeTheme->id)
             ->where('type', 'header')
             ->first();
 
@@ -67,7 +67,7 @@ class ThemeServiceTest extends TestCase
 
         // Footer Part
         $footerPart = ThemePart::where('tenant_id', $tenantId)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $activeTheme->id)
             ->where('type', 'footer')
             ->first();
 
@@ -112,18 +112,18 @@ class ThemeServiceTest extends TestCase
     {
         $tenantId = $this->getTenant('tenant-one')->id;
 
-        // First activation - creates parts
-        $this->themeService->activateTheme('test-theme', $tenantId);
+        // First activation - creates tenant clone + parts
+        $cloned = $this->themeService->activateTheme('test-theme', $tenantId);
 
-        // Modify the tenant's header part
+        // Modify the tenant clone's header part
         $headerPart = ThemePart::where('tenant_id', $tenantId)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $cloned->id)
             ->where('type', 'header')
             ->first();
         $headerPart->puck_data_raw = ['root' => [], 'content' => ['customized_header']];
         $headerPart->save();
 
-        // Reactivate the theme
+        // Reactivate — should re-use existing clone, not create a new one
         $this->themeService->activateTheme('test-theme', $tenantId);
 
         // Assert: Customized content is preserved (not overwritten)
@@ -137,21 +137,21 @@ class ThemeServiceTest extends TestCase
         $tenant1Id = $this->getTenant('tenant-one')->id;
         $tenant2Id = $this->getTenant('tenant-two')->id;
 
-        // Activate for both tenants
-        $this->themeService->activateTheme('test-theme', $tenant1Id);
-        $this->themeService->activateTheme('test-theme', $tenant2Id);
+        // Activate for both tenants — each gets their own clone.
+        $clone1 = $this->themeService->activateTheme('test-theme', $tenant1Id);
+        $clone2 = $this->themeService->activateTheme('test-theme', $tenant2Id);
 
-        // Modify tenant1's header
+        // Modify tenant1's header (on clone1)
         $headerPart1 = ThemePart::where('tenant_id', $tenant1Id)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $clone1->id)
             ->where('type', 'header')
             ->first();
         $headerPart1->puck_data_raw = ['root' => [], 'content' => ['tenant1_custom']];
         $headerPart1->save();
 
-        // Assert: Tenant2's header is unchanged
+        // Assert: Tenant2's header (on clone2) is unchanged
         $headerPart2 = ThemePart::where('tenant_id', $tenant2Id)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $clone2->id)
             ->where('type', 'header')
             ->first();
 
@@ -178,14 +178,14 @@ class ThemeServiceTest extends TestCase
     #[Test]
     public function it_returns_system_templates_to_tenant_users()
     {
-        // 1. Setup: A system theme is active for the tenant
+        // 1. Setup: Activate the system theme for the tenant — clone is returned.
         $tenantId = $this->getTenant('tenant-one')->id;
-        $activeTheme = $this->themeService->activateTheme($this->theme->slug, $tenantId);
+        $cloned = $this->themeService->activateTheme($this->theme->slug, $tenantId);
 
-        // 2. Setup: Create a system template (tenant_id = null) for this theme
+        // 2. Setup: Create a template on the tenant clone (tenant-scoped).
         \App\Models\PageTemplate::create([
-            'tenant_id' => null, // System template
-            'theme_id' => $this->theme->id,
+            'tenant_id' => $tenantId,
+            'theme_id' => $cloned->id,
             'name' => 'System Homepage',
             'slug' => 'system-home',
             'category' => 'general',
@@ -196,7 +196,7 @@ class ThemeServiceTest extends TestCase
         // 3. Act: Get templates for the tenant
         $results = $this->themeService->getTemplatesFromActiveTheme($tenantId);
 
-        // 4. Assert: The system template is returned
+        // 4. Assert: The template is returned
         $this->assertCount(1, $results);
         $this->assertEquals('System Homepage', $results[0]['name']);
     }
@@ -204,14 +204,14 @@ class ThemeServiceTest extends TestCase
     #[Test]
     public function it_returns_tenant_specific_templates_to_tenant_users()
     {
-        // 1. Setup: A system theme is active for the tenant
+        // 1. Setup: Activate the system theme for the tenant — clone is returned.
         $tenantId = $this->getTenant('tenant-one')->id;
-        $this->themeService->activateTheme($this->theme->slug, $tenantId);
+        $cloned = $this->themeService->activateTheme($this->theme->slug, $tenantId);
 
-        // 2. Setup: Create a tenant-specific template
+        // 2. Setup: Create a tenant-specific template on the clone.
         \App\Models\PageTemplate::create([
             'tenant_id' => $tenantId,
-            'theme_id' => $this->theme->id,
+            'theme_id' => $cloned->id,
             'name' => 'My Custom Landing',
             'slug' => 'custom-landing',
             'category' => 'landing',

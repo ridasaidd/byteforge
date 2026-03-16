@@ -17,4 +17,6 @@ export * from './analytics';
 export * from './billing';
 export * from './paymentProviders';
 export * from './payments';
+export * from './tenantDashboard';
+export * from './tenantUsers';
 export * from './types';

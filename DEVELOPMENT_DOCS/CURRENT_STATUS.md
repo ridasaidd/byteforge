@@ -82,7 +82,19 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Next Priority: Phase 12 Booking Integration**
+### **Next Priority: Phase 12 Tenant Runtime Readiness**
+
+**Summary:**
+- Make tenant runtime fully production-ready before adding new business modules
+- Finalize tenant storefront behavior, tenant auth/login flow, and tenant dashboard access UX
+- Close tenant runtime gaps (redirects, permissions, session/token handling, runtime QA)
+- Add a readiness gate with explicit acceptance criteria and smoke tests
+
+**Status**: Planned (next active phase)
+
+---
+
+### **Phase 13: Booking Integration**
 
 **Summary:**
 - Integrate existing booking system into multi-tenant CMS
@@ -90,7 +102,7 @@ Testing status (Feb 2, 2026):
 - Fires `booking.*` events into analytics pipeline
 - `<BookingWidget>` Puck component
 
-**Status**: Planned
+**Status**: Planned (after Tenant Runtime Readiness)
 
 ---
 
@@ -123,7 +135,7 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 
 **March 3, 2026 (Documentation Sync):**
 - ✅ Updated status and roadmap to reflect merged `navigation_v2` refactor
-- ✅ Aligned phase sequencing across docs (Phase 7 + Phase 8 complete; Booking Integration next)
+- ✅ Aligned phase sequencing across docs (Phase 7 + Phase 8 complete; Tenant Runtime Readiness next)
 - ✅ Updated docs index links to point to current active/completed planning documents
 
 **March 3, 2026 (Navigation Refactor Complete):**
@@ -144,6 +156,7 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 - ✅ Added locale persistence end-to-end (`preferred_locale`, locale middleware, `/auth/locale` API, selector wiring)
 - ✅ Added RTL support hardening (logical Tailwind properties + directional icon mirroring)
 - ✅ Archived completed planning docs under `archive/completed-phases/`
+- ✅ Set next active phase to Tenant Runtime Readiness before Booking Integration
 
 **February 2, 2026 (Phase 7 - Font System Complete):**
 - ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
+use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
@@ -36,6 +37,7 @@ Route::middleware([
     'web',
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
+    'permission.team',
 ])->group(function () {
     // Public storefront — serve tenant SPA with theme + analytics scripts injected
     Route::get('/', function () {
@@ -65,6 +67,20 @@ Route::middleware([
         }
         return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
     })->where('slug', '[a-z0-9\-]+');
+
+    // Tenant CMS shell and login page
+    Route::get('/login', function () {
+        return view('dash-tenant');
+    })->name('tenant.login');
+
+    // Backward-compatible dashboard URL shim for tenant domains.
+    Route::get('/dashboard/{any?}', function (?string $any = null) {
+        return redirect('/cms' . ($any ? '/' . $any : ''));
+    })->where('any', '.*');
+
+    Route::get('/cms/{any?}', function () {
+        return view('dash-tenant');
+    })->where('any', '.*');
 });
 
 // Tenant API routes
@@ -72,6 +88,7 @@ Route::middleware([
     'api',
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
+    'permission.team',
 ])->prefix('api')->group(function () {
 
     // Public tenant routes
@@ -94,8 +111,24 @@ Route::middleware([
     Route::post('payments/swish/callback', [PaymentWebhookController::class, 'swish']);
     Route::post('payments/klarna/callback', [PaymentWebhookController::class, 'klarna']);
 
+    // Tenant auth routes
+    Route::prefix('auth')->group(function () {
+        Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
+
+        Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
+            Route::post('logout', [AuthController::class, 'logout']);
+            Route::post('refresh', [AuthController::class, 'refresh']);
+            Route::get('user', [AuthController::class, 'user']);
+            Route::put('user', [AuthController::class, 'updateProfile']);
+            Route::put('password', [AuthController::class, 'updatePassword']);
+            Route::patch('locale', [AuthController::class, 'updateLocale']);
+            Route::post('avatar', [AuthController::class, 'uploadAvatar']);
+            Route::delete('avatar', [AuthController::class, 'deleteAvatar']);
+        });
+    });
+
     // Protected tenant routes - require authentication
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
 
         // Resource routes — per-action permission checks
@@ -126,9 +159,15 @@ Route::middleware([
         Route::delete('layouts/{layout}', [LayoutController::class, 'destroy'])->middleware('permission:layouts.manage');
 
         // Theme Customization (Phase 6) - Tenant
+        Route::get('themes', [\App\Http\Controllers\Api\ThemeController::class, 'index'])
+            ->middleware('permission:themes.view');
         Route::get('themes/active', [\App\Http\Controllers\Api\ThemeController::class, 'active'])
             ->middleware('permission:themes.view');
+        Route::post('themes/activate', [\App\Http\Controllers\Api\ThemeController::class, 'activate'])
+            ->middleware('permission:themes.activate|themes.manage');
         Route::get('themes/active/templates', [\App\Http\Controllers\Api\ThemeController::class, 'activeTemplates'])
+            ->middleware('permission:themes.view');
+        Route::get('themes/{theme}', [\App\Http\Controllers\Api\ThemeController::class, 'show'])
             ->middleware('permission:themes.view');
         Route::get('themes/{theme}/customization', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'getCustomization'])
             ->middleware('permission:themes.view');
@@ -138,13 +177,19 @@ Route::middleware([
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy'])
             ->middleware('permission:view users');
 
+        Route::get('roles', [UserController::class, 'roles'])->middleware('permission:view users');
+
         // Media management — per-action permission checks
         Route::get('media', [MediaController::class, 'index'])->middleware('permission:media.view');
         Route::post('media', [MediaController::class, 'store'])->middleware('permission:media.manage');
         Route::get('media/{media}', [MediaController::class, 'show'])->middleware('permission:media.view');
         Route::delete('media/{media}', [MediaController::class, 'destroy'])->middleware('permission:media.manage');
-        Route::apiResource('media-folders', MediaFolderController::class)
-            ->middleware('permission:media.manage');
+        Route::get('media-folders', [MediaFolderController::class, 'index'])->middleware('permission:media.view');
+        Route::post('media-folders', [MediaFolderController::class, 'store'])->middleware('permission:media.manage');
+        Route::get('media-folders/{id}', [MediaFolderController::class, 'show'])->middleware('permission:media.view');
+        Route::put('media-folders/{id}', [MediaFolderController::class, 'update'])->middleware('permission:media.manage');
+        Route::patch('media-folders/{id}', [MediaFolderController::class, 'update'])->middleware('permission:media.manage');
+        Route::delete('media-folders/{id}', [MediaFolderController::class, 'destroy'])->middleware('permission:media.manage');
         Route::get('media-folders-tree', [MediaFolderController::class, 'tree'])
             ->middleware('permission:media.view');
 

@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, PlugZap, Save, TestTube2, Trash2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-import { useAuth } from '@/shared/hooks/useAuth';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useToast } from '@/shared/hooks';
 import { paymentProviders } from '@/shared/services/api';
@@ -12,7 +11,6 @@ import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 
@@ -52,40 +50,45 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return firstFieldError || apiError.response?.data?.message || fallback;
 }
 
+function isAddonRequiredError(error: unknown): boolean {
+  const apiError = error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
+  const addonError = apiError.response?.data?.errors?.addon?.[0];
+  const message = apiError.response?.data?.message || '';
+
+  return (
+    addonError === 'Payment Processing add-on is required before configuring providers.'
+    || message === 'Payment Processing add-on is required before configuring providers.'
+  );
+}
+
 export function PaymentProvidersPage() {
   const { t } = useTranslation('billing');
-  const { user } = useAuth();
   const { hasPermission } = usePermissions();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const inferredTenantId = user?.tenant_id || '';
-  const hasFixedTenantId = inferredTenantId.length > 0;
   const canManageProviders = hasPermission('payments.manage');
 
-  const [tenantId, setTenantId] = useState(inferredTenantId);
   const [provider, setProvider] = useState<PaymentProviderCode>('stripe');
   const [mode, setMode] = useState<PaymentProviderMode>('test');
   const [isActive, setIsActive] = useState(true);
   const [credentials, setCredentials] = useState<Record<string, string>>(defaultCredentialsFor('stripe'));
 
   useEffect(() => {
-    if (inferredTenantId && !tenantId) {
-      setTenantId(inferredTenantId);
-    }
-  }, [inferredTenantId, tenantId]);
-
-  useEffect(() => {
     setCredentials(defaultCredentialsFor(provider));
   }, [provider]);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error, isError } = useQuery({
     queryKey: ['tenant-payment-providers'],
     queryFn: async () => {
       const response = await paymentProviders.list();
       return response.data;
     },
+    retry: false,
   });
+
+  const addonRequired = isError && isAddonRequiredError(error);
+  const loadErrorMessage = isError ? getErrorMessage(error, t('loading_providers_failed')) : null;
 
   const providerMap = useMemo(() => {
     const map = new Map<PaymentProviderCode, TenantPaymentProvider>();
@@ -97,10 +100,6 @@ export function PaymentProvidersPage() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantId) {
-        throw new Error(t('tenant_id_required'));
-      }
-
       if (!canManageProviders) {
         throw new Error(t('missing_manage_permission'));
       }
@@ -110,7 +109,6 @@ export function PaymentProvidersPage() {
       }
 
       const payload = {
-        tenant_id: tenantId,
         credentials,
         is_active: isActive,
         mode,
@@ -140,16 +138,11 @@ export function PaymentProvidersPage() {
 
   const testMutation = useMutation({
     mutationFn: async () => {
-      if (!tenantId) {
-        throw new Error(t('tenant_id_required'));
-      }
-
       if (!canManageProviders) {
         throw new Error(t('missing_manage_permission'));
       }
 
       return paymentProviders.testConnection(provider, {
-        tenant_id: tenantId,
         credentials,
       });
     },
@@ -172,15 +165,11 @@ export function PaymentProvidersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (rowProvider: PaymentProviderCode) => {
-      if (!tenantId) {
-        throw new Error(t('tenant_id_required'));
-      }
-
       if (!canManageProviders) {
         throw new Error(t('missing_manage_permission'));
       }
 
-      return paymentProviders.remove(rowProvider, tenantId);
+      return paymentProviders.remove(rowProvider);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['tenant-payment-providers'] });
@@ -205,190 +194,202 @@ export function PaymentProvidersPage() {
         description={t('payment_providers_description')}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('configured_providers')}</CardTitle>
-          <CardDescription>
-            {t('configured_providers_description')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">{t('loading_providers')}</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>{t('provider')}</TableHead>
-                  <TableHead>{t('mode')}</TableHead>
-                  <TableHead>{t('status')}</TableHead>
-                  <TableHead>{t('credentials')}</TableHead>
-                  <TableHead className="text-end">{t('actions')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {PROVIDERS.map((rowProvider) => {
-                  const row = providerMap.get(rowProvider);
-                  const summary = row?.credentials_summary
-                    ? Object.entries(row.credentials_summary)
-                        .map(([k, v]) => `${k}: ${v}`)
-                        .join(', ')
-                    : t('not_configured');
-
-                  return (
-                    <TableRow key={rowProvider}>
-                      <TableCell className="font-medium">{t(`provider_${rowProvider}`)}</TableCell>
-                      <TableCell>{row?.mode ? t(`mode_${row.mode}`) : t('na')}</TableCell>
-                      <TableCell>
-                        {row?.is_active ? <Badge>{t('active')}</Badge> : <Badge variant="outline">{t('inactive')}</Badge>}
-                      </TableCell>
-                      <TableCell className="max-w-[420px] truncate text-muted-foreground">{summary}</TableCell>
-                      <TableCell className="text-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={!row || deleteMutation.isPending || !canManageProviders}
-                          onClick={() => deleteMutation.mutate(rowProvider)}
-                        >
-                          <Trash2 className="h-4 w-4 me-1" />
-                          {t('remove')}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('configure_provider')}</CardTitle>
-          <CardDescription>{t('configure_provider_description')}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {!canManageProviders && (
+      {addonRequired && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{t('payment_providers_title')}</CardTitle>
+            <CardDescription>
+              {loadErrorMessage}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
             <p className="text-sm text-muted-foreground">
-              {t('manage_providers_required')}
+              {t('payments_addon_activation_required_hint', {
+                defaultValue: 'Ask a superadmin to activate the Payment Processing add-on for this tenant in the central billing screen.',
+              })}
             </p>
-          )}
+          </CardContent>
+        </Card>
+      )}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="tenant_id">{t('tenant_id')}</Label>
-              <Input
-                id="tenant_id"
-                value={tenantId}
-                onChange={(e) => setTenantId(e.target.value)}
-                placeholder={t('tenant_id_placeholder')}
-                disabled={hasFixedTenantId}
-              />
-              {hasFixedTenantId && (
-                <p className="text-xs text-muted-foreground">{t('tenant_id_autofilled')}</p>
+      {!addonRequired && (
+        <>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('configured_providers')}</CardTitle>
+              <CardDescription>
+                {t('configured_providers_description')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-sm text-muted-foreground">{t('loading_providers')}</p>
+              ) : isError ? (
+                <p className="text-sm text-destructive">{loadErrorMessage}</p>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>{t('provider')}</TableHead>
+                      <TableHead>{t('mode')}</TableHead>
+                      <TableHead>{t('status')}</TableHead>
+                      <TableHead>{t('credentials')}</TableHead>
+                      <TableHead className="text-end">{t('actions')}</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {PROVIDERS.map((rowProvider) => {
+                      const row = providerMap.get(rowProvider);
+                      const summary = row?.credentials_summary
+                        ? Object.entries(row.credentials_summary)
+                            .map(([k, v]) => `${k}: ${v}`)
+                            .join(', ')
+                        : t('not_configured');
+
+                      return (
+                        <TableRow key={rowProvider}>
+                          <TableCell className="font-medium">{t(`provider_${rowProvider}`)}</TableCell>
+                          <TableCell>{row?.mode ? t(`mode_${row.mode}`) : t('na')}</TableCell>
+                          <TableCell>
+                            {row?.is_active ? <Badge>{t('active')}</Badge> : <Badge variant="outline">{t('inactive')}</Badge>}
+                          </TableCell>
+                          <TableCell className="max-w-[420px] truncate text-muted-foreground">{summary}</TableCell>
+                          <TableCell className="text-end">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              disabled={!row || deleteMutation.isPending || !canManageProviders}
+                              onClick={() => deleteMutation.mutate(rowProvider)}
+                            >
+                              <Trash2 className="h-4 w-4 me-1" />
+                              {t('remove')}
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               )}
-            </div>
+            </CardContent>
+          </Card>
 
-            <div className="space-y-2">
-              <Label htmlFor="provider">{t('provider')}</Label>
-              <select
-                id="provider"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as PaymentProviderCode)}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                disabled={!canManageProviders}
-              >
-                {PROVIDERS.map((p) => (
-                  <option key={p} value={p}>
-                    {t(`provider_${p}`)}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('configure_provider')}</CardTitle>
+              <CardDescription>{t('configure_provider_description')}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {!canManageProviders && (
+                <p className="text-sm text-muted-foreground">
+                  {t('manage_providers_required')}
+                </p>
+              )}
 
-            <div className="space-y-2">
-              <Label htmlFor="mode">{t('mode')}</Label>
-              <select
-                id="mode"
-                value={mode}
-                onChange={(e) => setMode(e.target.value as PaymentProviderMode)}
-                className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
-                disabled={!canManageProviders}
-              >
-                <option value="test">{t('mode_test')}</option>
-                <option value="live">{t('mode_live')}</option>
-              </select>
-            </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="provider">{t('provider')}</Label>
+                  <select
+                    id="provider"
+                    value={provider}
+                    onChange={(e) => setProvider(e.target.value as PaymentProviderCode)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={!canManageProviders}
+                  >
+                    {PROVIDERS.map((p) => (
+                      <option key={p} value={p}>
+                        {t(`provider_${p}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <div className="flex items-end gap-2 pb-1">
-              <input
-                id="is_active"
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-4 w-4"
-                disabled={!canManageProviders}
-              />
-              <Label htmlFor="is_active">{t('provider_active')}</Label>
-            </div>
-          </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mode">{t('mode')}</Label>
+                  <select
+                    id="mode"
+                    value={mode}
+                    onChange={(e) => setMode(e.target.value as PaymentProviderMode)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    disabled={!canManageProviders}
+                  >
+                    <option value="test">{t('mode_test')}</option>
+                    <option value="live">{t('mode_live')}</option>
+                  </select>
+                </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            {CREDENTIAL_FIELDS[provider].map((field) => (
-              <div className="space-y-2" key={field.key}>
-                <Label htmlFor={`credential_${field.key}`}>{t(field.key)}</Label>
-                <Input
-                  id={`credential_${field.key}`}
-                  type={field.secret ? 'password' : 'text'}
-                  value={credentials[field.key] || ''}
-                  onChange={(e) => {
-                    setCredentials((prev) => ({
-                      ...prev,
-                      [field.key]: e.target.value,
-                    }));
-                  }}
-                  placeholder={t(`${field.key}_placeholder`)}
-                  disabled={!canManageProviders}
-                />
+                <div className="flex items-end gap-2 pb-1">
+                  <input
+                    id="is_active"
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-4 w-4"
+                    disabled={!canManageProviders}
+                  />
+                  <Label htmlFor="is_active">{t('provider_active')}</Label>
+                </div>
               </div>
-            ))}
-          </div>
 
-          <div className="flex flex-wrap gap-2">
-            <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !canManageProviders}>
-              <Save className="h-4 w-4 me-2" />
-              {saveMutation.isPending ? t('saving') : t('save_provider')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => testMutation.mutate()}
-              disabled={testMutation.isPending || !canManageProviders}
-            >
-              <TestTube2 className="h-4 w-4 me-2" />
-              {testMutation.isPending ? t('testing') : t('test_connection')}
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={!canManageProviders}
-              onClick={() => {
-                setCredentials(defaultCredentialsFor(provider));
-                toast({
-                  title: t('template_reset_title'),
-                  description: t('template_reset_description'),
-                });
-              }}
-            >
-              <PlugZap className="h-4 w-4 me-2" />
-              {t('reset_template')}
-            </Button>
-            <Badge variant="outline" className="ms-auto">
-              <CheckCircle2 className="h-3 w-3 me-1" />
-              {t('configured_count', { count: providerMap.size })}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="grid gap-4 md:grid-cols-2">
+                {CREDENTIAL_FIELDS[provider].map((field) => (
+                  <div className="space-y-2" key={field.key}>
+                    <Label htmlFor={`credential_${field.key}`}>{t(field.key)}</Label>
+                    <input
+                      id={`credential_${field.key}`}
+                      type={field.secret ? 'password' : 'text'}
+                      value={credentials[field.key] || ''}
+                      onChange={(e) => {
+                        setCredentials((prev) => ({
+                          ...prev,
+                          [field.key]: e.target.value,
+                        }));
+                      }}
+                      placeholder={t(`${field.key}_placeholder`)}
+                      disabled={!canManageProviders}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => saveMutation.mutate()} disabled={saveMutation.isPending || !canManageProviders}>
+                  <Save className="h-4 w-4 me-2" />
+                  {saveMutation.isPending ? t('saving') : t('save_provider')}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => testMutation.mutate()}
+                  disabled={testMutation.isPending || !canManageProviders}
+                >
+                  <TestTube2 className="h-4 w-4 me-2" />
+                  {testMutation.isPending ? t('testing') : t('test_connection')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={!canManageProviders}
+                  onClick={() => {
+                    setCredentials(defaultCredentialsFor(provider));
+                    toast({
+                      title: t('template_reset_title'),
+                      description: t('template_reset_description'),
+                    });
+                  }}
+                >
+                  <PlugZap className="h-4 w-4 me-2" />
+                  {t('reset_template')}
+                </Button>
+                <Badge variant="outline" className="ms-auto">
+                  <CheckCircle2 className="h-3 w-3 me-1" />
+                  {t('configured_count', { count: providerMap.size })}
+                </Badge>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

@@ -15,11 +15,17 @@ import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { useToast, useCrud } from '@/shared/hooks';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 
 export function PagesPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t, i18n } = useTranslation('pages');
+  const { hasPermission } = usePermissions();
+
+  const canCreatePages = hasPermission('pages.create');
+  const canEditPages = hasPermission('pages.edit');
+  const canDeletePages = hasPermission('pages.delete');
 
   const pageSchema = z.object({
     title: z.string().min(1, t('title_required')).max(255, t('title_too_long')),
@@ -204,17 +210,28 @@ export function PagesPage() {
       sortable: true,
       render: (page) => (
         <div className="space-y-1">
-          <button
-            onClick={() => navigate(`/cms/pages/${page.id}/edit`)}
-            className="font-medium flex items-center gap-2 hover:text-primary transition-colors text-start"
-          >
-            {page.title}
-            {page.is_homepage && (
-              <Badge variant="default" className="text-xs">
-                {t('homepage')}
-              </Badge>
-            )}
-          </button>
+          {canEditPages ? (
+            <button
+              onClick={() => navigate(`/cms/pages/${page.id}/edit`)}
+              className="font-medium flex items-center gap-2 hover:text-primary transition-colors text-start"
+            >
+              {page.title}
+              {page.is_homepage && (
+                <Badge variant="default" className="text-xs">
+                  {t('homepage')}
+                </Badge>
+              )}
+            </button>
+          ) : (
+            <div className="font-medium flex items-center gap-2 text-start">
+              {page.title}
+              {page.is_homepage && (
+                <Badge variant="default" className="text-xs">
+                  {t('homepage')}
+                </Badge>
+              )}
+            </div>
+          )}
           <div className="text-xs text-muted-foreground">/{page.slug}</div>
         </div>
       ),
@@ -272,28 +289,32 @@ export function PagesPage() {
           <Eye className="h-4 w-4" />
         </Button>
       )}
-      <Button
-        variant="ghost"
-        size="sm"
-        title={t('edit_page')}
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditingPage(page);
-        }}
-      >
-        <Pencil className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        title={t('delete_page')}
-        onClick={(e) => {
-          e.stopPropagation();
-          setDeletingPage(page);
-        }}
-      >
-        <Trash2 className="h-4 w-4 text-destructive" />
-      </Button>
+      {canEditPages && (
+        <Button
+          variant="ghost"
+          size="sm"
+          title={t('edit_page')}
+          onClick={(e) => {
+            e.stopPropagation();
+            setEditingPage(page);
+          }}
+        >
+          <Pencil className="h-4 w-4" />
+        </Button>
+      )}
+      {canDeletePages && (
+        <Button
+          variant="ghost"
+          size="sm"
+          title={t('delete_page')}
+          onClick={(e) => {
+            e.stopPropagation();
+            setDeletingPage(page);
+          }}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      )}
     </div>
   );
 
@@ -302,12 +323,12 @@ export function PagesPage() {
       <PageHeader
         title={t('page_title')}
         description={t('page_description')}
-        actions={
+        actions={canCreatePages ? (
           <Button onClick={() => setIsCreateModalOpen(true)}>
             <Plus className="h-4 w-4 me-2" />
             {t('create_page')}
           </Button>
-        }
+        ) : undefined}
       />
 
       <DataTable<Page>
@@ -322,51 +343,57 @@ export function PagesPage() {
         onPageChange={pagesData.pagination.setPage}
       />
 
-      <PageCreationWizard
-        open={isCreateModalOpen}
-        onOpenChange={setIsCreateModalOpen}
-        onSubmit={handleCreate}
-        templates={templates}
-        isLoading={pagesData.create.isPending}
-      />
+      {canCreatePages && (
+        <PageCreationWizard
+          open={isCreateModalOpen}
+          onOpenChange={setIsCreateModalOpen}
+          onSubmit={handleCreate}
+          templates={templates}
+          isLoading={pagesData.create.isPending}
+        />
+      )}
 
-      <FormModal
-        open={!!editingPage}
-        onOpenChange={(open) => !open && setEditingPage(null)}
-        onSubmit={handleUpdate}
-        title={t('edit_page_title')}
-        description={t('edit_page_description')}
-        fields={formFields}
-        schema={pageSchema}
-        defaultValues={editingPage ? {
-          title: editingPage.title,
-          slug: editingPage.slug,
-          page_type: editingPage.page_type,
-          status: editingPage.status,
-          is_homepage: editingPage.is_homepage,
-          meta_data: editingPage.meta_data as { meta_title?: string; meta_description?: string; meta_keywords?: string } | undefined,
-        } : undefined}
-        isLoading={pagesData.update.isPending}
-        submitText={t('save_changes')}
-      />
+      {canEditPages && (
+        <FormModal
+          open={!!editingPage}
+          onOpenChange={(open) => !open && setEditingPage(null)}
+          onSubmit={handleUpdate}
+          title={t('edit_page_title')}
+          description={t('edit_page_description')}
+          fields={formFields}
+          schema={pageSchema}
+          defaultValues={editingPage ? {
+            title: editingPage.title,
+            slug: editingPage.slug,
+            page_type: editingPage.page_type,
+            status: editingPage.status,
+            is_homepage: editingPage.is_homepage,
+            meta_data: editingPage.meta_data as { meta_title?: string; meta_description?: string; meta_keywords?: string } | undefined,
+          } : undefined}
+          isLoading={pagesData.update.isPending}
+          submitText={t('save_changes')}
+        />
+      )}
 
-      <ConfirmDialog
-        open={!!deletingPage}
-        onOpenChange={(open) => !open && setDeletingPage(null)}
-        onConfirm={handleDelete}
-        title={t('delete_page_title')}
-        description={
-          <Trans
-            ns="pages"
-            i18nKey="delete_page_confirm"
-            values={{ name: deletingPage?.title ?? '' }}
-            components={{ strong: <strong /> }}
-          />
-        }
-        confirmText={t('delete')}
-        variant="destructive"
-        isLoading={pagesData.delete.isPending}
-      />
+      {canDeletePages && (
+        <ConfirmDialog
+          open={!!deletingPage}
+          onOpenChange={(open) => !open && setDeletingPage(null)}
+          onConfirm={handleDelete}
+          title={t('delete_page_title')}
+          description={
+            <Trans
+              ns="pages"
+              i18nKey="delete_page_confirm"
+              values={{ name: deletingPage?.title ?? '' }}
+              components={{ strong: <strong /> }}
+            />
+          }
+          confirmText={t('delete')}
+          variant="destructive"
+          isLoading={pagesData.delete.isPending}
+        />
+      )}
     </div>
   );
 }
