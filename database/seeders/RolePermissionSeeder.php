@@ -40,6 +40,10 @@ class RolePermissionSeeder extends Seeder
             'view billing', 'manage billing',
             // Payments (tenant)
             'payments.view', 'payments.manage', 'payments.refund',
+            // Mechanic Workshop Directory (add-on)
+            'workshops.view', 'workshops.create', 'workshops.edit', 'workshops.delete', 'workshops.manage',
+            'reviews.view', 'reviews.create', 'reviews.manage',
+            'bookings.view', 'bookings.create', 'bookings.manage',
         ];
 
         // Create permissions for both web and api guards

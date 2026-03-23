@@ -6,6 +6,10 @@ use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\LayoutController;
+use App\Http\Controllers\Api\MechanicBookingController;
+use App\Http\Controllers\Api\MechanicReviewController;
+use App\Http\Controllers\Api\MechanicServiceController;
+use App\Http\Controllers\Api\MechanicWorkshopController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
 use App\Http\Controllers\Api\PageController;
@@ -105,6 +109,18 @@ Route::middleware([
     // Public analytics beacon (no auth, rate-limited)
     Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
         ->middleware('throttle:60,1');
+
+    // -------------------------------------------------------------------
+    // Mechanic Workshop Directory (Add-on: mechanic-workshop-directory)
+    // Public endpoints — no authentication required
+    // -------------------------------------------------------------------
+    Route::prefix('workshops')->middleware('throttle:60,1')->group(function () {
+        Route::get('search', [MechanicWorkshopController::class, 'search']);
+        Route::get('cities', [MechanicWorkshopController::class, 'cities']);
+        Route::get('{workshopId}', [MechanicWorkshopController::class, 'show'])->whereNumber('workshopId');
+        Route::get('{workshopId}/services', [MechanicServiceController::class, 'index'])->whereNumber('workshopId');
+        Route::get('{workshopId}/reviews', [MechanicReviewController::class, 'index'])->whereNumber('workshopId');
+    });
 
     // Provider callbacks/webhooks (no auth)
     Route::post('payments/stripe/webhook', [PaymentWebhookController::class, 'stripe']);
@@ -249,5 +265,73 @@ Route::middleware([
         Route::post('payments/{payment}/refund', [PaymentController::class, 'refund'])
             ->whereNumber('payment')
             ->middleware('permission:payments.refund');
+
+        // -------------------------------------------------------------------
+        // Mechanic Workshop Directory — authenticated management routes
+        // -------------------------------------------------------------------
+        Route::prefix('workshops')->group(function () {
+            // Workshop CRUD
+            Route::post('/', [MechanicWorkshopController::class, 'store'])
+                ->middleware('permission:workshops.create');
+            Route::put('{workshopId}', [MechanicWorkshopController::class, 'update'])
+                ->whereNumber('workshopId')
+                ->middleware('permission:workshops.edit');
+            Route::patch('{workshopId}', [MechanicWorkshopController::class, 'update'])
+                ->whereNumber('workshopId')
+                ->middleware('permission:workshops.edit');
+            Route::delete('{workshopId}', [MechanicWorkshopController::class, 'destroy'])
+                ->whereNumber('workshopId')
+                ->middleware('permission:workshops.delete');
+
+            // Services management (under a workshop)
+            Route::post('{workshopId}/services', [MechanicServiceController::class, 'store'])
+                ->whereNumber('workshopId')
+                ->middleware('permission:workshops.edit');
+            Route::put('{workshopId}/services/{serviceId}', [MechanicServiceController::class, 'update'])
+                ->whereNumber(['workshopId', 'serviceId'])
+                ->middleware('permission:workshops.edit');
+            Route::patch('{workshopId}/services/{serviceId}', [MechanicServiceController::class, 'update'])
+                ->whereNumber(['workshopId', 'serviceId'])
+                ->middleware('permission:workshops.edit');
+            Route::delete('{workshopId}/services/{serviceId}', [MechanicServiceController::class, 'destroy'])
+                ->whereNumber(['workshopId', 'serviceId'])
+                ->middleware('permission:workshops.edit');
+
+            // Review moderation (admin)
+            Route::put('{workshopId}/reviews/{reviewId}', [MechanicReviewController::class, 'update'])
+                ->whereNumber(['workshopId', 'reviewId'])
+                ->middleware('permission:reviews.manage');
+            Route::delete('{workshopId}/reviews/{reviewId}', [MechanicReviewController::class, 'destroy'])
+                ->whereNumber(['workshopId', 'reviewId'])
+                ->middleware('permission:reviews.manage');
+
+            // Booking management (workshop_owner / admin)
+            Route::get('{workshopId}/bookings', [MechanicBookingController::class, 'index'])
+                ->whereNumber('workshopId')
+                ->middleware('permission:bookings.view');
+            Route::put('{workshopId}/bookings/{bookingId}', [MechanicBookingController::class, 'update'])
+                ->whereNumber(['workshopId', 'bookingId'])
+                ->middleware('permission:bookings.manage');
+            Route::patch('{workshopId}/bookings/{bookingId}', [MechanicBookingController::class, 'update'])
+                ->whereNumber(['workshopId', 'bookingId'])
+                ->middleware('permission:bookings.manage');
+        });
+
+        // Customer: submit a review
+        Route::post('workshops/{workshopId}/reviews', [MechanicReviewController::class, 'store'])
+            ->whereNumber('workshopId')
+            ->middleware('permission:reviews.create');
+
+        // Customer: create a booking
+        Route::post('workshops/{workshopId}/bookings', [MechanicBookingController::class, 'store'])
+            ->whereNumber('workshopId')
+            ->middleware('permission:bookings.create');
+
+        // Customer: view & cancel own bookings
+        Route::get('my-bookings', [MechanicBookingController::class, 'myBookings'])
+            ->middleware('permission:bookings.view');
+        Route::post('my-bookings/{bookingId}/cancel', [MechanicBookingController::class, 'cancel'])
+            ->whereNumber('bookingId')
+            ->middleware('permission:bookings.create');
     });
 });

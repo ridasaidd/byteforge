@@ -23,6 +23,7 @@ Last updated: March 14, 2026
 - [ROADMAP.md](ROADMAP.md) - Milestones and priorities
 - [PHASE12_TENANT_RUNTIME_READINESS.md](PHASE12_TENANT_RUNTIME_READINESS.md) - **Current phase: tenant storefront/login/dashboard readiness gate**
 - Booking Integration (Phase 13) - planned after tenant runtime readiness
+- [MECHANIC_WORKSHOP_ADDON.md](MECHANIC_WORKSHOP_ADDON.md) - **Custom add-on: location-based mechanic workshop directory**
 - [PHASE7_FONT_SYSTEM_COMPLETE.md](PHASE7_FONT_SYSTEM_COMPLETE.md) - Completed font system implementation summary
 - [NAVIGATION_REFACTOR_PLAN.md](NAVIGATION_REFACTOR_PLAN.md) - Navigation v2 architecture and refactor plan (implemented)
 
