@@ -201,6 +201,18 @@ Route::middleware([
         Route::get('settings', [SettingsController::class, 'index'])->middleware('permission:view settings');
         Route::put('settings', [SettingsController::class, 'update'])->middleware('permission:manage settings');
 
+        // Mechanic profile – manage this tenant's mechanic workshop profile
+        Route::prefix('mechanic-profile')->group(function () {
+            Route::get('/', [\App\Http\Controllers\Api\MechanicProfileController::class, 'show'])
+                ->middleware('permission:view settings');
+            Route::post('/', [\App\Http\Controllers\Api\MechanicProfileController::class, 'store'])
+                ->middleware('permission:manage settings');
+            Route::put('/', [\App\Http\Controllers\Api\MechanicProfileController::class, 'update'])
+                ->middleware('permission:manage settings');
+            Route::delete('/', [\App\Http\Controllers\Api\MechanicProfileController::class, 'destroy'])
+                ->middleware('permission:manage settings');
+        });
+
         // Activity logs
         Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:view activity logs');
         Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('permission:view activity logs');
