@@ -11,3 +11,4 @@ export { Button, type ButtonProps } from './Button';
 export { Image, type ImageProps } from './Image';
 export { Card, type CardProps } from './Card';
 export { Link, type LinkProps } from './Link';
+export { WorkshopSearch, type WorkshopSearchProps } from './WorkshopSearch';

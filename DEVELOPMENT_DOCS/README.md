@@ -31,6 +31,7 @@ Last updated: March 14, 2026
 - [THEME_SYSTEM_ARCHITECTURE.md](THEME_SYSTEM_ARCHITECTURE.md) - Theme system design
 - [API_DOCUMENTATION.md](API_DOCUMENTATION.md) - REST API endpoints
 - [AUTH_STRATEGY.md](AUTH_STRATEGY.md) - Authentication & authorization
+- [MECHANIC_DIRECTORY_ADDON.md](MECHANIC_DIRECTORY_ADDON.md) - Location-based mechanic workshop search addon
 
 ### 🎯 Guidelines
 - [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md) - Core development principles

@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\Tenant\MediaFolderController;
 use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\ThemePartController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\WorkshopController;
+use App\Http\Controllers\Api\WorkshopSearchController;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -102,6 +104,10 @@ Route::middleware([
     Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
     Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
 
+    // Public workshop search — no authentication required (customer-facing)
+    Route::get('workshops/search', [WorkshopSearchController::class, 'search'])->middleware('throttle:120,1');
+    Route::get('workshops/public/{id}', [WorkshopSearchController::class, 'show'])->whereNumber('id');
+
     // Public analytics beacon (no auth, rate-limited)
     Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
         ->middleware('throttle:60,1');
@@ -130,6 +136,14 @@ Route::middleware([
     // Protected tenant routes - require authentication
     Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
+
+        // Workshop management (mechanic directory addon)
+        Route::get('workshops',              [WorkshopController::class, 'index'])->middleware('permission:workshops.view');
+        Route::post('workshops',             [WorkshopController::class, 'store'])->middleware('permission:workshops.manage');
+        Route::get('workshops/{workshop}',   [WorkshopController::class, 'show'])->middleware('permission:workshops.view');
+        Route::put('workshops/{workshop}',   [WorkshopController::class, 'update'])->middleware('permission:workshops.manage');
+        Route::patch('workshops/{workshop}', [WorkshopController::class, 'update'])->middleware('permission:workshops.manage');
+        Route::delete('workshops/{workshop}',[WorkshopController::class, 'destroy'])->middleware('permission:workshops.manage');
 
         // Resource routes — per-action permission checks
         Route::get('pages',           [PageController::class, 'index'])->middleware('permission:pages.view');

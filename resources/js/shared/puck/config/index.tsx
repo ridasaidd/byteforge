@@ -18,6 +18,7 @@ import {
   Image,
   Card,
   Link,
+  WorkshopSearch,
   // Media
   Icon,
   // Navigation
@@ -57,6 +58,9 @@ export const puckConfig: Config = {
     // Media Components
     Icon: Icon as Config['components'][string],
 
+    // Workshop / Mechanic Directory
+    WorkshopSearch: WorkshopSearch as Config['components'][string],
+
     // Form Components
     Form: Form as Config['components'][string],
     TextInput: TextInput as Config['components'][string],
@@ -87,6 +91,11 @@ export const puckConfig: Config = {
       components: ['Heading', 'Text', 'RichText', 'Button', 'Link', 'Image'],
       title: 'Content',
       defaultExpanded: true,
+    },
+    mechanics: {
+      components: ['WorkshopSearch'],
+      title: 'Mechanic Directory',
+      defaultExpanded: false,
     },
     media: {
       components: ['Icon'],

@@ -572,3 +572,100 @@ export interface BillingPortalData {
   tenant_id: string;
   return_url: string;
 }
+
+// ---------------------------------------------------------------------------
+// Workshop / Mechanic Directory
+// ---------------------------------------------------------------------------
+
+export interface Workshop extends Record<string, unknown> {
+  id: number;
+  tenant_id: string;
+  user_id: number | null;
+  name: string;
+  description: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
+  specializations: string[];
+  opening_hours: Record<string, string> | null;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Workshop item returned from the public location search endpoint. */
+export interface WorkshopSearchResult {
+  id: number;
+  name: string;
+  description: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string;
+  latitude: number | null;
+  longitude: number | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  specializations: string[];
+  opening_hours: Record<string, string> | null;
+  is_verified: boolean;
+  /** Straight-line distance from the search origin in kilometres (rounded). */
+  distance_km: number | null;
+}
+
+export interface WorkshopSearchParams {
+  lat: number;
+  lng: number;
+  radius?: number;
+  q?: string;
+  per_page?: number;
+  page?: number;
+  [key: string]: string | number | boolean | undefined;
+}
+
+export interface WorkshopSearchResponse {
+  data: WorkshopSearchResult[];
+  meta: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+  };
+  search: {
+    latitude: number;
+    longitude: number;
+    radius_km: number;
+  };
+}
+
+export interface CreateWorkshopData {
+  name: string;
+  description?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postal_code?: string;
+  country?: string;
+  latitude?: number;
+  longitude?: number;
+  specializations?: string[];
+  opening_hours?: Record<string, string>;
+  is_active?: boolean;
+  user_id?: number;
+}
+
+export type UpdateWorkshopData = Partial<CreateWorkshopData> & { is_verified?: boolean };
+
