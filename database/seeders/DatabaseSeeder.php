@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RolePermissionSeeder::class,
+            WorkshopAddonSeeder::class,
             FixedTestDataSeeder::class, // Fixed test tenants and users
             UserSeeder::class,
             TenantSeeder::class,

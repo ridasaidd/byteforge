@@ -12,9 +12,9 @@ use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\SettingsController;
-use App\Http\Controllers\Api\TenantPaymentProviderController;
 use App\Http\Controllers\Api\Tenant\MediaFolderController;
 use App\Http\Controllers\Api\TenantController;
+use App\Http\Controllers\Api\TenantPaymentProviderController;
 use App\Http\Controllers\Api\ThemePartController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -51,6 +51,7 @@ Route::middleware([
         } catch (\Throwable $e) {
             $activeTheme = null;
         }
+
         return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
     });
 
@@ -65,6 +66,7 @@ Route::middleware([
         } catch (\Throwable $e) {
             $activeTheme = null;
         }
+
         return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
     })->where('slug', '[a-z0-9\-]+');
 
@@ -75,7 +77,7 @@ Route::middleware([
 
     // Backward-compatible dashboard URL shim for tenant domains.
     Route::get('/dashboard/{any?}', function (?string $any = null) {
-        return redirect('/cms' . ($any ? '/' . $any : ''));
+        return redirect('/cms'.($any ? '/'.$any : ''));
     })->where('any', '.*');
 
     Route::get('/cms/{any?}', function () {
@@ -132,11 +134,11 @@ Route::middleware([
         Route::get('dashboard', [TenantController::class, 'dashboard']);
 
         // Resource routes — per-action permission checks
-        Route::get('pages',           [PageController::class, 'index'])->middleware('permission:pages.view');
-        Route::post('pages',          [PageController::class, 'store'])->middleware('permission:pages.create');
-        Route::get('pages/{page}',    [PageController::class, 'show'])->middleware('permission:pages.view');
-        Route::put('pages/{page}',    [PageController::class, 'update'])->middleware('permission:pages.edit');
-        Route::patch('pages/{page}',  [PageController::class, 'update'])->middleware('permission:pages.edit');
+        Route::get('pages', [PageController::class, 'index'])->middleware('permission:pages.view');
+        Route::post('pages', [PageController::class, 'store'])->middleware('permission:pages.create');
+        Route::get('pages/{page}', [PageController::class, 'show'])->middleware('permission:pages.view');
+        Route::put('pages/{page}', [PageController::class, 'update'])->middleware('permission:pages.edit');
+        Route::patch('pages/{page}', [PageController::class, 'update'])->middleware('permission:pages.edit');
         Route::delete('pages/{page}', [PageController::class, 'destroy'])->middleware('permission:pages.delete');
 
         Route::get('navigations', [NavigationController::class, 'index'])->middleware('permission:navigation.view');
@@ -207,10 +209,10 @@ Route::middleware([
 
         // Analytics (tenant-scoped events only)
         Route::prefix('analytics')->group(function () {
-            Route::get('overview',  [AnalyticsController::class, 'overview'])->middleware('permission:view analytics');
-            Route::get('pages',     [AnalyticsController::class, 'pages'])->middleware('permission:view analytics');
-            Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');  // empty until Phase 11
-            Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');   // empty until Phase 10
+            Route::get('overview', [AnalyticsController::class, 'overview'])->middleware('permission:view analytics');
+            Route::get('pages', [AnalyticsController::class, 'pages'])->middleware('permission:view analytics');
+            Route::get('bookings', [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');  // empty until Phase 11
+            Route::get('revenue', [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');   // empty until Phase 10
         });
 
         // Payment provider configuration (Phase 10.3)
@@ -249,5 +251,28 @@ Route::middleware([
         Route::post('payments/{payment}/refund', [PaymentController::class, 'refund'])
             ->whereNumber('payment')
             ->middleware('permission:payments.refund');
+
+        // ── Workshop Directory Addon ───────────────────────────────────────────
+        // Tenant manages their own workshop profile from the CMS dashboard.
+        Route::prefix('workshop-profile')->group(function () {
+            // Return current profile (or 404 if not yet created)
+            Route::get('/', [\App\Http\Controllers\Api\WorkshopProfileController::class, 'show'])
+                ->middleware('permission:workshop.view');
+
+            // Create or update profile (upsert)
+            Route::put('/', [\App\Http\Controllers\Api\WorkshopProfileController::class, 'upsert'])
+                ->middleware('permission:workshop.manage');
+
+            // Delete profile (de-list from directory)
+            Route::delete('/', [\App\Http\Controllers\Api\WorkshopProfileController::class, 'destroy'])
+                ->middleware('permission:workshop.manage');
+
+            // Read-only list of reviews received by this workshop
+            Route::get('reviews', [\App\Http\Controllers\Api\WorkshopProfileController::class, 'reviews'])
+                ->middleware('permission:workshop.view');
+
+            // Available specialization slugs (for UI dropdowns)
+            Route::get('specializations', [\App\Http\Controllers\Api\WorkshopProfileController::class, 'specializations']);
+        });
     });
 });
