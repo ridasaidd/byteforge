@@ -4,6 +4,8 @@ import {
   buildLayoutCSS,
   buildTypographyCSS,
   generateFontSizeCSS,
+  generateLineHeightCSS,
+  generateLetterSpacingCSS,
   type BorderRadiusValue,
   type BorderValue,
   type ColorValue,
@@ -366,7 +368,7 @@ function buildBoxCss(component: PuckComponent, resolver: ThemeResolver): string 
 
 function buildCardCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
-  const className = `card-Card-${(props.id as string) || component.props?.id || 'unknown'}`;
+  const className = `card-${(props.id as string) || component.id || 'unknown'}`;
 
   const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
   //const titleColor = resolveColorValue(props.titleColor as ColorValue | string | undefined, resolver);
@@ -400,10 +402,16 @@ function buildCardCss(component: PuckComponent, resolver: ThemeResolver): string
 
 function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): string {
   const props = (component.props || {}) as Record<string, unknown>;
-  const className = `button-Button-${(props.id as string) || component.props?.id || 'unknown'}`;
+  const className = `button-${(props.id as string) || component.id || 'unknown'}`;
 
-  const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver);
-  const textColor = resolveColorValue(props.textColor as ColorValue | string | undefined, resolver);
+  const backgroundColor = resolveColorValue(props.backgroundColor as ColorValue | string | undefined, resolver,
+    'var(--component-button-variant-primary-background-color, var(--color-primary-500, #3b82f6))',
+    '#3b82f6'
+  );
+  const textColor = resolveColorValue(props.textColor as ColorValue | string | undefined, resolver,
+    'var(--component-button-variant-primary-color, #ffffff)',
+    '#ffffff'
+  );
   const hoverBackgroundColor = resolveColorValue(props.hoverBackgroundColor as ColorValue | string | undefined, resolver);
   const hoverTextColor = resolveColorValue(props.hoverTextColor as ColorValue | string | undefined, resolver);
 
@@ -411,13 +419,24 @@ function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): stri
   const margin = normalizeResponsiveSpacing(props.margin);
   const borderRadius = normalizeBorderRadius(props.borderRadius);
 
+  // Resolve size-based properties (sm/md/lg)
+  const size = (props.size as string) || 'md';
+  const paddingX = resolver(`components.button.sizes.${size}.paddingX`, size === 'sm' ? '12px' : size === 'md' ? '16px' : '20px');
+  const paddingYVal = resolver(`components.button.sizes.${size}.paddingY`, size === 'sm' ? '6px' : size === 'md' ? '10px' : '12px');
+  const fontSize = resolver(`components.button.sizes.${size}.fontSize`, size === 'sm' ? '14px' : size === 'md' ? '16px' : '18px');
+
+  // Check if user has set custom padding via spacing control
+  const hasCustomPadding = padding && typeof padding === 'object' && (
+    'mobile' in padding || 'tablet' in padding || 'desktop' in padding
+  );
+
   const baseCss = buildLayoutCSS({
     className,
     display: props.display as ResponsiveDisplayValue,
     width: props.width as ResponsiveWidthValue,
     maxWidth: props.maxWidth as ResponsiveMaxWidthValue,
     maxHeight: props.maxHeight as ResponsiveMaxHeightValue,
-    padding,
+    padding: hasCustomPadding ? padding : undefined,
     margin,
     border: props.border as BorderValue,
     borderRadius,
@@ -427,13 +446,56 @@ function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): stri
     resolveToken: resolver,
   });
 
-  // Add text color if specified
-  let textColorCss = '';
-  if (textColor) {
-    textColorCss = `.${className} { color: ${textColor}; }`;
+  // Button base styles: color, size, cursor, transition, typography
+  const baseRules: string[] = [
+    `color: ${textColor};`,
+    `font-size: ${fontSize};`,
+    `cursor: ${(props.cursor as string) || 'pointer'};`,
+    `text-decoration: none;`,
+  ];
+
+  // Size-based padding (only if no custom padding override)
+  if (!hasCustomPadding) {
+    baseRules.push(`padding: ${paddingYVal} ${paddingX};`);
   }
 
-  // Add hover states if specified
+  // Transition
+  const transition = props.transition as { duration?: string; easing?: string; properties?: string } | undefined;
+  if (transition) {
+    const tProps = transition.properties || 'all';
+    const tDur = transition.duration || '300ms';
+    const tEase = transition.easing || 'ease';
+    baseRules.push(`transition: ${tProps} ${tDur} ${tEase};`);
+  } else {
+    baseRules.push(`transition: all 0.2s ease;`);
+  }
+
+  // Typography advanced
+  if (props.textTransform && props.textTransform !== 'none') {
+    baseRules.push(`text-transform: ${props.textTransform};`);
+  }
+  if (props.textDecoration && props.textDecoration !== 'none') {
+    baseRules.push(`text-decoration: ${props.textDecoration};`);
+    if (props.textDecorationStyle) {
+      baseRules.push(`text-decoration-style: ${props.textDecorationStyle};`);
+    }
+  }
+
+  const buttonBaseCss = `.${className} { ${baseRules.join(' ')} }`;
+
+  // Responsive line-height
+  let lineHeightCss = '';
+  if (props.lineHeight) {
+    lineHeightCss = generateLineHeightCSS(className, props.lineHeight as ResponsiveLineHeightValue);
+  }
+
+  // Responsive letter-spacing
+  let letterSpacingCss = '';
+  if (props.letterSpacing) {
+    letterSpacingCss = generateLetterSpacingCSS(className, props.letterSpacing as ResponsiveLetterSpacingValue);
+  }
+
+  // Hover states
   let hoverCss = '';
   if (hoverBackgroundColor || hoverTextColor || props.hoverOpacity || props.hoverTransform) {
     const hoverRules: string[] = [];
@@ -447,7 +509,7 @@ function buildButtonCss(component: PuckComponent, resolver: ThemeResolver): stri
     }
   }
 
-  return [baseCss, textColorCss, hoverCss].filter(Boolean).join('\n');
+  return [baseCss, buttonBaseCss, lineHeightCss, letterSpacingCss, hoverCss].filter(Boolean).join('\n');
 }
 
 function resolveHeadingFontWeight(fontWeight: unknown, level: string): string {
@@ -890,6 +952,78 @@ export function extractTypographyComponentsCss(puckData: Data, themeData?: Theme
   return cssRules.filter(Boolean).join('\n');
 }
 
+/**
+ * Generates CSS for the page root (outer background/color wrapper + inner layout wrapper).
+ * Uses `_rootId` from root props to create page-scoped selectors (avoids conflicts
+ * when CSS from multiple pages is merged into one stylesheet).
+ */
+function buildRootCss(puckData: Data, resolver: ThemeResolver): string {
+  const rootProps = (puckData.root as Record<string, unknown>)?.props as Record<string, unknown> | undefined;
+  if (!rootProps) return '';
+
+  const rootId = rootProps._rootId as string;
+  if (!rootId) return '';
+
+  const outerClass = `puck-root-${rootId}`;
+  const innerClass = `puck-root-${rootId}-inner`;
+
+  // --- Outer div: background, color, font, minHeight ---
+  const outerRules: string[] = [];
+
+  const bgColor = resolveColorValue(
+    rootProps.backgroundColor as ColorValue | string | undefined,
+    resolver,
+    undefined,
+    '#ffffff'
+  );
+  outerRules.push(`background-color: ${bgColor}`);
+
+  const bgImage = rootProps.backgroundImage as string;
+  if (bgImage) {
+    outerRules.push(`background-image: url(${bgImage})`);
+    outerRules.push(`background-size: ${(rootProps.backgroundSize as string) || 'cover'}`);
+    outerRules.push(`background-position: ${(rootProps.backgroundPosition as string) || 'center'}`);
+    outerRules.push(`background-repeat: ${(rootProps.backgroundRepeat as string) || 'no-repeat'}`);
+  }
+
+  const txtColor = resolveColorValue(
+    rootProps.color as ColorValue | string | undefined,
+    resolver,
+    undefined,
+    'inherit'
+  );
+  if (txtColor && txtColor !== 'inherit') {
+    outerRules.push(`color: ${txtColor}`);
+  }
+
+  const fontFamily = rootProps.fontFamily as string;
+  outerRules.push(`font-family: ${fontFamily || 'var(--font-family-sans, system-ui, sans-serif)'}`);
+
+  const minHeight = rootProps.minHeight as string;
+  if (minHeight && minHeight !== 'auto') {
+    outerRules.push(`min-height: ${minHeight}`);
+  }
+
+  let css = `.${outerClass} {\n  ${outerRules.join(';\n  ')};\n}\n`;
+
+  // --- Inner div: maxWidth, responsive padding & margin ---
+  const innerLayoutCss = buildLayoutCSS({
+    className: innerClass,
+    padding: rootProps.padding as ResponsiveSpacingValue,
+    margin: rootProps.margin as ResponsiveSpacingValue,
+  });
+  if (innerLayoutCss) {
+    css += innerLayoutCss;
+  }
+
+  const maxWidth = rootProps.maxWidth as string;
+  if (maxWidth) {
+    css += `.${innerClass} { max-width: ${maxWidth}; }\n`;
+  }
+
+  return css;
+}
+
 export function extractCssFromPuckData(
   puckData: Data,
   themeData?: ThemeData,
@@ -900,6 +1034,12 @@ export function extractCssFromPuckData(
   // Only include variables if requested (settings step) or if themeData exists and includeVariables is true
   if (includeVariables && themeData && Object.keys(themeData).length > 0) {
     cssParts.push(generateVariablesCss(themeData));
+  }
+
+  // Root (page-level) CSS
+  const rootCss = buildRootCss(puckData, createThemeResolver(themeData));
+  if (rootCss) {
+    cssParts.push(rootCss);
   }
 
   const layoutCss = extractLayoutComponentsCss(puckData, themeData);

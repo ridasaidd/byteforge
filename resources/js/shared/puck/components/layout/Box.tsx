@@ -12,6 +12,7 @@ import {
   ResponsiveSpacingValue,
   ResponsiveDisplayValue,
   ResponsivePositionValue,
+  ResponsivePositionOffsetValue,
   ResponsiveZIndexValue,
   ResponsiveOpacityValue,
   ResponsiveOverflowValue,
@@ -35,6 +36,7 @@ import {
   // Utilities
   hasFlexInAnyBreakpoint,
   hasGridInAnyBreakpoint,
+  hasNonStaticPositionInAnyBreakpoint,
   createConditionalResolver,
   extractDefaults,
   buildLayoutCSS,
@@ -89,6 +91,7 @@ export interface BoxProps {
 
   // Layout Advanced
   position?: ResponsivePositionValue;
+  positionOffset?: ResponsivePositionOffsetValue;
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
@@ -127,6 +130,7 @@ export function BoxComponent({
   borderRadius,
   shadow,
   position,
+  positionOffset,
   zIndex,
   opacity,
   overflow,
@@ -190,6 +194,7 @@ export function BoxComponent({
     borderRadius,
     shadow,
     position,
+    positionOffset,
     zIndex,
     opacity,
     overflow,
@@ -296,6 +301,10 @@ export const Box: ComponentConfig<BoxProps> = {
       {
         condition: (props) => hasGridInAnyBreakpoint(props.display),
         fieldKeys: ['numColumns', 'gridGap', 'alignItems'],
+      },
+      {
+        condition: (props) => hasNonStaticPositionInAnyBreakpoint(props.position),
+        fieldKeys: ['positionOffset'],
       },
     ]
   ),

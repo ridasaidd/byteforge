@@ -11,6 +11,12 @@
  */
 
 /* ============================================
+   Base Normalization
+   ============================================ */
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+
+/* ============================================
    Typography - Headings
    ============================================ */
 h1 { font-size: 2em; font-weight: bold; margin: 0.67em 0; }

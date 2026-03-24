@@ -1,4 +1,5 @@
 import { ResponsiveValue, isResponsiveValue } from './ResponsiveWrapper';
+import type { PositionValue, ResponsivePositionValue } from './ResponsivePositionControl';
 
 // Type for display values
 type DisplayValue = 'block' | 'flex' | 'inline-flex' | 'grid' | 'inline-grid' | 'inline-block' | 'none';
@@ -40,6 +41,32 @@ export function hasFlexInAnyBreakpoint(displayValue: ResponsiveDisplayValue | un
  */
 export function hasGridInAnyBreakpoint(displayValue: ResponsiveDisplayValue | undefined): boolean {
   return hasDisplayModeInAnyBreakpoint(displayValue, ['grid', 'inline-grid']);
+}
+
+/**
+ * Check if ANY breakpoint uses a non-static position (relative, absolute, fixed, sticky).
+ * When true, the positionOffset field should be shown.
+ */
+export function hasNonStaticPositionInAnyBreakpoint(
+  positionValue: ResponsivePositionValue | PositionValue | undefined
+): boolean {
+  if (!positionValue) return false;
+
+  const nonStaticModes: PositionValue[] = ['relative', 'absolute', 'fixed', 'sticky'];
+
+  if (isResponsiveValue(positionValue)) {
+    const mobile = String(positionValue.mobile);
+    const tablet = positionValue.tablet !== undefined ? String(positionValue.tablet) : mobile;
+    const desktop = positionValue.desktop !== undefined ? String(positionValue.desktop) : mobile;
+
+    return (
+      nonStaticModes.includes(mobile as PositionValue) ||
+      nonStaticModes.includes(tablet as PositionValue) ||
+      nonStaticModes.includes(desktop as PositionValue)
+    );
+  }
+
+  return nonStaticModes.includes(positionValue as PositionValue);
 }
 
 /**

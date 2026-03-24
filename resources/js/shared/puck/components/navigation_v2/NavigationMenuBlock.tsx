@@ -8,6 +8,7 @@ import {
   effectsFields,
   flexLayoutFields,
   hasFlexInAnyBreakpoint,
+  hasNonStaticPositionInAnyBreakpoint,
   interactionFields,
   layoutAdvancedFields,
   layoutFields,
@@ -233,7 +234,6 @@ const baseConditionalResolver = createConditionalResolver(
     'borderRadius',
     'shadow',
     'position',
-    'positionOffset',
     'transform',
     'zIndex',
     'opacity',
@@ -283,6 +283,10 @@ const baseConditionalResolver = createConditionalResolver(
     {
       condition: (props: NavigationMenuProps) => hasFlexInAnyBreakpoint(props.display),
       fieldKeys: ['direction', 'justify', 'align', 'wrap', 'flexGap'],
+    },
+    {
+      condition: (props: NavigationMenuProps) => hasNonStaticPositionInAnyBreakpoint(props.position),
+      fieldKeys: ['positionOffset'],
     },
     {
       condition: (props: NavigationMenuProps) => props.mobileVariant === 'drawer',

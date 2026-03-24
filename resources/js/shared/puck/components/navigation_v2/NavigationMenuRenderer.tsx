@@ -341,8 +341,8 @@ export function NavigationMenuRenderer(props: NavigationMenuProps & { puck?: Puc
   }
 
   return (
-    <div ref={puck?.dragRef} style={{ display: 'contents' }}>
     <nav
+      ref={puck?.dragRef}
       className={[className, customClassName || ''].filter(Boolean).join(' ')}
       id={customId || undefined}
     >
@@ -378,6 +378,5 @@ export function NavigationMenuRenderer(props: NavigationMenuProps & { puck?: Puc
         closeButtonIconSize={closeButtonIconSize}
       />
     </nav>
-    </div>
   );
 }

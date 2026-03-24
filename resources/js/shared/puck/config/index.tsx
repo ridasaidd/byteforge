@@ -5,7 +5,6 @@
  * Both apps can import this config and optionally extend it.
  */
 
-import React from 'react';
 import { Config } from '@puckeditor/core';
 import {
   // Layout
@@ -31,6 +30,14 @@ import {
   RadioGroup,
   SubmitButton,
 } from '../components';
+import {
+  backgroundFields,
+  backgroundImageFields,
+  fontFamilyField,
+  textColorField,
+  spacingFields,
+} from '../fields';
+import { RootRenderer } from './RootRenderer';
 
 /**
  * Base Puck configuration with all shared components
@@ -102,69 +109,59 @@ export const puckConfig: Config = {
 
   root: {
     fields: {
-      backgroundColor: {
-        type: 'text',
-        label: 'Background Color',
-      },
-      backgroundImage: {
-        type: 'text',
-        label: 'Background Image URL',
-      },
+      // Background
+      ...backgroundFields,
+      ...backgroundImageFields,
+
+      // Typography
+      ...textColorField,
+      ...fontFamilyField('sans'),
+
+      // Layout
       maxWidth: {
-        type: 'select',
+        type: 'select' as const,
         label: 'Max Width',
         options: [
           { label: 'Full', value: '100%' },
+          { label: '1440px', value: '1440px' },
           { label: '1280px', value: '1280px' },
           { label: '1024px', value: '1024px' },
           { label: '768px', value: '768px' },
         ],
       },
-      paddingY: {
-        type: 'select',
-        label: 'Vertical Padding',
+      minHeight: {
+        type: 'select' as const,
+        label: 'Min Height',
         options: [
-          { label: 'None', value: '0' },
-          { label: 'Small', value: '24px' },
-          { label: 'Medium', value: '48px' },
-          { label: 'Large', value: '80px' },
+          { label: 'Auto', value: 'auto' },
+          { label: '100vh (Full Screen)', value: '100vh' },
+          { label: '75vh', value: '75vh' },
+          { label: '50vh', value: '50vh' },
         ],
       },
+
+      // Spacing
+      ...spacingFields,
     },
     defaultProps: {
-      backgroundColor: '#ffffff',
+      backgroundColor: { type: 'custom' as const, value: '#ffffff' },
+      backgroundImage: '',
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat',
+      color: { type: 'theme' as const, value: 'colors.foreground' },
+      fontFamily: undefined,
       maxWidth: '100%',
-      paddingY: '0',
+      minHeight: 'auto',
+      padding: {
+        mobile: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px' as const, linked: true },
+      },
+      margin: {
+        mobile: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px' as const, linked: true },
+      },
     },
-    render: ({ children, backgroundColor, backgroundImage, maxWidth, paddingY }: {
-      children: React.ReactNode;
-      backgroundColor?: string;
-      backgroundImage?: string;
-      maxWidth?: string;
-      paddingY?: string;
-    }) => {
-      return (
-        <div
-          style={{
-            backgroundColor,
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <div
-            style={{
-              maxWidth,
-              margin: '0 auto',
-              paddingTop: paddingY,
-              paddingBottom: paddingY,
-            }}
-          >
-            {children}
-          </div>
-        </div>
-      );
-    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    render: RootRenderer as any,
   },
 };
 

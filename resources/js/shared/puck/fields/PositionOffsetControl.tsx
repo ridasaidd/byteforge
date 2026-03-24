@@ -111,6 +111,22 @@ export function PositionOffsetControl({
   return (
     <FieldLabel label={field.label || 'Position Offsets'}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {/* Help Text */}
+        <div
+          style={{
+            fontSize: '12px',
+            color: 'var(--puck-color-grey-06)',
+            padding: '8px',
+            backgroundColor: 'var(--puck-color-grey-02)',
+            borderRadius: '4px',
+            borderLeft: '3px solid var(--puck-color-azure-04)',
+          }}
+        >
+          <strong>Note:</strong> For <em>sticky</em> positioning, at least one offset value is required.
+          <br />
+          For <em>absolute</em> and <em>fixed</em>, offsets are typically needed for meaningful positioning.
+        </div>
+
         {/* Unit Selector */}
         <div>
           <label style={labelStyle}>Unit</label>

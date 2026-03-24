@@ -94,6 +94,9 @@ export function PageEditorPage() {
         setPageData(page);
 
         const data = (page.puck_data as Data) || { content: [], root: {} };
+        // Inject page ID for root CSS class generation
+        const existingRootProps = (data.root as { props?: Record<string, unknown> })?.props || {};
+        (data as any).root = { ...data.root, props: { ...existingRootProps, _rootId: id } };
         setInitialData(data);
         puckDataRef.current = data;
         hasLoadedRef.current = true;
@@ -154,6 +157,9 @@ export function PageEditorPage() {
     if (!id) return;
 
     try {
+      // Ensure _rootId is set for root CSS generation
+      const rootProps = (puckDataRef.current.root as { props?: Record<string, unknown> })?.props || {};
+      (puckDataRef.current as any).root = { ...puckDataRef.current.root, props: { ...rootProps, _rootId: id } };
       const pageCss = themeData ? extractCssFromPuckData(puckDataRef.current, themeData, false) : '';
 
       await pages.update(Number(id), {

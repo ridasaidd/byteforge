@@ -38,6 +38,9 @@ export {
 export {
   ResponsivePositionControl,
   generatePositionCSS,
+  isPositionStatic,
+  positionRequiresOffset,
+  getSmartOffsetDefaultForPosition,
   type ResponsivePositionValue,
   type PositionValue,
 } from './ResponsivePositionControl';
@@ -195,6 +198,7 @@ export {
   hasDisplayModeInAnyBreakpoint,
   hasFlexInAnyBreakpoint,
   hasGridInAnyBreakpoint,
+  hasNonStaticPositionInAnyBreakpoint,
   createConditionalResolver,
   extractDefaults,
 } from './conditionalFields';
@@ -209,6 +213,7 @@ export {
   generatePositionOffsetCSS,
   type ResponsivePositionOffsetValue
 } from './ResponsivePositionOffsetControl';
+export { PositionWithOffsetsControl } from './PositionWithOffsetsControl';
 
 export { TransformControl, type TransformValue } from './TransformControl';
 export {

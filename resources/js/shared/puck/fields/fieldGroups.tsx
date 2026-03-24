@@ -838,6 +838,51 @@ function TransitionField({ field, value, onChange }: { field: { label?: string }
   );
 }
 
+// ============================================================================
+// Position with Offsets - Smart Composite Control
+// ============================================================================
+//
+// IMPORTANT: If you want smart position+offset behavior (hiding offsets for static,
+// auto-populating for sticky/absolute/fixed), use PositionWithOffsetsControl directly
+// in your component's render function instead of using separate position/positionOffset fields.
+//
+// Example:
+//   import { PositionWithOffsetsControl } from '@/shared/puck/fields';
+//
+//   export const MyComponent: ComponentConfig<MyComponentProps> = {
+//     render: (props) => {
+//       const [position, setPosition] = useState(props.position);
+//       const [positionOffset, setPositionOffset] = useState(props.positionOffset);
+//
+//       return (
+//         <PositionWithOffsetsControl
+//           positionValue={position}
+//           offsetValue={positionOffset}
+//           onPositionChange={setPosition}
+//           onOffsetChange={setPositionOffset}
+//         />
+//       );
+//     },
+//     fields: {
+//       // Don't include position and positionOffset here if using composite
+//     },
+//   };
+//
+// For utilities to handle position-offset logic:
+//   - isPositionStatic() - Check if position is static
+//   - positionRequiresOffset() - Check if offset is required for this position
+//   - getSmartOffsetDefaultForPosition() - Get sensible defaults for a position type
+//
+// Example usage in component event handlers:
+//   import { positionRequiresOffset, getSmartOffsetDefaultForPosition } from '@/shared/puck/fields';
+//
+//   const handlePositionChange = (newPosition) => {
+//     setPosition(newPosition);
+//     if (positionRequiresOffset(newPosition)) {
+//       setPositionOffset(getSmartOffsetDefaultForPosition(newPosition));
+//     }
+//   };
+
 export const interactionFields = {
   cursor: {
     type: 'select' as const,

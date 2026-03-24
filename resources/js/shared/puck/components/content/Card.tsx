@@ -11,6 +11,7 @@ import {
   type ResponsiveSpacingValue,
   type ResponsiveDisplayValue,
   type ResponsivePositionValue,
+  type ResponsivePositionOffsetValue,
   type ResponsiveZIndexValue,
   type ResponsiveOpacityValue,
   type ResponsiveOverflowValue,
@@ -27,6 +28,7 @@ import {
   advancedFields,
   // Utilities
   extractDefaults,
+  hasNonStaticPositionInAnyBreakpoint,
   buildLayoutCSS,
   ColorPickerControlColorful as ColorPickerControl,
 } from '../../fields';
@@ -73,6 +75,7 @@ export type CardProps = {
   borderRadius?: BorderRadiusValue;
   shadow?: ShadowValue;
   position?: ResponsivePositionValue;
+  positionOffset?: ResponsivePositionOffsetValue;
   zIndex?: ResponsiveZIndexValue;
   opacity?: ResponsiveOpacityValue;
   overflow?: ResponsiveOverflowValue;
@@ -104,6 +107,7 @@ function CardComponent({
   borderRadius,
   shadow,
   position,
+  positionOffset,
   zIndex,
   opacity,
   overflow,
@@ -154,6 +158,7 @@ function CardComponent({
     borderRadius,
     shadow,
     position,
+    positionOffset,
     zIndex,
     opacity,
     overflow,
@@ -274,6 +279,14 @@ export const Card: ComponentConfig<CardProps> = {
     ...effectsFields,
     // Advanced
     ...advancedFields,
+  },
+
+  resolveFields: (data, { fields }) => {
+    if (!hasNonStaticPositionInAnyBreakpoint(data.props.position)) {
+      const { positionOffset: _, ...rest } = fields;
+      return rest;
+    }
+    return fields;
   },
 
   defaultProps: {

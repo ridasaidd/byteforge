@@ -30,6 +30,7 @@ import {
   advancedFields,
   // Utilities
   extractDefaults,
+  hasNonStaticPositionInAnyBreakpoint,
   buildTypographyCSS,
   generateFontSizeCSS,
 } from '../../fields';
@@ -218,6 +219,16 @@ export const Text: ComponentConfig<TextProps> = {
     ...effectsFields,
     // Advanced
     ...advancedFields,
+  },
+
+  resolveFields: (data, { fields }) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if (!hasNonStaticPositionInAnyBreakpoint((data.props as any).position)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { positionOffset: _, ...rest } = fields as any;
+      return rest;
+    }
+    return fields;
   },
 
   defaultProps: {
