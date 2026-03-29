@@ -27,6 +27,8 @@ export {
   type CardProps,
   Link,
   type LinkProps,
+  WorkshopSearch,
+  type WorkshopSearchProps,
 } from './content';
 
 // Media Components

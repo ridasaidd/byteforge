@@ -21,6 +21,8 @@ export {
   type ImageProps,
   Card,
   type CardProps,
+  WorkshopSearch,
+  type WorkshopSearchProps,
   // Navigation
   NavigationMenu,
   type NavigationMenuProps,

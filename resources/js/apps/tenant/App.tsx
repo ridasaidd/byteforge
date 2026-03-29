@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage } from './components/pages';
+import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage, WorkshopsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { ProfilePage } from '@/apps/central/components/pages/ProfilePage';
 import { AccountSettingsPage } from '@/apps/central/components/pages/AccountSettingsPage';
@@ -151,6 +151,14 @@ function ProtectedRoutes() {
                   element={(
                     <PermissionGate permission="view users">
                       <RolesPermissionsPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/workshops"
+                  element={(
+                    <PermissionGate permission="workshops.view">
+                      <WorkshopsPage />
                     </PermissionGate>
                   )}
                 />

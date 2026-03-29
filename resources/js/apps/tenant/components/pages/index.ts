@@ -12,3 +12,4 @@ export { PaymentProvidersPage } from './PaymentProvidersPage';
 export { PaymentsPage } from './PaymentsPage';
 export { UsersPage } from './UsersPage';
 export { RolesPermissionsPage } from './RolesPermissionsPage';
+export { WorkshopsPage } from './WorkshopsPage';
