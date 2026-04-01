@@ -17,6 +17,7 @@ import {
   Image,
   Card,
   Link,
+  MechanicListing,
   // Media
   Icon,
   // Navigation
@@ -49,6 +50,9 @@ export const puckConfig: Config = {
 
     // Cards
     Card: Card as Config['components'][string],
+
+    // Mechanic Marketplace
+    MechanicListing: MechanicListing as Config['components'][string],
 
     // Navigation
     NavigationMenu: NavigationMenu as Config['components'][string],
@@ -84,6 +88,11 @@ export const puckConfig: Config = {
       components: ['Card'],
       title: 'Cards & Features',
       defaultExpanded: true,
+    },
+    marketplace: {
+      components: ['MechanicListing'],
+      title: 'Mechanic Marketplace',
+      defaultExpanded: false,
     },
     navigation: {
       components: ['NavigationMenu'],
