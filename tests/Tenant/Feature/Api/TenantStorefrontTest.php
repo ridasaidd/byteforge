@@ -49,7 +49,7 @@ class TenantStorefrontTest extends TestCase
     {
         $tenant = TestUsers::tenant($tenantSlug);
 
-        return Page::factory()->create(array_merge([
+        $payload = array_merge([
             'tenant_id' => $tenant->id,
             'title' => 'Tenant Storefront Page',
             'slug' => 'tenant-storefront-page',
@@ -59,7 +59,27 @@ class TenantStorefrontTest extends TestCase
             'puck_data_compiled' => ['content' => []],
             'page_css' => '.tenant-storefront-page { color: #123456; }',
             'is_homepage' => false,
-        ], $attributes));
+        ], $attributes);
+
+        $existing = Page::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('slug', $payload['slug'])
+            ->first();
+
+        if (($payload['is_homepage'] ?? false) === true) {
+            Page::query()
+                ->where('tenant_id', $tenant->id)
+                ->when($existing, fn ($query) => $query->where('id', '!=', $existing->id))
+                ->update(['is_homepage' => false]);
+        }
+
+        if ($existing) {
+            $existing->update($payload);
+
+            return $existing->fresh();
+        }
+
+        return Page::factory()->create($payload);
     }
 
     #[Test]
