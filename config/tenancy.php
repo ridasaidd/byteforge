@@ -17,9 +17,10 @@ return [
      *
      * Only relevant if you're using the domain or subdomain identification middleware.
      */
-    'central_domains' => [
-        'byteforge.se',
-    ],
+    'central_domains' => array_values(array_filter(array_map(
+        static fn (string $domain): string => trim($domain),
+        explode(',', (string) env('TENANCY_CENTRAL_DOMAINS', 'byteforge.se'))
+    ))),
 
     /**
      * Tenancy bootstrappers are executed when tenancy is initialized.
