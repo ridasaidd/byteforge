@@ -21,14 +21,20 @@
                         $fontFile = $fontConfig['file'] ?? null;
                     @endphp
                     @if($fontFile)
-                        <link rel="preload" href="{{ asset('fonts/' . $category . '/' . $fontFile) }}" as="font" type="font/woff2" crossorigin>
+                        <link rel="preload" href="{{ global_asset('fonts/' . $category . '/' . $fontFile) }}" as="font" type="font/woff2" crossorigin>
                     @endif
                 @endif
             @endforeach
         @endif
 
         {{-- Load consolidated theme CSS from disk --}}
-        <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css') }}" id="theme-css">
+        @php
+            $themeCssRelativePath = 'storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css';
+            $themeCssPublicPath = public_path($themeCssRelativePath);
+        @endphp
+        @if(file_exists($themeCssPublicPath))
+            <link rel="stylesheet" href="{{ global_asset($themeCssRelativePath) }}" id="theme-css">
+        @endif
 
         {{-- Load scoped customization CSS from database (tenant scope) --}}
         @php

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { RefreshCcw, RotateCcw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -38,8 +39,10 @@ export function PaymentsPage() {
   const { t, i18n } = useTranslation('billing');
   const { toast } = useToast();
   const { hasPermission } = usePermissions();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const canRefund = hasPermission('payments.refund');
+  const canManageProviders = hasPermission('payments.manage');
 
   const [provider, setProvider] = useState<PaymentProviderCode | ''>('');
   const [status, setStatus] = useState('');
@@ -103,7 +106,15 @@ export function PaymentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t('tenant_payments_title')} description={t('tenant_payments_description')} />
+      <PageHeader
+        title={t('tenant_payments_title')}
+        description={t('tenant_payments_description')}
+        actions={canManageProviders ? (
+          <Button variant="outline" onClick={() => navigate('/cms/payments/providers')}>
+            {t('payment_providers_title')}
+          </Button>
+        ) : undefined}
+      />
 
       <Card>
         <CardHeader>
