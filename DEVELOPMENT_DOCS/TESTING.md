@@ -11,6 +11,7 @@ ByteForge uses a comprehensive testing strategy with both backend (PHPUnit/Larav
 **Current Status:**
 - ✅ **Backend:** 217 tests passing, 14 skipped (PHPUnit 12.x)
 - ✅ **Frontend:** 700+ tests passing (Vitest)
+- ✅ **E2E Harness:** Playwright configured with central + tenant shell smoke tests and runtime console guards
 
 ---
 
@@ -30,7 +31,35 @@ npm run test           # Watch mode
 npm run test:run       # Single run (CI mode)
 npm run test:ui        # Interactive UI
 npm run test:coverage  # With coverage report
+
+# E2E (Playwright)
+npm run test:e2e
+npm run test:e2e:ui
+npm run test:e2e:headed
+npm run test:e2e:report
 ```
+
+### E2E Environment Notes
+
+- Default central base URL: `http://byteforge.se` (override with `PLAYWRIGHT_BASE_URL`)
+- Optional tenant smoke base URL: set `PLAYWRIGHT_TENANT_BASE_URL` (example: `http://tenant-one.byteforge.se`)
+- Optional web server command: set `PLAYWRIGHT_WEB_SERVER_COMMAND` if you want Playwright to start the app automatically
+- Console-error allowlist override: set `PLAYWRIGHT_CONSOLE_ALLOWLIST` with comma-separated regex fragments
+- Optional credential overrides for authenticated flows:
+  - `PLAYWRIGHT_CENTRAL_EMAIL`, `PLAYWRIGHT_CENTRAL_PASSWORD`
+  - `PLAYWRIGHT_TENANT_OWNER_EMAIL`, `PLAYWRIGHT_TENANT_OWNER_PASSWORD`
+  - `PLAYWRIGHT_TENANT_VIEWER_EMAIL`, `PLAYWRIGHT_TENANT_VIEWER_PASSWORD`
+
+Example:
+
+```bash
+PLAYWRIGHT_BASE_URL=http://byteforge.se \
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.byteforge.se \
+npm run test:e2e
+```
+
+> Linux host note: if Playwright reports missing browser dependencies, install them once with:
+> `sudo npx playwright install-deps`
 
 ---
 
@@ -273,6 +302,34 @@ describe('Button Component', () => {
   });
 });
 ```
+
+---
+
+## End-to-End Testing (Playwright)
+
+Playwright smoke coverage lives in `tests/e2e/` and is focused on browser-runtime health:
+
+- Central login shell bootstrap (`/login`)
+- Tenant login shell bootstrap (`/login` on tenant domain) when `PLAYWRIGHT_TENANT_BASE_URL` is provided
+- Central auth flow (`/login` -> `/dashboard` -> logout -> `/login`)
+- Tenant owner auth flow (`/login` -> `/cms` -> logout -> `/login`)
+- Tenant viewer permission gate (`/cms/settings` -> Access Denied)
+- Runtime guardrails for:
+  - Browser console errors
+  - Uncaught page errors
+  - Failed critical requests (document/script/stylesheet/xhr/fetch)
+
+### Runtime Console Guard
+
+`tests/e2e/support/consoleGuards.ts` fails tests when critical runtime issues are detected. A small default allowlist suppresses known noisy but non-blocking messages (for example favicon requests and ResizeObserver loop warnings).
+
+When debugging noisy environments, you can append allowlist patterns without code changes:
+
+```bash
+PLAYWRIGHT_CONSOLE_ALLOWLIST="Hydration failed,Some third-party warning" npm run test:e2e
+```
+
+Keep this allowlist minimal. If a new error appears consistently, treat it as a bug first.
 
 ---
 
