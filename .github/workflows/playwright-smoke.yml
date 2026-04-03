@@ -31,6 +31,9 @@ jobs:
       - name: Prepare .env
         run: cp .env.example .env
 
+      - name: Create Laravel storage directories
+        run: mkdir -p storage/framework/{sessions,views,cache/data} bootstrap/cache
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -101,6 +104,9 @@ jobs:
 
       - name: Prepare .env
         run: cp .env.example .env
+
+      - name: Create Laravel storage directories
+        run: mkdir -p storage/framework/{sessions,views,cache/data} bootstrap/cache
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
