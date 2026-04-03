@@ -9,6 +9,10 @@ interface ThemeProviderProps {
   injectCss?: boolean; // Whether to inject CSS dynamically (for editor/builder only)
 }
 
+function isTenantDomainHost(hostname: string): boolean {
+  return hostname.endsWith('.byteforge.se') && hostname !== 'byteforge.se';
+}
+
 export function ThemeProvider({ children, initialTheme, injectCss = false }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme | null>(initialTheme || null);
   const [isLoading, setIsLoading] = useState(!initialTheme); // Skip loading if theme provided
@@ -18,8 +22,9 @@ export function ThemeProvider({ children, initialTheme, injectCss = false }: The
     try {
       setIsLoading(true);
       setError(null);
-      const isTenantCms = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
-      const response = isTenantCms ? await tenantThemes.active() : await themes.active();
+      const isTenantRuntime = typeof window !== 'undefined'
+        && (window.location.pathname.startsWith('/cms') || isTenantDomainHost(window.location.hostname));
+      const response = isTenantRuntime ? await tenantThemes.active() : await themes.active();
       setTheme(response.data);
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response?.status;
