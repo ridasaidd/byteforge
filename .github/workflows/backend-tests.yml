@@ -30,12 +30,14 @@ jobs:
 
     env:
       APP_ENV: testing
+      APP_URL: http://localhost
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_DATABASE: byteforge
       DB_USERNAME: root
       DB_PASSWORD: root
+      TENANCY_CENTRAL_DOMAINS: byteforge.se,localhost,127.0.0.1
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
@@ -114,12 +116,14 @@ jobs:
 
     env:
       APP_ENV: testing
+      APP_URL: http://localhost
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_DATABASE: byteforge
       DB_USERNAME: root
       DB_PASSWORD: root
+      TENANCY_CENTRAL_DOMAINS: byteforge.se,localhost,127.0.0.1
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
