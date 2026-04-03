@@ -51,6 +51,9 @@ jobs:
       - name: Install Node dependencies
         run: npm ci
 
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Install Playwright browser and dependencies
         run: npx playwright install --with-deps chromium
 
@@ -132,6 +135,9 @@ jobs:
 
       - name: Install Node dependencies
         run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Install Playwright browser and dependencies
         run: npx playwright install --with-deps chromium
