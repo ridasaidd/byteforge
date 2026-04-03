@@ -49,9 +49,9 @@ export function useEditorCssLoader({ themeId, section, enabled = true, refreshTr
       const response = await fetch(cssUrl, { cache: 'no-store' });
 
       if (!response.ok) {
-        if (response.status === 404) {
-          // CSS file doesn't exist yet - this is OK for new themes
-          console.log(`[useEditorCssLoader] CSS file not found: ${cssUrl}`);
+        if (response.status === 404 || response.status === 403) {
+          // Theme CSS is optional for editor rendering; missing/forbidden files should not fail page boot.
+          console.log(`[useEditorCssLoader] CSS file unavailable (${response.status}): ${cssUrl}`);
           setCssContent('');
           if (styleTag) {
             styleTag.textContent = '';

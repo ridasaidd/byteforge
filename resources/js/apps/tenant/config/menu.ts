@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Image, Menu, Settings, BarChart2, CreditCard, ShieldCheck, Palette, Users, Shield } from 'lucide-react';
+import { LayoutDashboard, FileText, Image, Menu, Settings, BarChart2, CreditCard, Palette, Users, Shield } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 import { useTranslation } from 'react-i18next';
 
@@ -27,12 +27,6 @@ export function useTenantMenuItems(): MenuItem[] {
       label: t('menu_payments'),
       path: '/cms/payments',
       icon: CreditCard,
-      permission: 'payments.view',
-    },
-    {
-      label: t('menu_payment_providers'),
-      path: '/cms/payments/providers',
-      icon: ShieldCheck,
       permission: 'payments.view',
     },
     {

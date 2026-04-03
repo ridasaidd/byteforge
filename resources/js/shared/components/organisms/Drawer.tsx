@@ -28,14 +28,27 @@ export function Drawer({ isOpen, onClose, menuItems }: DrawerProps) {
   const { t } = useTranslation('common');
   const { hasAnyPermission, hasAllPermissions, hasAnyRole, hasAllRoles } = usePermissions();
 
-  // Treat dashboard root as exact match to avoid highlighting it on all child routes
-  const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return location.pathname === '/dashboard';
+  const isRootPath = (path: string) => path === '/dashboard' || path === '/cms';
+
+  const getActivePath = (): string | null => {
+    // Root paths should only match exactly and never stay active on child routes.
+    const exactRootMatch = menuItems.find((item) => isRootPath(item.path) && item.path === location.pathname);
+    if (exactRootMatch) {
+      return exactRootMatch.path;
     }
 
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    // Prefer the longest non-root path match so nested routes don't mark multiple items as active.
+    const candidates = menuItems
+      .map((item) => item.path)
+      .filter((path) => !isRootPath(path) && (location.pathname === path || location.pathname.startsWith(path + '/')))
+      .sort((a, b) => b.length - a.length);
+
+    return candidates[0] ?? null;
   };
+
+  const activePath = getActivePath();
+
+  const isActive = (path: string) => activePath === path;
 
   /**
    * Check if user has access to a menu item based on its permission/role requirements

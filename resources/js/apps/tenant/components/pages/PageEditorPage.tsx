@@ -28,13 +28,15 @@ export function PageEditorPage() {
   const [themeId, setThemeId] = useState<number | null>(null);
   const [themeData, setThemeData] = useState<ThemeData | null>(null);
 
+  const canLoadThemeCssFromStorage = typeof window !== 'undefined' && window.location.hostname === 'byteforge.se';
+
   const puckDataRef = useRef<Data>({ content: [], root: {} });
   const hasLoadedRef = useRef(false);
 
   useEditorCssLoader({
     themeId,
     section: 'theme',
-    enabled: !!themeId,
+    enabled: !!themeId && canLoadThemeCssFromStorage,
   });
 
   const viewports = [
