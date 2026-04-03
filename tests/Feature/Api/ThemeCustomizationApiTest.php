@@ -22,6 +22,7 @@ use Tests\TestCase;
 class ThemeCustomizationApiTest extends TestCase
 {
     protected Theme $theme;
+    protected string $themeSlug;
     protected ThemeService $themeService;
 
     protected function setUp(): void
@@ -29,6 +30,7 @@ class ThemeCustomizationApiTest extends TestCase
         parent::setUp();
 
         $this->themeService = $this->app->make(ThemeService::class);
+        $this->themeSlug = 'test-theme-' . uniqid();
 
         // Create a theme blueprint with placeholders
         $this->theme = Theme::factory()->create([
@@ -36,7 +38,7 @@ class ThemeCustomizationApiTest extends TestCase
             'is_system_theme' => true,
             'is_active' => false,
             'name' => 'Test Theme',
-            'slug' => 'test-theme',
+            'slug' => $this->themeSlug,
         ]);
 
         // Create placeholders (blueprint defaults)
@@ -59,7 +61,7 @@ class ThemeCustomizationApiTest extends TestCase
     public function test_central_superadmin_can_customize_active_theme(): void
     {
         // Activate theme for central - this creates theme_parts
-        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme($this->themeSlug, null);
 
         $this->actingAsSuperadmin();
 
@@ -107,7 +109,7 @@ class ThemeCustomizationApiTest extends TestCase
     public function test_central_can_customize_header_section(): void
     {
         // Activate theme for central
-        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme($this->themeSlug, null);
 
         $this->actingAsSuperadmin();
 
@@ -134,7 +136,7 @@ class ThemeCustomizationApiTest extends TestCase
     public function test_central_can_customize_footer_section(): void
     {
         // Activate theme for central
-        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme($this->themeSlug, null);
 
         $this->actingAsSuperadmin();
 
@@ -161,7 +163,7 @@ class ThemeCustomizationApiTest extends TestCase
     public function test_cannot_modify_invalid_sections(): void
     {
         // Activate theme for central
-        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme($this->themeSlug, null);
 
         $this->actingAsSuperadmin();
 
@@ -179,7 +181,7 @@ class ThemeCustomizationApiTest extends TestCase
     public function test_get_customization_returns_all_sections(): void
     {
         // Activate theme
-        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme($this->themeSlug, null);
 
         // Set CSS on theme_parts (where customizations are stored)
         $settingsPart = ThemePart::create([
@@ -225,7 +227,7 @@ class ThemeCustomizationApiTest extends TestCase
     public function test_central_viewer_cannot_customize(): void
     {
         // Activate theme
-        $this->themeService->activateTheme('test-theme', null);
+        $this->themeService->activateTheme($this->themeSlug, null);
 
         $this->actingAsCentralViewer();
 
@@ -244,8 +246,8 @@ class ThemeCustomizationApiTest extends TestCase
         $tenantId = $this->getTenant('tenant-one')->id;
 
         // Activate for both central and tenant
-        $this->themeService->activateTheme('test-theme', null);
-        $this->themeService->activateTheme('test-theme', $tenantId);
+        $this->themeService->activateTheme($this->themeSlug, null);
+        $tenantTheme = $this->themeService->activateTheme($this->themeSlug, $tenantId);
 
         // Verify separate theme_parts exist
         $centralParts = ThemePart::whereNull('tenant_id')
@@ -253,7 +255,7 @@ class ThemeCustomizationApiTest extends TestCase
             ->count();
 
         $tenantParts = ThemePart::where('tenant_id', $tenantId)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $tenantTheme?->id)
             ->count();
 
         $this->assertEquals(2, $centralParts); // header + footer
@@ -268,7 +270,7 @@ class ThemeCustomizationApiTest extends TestCase
 
         // Verify tenant's header is unchanged
         $tenantHeader = ThemePart::where('tenant_id', $tenantId)
-            ->where('theme_id', $this->theme->id)
+            ->where('theme_id', $tenantTheme?->id)
             ->where('type', 'header')
             ->first();
 

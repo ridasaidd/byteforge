@@ -2,7 +2,10 @@
 
 namespace Tests\Support;
 
+use App\Services\TenantRbacService;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\TestUsers;
 
 /**
@@ -93,6 +96,9 @@ trait WithAuthentication
     protected function actingAsTenantOwner(string $tenantSlug = 'tenant-one'): static
     {
         $this->currentUser = TestUsers::tenantOwner($tenantSlug);
+
+        $this->normalizeTenantUserAuthContext($this->currentUser, $tenantSlug, 'owner');
+
         return $this->actingAs($this->currentUser, 'api');
     }
 
@@ -102,6 +108,9 @@ trait WithAuthentication
     protected function actingAsTenantEditor(): static
     {
         $this->currentUser = TestUsers::tenantEditor();
+
+        $this->normalizeTenantUserAuthContext($this->currentUser, 'tenant-one', 'editor');
+
         return $this->actingAs($this->currentUser, 'api');
     }
 
@@ -111,6 +120,9 @@ trait WithAuthentication
     protected function actingAsTenantViewer(string $tenantSlug = 'tenant-one'): static
     {
         $this->currentUser = TestUsers::tenantViewer($tenantSlug);
+
+        $this->normalizeTenantUserAuthContext($this->currentUser, $tenantSlug, 'viewer');
+
         return $this->actingAs($this->currentUser, 'api');
     }
 
@@ -122,6 +134,14 @@ trait WithAuthentication
     protected function actingAsTenantUser(string $tenantSlug): static
     {
         $this->currentUser = TestUsers::tenantBySlug($tenantSlug);
+
+        $membershipRole = $this->currentUser->memberships()
+            ->where('tenant_id', str_replace('-', '_', $tenantSlug))
+            ->where('status', 'active')
+            ->value('role') ?? 'viewer';
+
+        $this->normalizeTenantUserAuthContext($this->currentUser, $tenantSlug, (string) $membershipRole);
+
         return $this->actingAs($this->currentUser, 'api');
     }
 
@@ -177,5 +197,21 @@ trait WithAuthentication
     {
         $this->currentUser = null;
         return $this;
+    }
+
+    private function normalizeTenantUserAuthContext(User $user, string $tenantSlug, string $membershipRole): void
+    {
+        $tenantId = str_replace('-', '_', $tenantSlug);
+
+        app(TenantRbacService::class)->syncUserRoleFromMembership($user, $tenantId, $membershipRole);
+
+        // Tenant fixture users must never carry central/global roles in API tests.
+        DB::table('model_has_roles')
+            ->where('model_type', $user->getMorphClass())
+            ->where('model_id', $user->getKey())
+            ->whereNull('team_id')
+            ->delete();
+
+        app(PermissionRegistrar::class)->setPermissionsTeamId(null);
     }
 }

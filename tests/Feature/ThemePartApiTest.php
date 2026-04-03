@@ -12,11 +12,15 @@ class ThemePartApiTest extends TestCase
     #[Test]
     public function it_can_list_theme_parts()
     {
-        ThemePart::factory()->count(3)->create(['tenant_id' => null]);
+        $prefix = 'tp-list-' . uniqid();
+        ThemePart::factory()->count(3)->create([
+            'tenant_id' => null,
+            'name' => $prefix,
+        ]);
 
         $response = $this->actingAsSuperadmin()
             ->withServerVariables(['HTTP_HOST' => 'localhost'])
-            ->getJson('/api/superadmin/theme-parts');
+            ->getJson('/api/superadmin/theme-parts?search=' . $prefix);
 
         $response->assertStatus(200)
             ->assertJsonStructure([
@@ -66,7 +70,9 @@ class ThemePartApiTest extends TestCase
     #[Test]
     public function it_compiles_theme_part_on_publish()
     {
-        Theme::factory()->create([
+        Theme::query()->whereNull('tenant_id')->update(['is_active' => false]);
+
+        $activeTheme = Theme::factory()->create([
             'tenant_id' => null,
             'is_active' => true,
             'theme_data' => [
@@ -96,7 +102,7 @@ class ThemePartApiTest extends TestCase
         $themePart = ThemePart::find($response->json('data.id'));
         $this->assertNotNull($themePart->puck_data_compiled);
         $this->assertEquals(
-            '#3B82F6',
+            $activeTheme->theme_data['colors']['primary']['500'],
             $themePart->puck_data_compiled['content'][0]['props']['backgroundColor']
         );
     }
@@ -156,12 +162,13 @@ class ThemePartApiTest extends TestCase
     #[Test]
     public function it_can_filter_theme_parts_by_type()
     {
-        ThemePart::factory()->create(['tenant_id' => null, 'type' => 'header']);
-        ThemePart::factory()->create(['tenant_id' => null, 'type' => 'footer']);
-        ThemePart::factory()->create(['tenant_id' => null, 'type' => 'header']);
+        $prefix = 'tp-filter-' . uniqid();
+        ThemePart::factory()->create(['tenant_id' => null, 'type' => 'header', 'name' => $prefix . '-one']);
+        ThemePart::factory()->create(['tenant_id' => null, 'type' => 'footer', 'name' => $prefix . '-footer']);
+        ThemePart::factory()->create(['tenant_id' => null, 'type' => 'header', 'name' => $prefix . '-two']);
 
         $response = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
-            ->getJson('/api/superadmin/theme-parts?type=header');
+            ->getJson('/api/superadmin/theme-parts?type=header&search=' . $prefix);
 
         $response->assertStatus(200);
         $this->assertCount(2, $response->json('data'));

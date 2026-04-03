@@ -9,6 +9,13 @@ use Tests\TestCase;
 
 class AnalyticsEventScopesTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        AnalyticsEvent::query()->delete();
+    }
+
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
