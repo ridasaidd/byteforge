@@ -19,6 +19,11 @@ class CentralAnalyticsApiTest extends TestCase
 {
     private string $endpoint = '/api/superadmin/analytics/overview';
 
+    private function endpointWithRange(string $from, string $to): string
+    {
+        return "{$this->endpoint}?from={$from}&to={$to}";
+    }
+
     // =========================================================================
     // Authentication & Authorisation
     // =========================================================================
@@ -96,110 +101,148 @@ class CentralAnalyticsApiTest extends TestCase
     #[Test]
     public function platform_events_are_included_in_response(): void
     {
+        $from = now()->addYears(5)->startOfDay();
+        $to = $from->copy()->endOfDay();
+
+        $initialTotal = (int) $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()))
+            ->json('data.total_events');
+
         AnalyticsEvent::create([
             'tenant_id'  => null,
             'event_type' => AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED,
             'properties' => [],
-            'occurred_at' => now(),
+            'occurred_at' => $from->copy()->addHour(),
         ]);
 
-        $response = $this->actingAsSuperadmin()->getJson($this->endpoint);
+        $response = $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()));
 
         $response->assertOk()
-            ->assertJsonPath('data.total_events', 1);
+            ->assertJsonPath('data.total_events', $initialTotal + 1);
     }
 
     #[Test]
     public function tenant_scoped_events_are_excluded_from_central_analytics(): void
     {
+        $from = now()->addYears(5)->startOfDay();
+        $to = $from->copy()->endOfDay();
+
+        $initialTotal = (int) $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()))
+            ->json('data.total_events');
+
         // This is the security-critical isolation check.
         // Platform analytics must NEVER leak tenant business data.
         AnalyticsEvent::create([
             'tenant_id'  => 'tenant_one',
             'event_type' => AnalyticsEvent::TYPE_PAGE_CREATED,
             'properties' => [],
-            'occurred_at' => now(),
+            'occurred_at' => $from->copy()->addHour(),
         ]);
 
-        $response = $this->actingAsSuperadmin()->getJson($this->endpoint);
+        $response = $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()));
 
         $response->assertOk()
-            ->assertJsonPath('data.total_events', 0);
+            ->assertJsonPath('data.total_events', $initialTotal);
     }
 
     #[Test]
     public function events_outside_date_range_are_excluded(): void
     {
+        $from = now()->addYears(5)->startOfDay();
+        $to = $from->copy()->endOfDay();
+
+        $initialTotal = (int) $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()))
+            ->json('data.total_events');
+
         AnalyticsEvent::create([
             'tenant_id'  => null,
             'event_type' => AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED,
             'properties' => [],
-            'occurred_at' => now()->subMonths(3),
+            'occurred_at' => $from->copy()->subDay(),
         ]);
 
-        $from = now()->subDays(7)->format('Y-m-d');
-        $to   = now()->format('Y-m-d');
-
         $response = $this->actingAsSuperadmin()
-            ->getJson("{$this->endpoint}?from={$from}&to={$to}");
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()));
 
         $response->assertOk()
-            ->assertJsonPath('data.total_events', 0);
+            ->assertJsonPath('data.total_events', $initialTotal);
     }
 
     #[Test]
     public function events_inside_date_range_are_included(): void
     {
+        $from = now()->addYears(5)->startOfDay();
+        $to = $from->copy()->endOfDay();
+
+        $initialTotal = (int) $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()))
+            ->json('data.total_events');
+
         AnalyticsEvent::create([
             'tenant_id'  => null,
             'event_type' => AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED,
             'properties' => [],
-            'occurred_at' => now()->subDays(3),
+            'occurred_at' => $from->copy()->addHours(2),
         ]);
 
-        $from = now()->subDays(7)->format('Y-m-d');
-        $to   = now()->format('Y-m-d');
-
         $response = $this->actingAsSuperadmin()
-            ->getJson("{$this->endpoint}?from={$from}&to={$to}");
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()));
 
         $response->assertOk()
-            ->assertJsonPath('data.total_events', 1);
+            ->assertJsonPath('data.total_events', $initialTotal + 1);
     }
 
     #[Test]
     public function by_type_breakdown_is_correctly_aggregated(): void
     {
+        $from = now()->addYears(5)->startOfDay();
+        $to = $from->copy()->endOfDay();
+
+        $initial = $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()))
+            ->json('data.by_type');
+
+        $initialByType = is_array($initial) ? $initial : [];
+        $initialTotal = (int) array_sum($initialByType);
+
         AnalyticsEvent::create([
             'tenant_id'  => null,
             'event_type' => AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED,
             'properties' => [],
-            'occurred_at' => now(),
+            'occurred_at' => $from->copy()->addHour(),
         ]);
         AnalyticsEvent::create([
             'tenant_id'  => null,
             'event_type' => AnalyticsEvent::TYPE_PLATFORM_USER_REGISTERED,
             'properties' => [],
-            'occurred_at' => now(),
+            'occurred_at' => $from->copy()->addHours(2),
         ]);
         AnalyticsEvent::create([
             'tenant_id'  => null,
             'event_type' => AnalyticsEvent::TYPE_PLATFORM_USER_REGISTERED,
             'properties' => [],
-            'occurred_at' => now(),
+            'occurred_at' => $from->copy()->addHours(3),
         ]);
 
-        $response = $this->actingAsSuperadmin()->getJson($this->endpoint);
+        $response = $this->actingAsSuperadmin()
+            ->getJson($this->endpointWithRange($from->toDateString(), $to->toDateString()));
+
+        $expectedTenantCreated = ($initialByType[AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED] ?? 0) + 1;
+        $expectedUserRegistered = ($initialByType[AnalyticsEvent::TYPE_PLATFORM_USER_REGISTERED] ?? 0) + 2;
 
         // assertJsonPath uses dot-notation for nesting, but event type keys contain
         // literal dots (e.g. 'tenant.created'). Use assertJson() instead.
         $response->assertOk()
-            ->assertJsonPath('data.total_events', 3)
+            ->assertJsonPath('data.total_events', $initialTotal + 3)
             ->assertJson([
                 'data' => [
                     'by_type' => [
-                        AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED  => 1,
-                        AnalyticsEvent::TYPE_PLATFORM_USER_REGISTERED => 2,
+                        AnalyticsEvent::TYPE_PLATFORM_TENANT_CREATED  => $expectedTenantCreated,
+                        AnalyticsEvent::TYPE_PLATFORM_USER_REGISTERED => $expectedUserRegistered,
                     ],
                 ],
             ]);

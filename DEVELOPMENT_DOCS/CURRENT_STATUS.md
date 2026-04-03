@@ -1,6 +1,6 @@
 # ByteForge – Current Status
 
-Last updated: March 14, 2026 (Phase 11 complete and merged to main)
+Last updated: April 3, 2026 (Phase 12 in progress — final QA/documentation closeout)
 Current branch: `main`
 
 ## Snapshot
@@ -19,6 +19,7 @@ Current branch: `main`
 - **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
 - **Phase 10 Payments Core:** ✅ **COMPLETE + merged** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`), webhook idempotency/rate-limiting hardening, and checkout-return subscription sync. Full regression executed: `304 passed`, `15 skipped`.
 - **Phase 11 Dashboard Translation (i18n):** ✅ **COMPLETE + merged** — i18next + react-i18next infrastructure, 15 namespaces across `en/sv/ar`, user locale persistence (`preferred_locale` + `PATCH /auth/locale`), central + tenant dashboard string extraction/localization, Swedish character corrections (proper `å/ä/ö`), and RTL support (logical CSS classes + directional icon handling).
+- **Phase 12 Tenant Runtime Readiness:** 🚧 **IN PROGRESS (closeout)** — tenant login/runtime routes, membership enforcement middleware, tenant permission-gated CMS routes, storefront parity, and tenant isolation test coverage are implemented on `main`. Remaining closeout: browser-level login/logout redirect QA and resolving Passport-key test-environment skips for tenant login endpoint tests.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
@@ -82,7 +83,7 @@ Testing status (Feb 2, 2026):
 
 ## What's Remaining
 
-### **Next Priority: Phase 12 Tenant Runtime Readiness**
+### **Current Priority: Phase 12 Tenant Runtime Readiness (Closeout)**
 
 **Summary:**
 - Make tenant runtime fully production-ready before adding new business modules
@@ -90,7 +91,7 @@ Testing status (Feb 2, 2026):
 - Close tenant runtime gaps (redirects, permissions, session/token handling, runtime QA)
 - Add a readiness gate with explicit acceptance criteria and smoke tests
 
-**Status**: Planned (next active phase)
+**Status**: In progress (runtime hardening complete; final QA/docs closeout pending)
 
 ---
 
@@ -157,6 +158,12 @@ If current approach becomes a bottleneck, consider pivot table refactor (see old
 - ✅ Added RTL support hardening (logical Tailwind properties + directional icon mirroring)
 - ✅ Archived completed planning docs under `archive/completed-phases/`
 - ✅ Set next active phase to Tenant Runtime Readiness before Booking Integration
+
+**April 3, 2026 (Phase 12 Validation Pass):**
+- ✅ Fixed tenant storefront fixture-collision regressions in `TenantStorefrontTest` (duplicate `tenant_id + slug` collisions)
+- ✅ Tenant runtime suite now green with expected auth-key skips: `50 passed`, `3 skipped`, `0 failed` (`php artisan test tests/Tenant`)
+- ✅ Central analytics API tests made fixture-safe by range-scoped assertions (`CentralAnalyticsApiTest`)
+- ✅ `M4 / Phase 12` status aligned to "in progress closeout" before starting Booking Integration
 
 **February 2, 2026 (Phase 7 - Font System Complete):**
 - ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation

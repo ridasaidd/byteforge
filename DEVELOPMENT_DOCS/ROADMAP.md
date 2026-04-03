@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: March 14, 2026
+Last updated: April 3, 2026
 
 —
 
@@ -100,7 +100,7 @@ Last updated: March 14, 2026
 
 ---
 
-### M4: Tenant Runtime Readiness (NEXT)
+### M4: Tenant Runtime Readiness (IN PROGRESS)
 
 **Phase 12: Tenant storefront + auth + dashboard production readiness**
 
@@ -111,7 +111,11 @@ Last updated: March 14, 2026
 - Add tenant runtime QA gate (auth, isolation, permission, smoke coverage)
 
 **Est:** 1-2 weeks
-**Status:** Planned, next active phase
+**Verification status (Apr 3, 2026):**
+- Tenant suite: `50 passed`, `3 skipped`, `0 failed` (`php artisan test tests/Tenant`)
+- Central analytics feature slice: fixture-safe assertions restored and passing
+
+**Status:** In progress — runtime hardening implemented on `main`; final browser QA + docs closeout pending
 
 ---
 
