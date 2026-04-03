@@ -28,7 +28,13 @@
         @endif
 
         {{-- Load consolidated theme CSS from disk --}}
-        <link rel="stylesheet" href="{{ global_asset('storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css') }}" id="theme-css">
+        @php
+            $themeCssRelativePath = 'storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css';
+            $themeCssPublicPath = public_path($themeCssRelativePath);
+        @endphp
+        @if(file_exists($themeCssPublicPath))
+            <link rel="stylesheet" href="{{ global_asset($themeCssRelativePath) }}" id="theme-css">
+        @endif
 
         {{-- Load scoped customization CSS from database (tenant scope) --}}
         @php
