@@ -55,6 +55,12 @@ jobs:
           coverage: none
           extensions: mbstring, bcmath, ctype, fileinfo, json, openssl, pdo_mysql, tokenizer, xml
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
       - name: Prepare .env
         run: cp .env.example .env
 
@@ -66,6 +72,12 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Generate app key
         run: php artisan key:generate
@@ -84,8 +96,11 @@ jobs:
           echo "MySQL did not become ready in time"
           exit 1
 
-      - name: Run migrations and seed fixtures
-        run: php artisan migrate:fresh --seed --force
+      - name: Run migrations
+        run: php artisan migrate:fresh --force
+
+      - name: Seed test fixtures
+        run: php artisan db:seed --class=TestFixturesSeeder --force
 
       - name: Run PHPUnit suites
         run: php artisan test --testsuite=Central,Tenant,Feature,Unit
@@ -144,6 +159,12 @@ jobs:
           coverage: none
           extensions: mbstring, bcmath, ctype, fileinfo, json, openssl, pdo_mysql, tokenizer, xml
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
       - name: Prepare .env
         run: cp .env.example .env
 
@@ -155,6 +176,12 @@ jobs:
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build frontend assets
+        run: npm run build
 
       - name: Generate app key
         run: php artisan key:generate
@@ -173,8 +200,11 @@ jobs:
           echo "MySQL did not become ready in time"
           exit 1
 
-      - name: Run migrations and seed fixtures
-        run: php artisan migrate:fresh --seed --force
+      - name: Run migrations
+        run: php artisan migrate:fresh --force
+
+      - name: Seed test fixtures
+        run: php artisan db:seed --class=TestFixturesSeeder --force
 
       - name: Run PHPUnit Integration suite
         run: php artisan test --testsuite=Integration
