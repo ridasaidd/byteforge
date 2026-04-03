@@ -133,6 +133,9 @@ jobs:
           touch database/database.sqlite
           php artisan migrate --force
 
+      - name: Seed tenant fixtures for tenant smoke
+        run: php artisan db:seed --class=Database\\Seeders\\FixedTestDataSeeder --force
+
       - name: Install Node dependencies
         run: npm ci
 
