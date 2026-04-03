@@ -29,7 +29,10 @@ jobs:
           coverage: none
 
       - name: Prepare .env
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          echo "SESSION_DRIVER=file" >> .env
+          echo "CACHE_STORE=file" >> .env
 
       - name: Create Laravel storage directories
         run: mkdir -p storage/framework/{sessions,views,cache/data} bootstrap/cache
@@ -39,6 +42,11 @@ jobs:
 
       - name: Generate Laravel app key
         run: php artisan key:generate
+
+      - name: Create SQLite database and run migrations
+        run: |
+          touch database/database.sqlite
+          php artisan migrate --force
 
       - name: Install Node dependencies
         run: npm ci
@@ -103,7 +111,10 @@ jobs:
           coverage: none
 
       - name: Prepare .env
-        run: cp .env.example .env
+        run: |
+          cp .env.example .env
+          echo "SESSION_DRIVER=file" >> .env
+          echo "CACHE_STORE=file" >> .env
 
       - name: Create Laravel storage directories
         run: mkdir -p storage/framework/{sessions,views,cache/data} bootstrap/cache
@@ -113,6 +124,11 @@ jobs:
 
       - name: Generate Laravel app key
         run: php artisan key:generate
+
+      - name: Create SQLite database and run migrations
+        run: |
+          touch database/database.sqlite
+          php artisan migrate --force
 
       - name: Install Node dependencies
         run: npm ci
