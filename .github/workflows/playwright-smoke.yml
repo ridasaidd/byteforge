@@ -28,13 +28,14 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Prepare .env
+        run: cp .env.example .env
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare Laravel app key
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+      - name: Generate Laravel app key
+        run: php artisan key:generate
 
       - name: Install Node dependencies
         run: npm ci
@@ -98,13 +99,14 @@ jobs:
           tools: composer:v2
           coverage: none
 
+      - name: Prepare .env
+        run: cp .env.example .env
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Prepare Laravel app key
-        run: |
-          cp .env.example .env
-          php artisan key:generate
+      - name: Generate Laravel app key
+        run: php artisan key:generate
 
       - name: Install Node dependencies
         run: npm ci
