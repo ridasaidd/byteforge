@@ -94,7 +94,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: playwright-smoke
     if: vars.PLAYWRIGHT_TENANT_BASE_URL != ''
-    continue-on-error: true
     timeout-minutes: 20
 
     steps:
