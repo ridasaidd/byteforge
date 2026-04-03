@@ -59,6 +59,9 @@ jobs:
       - name: Create Laravel storage directories
         run: mkdir -p storage/framework/{sessions,views,cache/data} bootstrap/cache
 
+      - name: Ensure optional test suite directories exist
+        run: mkdir -p tests/Shared
+
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
@@ -80,7 +83,7 @@ jobs:
         run: php artisan migrate:fresh --seed --force
 
       - name: Run PHPUnit suites
-        run: php artisan test --testsuite=Central,Tenant,Shared,Feature,Unit
+        run: php artisan test --testsuite=Central,Tenant,Feature,Unit
 
       - name: Upload Laravel log on failure
         if: failure()
@@ -139,6 +142,9 @@ jobs:
 
       - name: Create Laravel storage directories
         run: mkdir -p storage/framework/{sessions,views,cache/data} bootstrap/cache
+
+      - name: Ensure optional test suite directories exist
+        run: mkdir -p tests/Shared
 
       - name: Install PHP dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
