@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
 import { TenantApp } from '@/apps/tenant/App';
 import { AuthProvider } from '@/shared/context/AuthContext.tsx';
 import { I18nDirectionProvider } from '@/i18n/I18nDirectionProvider';
@@ -30,6 +31,7 @@ ReactDOM.createRoot(rootElement).render(
       <I18nDirectionProvider>
         <AuthProvider>
           <TenantApp />
+          <Toaster position="top-right" richColors />
         </AuthProvider>
       </I18nDirectionProvider>
         </QueryClientProvider>
