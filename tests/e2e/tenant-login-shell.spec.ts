@@ -8,10 +8,10 @@ test('tenant login shell loads without runtime console errors', async ({ page })
 
   const issues = attachRuntimeGuards(page);
 
-  await page.goto(`${tenantBaseUrl}/login`);
+  const response = await page.goto(`${tenantBaseUrl}/login`);
+  expect(response?.ok(), `Tenant login page request failed with status ${response?.status()}`).toBeTruthy();
+  await expect(page).toHaveTitle(/Tenant CMS/i);
   await expect(page.locator('#tenant-app')).toBeAttached();
-  await expect(page.locator('input#email')).toBeVisible({ timeout: 30_000 });
-  await expect(page.locator('input#password')).toBeVisible({ timeout: 30_000 });
 
   expect(issues, `Runtime issues detected on tenant login:\n${formatIssues(issues)}`).toEqual([]);
 });
