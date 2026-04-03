@@ -70,6 +70,9 @@ jobs:
       - name: Generate app key
         run: php artisan key:generate
 
+      - name: Generate Passport keys
+        run: php artisan passport:keys --force
+
       - name: Wait for MySQL
         run: |
           for i in {1..30}; do
@@ -155,6 +158,9 @@ jobs:
 
       - name: Generate app key
         run: php artisan key:generate
+
+      - name: Generate Passport keys
+        run: php artisan passport:keys --force
 
       - name: Wait for MySQL
         run: |
