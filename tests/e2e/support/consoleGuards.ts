@@ -38,6 +38,20 @@ function formatFailedRequest(request: Request): string {
   return `${request.method()} ${request.url()} -> ${failureText}`;
 }
 
+function isIgnorableFailedRequest(request: Request): boolean {
+  const failureText = request.failure()?.errorText ?? '';
+  if (/ERR_ABORTED/i.test(failureText)) {
+    return true;
+  }
+
+  const url = request.url();
+  if (/_debugbar\//i.test(url)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function attachRuntimeGuards(page: Page): RuntimeIssue[] {
   const issues: RuntimeIssue[] = [];
   const allowlist = [...DEFAULT_ALLOWLIST, ...parseAllowlistFromEnv()];
@@ -67,6 +81,10 @@ export function attachRuntimeGuards(page: Page): RuntimeIssue[] {
   page.on('requestfailed', (request) => {
     const resourceType = request.resourceType();
     if (!['document', 'script', 'stylesheet', 'xhr', 'fetch'].includes(resourceType)) {
+      return;
+    }
+
+    if (isIgnorableFailedRequest(request)) {
       return;
     }
 
