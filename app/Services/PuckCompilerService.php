@@ -133,6 +133,9 @@ class PuckCompilerService
         // Process content array
         if (isset($data['content']) && is_array($data['content'])) {
             $data['content'] = array_map(function ($component) use ($theme) {
+                if (!is_array($component)) {
+                    return $component;
+                }
                 return $this->compileComponent($component, $theme);
             }, $data['content']);
         }

@@ -13,19 +13,21 @@ class ThemeServiceTest extends TestCase
 {
     protected ThemeService $themeService;
     protected Theme $theme;
+    protected string $themeSlug;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->themeService = $this->app->make(ThemeService::class);
+        $this->themeSlug = 'test-theme-' . uniqid();
 
         // Create a theme (blueprint) with placeholders
         $this->theme = Theme::factory()->create([
             'is_system_theme' => true,
             'tenant_id' => null,
             'name' => 'Test Theme',
-            'slug' => 'test-theme'
+            'slug' => $this->themeSlug
         ]);
 
         ThemePlaceholder::create([
@@ -47,7 +49,7 @@ class ThemeServiceTest extends TestCase
         $tenantId = $this->getTenant('tenant-one')->id;
 
         // Act: Activate the system theme for the tenant — a tenant-owned clone is created.
-        $activeTheme = $this->themeService->activateTheme('test-theme', $tenantId);
+        $activeTheme = $this->themeService->activateTheme($this->themeSlug, $tenantId);
 
         // Assert: A tenant-scoped clone is returned and is active.
         $this->assertNotNull($activeTheme);
@@ -79,7 +81,7 @@ class ThemeServiceTest extends TestCase
     public function it_copies_placeholders_to_parts_on_activation_for_central()
     {
         // Act: Activate the theme for central (null tenant)
-        $activeTheme = $this->themeService->activateTheme('test-theme', null);
+        $activeTheme = $this->themeService->activateTheme($this->themeSlug, null);
 
         // Assert: Same theme is returned (not cloned)
         $this->assertNotNull($activeTheme);
@@ -113,7 +115,7 @@ class ThemeServiceTest extends TestCase
         $tenantId = $this->getTenant('tenant-one')->id;
 
         // First activation - creates tenant clone + parts
-        $cloned = $this->themeService->activateTheme('test-theme', $tenantId);
+        $cloned = $this->themeService->activateTheme($this->themeSlug, $tenantId);
 
         // Modify the tenant clone's header part
         $headerPart = ThemePart::where('tenant_id', $tenantId)
@@ -124,7 +126,7 @@ class ThemeServiceTest extends TestCase
         $headerPart->save();
 
         // Reactivate — should re-use existing clone, not create a new one
-        $this->themeService->activateTheme('test-theme', $tenantId);
+        $this->themeService->activateTheme($this->themeSlug, $tenantId);
 
         // Assert: Customized content is preserved (not overwritten)
         $headerPart->refresh();
@@ -138,8 +140,8 @@ class ThemeServiceTest extends TestCase
         $tenant2Id = $this->getTenant('tenant-two')->id;
 
         // Activate for both tenants — each gets their own clone.
-        $clone1 = $this->themeService->activateTheme('test-theme', $tenant1Id);
-        $clone2 = $this->themeService->activateTheme('test-theme', $tenant2Id);
+        $clone1 = $this->themeService->activateTheme($this->themeSlug, $tenant1Id);
+        $clone2 = $this->themeService->activateTheme($this->themeSlug, $tenant2Id);
 
         // Modify tenant1's header (on clone1)
         $headerPart1 = ThemePart::where('tenant_id', $tenant1Id)

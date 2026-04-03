@@ -24,6 +24,13 @@ use Tests\TestCase;
  */
 class AnalyticsIsolationTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        AnalyticsEvent::query()->delete();
+    }
+
     // =========================================================================
     // Platform Analytics — central domain (these WORK)
     // =========================================================================

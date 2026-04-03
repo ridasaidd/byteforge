@@ -23,7 +23,11 @@ class TenantRuntimeReadinessTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('id="tenant-app"', false);
-        $response->assertSee('resources/js/tenant.tsx', false);
+        $html = (string) $response->getContent();
+        $this->assertTrue(
+            str_contains($html, 'resources/js/tenant.tsx') || str_contains($html, '/build/assets/'),
+            'Expected tenant shell to include a Vite dev entrypoint or a built asset reference.'
+        );
     }
 
     #[Test]
@@ -33,7 +37,11 @@ class TenantRuntimeReadinessTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('id="tenant-app"', false);
-        $response->assertSee('resources/js/tenant.tsx', false);
+        $html = (string) $response->getContent();
+        $this->assertTrue(
+            str_contains($html, 'resources/js/tenant.tsx') || str_contains($html, '/build/assets/'),
+            'Expected tenant shell to include a Vite dev entrypoint or a built asset reference.'
+        );
     }
 
     #[Test]

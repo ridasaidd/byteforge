@@ -4,6 +4,8 @@ namespace Tests\Support;
 
 use App\Models\Tenant;
 use App\Models\User;
+use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Permission;
 
 /**
  * Test user helper for accessing seeded test users.
@@ -113,6 +115,11 @@ class TestUsers
         };
     }
 
+    public static function tenantBySlug(string $tenantSlug): User
+    {
+        return self::tenantOwner($tenantSlug);
+    }
+
     // =========================================================================
     // TENANTS
     // =========================================================================
@@ -120,5 +127,32 @@ class TestUsers
     public static function tenant(string $slug = 'tenant-one'): Tenant
     {
         return Tenant::where('slug', $slug)->firstOrFail();
+    }
+
+    public static function createUserWithNoPermissions(): User
+    {
+        return User::factory()->create([
+            'password' => Hash::make('password'),
+            'email_verified_at' => now(),
+        ]);
+    }
+
+    /**
+     * @param array<string> $permissions
+     */
+    public static function createUserWithPermissions(array $permissions): User
+    {
+        $user = self::createUserWithNoPermissions();
+
+        $permissionModels = Permission::query()
+            ->where('guard_name', 'api')
+            ->whereIn('name', $permissions)
+            ->get();
+
+        if ($permissionModels->isNotEmpty()) {
+            $user->givePermissionTo($permissionModels);
+        }
+
+        return $user;
     }
 }

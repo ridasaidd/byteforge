@@ -19,6 +19,12 @@ class BillingServiceTest extends TestCase
     {
         parent::setUp();
         $this->service = app(BillingService::class);
+
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->first();
+        if ($tenant) {
+            DB::table('subscriptions')->where('tenant_id', (string) $tenant->id)->delete();
+            TenantAddon::query()->where('tenant_id', (string) $tenant->id)->delete();
+        }
     }
 
     #[Test]
