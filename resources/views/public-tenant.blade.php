@@ -55,19 +55,10 @@
         @endif
     @endisset
 
-    <!-- Phase 9.6: Third-party analytics integrations -->
-    @include('partials._analytics-scripts', ['settings' => $analyticsSettings ?? null])
-
     <!-- Vite JS only - CSS comes from theme system -->
     @viteReactRefresh
 </head>
 <body class="antialiased">
-    @if(!empty($analyticsSettings?->gtm_container_id))
-    {{-- Google Tag Manager (noscript body tag) --}}
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id={{ $analyticsSettings->gtm_container_id }}"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
-    @endif
-
     <div id="public-app"></div>
 
     <!-- Vite JS - Only public app bundle -->

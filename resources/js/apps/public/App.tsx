@@ -1,6 +1,7 @@
 import { FC } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { PublicPage } from '@/apps/central/components/pages/PublicPage';
+import { CookieBanner } from './components';
 
 export const PublicApp: FC = () => {
     return (
@@ -11,6 +12,7 @@ export const PublicApp: FC = () => {
                 v7_relativeSplatPath: true,
             }}
         >
+            <CookieBanner />
             <Routes>
                 {/* Homepage */}
                 <Route path="/" element={<PublicPage />} />

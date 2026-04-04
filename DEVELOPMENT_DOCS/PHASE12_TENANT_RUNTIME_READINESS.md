@@ -1,10 +1,10 @@
 # Phase 12: Tenant Runtime Readiness
 
-**Status**: In progress — runtime hardening complete, final QA/documentation remaining
-**Branch**: `feature/phase12-tenant-runtime-readiness`
+**Status**: ✅ Complete
+**Branch**: `feature/cookie-consent-gdpr` (final deliverable merged here)
 **Depends on**: Phase 11 Dashboard Translation (complete, merged)
 **Unblocks**: Phase 13 Booking Integration
-**Last Updated**: March 15, 2026
+**Last Updated**: April 4, 2026
 
 ---
 
@@ -39,6 +39,22 @@ This addendum confirms the Phase 12 runtime state after tenant RBAC hardening an
 - **Tenant theme APIs/UI**: tenant app now lists all available themes (`GET /api/themes`), active-theme endpoint (`GET /api/themes/active`) is read-only and returns 404 when no active theme exists, and activation is explicit (`POST /api/themes/activate`) under permission.
 - **Middleware + isolation**: `InitializeTenancyByDomain`, `PreventAccessFromCentralDomains`, `permission.team`, and `tenant.membership` now form the core isolation chain for tenant APIs.
 - **Tests**: tenant coverage now includes runtime readiness, storefront, dashboard, isolation, auth, user-role guardrails, RBAC authorization matrix (`TenantRbacAuthorizationMatrixTest.php`), and tenant themes runtime regression coverage (`TenantThemesApiTest.php`).
+
+## Phase 12 Closeout (April 4, 2026)
+
+Final deliverable: **GDPR cookie consent** — replacing `whitecube/laravel-cookie-consent` (PHP) with a React-native `vanilla-cookieconsent` implementation.
+
+- `whitecube/laravel-cookie-consent` removed from Composer; `CookiesServiceProvider` removed from providers
+- `vanilla-cookieconsent@3.1.0` installed via npm
+- `GET /api/pages/public/consent-settings` endpoint added to `PageController`, registered on both `routes/api.php` (central) and `routes/tenant.php` (tenant)
+- `CookieBanner.tsx` component: fetches consent settings, initialises vanilla-cookieconsent, injects/removes GA4, GTM, Clarity, Plausible, Meta Pixel scripts on consent/revoke
+- Blade layouts cleaned (GTM noscript removed, analytics partials emptied)
+- **18 Playwright E2E tests** in `tests/e2e/tenant-cookie-consent.spec.ts` — all passing:
+  - Banner visibility, 404-free load, persistence across page loads
+  - Per-provider script injection gated on both settings flags and user consent category
+  - Rejection prevents all script injection even when all providers are enabled in settings
+  - Consent revocation via preferences modal removes previously injected scripts
+- Full smoke run: **18 Playwright tests passed**, PHP **355 passed** (1 pre-existing locale failure unrelated to this phase)
 
 ---
 

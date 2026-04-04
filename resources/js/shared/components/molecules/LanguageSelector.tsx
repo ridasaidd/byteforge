@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useDirection } from '@/components/ui/direction';
-import { SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
+import { LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, type SupportedLocale } from '@/i18n';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { authService } from '@/shared/services/auth.service';
 import {
@@ -45,6 +45,9 @@ export function LanguageSelector() {
     const locale = normalizeToSupportedLocale(nextLocale);
 
     await i18n.changeLanguage(locale);
+
+    // Persist locale only after an explicit user action.
+    localStorage.setItem(LOCALE_STORAGE_KEY, locale);
 
     if (!isAuthenticated) {
       return;

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Settings\TenantSettings;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 
 class SettingsController extends Controller
@@ -32,10 +33,18 @@ class SettingsController extends Controller
                     'clarity_project_id' => $settings->clarity_project_id,
                     'plausible_domain' => $settings->plausible_domain,
                     'meta_pixel_id' => $settings->meta_pixel_id,
+                    // Phase 13 — Cookie consent controls
+                    'privacy_policy_url' => $settings->privacy_policy_url,
+                    'cookie_policy_url' => $settings->cookie_policy_url,
+                    'ga4_enabled' => $settings->ga4_enabled,
+                    'gtm_enabled' => $settings->gtm_enabled,
+                    'clarity_enabled' => $settings->clarity_enabled,
+                    'plausible_enabled' => $settings->plausible_enabled,
+                    'meta_pixel_enabled' => $settings->meta_pixel_enabled,
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Failed to load tenant settings', ['error' => $e->getMessage()]);
+            Log::error('Failed to load tenant settings', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Settings not found for this tenant',
             ], 404);
@@ -63,6 +72,14 @@ class SettingsController extends Controller
             'clarity_project_id' => ['nullable', 'string', 'max:50', 'regex:/^[A-Za-z0-9_\-\.]+$/'],
             'plausible_domain' => ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9\.\-]+$/'],
             'meta_pixel_id' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]+$/'],
+            // Phase 13 — Cookie consent controls
+            'privacy_policy_url' => ['nullable', 'url', 'max:500'],
+            'cookie_policy_url' => ['nullable', 'url', 'max:500'],
+            'ga4_enabled' => ['sometimes', 'boolean'],
+            'gtm_enabled' => ['sometimes', 'boolean'],
+            'clarity_enabled' => ['sometimes', 'boolean'],
+            'plausible_enabled' => ['sometimes', 'boolean'],
+            'meta_pixel_enabled' => ['sometimes', 'boolean'],
         ]);
 
         if ($validator->fails()) {
@@ -72,9 +89,52 @@ class SettingsController extends Controller
             ], 422);
         }
 
-        try {
-            $settings = app(TenantSettings::class);
+        // Evaluate final state (incoming values override existing settings)
+        $settings = app(TenantSettings::class);
 
+        $ga4Enabled = $request->has('ga4_enabled') ? (bool) $request->ga4_enabled : (bool) $settings->ga4_enabled;
+        $gtmEnabled = $request->has('gtm_enabled') ? (bool) $request->gtm_enabled : (bool) $settings->gtm_enabled;
+        $clarityEnabled = $request->has('clarity_enabled') ? (bool) $request->clarity_enabled : (bool) $settings->clarity_enabled;
+        $plausibleEnabled = $request->has('plausible_enabled') ? (bool) $request->plausible_enabled : (bool) $settings->plausible_enabled;
+        $metaPixelEnabled = $request->has('meta_pixel_enabled') ? (bool) $request->meta_pixel_enabled : (bool) $settings->meta_pixel_enabled;
+
+        $ga4Id = $request->has('ga4_measurement_id') ? $request->ga4_measurement_id : $settings->ga4_measurement_id;
+        $gtmId = $request->has('gtm_container_id') ? $request->gtm_container_id : $settings->gtm_container_id;
+        $clarityId = $request->has('clarity_project_id') ? $request->clarity_project_id : $settings->clarity_project_id;
+        $plausibleDomain = $request->has('plausible_domain') ? $request->plausible_domain : $settings->plausible_domain;
+        $metaPixelId = $request->has('meta_pixel_id') ? $request->meta_pixel_id : $settings->meta_pixel_id;
+        $cookiePolicyUrl = $request->has('cookie_policy_url') ? $request->cookie_policy_url : $settings->cookie_policy_url;
+
+        $crossFieldErrors = [];
+
+        if ($ga4Enabled && empty($ga4Id)) {
+            $crossFieldErrors['ga4_measurement_id'][] = 'ga4_measurement_id is required when ga4_enabled is true.';
+        }
+        if ($gtmEnabled && empty($gtmId)) {
+            $crossFieldErrors['gtm_container_id'][] = 'gtm_container_id is required when gtm_enabled is true.';
+        }
+        if ($clarityEnabled && empty($clarityId)) {
+            $crossFieldErrors['clarity_project_id'][] = 'clarity_project_id is required when clarity_enabled is true.';
+        }
+        if ($plausibleEnabled && empty($plausibleDomain)) {
+            $crossFieldErrors['plausible_domain'][] = 'plausible_domain is required when plausible_enabled is true.';
+        }
+        if ($metaPixelEnabled && empty($metaPixelId)) {
+            $crossFieldErrors['meta_pixel_id'][] = 'meta_pixel_id is required when meta_pixel_enabled is true.';
+        }
+
+        if (($ga4Enabled || $gtmEnabled || $clarityEnabled || $plausibleEnabled || $metaPixelEnabled) && empty($cookiePolicyUrl)) {
+            $crossFieldErrors['cookie_policy_url'][] = 'cookie_policy_url is required when any optional provider is enabled.';
+        }
+
+        if (! empty($crossFieldErrors)) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $crossFieldErrors,
+            ], 422);
+        }
+
+        try {
             $changedFields = [];
 
             if ($request->has('site_title')) {
@@ -126,6 +186,35 @@ class SettingsController extends Controller
                 $changedFields['meta_pixel_id'] = ['old' => $settings->meta_pixel_id, 'new' => $request->meta_pixel_id];
                 $settings->meta_pixel_id = $request->meta_pixel_id;
             }
+            // Phase 13 — Cookie consent controls
+            if ($request->has('privacy_policy_url')) {
+                $changedFields['privacy_policy_url'] = ['old' => $settings->privacy_policy_url, 'new' => $request->privacy_policy_url];
+                $settings->privacy_policy_url = $request->privacy_policy_url;
+            }
+            if ($request->has('cookie_policy_url')) {
+                $changedFields['cookie_policy_url'] = ['old' => $settings->cookie_policy_url, 'new' => $request->cookie_policy_url];
+                $settings->cookie_policy_url = $request->cookie_policy_url;
+            }
+            if ($request->has('ga4_enabled')) {
+                $changedFields['ga4_enabled'] = ['old' => $settings->ga4_enabled, 'new' => $request->ga4_enabled];
+                $settings->ga4_enabled = $request->boolean('ga4_enabled');
+            }
+            if ($request->has('gtm_enabled')) {
+                $changedFields['gtm_enabled'] = ['old' => $settings->gtm_enabled, 'new' => $request->gtm_enabled];
+                $settings->gtm_enabled = $request->boolean('gtm_enabled');
+            }
+            if ($request->has('clarity_enabled')) {
+                $changedFields['clarity_enabled'] = ['old' => $settings->clarity_enabled, 'new' => $request->clarity_enabled];
+                $settings->clarity_enabled = $request->boolean('clarity_enabled');
+            }
+            if ($request->has('plausible_enabled')) {
+                $changedFields['plausible_enabled'] = ['old' => $settings->plausible_enabled, 'new' => $request->plausible_enabled];
+                $settings->plausible_enabled = $request->boolean('plausible_enabled');
+            }
+            if ($request->has('meta_pixel_enabled')) {
+                $changedFields['meta_pixel_enabled'] = ['old' => $settings->meta_pixel_enabled, 'new' => $request->meta_pixel_enabled];
+                $settings->meta_pixel_enabled = $request->boolean('meta_pixel_enabled');
+            }
 
             $settings->save();
 
@@ -154,10 +243,18 @@ class SettingsController extends Controller
                     'clarity_project_id' => $settings->clarity_project_id,
                     'plausible_domain' => $settings->plausible_domain,
                     'meta_pixel_id' => $settings->meta_pixel_id,
+                    // Phase 13 — Cookie consent controls
+                    'privacy_policy_url' => $settings->privacy_policy_url,
+                    'cookie_policy_url' => $settings->cookie_policy_url,
+                    'ga4_enabled' => $settings->ga4_enabled,
+                    'gtm_enabled' => $settings->gtm_enabled,
+                    'clarity_enabled' => $settings->clarity_enabled,
+                    'plausible_enabled' => $settings->plausible_enabled,
+                    'meta_pixel_enabled' => $settings->meta_pixel_enabled,
                 ],
             ]);
         } catch (\Exception $e) {
-            \Log::error('Failed to update tenant settings', ['error' => $e->getMessage()]);
+            Log::error('Failed to update tenant settings', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Failed to update settings',
             ], 500);

@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: April 3, 2026 (Phase 12 in progress — final QA/documentation closeout)
-Current branch: `main`
+Last updated: April 4, 2026 (Phase 12 complete — cookie consent shipped, browser QA done)
+Current branch: `feature/cookie-consent-gdpr`
 
 ## Snapshot
 
@@ -19,7 +19,7 @@ Current branch: `main`
 - **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
 - **Phase 10 Payments Core:** ✅ **COMPLETE + merged** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`), webhook idempotency/rate-limiting hardening, and checkout-return subscription sync. Full regression executed: `304 passed`, `15 skipped`.
 - **Phase 11 Dashboard Translation (i18n):** ✅ **COMPLETE + merged** — i18next + react-i18next infrastructure, 15 namespaces across `en/sv/ar`, user locale persistence (`preferred_locale` + `PATCH /auth/locale`), central + tenant dashboard string extraction/localization, Swedish character corrections (proper `å/ä/ö`), and RTL support (logical CSS classes + directional icon handling).
-- **Phase 12 Tenant Runtime Readiness:** 🚧 **IN PROGRESS (closeout)** — tenant login/runtime routes, membership enforcement middleware, tenant permission-gated CMS routes, storefront parity, and tenant isolation test coverage are implemented on `main`. Remaining closeout: browser-level login/logout redirect QA and resolving Passport-key test-environment skips for tenant login endpoint tests.
+- **Phase 12 Tenant Runtime Readiness:** ✅ **COMPLETE** — tenant login/runtime routes, membership enforcement middleware, tenant permission-gated CMS routes, storefront parity, and tenant isolation test coverage all complete. Cookie consent (GDPR) delivered: `whitecube/laravel-cookie-consent` removed, replaced with `vanilla-cookieconsent` React implementation with analytics enforcement. 18 Playwright E2E tests passing (banner behaviour + per-provider script injection/revocation). PHP: `355 passed`.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations

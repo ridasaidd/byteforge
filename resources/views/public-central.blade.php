@@ -48,9 +48,6 @@
         @endif
     @endisset
 
-    <!-- Phase 9.6: Third-party analytics integrations -->
-    @include('partials._analytics-scripts', ['settings' => $analyticsSettings ?? null])
-
     <!-- Vite JS only - CSS comes from theme system -->
     @viteReactRefresh
 </head>

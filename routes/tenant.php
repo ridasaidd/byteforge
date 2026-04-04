@@ -99,6 +99,7 @@ Route::middleware([
 
     // Public storefront page endpoints (Phase 9.6 — mirrors central api.php for tenant domain)
     Route::get('themes/public', [\App\Http\Controllers\Api\ThemeController::class, 'publicTheme']);
+    Route::get('pages/public/consent-settings', [\App\Http\Controllers\Api\PageController::class, 'consentSettings']);
     Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
     Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
 

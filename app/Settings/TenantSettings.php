@@ -33,6 +33,21 @@ class TenantSettings extends Settings
 
     public ?string $meta_pixel_id;
 
+    // Phase 13 — Cookie consent and legal policy controls
+    public ?string $privacy_policy_url;
+
+    public ?string $cookie_policy_url;
+
+    public bool $ga4_enabled;
+
+    public bool $gtm_enabled;
+
+    public bool $clarity_enabled;
+
+    public bool $plausible_enabled;
+
+    public bool $meta_pixel_enabled;
+
     public static function group(): string
     {
         return 'tenant';

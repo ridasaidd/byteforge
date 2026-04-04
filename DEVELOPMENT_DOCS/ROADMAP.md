@@ -100,22 +100,15 @@ Last updated: April 3, 2026
 
 ---
 
-### M4: Tenant Runtime Readiness (IN PROGRESS)
+### M4: Tenant Runtime Readiness ✅ COMPLETE (Apr 4, 2026)
 
 **Phase 12: Tenant storefront + auth + dashboard production readiness**
 
-**Scope:**
-- Finalize tenant login/runtime access model (tenant-first UX and redirects)
-- Validate tenant storefront runtime parity (theme/navigation/pages/css delivery)
-- Complete tenant dashboard route and permission gating hardening
-- Add tenant runtime QA gate (auth, isolation, permission, smoke coverage)
+**Delivered:**
+- Tenant login/runtime routes, membership enforcement, permission-gated CMS routes, storefront parity, tenant isolation test coverage
+- GDPR cookie consent: `vanilla-cookieconsent` React implementation replacing PHP package; 18 Playwright E2E tests (banner + enforcement + revocation)
 
-**Est:** 1-2 weeks
-**Verification status (Apr 3, 2026):**
-- Tenant suite: `50 passed`, `3 skipped`, `0 failed` (`php artisan test tests/Tenant`)
-- Central analytics feature slice: fixture-safe assertions restored and passing
-
-**Status:** In progress — runtime hardening implemented on `main`; final browser QA + docs closeout pending
+**Verification:** PHP `355 passed`; Playwright `18 passed`
 
 ---
 
