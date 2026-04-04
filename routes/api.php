@@ -230,5 +230,28 @@ foreach (config('tenancy.central_domains') as $domain) {
         Route::post('stripe/webhook', [BillingController::class, 'handleWebhook'])
             ->middleware('throttle:120,1');
 
+        // ── Workshop Directory ─────────────────────────────────────────────────
+        // Public discovery endpoints – no authentication required.
+        // Authenticated endpoints (storeReview, destroyReview) use auth:api.
+        Route::prefix('workshops')->group(function () {
+            // Location-based search: GET /api/workshops/search?lat=&lng=&radius_km=&specialty=&q=
+            Route::get('search', [\App\Http\Controllers\Api\WorkshopSearchController::class, 'search'])
+                ->middleware('throttle:60,1');
+
+            // Single workshop profile: GET /api/workshops/{tenantId}
+            Route::get('{tenantId}', [\App\Http\Controllers\Api\WorkshopSearchController::class, 'show']);
+
+            // Workshop reviews (public list)
+            Route::get('{tenantId}/reviews', [\App\Http\Controllers\Api\WorkshopSearchController::class, 'listReviews']);
+
+            // Submit a review (requires login)
+            Route::post('{tenantId}/reviews', [\App\Http\Controllers\Api\WorkshopSearchController::class, 'storeReview'])
+                ->middleware('auth:api');
+
+            // Delete own review (requires login)
+            Route::delete('{tenantId}/reviews/{reviewId}', [\App\Http\Controllers\Api\WorkshopSearchController::class, 'destroyReview'])
+                ->middleware('auth:api');
+        });
+
     });
 }
