@@ -138,7 +138,9 @@ return [
          * disable asset() helper tenancy and explicitly use tenant_asset() calls in places
          * where you want to use tenant-specific assets (product images, avatars, etc).
          */
-        'asset_helper_tenancy' => env('TENANCY_ASSET_HELPER_TENANCY', true),
+        // Keep generic asset() URLs global by default so Vite production files
+        // resolve from /build/assets instead of /tenancy/assets/build/assets.
+        'asset_helper_tenancy' => env('TENANCY_ASSET_HELPER_TENANCY', false),
     ],
 
     /**

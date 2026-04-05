@@ -90,12 +90,15 @@ export function PublicPage() {
   // Set page title and meta tags
   useEffect(() => {
     if (page) {
-      document.title = (page.meta_data?.title as string) || page.title || t('default_title');
+      const metaTitle = (page.meta_data?.meta_title as string) || (page.meta_data?.title as string);
+      document.title = metaTitle || page.title || t('default_title');
 
       // Set meta description
       const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription && page.meta_data?.description) {
-        metaDescription.setAttribute('content', page.meta_data.description as string);
+      const metaDescriptionText =
+        (page.meta_data?.meta_description as string) || (page.meta_data?.description as string);
+      if (metaDescription && metaDescriptionText) {
+        metaDescription.setAttribute('content', metaDescriptionText);
       }
     }
   }, [page]);

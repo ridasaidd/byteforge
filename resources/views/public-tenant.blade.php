@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ $analyticsSettings?->site_title ?? config('app.name', 'ByteForge') }}</title>
+    <title>{{ $initialPageTitle ?? $analyticsSettings?->site_title ?? config('app.name', 'ByteForge') }}</title>
 
     <!-- Storefront Base CSS - Browser defaults (undoes Tailwind resets, ensures consistent rendering) -->
     <link rel="stylesheet" href="/css/storefront-base.css">

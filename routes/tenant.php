@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\Tenant\MediaFolderController;
 use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\ThemePartController;
 use App\Http\Controllers\Api\UserController;
+use App\Models\Page;
 use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
@@ -46,12 +47,26 @@ Route::middleware([
         } catch (\Throwable $e) {
             $analyticsSettings = null;
         }
+        $initialPageTitle = null;
+        try {
+            $homepage = Page::query()
+                ->where('tenant_id', tenant('id'))
+                ->where('is_homepage', true)
+                ->where('status', 'published')
+                ->first();
+
+            if ($homepage) {
+                $initialPageTitle = $homepage->meta_data['meta_title'] ?? $homepage->title;
+            }
+        } catch (\Throwable $e) {
+            $initialPageTitle = null;
+        }
         try {
             $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
         } catch (\Throwable $e) {
             $activeTheme = null;
         }
-        return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
+        return view('public-tenant', compact('analyticsSettings', 'activeTheme', 'initialPageTitle'));
     });
 
     Route::get('/pages/{slug}', function (string $slug) {
@@ -60,12 +75,26 @@ Route::middleware([
         } catch (\Throwable $e) {
             $analyticsSettings = null;
         }
+        $initialPageTitle = null;
+        try {
+            $page = Page::query()
+                ->where('tenant_id', tenant('id'))
+                ->where('slug', $slug)
+                ->where('status', 'published')
+                ->first();
+
+            if ($page) {
+                $initialPageTitle = $page->meta_data['meta_title'] ?? $page->title;
+            }
+        } catch (\Throwable $e) {
+            $initialPageTitle = null;
+        }
         try {
             $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
         } catch (\Throwable $e) {
             $activeTheme = null;
         }
-        return view('public-tenant', compact('analyticsSettings', 'activeTheme'));
+        return view('public-tenant', compact('analyticsSettings', 'activeTheme', 'initialPageTitle'));
     })->where('slug', '[a-z0-9\-]+');
 
     // Tenant CMS shell and login page
