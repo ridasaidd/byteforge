@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Save, BarChart2 } from 'lucide-react';
+import { Save, BarChart2, Cookie } from 'lucide-react';
 import { api, type UpdateSettingsData } from '@/shared/services/api';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
@@ -28,6 +28,13 @@ type SettingsFormData = {
   clarity_project_id: string | null;
   plausible_domain: string | null;
   meta_pixel_id: string | null;
+  privacy_policy_url: string | null;
+  cookie_policy_url: string | null;
+  ga4_enabled: boolean;
+  gtm_enabled: boolean;
+  clarity_enabled: boolean;
+  plausible_enabled: boolean;
+  meta_pixel_enabled: boolean;
 };
 
 // ============================================================================
@@ -50,6 +57,13 @@ export function SettingsPage() {
     clarity_project_id: z.string().max(255).nullable().or(z.literal('')),
     plausible_domain: z.string().max(255).nullable().or(z.literal('')),
     meta_pixel_id: z.string().max(255).nullable().or(z.literal('')),
+    privacy_policy_url: z.string().url(t('invalid_url')).max(500, t('url_too_long')).nullable().or(z.literal('')),
+    cookie_policy_url: z.string().url(t('invalid_url')).max(500, t('url_too_long')).nullable().or(z.literal('')),
+    ga4_enabled: z.boolean(),
+    gtm_enabled: z.boolean(),
+    clarity_enabled: z.boolean(),
+    plausible_enabled: z.boolean(),
+    meta_pixel_enabled: z.boolean(),
   }), [t]);
 
   // ============================================================================
@@ -106,6 +120,13 @@ export function SettingsPage() {
       clarity_project_id: '',
       plausible_domain: '',
       meta_pixel_id: '',
+      privacy_policy_url: '',
+      cookie_policy_url: '',
+      ga4_enabled: false,
+      gtm_enabled: false,
+      clarity_enabled: false,
+      plausible_enabled: false,
+      meta_pixel_enabled: false,
     },
   });
 
@@ -123,6 +144,13 @@ export function SettingsPage() {
         clarity_project_id: data.clarity_project_id || '',
         plausible_domain: data.plausible_domain || '',
         meta_pixel_id: data.meta_pixel_id || '',
+        privacy_policy_url: data.privacy_policy_url || '',
+        cookie_policy_url: data.cookie_policy_url || '',
+        ga4_enabled: Boolean(data.ga4_enabled),
+        gtm_enabled: Boolean(data.gtm_enabled),
+        clarity_enabled: Boolean(data.clarity_enabled),
+        plausible_enabled: Boolean(data.plausible_enabled),
+        meta_pixel_enabled: Boolean(data.meta_pixel_enabled),
       });
     }
   }, [data, form]);
@@ -143,6 +171,13 @@ export function SettingsPage() {
       clarity_project_id: formData.clarity_project_id || null,
       plausible_domain: formData.plausible_domain || null,
       meta_pixel_id: formData.meta_pixel_id || null,
+      privacy_policy_url: formData.privacy_policy_url || null,
+      cookie_policy_url: formData.cookie_policy_url || null,
+      ga4_enabled: formData.ga4_enabled,
+      gtm_enabled: formData.gtm_enabled,
+      clarity_enabled: formData.clarity_enabled,
+      plausible_enabled: formData.plausible_enabled,
+      meta_pixel_enabled: formData.meta_pixel_enabled,
     });
   };
 
@@ -345,6 +380,95 @@ export function SettingsPage() {
                 {...form.register('meta_pixel_id')}
               />
               <p className="text-sm text-muted-foreground">{t('meta_pixel_help')}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cookie Consent */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Cookie className="h-5 w-5" />
+              {t('cookie_consent')}
+            </CardTitle>
+            <CardDescription>
+              {t('cookie_consent_description')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="privacy_policy_url">{t('privacy_policy_url')}</Label>
+              <Input
+                id="privacy_policy_url"
+                placeholder="https://example.com/privacy"
+                {...form.register('privacy_policy_url')}
+              />
+              <p className="text-sm text-muted-foreground">{t('privacy_policy_url_help')}</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cookie_policy_url">{t('cookie_policy_url')}</Label>
+              <Input
+                id="cookie_policy_url"
+                placeholder="https://example.com/cookies"
+                {...form.register('cookie_policy_url')}
+              />
+              <p className="text-sm text-muted-foreground">{t('cookie_policy_url_help')}</p>
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="ga4_enabled">{t('ga4_enabled')}</Label>
+              <input
+                id="ga4_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.watch('ga4_enabled')}
+                onChange={(e) => form.setValue('ga4_enabled', e.target.checked, { shouldDirty: true })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="gtm_enabled">{t('gtm_enabled')}</Label>
+              <input
+                id="gtm_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.watch('gtm_enabled')}
+                onChange={(e) => form.setValue('gtm_enabled', e.target.checked, { shouldDirty: true })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="clarity_enabled">{t('clarity_enabled')}</Label>
+              <input
+                id="clarity_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.watch('clarity_enabled')}
+                onChange={(e) => form.setValue('clarity_enabled', e.target.checked, { shouldDirty: true })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="plausible_enabled">{t('plausible_enabled')}</Label>
+              <input
+                id="plausible_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.watch('plausible_enabled')}
+                onChange={(e) => form.setValue('plausible_enabled', e.target.checked, { shouldDirty: true })}
+              />
+            </div>
+
+            <div className="flex items-center justify-between space-x-2">
+              <Label htmlFor="meta_pixel_enabled">{t('meta_pixel_enabled')}</Label>
+              <input
+                id="meta_pixel_enabled"
+                type="checkbox"
+                className="h-4 w-4"
+                checked={form.watch('meta_pixel_enabled')}
+                onChange={(e) => form.setValue('meta_pixel_enabled', e.target.checked, { shouldDirty: true })}
+              />
             </div>
           </CardContent>
         </Card>

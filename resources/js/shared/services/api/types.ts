@@ -116,6 +116,14 @@ export interface GeneralSettings extends Record<string, unknown> {
   clarity_project_id: string | null;
   plausible_domain: string | null;
   meta_pixel_id: string | null;
+  // Phase 13 — Cookie consent controls
+  privacy_policy_url: string | null;
+  cookie_policy_url: string | null;
+  ga4_enabled: boolean;
+  gtm_enabled: boolean;
+  clarity_enabled: boolean;
+  plausible_enabled: boolean;
+  meta_pixel_enabled: boolean;
 }
 
 export interface UpdateSettingsData {
@@ -130,6 +138,14 @@ export interface UpdateSettingsData {
   clarity_project_id?: string | null;
   plausible_domain?: string | null;
   meta_pixel_id?: string | null;
+  // Phase 13 — Cookie consent controls
+  privacy_policy_url?: string | null;
+  cookie_policy_url?: string | null;
+  ga4_enabled?: boolean;
+  gtm_enabled?: boolean;
+  clarity_enabled?: boolean;
+  plausible_enabled?: boolean;
+  meta_pixel_enabled?: boolean;
 }
 
 // Tenant-scoped settings (POST /api/settings on tenant domain)
@@ -147,6 +163,14 @@ export interface TenantSettings extends Record<string, unknown> {
   clarity_project_id: string | null;
   plausible_domain: string | null;
   meta_pixel_id: string | null;
+  // Phase 13 — Cookie consent controls
+  privacy_policy_url: string | null;
+  cookie_policy_url: string | null;
+  ga4_enabled: boolean;
+  gtm_enabled: boolean;
+  clarity_enabled: boolean;
+  plausible_enabled: boolean;
+  meta_pixel_enabled: boolean;
 }
 
 export interface UpdateTenantSettingsData {
@@ -163,6 +187,14 @@ export interface UpdateTenantSettingsData {
   clarity_project_id?: string | null;
   plausible_domain?: string | null;
   meta_pixel_id?: string | null;
+  // Phase 13 — Cookie consent controls
+  privacy_policy_url?: string | null;
+  cookie_policy_url?: string | null;
+  ga4_enabled?: boolean;
+  gtm_enabled?: boolean;
+  clarity_enabled?: boolean;
+  plausible_enabled?: boolean;
+  meta_pixel_enabled?: boolean;
 }
 
 export interface Media extends Record<string, unknown> {

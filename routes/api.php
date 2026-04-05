@@ -219,6 +219,7 @@ foreach (config('tenancy.central_domains') as $domain) {
         Route::get('themes/public', [\App\Http\Controllers\Api\ThemeController::class, 'publicTheme']);
 
         // Public page endpoints (no auth required)
+        Route::get('pages/public/consent-settings', [\App\Http\Controllers\Api\PageController::class, 'consentSettings']);
         Route::get('pages/public/homepage', [\App\Http\Controllers\Api\PageController::class, 'getHomepage']);
         Route::get('pages/public/{slug}', [\App\Http\Controllers\Api\PageController::class, 'getBySlug']);
 

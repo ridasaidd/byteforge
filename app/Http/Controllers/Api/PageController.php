@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Services\AnalyticsService;
 use App\Services\PageCssService;
 use App\Services\PuckCompilerService;
+use App\Settings\GeneralSettings;
+use App\Settings\TenantSettings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -422,6 +424,36 @@ class PageController extends Controller
         ])
         ->header('Cache-Control', 'public, max-age=3600')
         ->header('ETag', md5(json_encode($pageData)));
+    }
+
+    /**
+     * Return consent-relevant analytics settings for the storefront cookie banner.
+     * No authentication required — only exposes enabled flags and IDs for configured providers.
+     */
+    public function consentSettings(): JsonResponse
+    {
+        if (tenancy()->initialized) {
+            $settings = app(TenantSettings::class);
+        } else {
+            $settings = app(GeneralSettings::class);
+        }
+
+        return response()->json([
+            'data' => [
+                'ga4_enabled'         => $settings->ga4_enabled,
+                'ga4_measurement_id'  => $settings->ga4_enabled ? $settings->ga4_measurement_id : null,
+                'gtm_enabled'         => $settings->gtm_enabled,
+                'gtm_container_id'    => $settings->gtm_enabled ? $settings->gtm_container_id : null,
+                'clarity_enabled'     => $settings->clarity_enabled,
+                'clarity_project_id'  => $settings->clarity_enabled ? $settings->clarity_project_id : null,
+                'plausible_enabled'   => $settings->plausible_enabled,
+                'plausible_domain'    => $settings->plausible_enabled ? $settings->plausible_domain : null,
+                'meta_pixel_enabled'  => $settings->meta_pixel_enabled,
+                'meta_pixel_id'       => $settings->meta_pixel_enabled ? $settings->meta_pixel_id : null,
+                'privacy_policy_url'  => $settings->privacy_policy_url,
+                'cookie_policy_url'   => $settings->cookie_policy_url,
+            ],
+        ])->header('Cache-Control', 'public, max-age=300');
     }
 
     // ------------------------------------------------------------------ //

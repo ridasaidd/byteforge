@@ -75,7 +75,7 @@ if (!i18n.isInitialized) {
       detection: {
         order: ['localStorage', 'navigator'],
         lookupLocalStorage: LOCALE_STORAGE_KEY,
-        caches: ['localStorage'],
+        caches: [],
       },
     });
 }
