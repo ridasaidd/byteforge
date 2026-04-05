@@ -2,7 +2,7 @@ import { http } from '../http';
 import type { ThemePart, CreateThemePartData, UpdateThemePartData, PaginatedResponse, ApiResponse } from './types';
 
 export const themeParts = {
-  list: (params?: { page?: number; per_page?: number; search?: string; status?: string; type?: string }) =>
+  list: (params?: { page?: number; per_page?: number; search?: string; status?: string; type?: string; theme_id?: number }) =>
     http.getAll<PaginatedResponse<ThemePart>>('/superadmin/theme-parts', params),
   get: (id: number | string) =>
     http.getOne<ApiResponse<ThemePart>>('/superadmin/theme-parts', id),
@@ -15,7 +15,7 @@ export const themeParts = {
 };
 
 export const tenantThemeParts = {
-  list: (params?: { page?: number; per_page?: number; search?: string; status?: string; type?: string }) =>
+  list: (params?: { page?: number; per_page?: number; search?: string; status?: string; type?: string; theme_id?: number }) =>
     http.getAll<PaginatedResponse<ThemePart>>('/theme-parts', params),
   get: (id: number | string) =>
     http.getOne<ApiResponse<ThemePart>>('/theme-parts', id),

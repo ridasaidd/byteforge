@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Services\ThemeCssGeneratorService;
+use App\Services\ThemeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -20,10 +21,12 @@ use Illuminate\Validation\Rule;
 class ThemeCustomizationController extends Controller
 {
     protected ThemeCssGeneratorService $cssGenerator;
+    protected ThemeService $themeService;
 
-    public function __construct(ThemeCssGeneratorService $cssGenerator)
+    public function __construct(ThemeCssGeneratorService $cssGenerator, ThemeService $themeService)
     {
         $this->cssGenerator = $cssGenerator;
+        $this->themeService = $themeService;
     }
 
     public function getCustomization(Theme $theme)
@@ -174,6 +177,10 @@ class ThemeCustomizationController extends Controller
                 $themePart->save();
             }
         }
+
+        // Keep storefront resilient: if this theme is missing its published base CSS
+        // file, recreate it from the matching system theme copy.
+        $this->themeService->ensureThemeCssFileExistsForTheme($theme);
 
         return response()->json([
             'message' => ucfirst($section) . ' customization saved successfully',

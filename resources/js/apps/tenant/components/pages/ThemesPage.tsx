@@ -4,6 +4,14 @@ import { Check, Palette, SlidersHorizontal } from 'lucide-react';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
 import { tenantThemes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
 import { useTranslation } from 'react-i18next';
@@ -21,6 +29,8 @@ export function ThemesPage() {
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activatingSlug, setActivatingSlug] = useState<string | null>(null);
+  const [confirmTheme, setConfirmTheme] = useState<Theme | null>(null);
+  const [confirmCountdown, setConfirmCountdown] = useState(5);
 
   useEffect(() => {
     const load = async () => {
@@ -67,6 +77,17 @@ export function ThemesPage() {
     navigate(`/cms/themes/${activeTheme.id}/customize?section=${encodeURIComponent(section)}`, { replace: true });
   }, [activeTheme?.id, navigate, searchParams]);
 
+  useEffect(() => {
+    if (!confirmTheme) return;
+
+    setConfirmCountdown(5);
+    const interval = setInterval(() => {
+      setConfirmCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [confirmTheme]);
+
   const handleCustomize = (themeId: number | null | undefined = activeTheme?.id) => {
     if (!themeId) {
       return;
@@ -96,6 +117,12 @@ export function ThemesPage() {
     }
   };
 
+  const handleConfirmActivate = async () => {
+    if (!confirmTheme) return;
+    await handleActivate(confirmTheme.slug);
+    setConfirmTheme(null);
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -115,6 +142,30 @@ export function ThemesPage() {
         title={t('title')}
         description={t('description')}
       />
+
+      <Dialog open={!!confirmTheme} onOpenChange={(open) => !open && setConfirmTheme(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('switch_theme_title', { defaultValue: 'Switch theme?' })}</DialogTitle>
+            <DialogDescription>
+              {t('switch_theme_desc', { defaultValue: 'Switching themes may change storefront layout and styles immediately.' })}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmTheme(null)}>
+              {t('cancel', { defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              disabled={confirmCountdown > 0 || !!activatingSlug}
+              onClick={handleConfirmActivate}
+            >
+              {confirmCountdown > 0
+                ? t('switch_countdown', { seconds: confirmCountdown, defaultValue: `Switch (${confirmCountdown}s)` })
+                : t('switch_btn', { defaultValue: 'Switch theme' })}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader>
@@ -153,7 +204,7 @@ export function ThemesPage() {
                       ) : (
                         <Button
                           variant="secondary"
-                          onClick={() => handleActivate(theme.slug)}
+                          onClick={() => setConfirmTheme(theme)}
                           disabled={!canActivate || activatingSlug === theme.slug}
                         >
                           {t('activate')}

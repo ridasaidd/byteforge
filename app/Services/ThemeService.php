@@ -6,13 +6,16 @@ use App\Models\Theme;
 use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 class ThemeService
 {
     protected ThemeCssGeneratorService $cssGenerator;
+    protected ThemeCssPublishService $cssPublishService;
 
-    public function __construct(ThemeCssGeneratorService $cssGenerator)
+    public function __construct(ThemeCssGeneratorService $cssGenerator, ThemeCssPublishService $cssPublishService)
     {
         $this->cssGenerator = $cssGenerator;
+        $this->cssPublishService = $cssPublishService;
     }
 
     /**
@@ -44,7 +47,10 @@ class ThemeService
         // When a tenant activates a system theme (tenant_id = null), clone it as a
         // tenant-owned copy so getActiveTheme() can find it via tenant_id scoping.
         // Re-use an existing tenant copy if one already exists for this slug.
+        $sourceSystemTheme = null;
+
         if ($tenantId !== null && is_null($theme->tenant_id)) {
+            $sourceSystemTheme = $theme;
             $existing = Theme::where('slug', $themeSlug)
                 ->where('tenant_id', $tenantId)
                 ->first();
@@ -54,27 +60,150 @@ class ThemeService
 
         // Copy placeholder content to theme_parts for this tenant/central
         // Only if theme_parts don't already exist for this scope
-        $this->ensureThemePartsExist($theme, $tenantId);
+        $this->ensureThemePartsExist($theme, $tenantId, $sourceSystemTheme);
 
         // Activate the theme for this tenant/central
         $theme->activate($tenantId);
 
+        // Ensure storefront base CSS file exists for the activated theme.
+        // Tenant theme clones often don't have their own copied CSS yet.
+        $this->ensureThemeCssFileExistsForTheme($theme, $sourceSystemTheme, $tenantId !== null);
+
         return $theme;
+    }
+
+    /**
+     * Ensure the published storefront CSS file exists for a theme.
+     * If missing, try copying from the source system theme (same slug).
+     */
+    public function ensureThemeCssFileExistsForTheme(Theme $theme, ?Theme $sourceTheme = null, bool $forceCopyFromSource = false): void
+    {
+        // Use the 'themes' disk which is intentionally excluded from tenancy's filesystem
+        // bootstrapper override list, so it always resolves to storage/app/public/themes/
+        // regardless of whether the current request is in a tenant context.
+        $disk = Storage::disk('themes');
+        $targetPath = "{$theme->id}/{$theme->id}.css";
+
+        if ($disk->exists($targetPath) && !$forceCopyFromSource) {
+            return;
+        }
+
+        $candidateSourceThemes = [];
+
+        if ($sourceTheme) {
+            $candidateSourceThemes[] = $sourceTheme;
+        }
+
+        // Fallback: use matching system theme by slug.
+        $systemTheme = Theme::whereNull('tenant_id')
+            ->where('slug', $theme->slug)
+            ->first();
+
+        if ($systemTheme) {
+            $candidateSourceThemes[] = $systemTheme;
+        }
+
+        foreach ($candidateSourceThemes as $candidate) {
+            $sourcePath = "{$candidate->id}/{$candidate->id}.css";
+            if ($disk->exists($sourcePath)) {
+                if (!$disk->exists("{$theme->id}")) {
+                    $disk->makeDirectory("{$theme->id}");
+                }
+                $disk->copy($sourcePath, $targetPath);
+                return;
+            }
+        }
+
+        // Last fallback: try republishing from section files for this theme.
+        // If sections are missing/incomplete, keep silent to avoid breaking the request path.
+        try {
+            $this->cssPublishService->publishTheme($theme->id);
+        } catch (\Throwable) {
+            // no-op
+        }
     }
 
     /**
      * Ensure theme_parts exist for a theme in the given tenant scope.
      * Copies from placeholders if they don't exist yet.
      */
-    private function ensureThemePartsExist(Theme $theme, ?string $tenantId): void
+    private function ensureThemePartsExist(Theme $theme, ?string $tenantId, ?Theme $sourceTheme = null): void
     {
+        if ($sourceTheme === null) {
+            $sourceTheme = Theme::whereNull('tenant_id')
+                ->where('slug', $theme->slug)
+                ->first();
+        }
+
         // Check if theme_parts already exist for this tenant/central
         $existingParts = \App\Models\ThemePart::where('theme_id', $theme->id)
             ->where('tenant_id', $tenantId)
             ->exists();
 
         if ($existingParts) {
+            // Legacy repair: copy missing CSS/content from source system theme parts.
+            if ($sourceTheme) {
+                foreach (['settings', 'header', 'footer'] as $type) {
+                    $targetPart = \App\Models\ThemePart::where('theme_id', $theme->id)
+                        ->where('tenant_id', $tenantId)
+                        ->where('type', $type)
+                        ->first();
+
+                    $sourcePart = \App\Models\ThemePart::where('theme_id', $sourceTheme->id)
+                        ->whereNull('tenant_id')
+                        ->where('type', $type)
+                        ->first();
+
+                    if (!$targetPart || !$sourcePart) {
+                        continue;
+                    }
+
+                    $dirty = false;
+                    if (empty($targetPart->settings_css) && !empty($sourcePart->settings_css)) {
+                        $targetPart->settings_css = $sourcePart->settings_css;
+                        $dirty = true;
+                    }
+
+                    if (empty($targetPart->puck_data_raw) && !empty($sourcePart->puck_data_raw)) {
+                        $targetPart->puck_data_raw = $sourcePart->puck_data_raw;
+                        $dirty = true;
+                    }
+
+                    if ($dirty) {
+                        $targetPart->save();
+                    }
+                }
+            }
+
             return; // Already have customized parts, don't overwrite
+        }
+
+        // Prefer cloning fully-formed source theme parts (includes settings_css).
+        if ($sourceTheme) {
+            $sourceParts = \App\Models\ThemePart::where('theme_id', $sourceTheme->id)
+                ->whereNull('tenant_id')
+                ->whereIn('type', ['settings', 'header', 'footer'])
+                ->get();
+
+            if ($sourceParts->isNotEmpty()) {
+                foreach ($sourceParts as $sourcePart) {
+                    \App\Models\ThemePart::create([
+                        'tenant_id' => $tenantId,
+                        'theme_id' => $theme->id,
+                        'name' => $theme->name . ' ' . ucfirst($sourcePart->type),
+                        'slug' => $theme->slug . '-' . $sourcePart->type . '-' . ($tenantId ?? 'central'),
+                        'type' => $sourcePart->type,
+                        'puck_data_raw' => $sourcePart->puck_data_raw,
+                        'puck_data_compiled' => $sourcePart->puck_data_compiled,
+                        'settings_css' => $sourcePart->settings_css,
+                        'status' => 'published',
+                        'sort_order' => $sourcePart->sort_order ?? 0,
+                        'created_by' => $this->getCurrentUserId(),
+                    ]);
+                }
+
+                return;
+            }
         }
 
         // Copy placeholders to theme_parts for this tenant/central scope

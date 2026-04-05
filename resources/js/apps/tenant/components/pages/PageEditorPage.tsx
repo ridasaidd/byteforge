@@ -104,27 +104,26 @@ export function PageEditorPage() {
         hasLoadedRef.current = true;
 
         try {
+          const activeThemeResponse = await tenantThemes.active().catch(() => ({ data: null }));
+          const activeThemeId = activeThemeResponse.data?.id ?? null;
+
+          if (activeThemeId) {
+            setThemeId(activeThemeId);
+          }
+          if (activeThemeResponse.data?.theme_data) {
+            setThemeData(activeThemeResponse.data.theme_data as ThemeData);
+          }
+
           const [headerResponse, footerResponse] = await Promise.all([
-            tenantThemeParts.list({ type: 'header' }),
-            tenantThemeParts.list({ type: 'footer' }),
+            tenantThemeParts.list({ type: 'header', theme_id: activeThemeId ?? undefined }),
+            tenantThemeParts.list({ type: 'footer', theme_id: activeThemeId ?? undefined }),
           ]);
 
           const headerPart = headerResponse.data?.[0];
           const footerPart = footerResponse.data?.[0];
 
-          if (headerPart?.theme_id) setThemeId(headerPart.theme_id);
-          else if (footerPart?.theme_id) setThemeId(footerPart.theme_id);
-
-          if (headerPart?.theme_id || footerPart?.theme_id) {
-            try {
-              const themeResponse = await tenantThemes.active();
-              if (themeResponse.data?.theme_data) {
-                setThemeData(themeResponse.data.theme_data as ThemeData);
-              }
-            } catch (error) {
-              console.warn('Could not load theme data:', error);
-            }
-          }
+          if (!activeThemeId && headerPart?.theme_id) setThemeId(headerPart.theme_id);
+          else if (!activeThemeId && footerPart?.theme_id) setThemeId(footerPart.theme_id);
 
           if (headerPart?.puck_data_raw) {
             setHeaderData(headerPart.puck_data_raw as Data);

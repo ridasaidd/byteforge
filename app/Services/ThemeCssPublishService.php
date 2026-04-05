@@ -82,16 +82,16 @@ class ThemeCssPublishService
         }
 
         // Ensure the theme folder exists before writing the master CSS file
-        if (!Storage::disk('public')->exists("themes/{$themeId}")) {
-            Storage::disk('public')->makeDirectory("themes/{$themeId}");
+        if (!Storage::disk('themes')->exists("{$themeId}")) {
+            Storage::disk('themes')->makeDirectory("{$themeId}");
         }
 
         // Merge all sections
         $mergedCss = $this->mergeAllSections($themeId);
 
         // Write to master CSS file in theme folder
-        $masterPath = "themes/{$themeId}/{$themeId}.css";
-        Storage::disk('public')->put($masterPath, $mergedCss);
+        $masterPath = "{$themeId}/{$themeId}.css";
+        Storage::disk('themes')->put($masterPath, $mergedCss);
 
         // Return URL with cache-busting version
         $version = now()->timestamp;

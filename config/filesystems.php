@@ -47,6 +47,17 @@ return [
             'report' => false,
         ],
 
+        // Dedicated disk for theme CSS/assets — NOT in tenancy filesystem disks list,
+        // so it always resolves to the shared storage/app/public path regardless of tenant context.
+        'themes' => [
+            'driver' => 'local',
+            'root' => storage_path('app/public/themes'),
+            'url' => env('APP_URL').'/storage/themes',
+            'visibility' => 'public',
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

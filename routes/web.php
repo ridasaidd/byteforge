@@ -23,6 +23,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             // getOrCreateDefaultTheme auto-provisions themes which is a write-side
             // operation that must not be triggered by anonymous page views.
             $theme = $themeService->getActiveTheme(null);
+            if ($theme) {
+                $themeService->ensureThemeCssFileExistsForTheme($theme);
+            }
             $themeCssUrl = $theme?->getCssUrl();
 
             if ($homepage) {
@@ -45,6 +48,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             /** @var ThemeService $themeService */
             $themeService = app(ThemeService::class);
             $theme = $themeService->getActiveTheme(null);
+            if ($theme) {
+                $themeService->ensureThemeCssFileExistsForTheme($theme);
+            }
 
             return view('public-central', [
                 'themeCssUrl' => $theme?->getCssUrl(),
