@@ -8,7 +8,7 @@ import { tenantPages as pages } from '@/shared/services/api/pages';
 import { tenantThemes as themes } from '@/shared/services/api/themes';
 import type { Page, CreatePageData, UpdatePageData, PageTemplate } from '@/shared/services/api/types';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
-import { FormModal, type FormField } from '@/shared/components/organisms/FormModal';
+import { TabbedFormModal, type FormTab } from '@/shared/components/organisms/TabbedFormModal';
 import { PageCreationWizard, type PageCreationData } from '@/shared/components/organisms/PageCreationWizard';
 import { ConfirmDialog } from '@/shared/components/organisms/ConfirmDialog';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
@@ -40,78 +40,91 @@ export function PagesPage() {
     }).optional(),
   });
 
-  const formFields: FormField[] = [
+  const getFormTabs = (): FormTab[] => [
     {
-      name: 'title',
-      label: t('page_title_label'),
-      type: 'text',
-      placeholder: t('page_title_placeholder'),
-      required: true,
-      description: t('page_title_description'),
-    },
-    {
-      name: 'slug',
-      label: t('slug'),
-      type: 'text',
-      placeholder: t('slug_placeholder'),
-      required: false,
-      description: t('slug_description'),
-    },
-    {
-      name: 'page_type',
-      label: t('page_type'),
-      type: 'select',
-      required: true,
-      options: [
-        { label: t('type_general'), value: 'general' },
-        { label: t('type_home'), value: 'home' },
-        { label: t('type_about'), value: 'about' },
-        { label: t('type_contact'), value: 'contact' },
-        { label: t('type_blog'), value: 'blog' },
-        { label: t('type_service'), value: 'service' },
-        { label: t('type_product'), value: 'product' },
-        { label: t('type_custom'), value: 'custom' },
+      id: 'general',
+      label: t('general_tab'),
+      fields: [
+        {
+          name: 'title',
+          label: t('page_title_label'),
+          type: 'text',
+          placeholder: t('page_title_placeholder'),
+          required: true,
+          description: t('page_title_description'),
+        },
+        {
+          name: 'slug',
+          label: t('slug'),
+          type: 'text',
+          placeholder: t('slug_placeholder'),
+          required: false,
+          description: t('slug_description'),
+        },
+        {
+          name: 'page_type',
+          label: t('page_type'),
+          type: 'select',
+          required: true,
+          options: [
+            { label: t('type_general'), value: 'general' },
+            { label: t('type_home'), value: 'home' },
+            { label: t('type_about'), value: 'about' },
+            { label: t('type_contact'), value: 'contact' },
+            { label: t('type_blog'), value: 'blog' },
+            { label: t('type_service'), value: 'service' },
+            { label: t('type_product'), value: 'product' },
+            { label: t('type_custom'), value: 'custom' },
+          ],
+          description: t('page_type_description'),
+        },
+        {
+          name: 'status',
+          label: t('status'),
+          type: 'select',
+          required: true,
+          options: [
+            { label: t('status_draft'), value: 'draft' },
+            { label: t('status_published'), value: 'published' },
+            { label: t('status_archived'), value: 'archived' },
+          ],
+          description: t('status_description'),
+        },
+        {
+          name: 'is_homepage',
+          label: t('set_as_homepage'),
+          type: 'checkbox',
+          required: false,
+          description: t('set_as_homepage_description'),
+        },
       ],
-      description: t('page_type_description'),
     },
     {
-      name: 'status',
-      label: t('status'),
-      type: 'select',
-      required: true,
-      options: [
-        { label: t('status_draft'), value: 'draft' },
-        { label: t('status_published'), value: 'published' },
-        { label: t('status_archived'), value: 'archived' },
+      id: 'seo',
+      label: t('seo_tab'),
+      fields: [
+        {
+          name: 'meta_data.meta_title',
+          label: t('seo_title'),
+          type: 'text',
+          placeholder: t('seo_title_placeholder'),
+          description: t('seo_title_description'),
+        },
+        {
+          name: 'meta_data.meta_description',
+          label: t('seo_description'),
+          type: 'textarea',
+          placeholder: t('seo_description_placeholder'),
+          description: t('seo_description_text'),
+        },
+        {
+          name: 'meta_data.meta_keywords',
+          label: t('seo_keywords'),
+          type: 'text',
+          placeholder: t('seo_keywords_placeholder'),
+          description: t('seo_keywords_description'),
+        },
       ],
-      description: t('status_description'),
-    },
-    {
-      name: 'is_homepage',
-      label: t('set_as_homepage'),
-      type: 'checkbox',
-      description: t('set_as_homepage_description'),
-    },
-    {
-      name: 'meta_data.meta_title',
-      label: t('seo_title'),
-      type: 'text',
-      placeholder: t('seo_title_placeholder'),
-      description: t('seo_title_description'),
-    },
-    {
-      name: 'meta_data.meta_description',
-      label: t('seo_description'),
-      type: 'textarea',
-      placeholder: t('seo_description_placeholder'),
-      description: t('seo_description_text'),
-    },
-    {
-      name: 'meta_data.meta_keywords',
-      label: t('seo_keywords'),
-      type: 'text',
-      placeholder: t('seo_keywords_placeholder'),
-      description: t('seo_keywords_description'),
     },
   ];
 
@@ -354,13 +367,13 @@ export function PagesPage() {
       )}
 
       {canEditPages && (
-        <FormModal
+        <TabbedFormModal
           open={!!editingPage}
           onOpenChange={(open) => !open && setEditingPage(null)}
           onSubmit={handleUpdate}
           title={t('edit_page_title')}
           description={t('edit_page_description')}
-          fields={formFields}
+          tabs={getFormTabs()}
           schema={pageSchema}
           defaultValues={editingPage ? {
             title: editingPage.title,
