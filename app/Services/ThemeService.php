@@ -623,7 +623,7 @@ class ThemeService
             $templates->whereNull('tenant_id');
         }
 
-        return $templates->get()->toArray();
+        return $templates->orderBy('id')->get()->toArray();
     }
 }
 

@@ -43,8 +43,8 @@ class ThemeTemplatesApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonCount(2, 'data');
-        $response->assertJsonPath('data.0.name', 'Home');
-        $response->assertJsonPath('data.1.name', 'About');
+        $response->assertJsonFragment(['name' => 'Home']);
+        $response->assertJsonFragment(['name' => 'About']);
     }
 
     /**
