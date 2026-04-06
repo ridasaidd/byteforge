@@ -1,6 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Check, Palette, SlidersHorizontal } from 'lucide-react';
+
+const getMediumPreviewUrl = (url?: string | null) => {
+  if (!url) return null;
+  const mediaLibraryPattern = /^(.*\/medialibrary\/\d+\/\d+\/)([^/]+)\.(\w+)$/;
+  const match = url.match(mediaLibraryPattern);
+  if (!match) return url;
+  const [, basePath, fileName] = match;
+  return `${basePath}conversions/${fileName}-medium.jpg`;
+};
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
@@ -31,6 +40,7 @@ export function ThemesPage() {
   const [activatingSlug, setActivatingSlug] = useState<string | null>(null);
   const [confirmTheme, setConfirmTheme] = useState<Theme | null>(null);
   const [confirmCountdown, setConfirmCountdown] = useState(5);
+  const [previewErrorIds, setPreviewErrorIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     const load = async () => {
@@ -183,15 +193,46 @@ export function ThemesPage() {
                 return (
                   <div key={theme.id} className="rounded-lg border p-3">
                     <div className="mb-3 flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-medium">{theme.name}</p>
-                        <p className="text-xs text-muted-foreground">{theme.slug}</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium">{theme.name}</p>
+                          {isActive && (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
+                              <Check className="me-1 h-3 w-3" />
+                              {t('active_badge', { defaultValue: 'Active' })}
+                            </span>
+                          )}
+                        </div>
+                        {theme.description && (
+                          <p className="text-xs text-muted-foreground mt-1">{theme.description}</p>
+                        )}
+                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                          {theme.version && <span>v{theme.version}</span>}
+                          {theme.version && theme.author && <span>•</span>}
+                          {theme.author && <span>{theme.author}</span>}
+                        </div>
                       </div>
-                      {isActive && (
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-800">
-                          <Check className="me-1 h-3 w-3" />
-                          {t('active_badge', { defaultValue: 'Active' })}
-                        </span>
+                    </div>
+
+                    <div className="mb-3">
+                      {theme.preview_image && !previewErrorIds.has(theme.id) ? (
+                        <img
+                          src={getMediumPreviewUrl(theme.preview_image) || theme.preview_image}
+                          alt={`${theme.name} preview`}
+                          className="w-full h-36 object-cover rounded-md border"
+                          loading="lazy"
+                          onError={() => {
+                            setPreviewErrorIds((prev) => {
+                              const next = new Set(prev);
+                              next.add(theme.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-36 rounded-md border border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                          {t('no_preview', { defaultValue: 'No preview' })}
+                        </div>
                       )}
                     </div>
 
