@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'tenant.membership' => \App\Http\Middleware\EnsureTenantMembership::class,
             'permission.team' => \App\Http\Middleware\SetPermissionsTeamContext::class,
+            'addon' => \App\Http\Middleware\EnsureAddon::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

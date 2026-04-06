@@ -1,4 +1,5 @@
 export { useAuth } from './useAuth';
+export { useAddon } from './useAddon';
 export { useTenant } from './useTenant';
 export { useToast } from './useToast';
 export { useCrud } from './useCrud';

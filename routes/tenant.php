@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Api\TenantAddonController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
@@ -166,6 +167,9 @@ Route::middleware([
     // Protected tenant routes - require authentication
     Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
+
+        // Active add-ons for this tenant (used by frontend to gate add-on UI)
+        Route::get('addons', [TenantAddonController::class, 'index']);
 
         // Resource routes — per-action permission checks
         Route::get('pages',           [PageController::class, 'index'])->middleware('permission:pages.view');
