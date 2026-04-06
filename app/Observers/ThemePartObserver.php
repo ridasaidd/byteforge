@@ -11,6 +11,20 @@ use Illuminate\Support\Facades\Log;
 class ThemePartObserver
 {
     /**
+     * Handle the ThemePart "created" event.
+     *
+     * Fires when a ThemePart is first created — e.g. during activation or when reset
+     * creates a part that did not previously exist. Recompile so pages immediately
+     * reflect the new header/footer content.
+     */
+    public function created(ThemePart $themePart): void
+    {
+        if ($themePart->status === 'published') {
+            $this->recompilePagesUsingThemePart($themePart);
+        }
+    }
+
+    /**
      * Handle the ThemePart "updated" event.
      */
     public function updated(ThemePart $themePart): void
@@ -23,6 +37,11 @@ class ThemePartObserver
 
     /**
      * Handle the ThemePart "deleted" event.
+     *
+     * NOTE: Avoid deleting ThemeParts for an active theme — compilePage() will run
+     * with missing parts and store broken compiled data. Use updateOrCreate instead
+     * (see ThemeService::resetTheme). This hook is a safety net for genuine deletes
+     * such as theme deletion cascades.
      */
     public function deleted(ThemePart $themePart): void
     {

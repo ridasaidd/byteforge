@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Page;
+use App\Models\Theme;
 use App\Http\Controllers\Controller;
 use App\Services\AnalyticsService;
 use App\Services\PageCssService;
@@ -298,6 +299,9 @@ class PageController extends Controller
         if ($shouldCompile) {
             $compiler = app(PuckCompilerService::class);
             $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->compiled_with_theme_id = Theme::where('tenant_id', $tenantId)
+                ->where('is_active', true)
+                ->value('id');
             $page->save();
         }
 
@@ -355,50 +359,14 @@ class PageController extends Controller
             ->where('status', 'published')
             ->firstOrFail();
 
-        // Use compiled data (header + content + footer + metadata already merged during publish)
-        $pageData = $page->puck_data_compiled ?? $page->puck_data;
-
-        $this->recordPageView($page, $request);
-
-        return response()->json([
-            'data' => [
-                'id' => $page->id,
-                'title' => $page->title,
-                'slug' => $page->slug,
-                'page_type' => $page->page_type,
-                'puck_data' => $pageData, // Pre-compiled: header + content + footer + metadata merged!
-                'meta_data' => $page->meta_data,
-                'status' => $page->status,
-                'is_homepage' => $page->is_homepage,
-                'published_at' => $page->published_at?->toISOString(),
-                'created_at' => $page->created_at->toISOString(),
-                'updated_at' => $page->updated_at->toISOString(),
-                // No header/footer needed - already merged in puck_data_compiled!
-            ]
-        ])
-        ->header('Cache-Control', 'public, max-age=3600') // Browser cache 1 hour
-        ->header('ETag', md5(json_encode($pageData))); // Enable conditional requests
-    }
-
-    /**
-     * Get the homepage (public route)
-     */
-    public function getHomepage(Request $request): JsonResponse
-    {
-        $tenantId = $this->getTenantId();
-        $query = $tenantId === null
-            ? Page::whereNull('tenant_id')
-            : Page::where('tenant_id', $tenantId);
-
-        $page = $query->where('is_homepage', true)
-            ->where('status', 'published')
-            ->first();
-
-        if (!$page) {
-            return response()->json([
-                'error' => 'Homepage not found',
-                'message' => 'No homepage has been set yet.'
-            ], 404);
+        // Lazy recompile: if the active theme has changed since this page was last compiled,
+        // recompile now so the visitor sees the correct header/footer immediately.
+        $activeTheme = Theme::where('tenant_id', $tenantId)->where('is_active', true)->first();
+        if ($activeTheme && $page->compiled_with_theme_id !== $activeTheme->id) {
+            $compiler = app(PuckCompilerService::class);
+            $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->compiled_with_theme_id = $activeTheme->id;
+            $page->save();
         }
 
         // Use compiled data (header + content + footer + metadata already merged during publish)
@@ -422,7 +390,63 @@ class PageController extends Controller
                 // No header/footer needed - already merged in puck_data_compiled!
             ]
         ])
-        ->header('Cache-Control', 'public, max-age=3600')
+        ->header('Cache-Control', 'no-cache') // Always revalidate with ETag — ensures fresh content after publish
+        ->header('ETag', md5(json_encode($pageData)));
+    }
+
+    /**
+     * Get the homepage (public route)
+     */
+    public function getHomepage(Request $request): JsonResponse
+    {
+        $tenantId = $this->getTenantId();
+        $query = $tenantId === null
+            ? Page::whereNull('tenant_id')
+            : Page::where('tenant_id', $tenantId);
+
+        $page = $query->where('is_homepage', true)
+            ->where('status', 'published')
+            ->first();
+
+        if (!$page) {
+            return response()->json([
+                'error' => 'Homepage not found',
+                'message' => 'No homepage has been set yet.'
+            ], 404);
+        }
+
+        // Lazy recompile: if the active theme has changed since this page was last compiled,
+        // recompile now so the visitor sees the correct header/footer immediately.
+        $activeTheme = Theme::where('tenant_id', $tenantId)->where('is_active', true)->first();
+        if ($activeTheme && $page->compiled_with_theme_id !== $activeTheme->id) {
+            $compiler = app(PuckCompilerService::class);
+            $page->puck_data_compiled = $compiler->compilePage($page);
+            $page->compiled_with_theme_id = $activeTheme->id;
+            $page->save();
+        }
+
+        // Use compiled data (header + content + footer + metadata already merged during publish)
+        $pageData = $page->puck_data_compiled ?? $page->puck_data;
+
+        $this->recordPageView($page, $request);
+
+        return response()->json([
+            'data' => [
+                'id' => $page->id,
+                'title' => $page->title,
+                'slug' => $page->slug,
+                'page_type' => $page->page_type,
+                'puck_data' => $pageData, // Pre-compiled: header + content + footer + metadata merged!
+                'meta_data' => $page->meta_data,
+                'status' => $page->status,
+                'is_homepage' => $page->is_homepage,
+                'published_at' => $page->published_at?->toISOString(),
+                'created_at' => $page->created_at->toISOString(),
+                'updated_at' => $page->updated_at->toISOString(),
+                // No header/footer needed - already merged in puck_data_compiled!
+            ]
+        ])
+        ->header('Cache-Control', 'no-cache') // Always revalidate with ETag — ensures fresh content after publish
         ->header('ETag', md5(json_encode($pageData)));
     }
 

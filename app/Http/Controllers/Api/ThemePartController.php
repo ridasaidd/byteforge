@@ -45,6 +45,10 @@ class ThemePartController extends Controller
             $query->where('status', $request->input('status'));
         }
 
+        if ($request->filled('theme_id') && is_numeric($request->input('theme_id'))) {
+            $query->where('theme_id', (int) $request->input('theme_id'));
+        }
+
         // Search
         if ($request->has('search')) {
             $search = str_replace(['%', '_'], ['\%', '\_'], $request->input('search'));

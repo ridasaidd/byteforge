@@ -63,6 +63,9 @@ Route::middleware([
         }
         try {
             $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+            if ($activeTheme) {
+                app(\App\Services\ThemeService::class)->ensureThemeCssFileExistsForTheme($activeTheme);
+            }
         } catch (\Throwable $e) {
             $activeTheme = null;
         }
@@ -91,6 +94,9 @@ Route::middleware([
         }
         try {
             $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+            if ($activeTheme) {
+                app(\App\Services\ThemeService::class)->ensureThemeCssFileExistsForTheme($activeTheme);
+            }
         } catch (\Throwable $e) {
             $activeTheme = null;
         }

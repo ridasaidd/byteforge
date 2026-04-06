@@ -20,6 +20,7 @@ class Page extends Model implements HasMedia
         'page_type',
         'puck_data',
         'puck_data_compiled',
+        'compiled_with_theme_id',
         'page_css',
         'meta_data',
         'status',

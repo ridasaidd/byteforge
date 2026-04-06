@@ -102,28 +102,26 @@ export function PageEditorPage() {
         hasLoadedRef.current = true;
 
         try {
+          const activeThemeResponse = await themes.active().catch(() => ({ data: null }));
+          const activeThemeId = activeThemeResponse.data?.id ?? (page.theme_id ? Number(page.theme_id) : null);
+
+          if (activeThemeId) {
+            setThemeId(activeThemeId);
+          }
+          if (activeThemeResponse.data?.theme_data) {
+            setThemeData(activeThemeResponse.data.theme_data as ThemeData);
+          }
+
           const [headerResponse, footerResponse] = await Promise.all([
-            themeParts.list({ type: 'header' }),
-            themeParts.list({ type: 'footer' }),
+            themeParts.list({ type: 'header', theme_id: activeThemeId ?? undefined }),
+            themeParts.list({ type: 'footer', theme_id: activeThemeId ?? undefined }),
           ]);
 
           const headerPart = headerResponse.data?.[0];
           const footerPart = footerResponse.data?.[0];
 
-          if (page.theme_id) setThemeId(Number(page.theme_id));
-          else if (headerPart?.theme_id) setThemeId(Number(headerPart.theme_id));
-          else if (footerPart?.theme_id) setThemeId(Number(footerPart.theme_id));
-
-          if (page.theme_id || headerPart?.theme_id || footerPart?.theme_id) {
-            try {
-              const themeResponse = await themes.active();
-              if (themeResponse.data?.theme_data) {
-                setThemeData(themeResponse.data.theme_data as ThemeData);
-              }
-            } catch (error) {
-              console.warn('Could not load theme data:', error);
-            }
-          }
+          if (!activeThemeId && headerPart?.theme_id) setThemeId(Number(headerPart.theme_id));
+          else if (!activeThemeId && footerPart?.theme_id) setThemeId(Number(footerPart.theme_id));
 
           if (headerPart?.puck_data_raw) {
             setHeaderData(headerPart.puck_data_raw as Data);

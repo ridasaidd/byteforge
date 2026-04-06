@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             RolePermissionSeeder::class,
+            PassportTestSeeder::class, // Passport personal access client (must run before auth tests)
             FixedTestDataSeeder::class, // Fixed test tenants and users
             UserSeeder::class,
             TenantSeeder::class,

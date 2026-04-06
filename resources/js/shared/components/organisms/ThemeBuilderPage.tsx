@@ -420,29 +420,18 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         }
 
         // Save header part
-        console.log('Header Data Ref:', headerDataRef.current);
-        console.log('Header has content:', headerDataRef.current?.content?.length > 0);
-        console.log('Header has root:', Object.keys(headerDataRef.current?.root || {}).length > 0);
-
         if (headerDataRef.current && (headerDataRef.current.content.length > 0 || Object.keys(headerDataRef.current.root).length > 0)) {
           // Save to placeholders (Blueprints)
           await themePlaceholders.save(Number(themeId), 'header', headerDataRef.current);
 
           // Generate and save header CSS
           try {
-            console.log('Generating header CSS...');
             const headerCss = generateThemeStepCss('header', {
               puckData: headerDataRef.current,
               themeData: themeData as ThemeData,
             });
-            console.log('Header CSS generated:', headerCss?.length, 'chars');
-            console.log('Header CSS preview:', headerCss?.substring(0, 200));
             if (headerCss && headerCss.trim().length > 0) {
-              console.log('Calling saveSection for header...');
               await saveSection(Number(themeId), 'header', headerCss);
-              console.log('Header CSS saved successfully');
-            } else {
-              console.log('Header CSS is empty, skipping save');
             }
           } catch (cssError) {
             console.error('Failed to save header CSS:', cssError);
@@ -455,29 +444,18 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
         }
 
         // Save footer part
-        console.log('Footer Data Ref:', footerDataRef.current);
-        console.log('Footer has content:', footerDataRef.current?.content?.length > 0);
-        console.log('Footer has root:', Object.keys(footerDataRef.current?.root || {}).length > 0);
-
         if (footerDataRef.current && (footerDataRef.current.content.length > 0 || Object.keys(footerDataRef.current.root).length > 0)) {
           // Save to placeholders (Blueprints)
           await themePlaceholders.save(Number(themeId), 'footer', footerDataRef.current);
 
           // Generate and save footer CSS
           try {
-            console.log('Generating footer CSS...');
             const footerCss = generateThemeStepCss('footer', {
               puckData: footerDataRef.current,
               themeData: themeData as ThemeData,
             });
-            console.log('Footer CSS generated:', footerCss?.length, 'chars');
-            console.log('Footer CSS preview:', footerCss?.substring(0, 200));
             if (footerCss && footerCss.trim().length > 0) {
-              console.log('Calling saveSection for footer...');
               await saveSection(Number(themeId), 'footer', footerCss);
-              console.log('Footer CSS saved successfully');
-            } else {
-              console.log('Footer CSS is empty, skipping save');
             }
           } catch (cssError) {
             console.error('Failed to save footer CSS:', cssError);
@@ -509,11 +487,9 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
 
         // Publish master CSS file (merge all sections)
         try {
-          console.log('Publishing theme CSS...');
-          const publishResult = await themeCssApi.publish(Number(themeId));
-          console.log('Theme CSS published:', publishResult);
+          await themeCssApi.publish(Number(themeId));
         } catch (publishError) {
-          console.error('Failed to publish theme CSS:', publishError);
+          console.warn('Failed to publish theme CSS:', publishError);
           toast({
             title: t('warning_title'),
             description: t('css_publish_failed'),
@@ -539,13 +515,11 @@ export function ThemeBuilderPage({ mode = 'create' }: ThemeBuilderPageProps) {
   };
 
   const handleHeaderChange = (newData: Data) => {
-    console.log('Header onChange called with:', newData);
     headerDataRef.current = newData;
     setHeaderData(newData);
   };
 
   const handleFooterChange = (newData: Data) => {
-    console.log('Footer onChange called with:', newData);
     footerDataRef.current = newData;
     setFooterData(newData);
   };

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Theme;
+use App\Services\ThemeCssSectionService;
 use App\Services\ThemeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -40,10 +41,12 @@ class ThemeController extends Controller
         ]);
     }
     protected ThemeService $themeService;
+    protected ThemeCssSectionService $sectionService;
 
-    public function __construct(ThemeService $themeService)
+    public function __construct(ThemeService $themeService, ThemeCssSectionService $sectionService)
     {
         $this->themeService = $themeService;
+        $this->sectionService = $sectionService;
     }
 
     /**
@@ -416,7 +419,11 @@ class ThemeController extends Controller
             ], 400);
         }
 
+        $themeId = $theme->id;
         $theme->delete();
+
+        // Clean up the theme's CSS folder from storage so no orphaned files accumulate.
+        $this->sectionService->deleteThemeFolder($themeId);
 
         return response()->json([
             'message' => 'Theme deleted successfully',
