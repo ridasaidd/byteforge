@@ -27,13 +27,13 @@
             @endforeach
         @endif
 
-        {{-- Load consolidated theme CSS from disk --}}
+        {{-- Load consolidated theme CSS from disk (version-stamped for cache-busting after blueprint publish) --}}
         @php
             $themeCssRelativePath = 'storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css';
             $themeCssPublicPath = public_path($themeCssRelativePath);
         @endphp
         @if(file_exists($themeCssPublicPath))
-            <link rel="stylesheet" href="{{ global_asset($themeCssRelativePath) }}" id="theme-css">
+            <link rel="stylesheet" href="{{ global_asset($themeCssRelativePath) . '?v=' . $activeTheme->getCssVersion() }}" id="theme-css">
         @endif
 
         {{-- Load scoped customization CSS from database (tenant scope) --}}

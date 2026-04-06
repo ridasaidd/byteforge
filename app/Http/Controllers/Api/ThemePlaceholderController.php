@@ -127,6 +127,11 @@ class ThemePlaceholderController extends Controller
             $placeholder->update(['content' => $validated['content']]);
         }
 
+        // NOTE: We intentionally do NOT propagate blueprint changes to theme_parts here.
+        // Placeholders are templates for new theme activations only.
+        // theme_parts hold instance-level customizations that must not be silently overwritten.
+        // To apply blueprint layout changes to a running instance, use the "Reset" action.
+
         return response()->json([
             'data' => $placeholder,
             'message' => ucfirst($section) . ' placeholder saved successfully',

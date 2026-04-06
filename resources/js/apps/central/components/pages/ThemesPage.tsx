@@ -43,12 +43,15 @@ export function ThemesPage() {
   const loadThemes = async () => {
     try {
       setIsLoading(true);
-      const [themesList, active] = await Promise.all([themes.list(), themes.active()]);
+      // Use allSettled so a 404 on /active (no active theme yet) doesn't prevent the list from loading.
+      const [themesList, activeResult] = await Promise.allSettled([themes.list(), themes.active()]);
 
-      setAllThemes(themesList.data);
-      setActiveTheme(active.data);
-    } catch {
-      toast({ title: t('error'), description: t('failed_load'), variant: 'destructive' });
+      if (themesList.status === 'fulfilled') {
+        setAllThemes(themesList.value.data);
+      } else {
+        toast({ title: t('error'), description: t('failed_load'), variant: 'destructive' });
+      }
+      setActiveTheme(activeResult.status === 'fulfilled' ? activeResult.value.data : null);
     } finally {
       setIsLoading(false);
     }

@@ -27,8 +27,8 @@
             @endforeach
         @endif
 
-        {{-- Load consolidated theme CSS from disk --}}
-        <link rel="stylesheet" href="{{ asset('storage/themes/' . $activeTheme->id . '/' . $activeTheme->id . '.css') }}" id="theme-css">
+        {{-- Load consolidated theme CSS from disk (version-stamped for cache-busting after blueprint publish) --}}
+        <link rel="stylesheet" href="{{ $activeTheme->getCssUrl() }}" id="theme-css">
 
         {{-- Load scoped customization CSS from database (central scope: tenant_id = NULL) --}}
         @php

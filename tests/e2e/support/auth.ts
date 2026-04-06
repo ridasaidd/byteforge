@@ -8,12 +8,12 @@ export type Credentials = {
 const DEFAULT_PASSWORD = 'password';
 
 export const centralAdminCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_CENTRAL_EMAIL ?? 'superadmin@byteforge.se',
+  email: process.env.PLAYWRIGHT_CENTRAL_EMAIL ?? 'admin@byteforge.se',
   password: process.env.PLAYWRIGHT_CENTRAL_PASSWORD ?? DEFAULT_PASSWORD,
 };
 
 export const tenantOwnerCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_TENANT_OWNER_EMAIL ?? 'owner@tenant-one.byteforge.se',
+  email: process.env.PLAYWRIGHT_TENANT_OWNER_EMAIL ?? 'user.multiple@byteforge.test',
   password: process.env.PLAYWRIGHT_TENANT_OWNER_PASSWORD ?? DEFAULT_PASSWORD,
 };
 
