@@ -432,9 +432,8 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
     return result;
   };
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = (_event: DragStartEvent) => {
     // Could be used for DragOverlay in the future
-    console.log('Dragging:', event.active.id);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {

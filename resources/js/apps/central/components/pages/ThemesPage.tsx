@@ -35,7 +35,7 @@ export function ThemesPage() {
   const [activeTheme, setActiveTheme] = useState<Theme | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [previewErrorIds, setPreviewErrorIds] = useState<Set<number>>(new Set());
-  const [confirmAction, setConfirmAction] = useState<{ type: 'activate' | 'reset'; theme: Theme } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ type: 'activate' | 'reset' | 'delete'; theme: Theme } | null>(null);
   const [confirmCountdown, setConfirmCountdown] = useState(5);
   const { toast } = useToast();
   const { t } = useTranslation('themes');
@@ -90,14 +90,20 @@ export function ThemesPage() {
         toast({ title: t('success'), description: t('reset_success') });
       }
 
+      if (confirmAction.type === 'delete') {
+        await themes.delete(confirmAction.theme.id);
+        toast({ title: t('success'), description: t('deleted_success') });
+      }
+
       await loadThemes();
       setConfirmAction(null);
     } catch {
-      toast({
-        title: t('error'),
-        description: confirmAction.type === 'activate' ? t('failed_activate') : t('failed_reset'),
-        variant: 'destructive',
-      });
+      const errorKey =
+        confirmAction.type === 'activate' ? 'failed_activate'
+        : confirmAction.type === 'reset' ? 'failed_reset'
+        : 'failed_delete';
+
+      toast({ title: t('error'), description: t(errorKey), variant: 'destructive' });
     }
   };
 
@@ -114,23 +120,34 @@ export function ThemesPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const deletingTheme = allThemes.find((theme) => theme.id === id);
-    if (!confirm(t('delete_theme_confirm', { name: deletingTheme?.name ?? '' }))) return;
-
-    try {
-      await themes.delete(id);
-      toast({ title: t('success'), description: t('deleted_success') });
-      await loadThemes();
-    } catch {
-      toast({ title: t('error'), description: t('failed_delete'), variant: 'destructive' });
-    }
-  };
+  const handleDelete = (theme: Theme) => setConfirmAction({ type: 'delete', theme });
 
   const handleCreateTheme = () => navigate('/dashboard/themes/new/builder');
   const handleEditTheme = (themeId: number) => navigate(`/dashboard/themes/${themeId}/builder`);
   const handleCustomizeTheme = (themeId: number) => navigate(`/dashboard/themes/${themeId}/customize`);
   const isThemeActive = (slug: string) => activeTheme?.slug === slug;
+
+  const confirmDialogConfig = confirmAction
+    ? {
+        title:
+          confirmAction.type === 'activate' ? t('switch_theme_title')
+          : confirmAction.type === 'reset' ? t('reset_theme_title')
+          : t('delete_theme_title'),
+        description:
+          confirmAction.type === 'activate' ? t('switch_theme_desc')
+          : confirmAction.type === 'reset' ? t('reset_theme_desc')
+          : t('delete_theme_desc', { name: confirmAction.theme.name }),
+        btnVariant: (confirmAction.type === 'activate' ? 'default' : 'destructive') as 'default' | 'destructive',
+        btnLabel:
+          confirmAction.type === 'activate' ? t('switch_btn')
+          : confirmAction.type === 'reset' ? t('reset_btn')
+          : t('delete_btn'),
+        countdownLabel:
+          confirmAction.type === 'activate' ? t('switch_countdown', { seconds: confirmCountdown })
+          : confirmAction.type === 'reset' ? t('reset_countdown', { seconds: confirmCountdown })
+          : t('delete_countdown', { seconds: confirmCountdown }),
+      }
+    : null;
 
   if (isLoading) {
     return (
@@ -157,23 +174,17 @@ export function ThemesPage() {
       <Dialog open={!!confirmAction} onOpenChange={(open) => !open && setConfirmAction(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{confirmAction?.type === 'activate' ? t('switch_theme_title') : t('reset_theme_title')}</DialogTitle>
-            <DialogDescription>
-              {confirmAction?.type === 'activate' ? t('switch_theme_desc') : t('reset_theme_desc')}
-            </DialogDescription>
+            <DialogTitle>{confirmDialogConfig?.title}</DialogTitle>
+            <DialogDescription>{confirmDialogConfig?.description}</DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirmAction(null)}>{t('cancel')}</Button>
             <Button
-              variant={confirmAction?.type === 'reset' ? 'destructive' : 'default'}
+              variant={confirmDialogConfig?.btnVariant ?? 'default'}
               disabled={confirmCountdown > 0}
               onClick={handleConfirmAction}
             >
-              {confirmCountdown > 0
-                ? (confirmAction?.type === 'activate'
-                  ? t('switch_countdown', { seconds: confirmCountdown })
-                  : t('reset_countdown', { seconds: confirmCountdown }))
-                : (confirmAction?.type === 'activate' ? t('switch_btn') : t('reset_btn'))}
+              {confirmCountdown > 0 ? confirmDialogConfig?.countdownLabel : confirmDialogConfig?.btnLabel}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -203,12 +214,16 @@ export function ThemesPage() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 mt-1">{theme.description}</p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
-                      <span>v{theme.version}</span>
-                      <span>•</span>
-                      <span>{theme.author}</span>
-                    </div>
+                    {theme.description && (
+                      <p className="text-sm text-gray-600 mt-1">{theme.description}</p>
+                    )}
+                    {(theme.version || theme.author) && (
+                      <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                        {theme.version && <span>v{theme.version}</span>}
+                        {theme.version && theme.author && <span>•</span>}
+                        {theme.author && <span>{theme.author}</span>}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -262,7 +277,7 @@ export function ThemesPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDelete(theme.id)}
+                    onClick={() => handleDelete(theme)}
                     className="text-red-600 hover:text-red-700"
                     title={isThemeActive(theme.slug) ? t('cannot_delete_active') : t('delete_icon_title')}
                     disabled={isThemeActive(theme.slug)}

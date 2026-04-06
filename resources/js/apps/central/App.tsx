@@ -48,8 +48,7 @@ function ProtectedRoutes() {
     return <Navigate to="/login" replace />;
   }
 
-  const handleSearch = (query: string) => {
-    console.log('Search query:', query);
+  const handleSearch = (_query: string) => {
     // TODO: Implement search functionality
   };
 
