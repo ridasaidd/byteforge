@@ -1,7 +1,7 @@
 # ByteForge – Current Status
 
-Last updated: April 4, 2026 (Phase 12 complete — cookie consent shipped, browser QA done)
-Current branch: `feature/cookie-consent-gdpr`
+Last updated: April 6, 2026 (Phase 13 design complete — booking system planning doc written, implementation starting)
+Current branch: `main` (addon foundation merged at `4d13d08`)
 
 ## Snapshot
 
@@ -20,6 +20,8 @@ Current branch: `feature/cookie-consent-gdpr`
 - **Phase 10 Payments Core:** ✅ **COMPLETE + merged** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`), webhook idempotency/rate-limiting hardening, and checkout-return subscription sync. Full regression executed: `304 passed`, `15 skipped`.
 - **Phase 11 Dashboard Translation (i18n):** ✅ **COMPLETE + merged** — i18next + react-i18next infrastructure, 15 namespaces across `en/sv/ar`, user locale persistence (`preferred_locale` + `PATCH /auth/locale`), central + tenant dashboard string extraction/localization, Swedish character corrections (proper `å/ä/ö`), and RTL support (logical CSS classes + directional icon handling).
 - **Phase 12 Tenant Runtime Readiness:** ✅ **COMPLETE** — tenant login/runtime routes, membership enforcement middleware, tenant permission-gated CMS routes, storefront parity, and tenant isolation test coverage all complete. Cookie consent (GDPR) delivered: `whitecube/laravel-cookie-consent` removed, replaced with `vanilla-cookieconsent` React implementation with analytics enforcement. 18 Playwright E2E tests passing (banner behaviour + per-provider script injection/revocation). PHP: `355 passed`.
+- **Addon Foundation:** ✅ **COMPLETE + merged** (`4d13d08`) — `EnsureAddon` middleware (`addon:booking`), `GET /api/addons` endpoint, `AddonProvider` + `useAddon()` frontend context. PHP: `410 passed`.
+- **Phase 13 Booking System:** ⏳ **IN PLANNING** — Design complete. See [PHASE13_BOOKING_SYSTEM.md](./PHASE13_BOOKING_SYSTEM.md). Implementation starts with 13.1 (data model + migrations).
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations

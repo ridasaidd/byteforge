@@ -1,6 +1,6 @@
 # Roadmap (concise)
 
-Last updated: April 3, 2026
+Last updated: April 6, 2026
 
 —
 
@@ -112,18 +112,33 @@ Last updated: April 3, 2026
 
 ---
 
-### M5: Booking Integration
+### M5: Booking Integration ⏳ IN DESIGN (Apr 6, 2026)
 
-**Phase 13: Port booking system into multi-tenant CMS**
+**Phase 13: Universal booking engine for service-based tenants**
+
+**Design doc:** [DEVELOPMENT_DOCS/PHASE13_BOOKING_SYSTEM.md](./PHASE13_BOOKING_SYSTEM.md)
 
 **Scope:**
-- Port appointment/scheduling models to multi-tenant
-- Availability, confirmation, cancellation flows
-- Build `<BookingWidget>` Puck component
-- Fires `booking.*` events into analytics pipeline (activates booking widgets automatically)
+- `Resource` abstraction (person / space / equipment) covers hairdressers, BnB, auto workshops, yoga studios, and more
+- Slot-mode (appointments) + range-mode (multi-day stays/rentals)
+- Guest bookings with cryptographic management token; soft account conversion
+- Availability engine: weekly windows + specific-date overrides, buffer time, DST-safe UTC storage
+- Public API (unauthenticated); CMS API (tenant-authenticated + `addon:booking`)
+- Email-first notifications: created / confirmed / reminder 24h /1h / cancelled / rescheduled
+- `BookingWidget` Puck component — multi-step wizard with slot hold (10-min reservation)
+- `booking.*` analytics events into Phase 9 pipeline
+- Forward-compatible with Phase 14 (payment × booking cross-addon)
 
-**Est:** 6-8 weeks (booking logic exists, integration focus)
-**Status:** Planned, starts after M4
+**Sub-phases:**
+- 13.1 — Data model (migrations, models, factories) ⏳
+- 13.2 — Availability engine ⏳
+- 13.3 — Public API ⏳
+- 13.4 — CMS API ⏳
+- 13.5 — Notifications ⏳
+- 13.6 — BookingWidget Puck component ⏳
+- 13.7 — CMS pages ⏳
+
+**Status:** Planning complete; implementation starting with 13.1
 
 ---
 
