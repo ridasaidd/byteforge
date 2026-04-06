@@ -25,8 +25,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->service = app(ThemeCssGeneratorService::class);
     }
 
-    /** @test */
-    public function css_generator_creates_typography_variables()
+    public function test_css_generator_creates_typography_variables()
     {
         // Arrange: Theme with comprehensive typography data
         $themeData = [
@@ -79,8 +78,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--letter-spacing-normal: 0;', $css);
     }
 
-    /** @test */
-    public function css_generator_creates_color_variables_for_all_shades()
+    public function test_css_generator_creates_color_variables_for_all_shades()
     {
         // Arrange: Theme with comprehensive color palette
         $themeData = [
@@ -115,8 +113,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--color-neutral-black: #000000;', $css);
     }
 
-    /** @test */
-    public function css_generator_creates_spacing_variables()
+    public function test_css_generator_creates_spacing_variables()
     {
         // Arrange: Theme with spacing scale
         $themeData = [
@@ -140,8 +137,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--spacing-16: 4rem;', $css);
     }
 
-    /** @test */
-    public function css_generator_creates_border_radius_variables()
+    public function test_css_generator_creates_border_radius_variables()
     {
         // Arrange: Theme with border radius values
         $themeData = [
@@ -164,8 +160,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--border-radius-full: 9999px;', $css);
     }
 
-    /** @test */
-    public function css_generator_creates_shadow_variables()
+    public function test_css_generator_creates_shadow_variables()
     {
         // Arrange: Theme with shadow definitions
         $themeData = [
@@ -186,8 +181,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--shadow-none: none;', $css);
     }
 
-    /** @test */
-    public function css_generator_creates_component_default_variables()
+    public function test_css_generator_creates_component_default_variables()
     {
         // Arrange: Theme with component defaults
         $themeData = [
@@ -226,8 +220,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--component-text-color-default: #4b5563;', $css);
     }
 
-    /** @test */
-    public function css_variables_use_consistent_naming_convention()
+    public function test_css_variables_use_consistent_naming_convention()
     {
         // Arrange: Theme with various nested structures
         $themeData = [
@@ -260,8 +253,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringNotContainsString('--font--', $css);
     }
 
-    /** @test */
-    public function theme_with_comprehensive_data_generates_complete_css()
+    public function test_theme_with_comprehensive_data_generates_complete_css()
     {
         // Arrange: Create a theme with comprehensive data
         $theme = Theme::factory()->create([
@@ -299,8 +291,7 @@ class PuckComponentCssVariablesTest extends TestCase
         $this->assertStringContainsString('--shadow-', $css);
     }
 
-    /** @test */
-    public function css_variables_can_be_used_in_component_styles()
+    public function test_css_variables_can_be_used_in_component_styles()
     {
         // Arrange: Theme with component-friendly variables
         $themeData = [

@@ -22,8 +22,7 @@ class ThemeCssSectionApiTest extends TestCase
         $this->publishService = new ThemeCssPublishService($this->sectionService);
     }
 
-    /** @test */
-    public function superadmin_can_save_section_css(): void
+    public function test_superadmin_can_save_section_css(): void
     {
         $theme = Theme::factory()->create(['id' => 500]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -42,8 +41,7 @@ class ThemeCssSectionApiTest extends TestCase
         $this->assertTrue($this->sectionService->sectionExists($theme->id, 'variables'));
     }
 
-    /** @test */
-    public function superadmin_can_get_section_css(): void
+    public function test_superadmin_can_get_section_css(): void
     {
         $theme = Theme::factory()->create(['id' => 501]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -60,8 +58,7 @@ class ThemeCssSectionApiTest extends TestCase
         $response->assertJson(['css' => $css]);
     }
 
-    /** @test */
-    public function it_validates_publish_requirements(): void
+    public function test_it_validates_publish_requirements(): void
     {
         $theme = Theme::factory()->create(['id' => 502]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -78,8 +75,7 @@ class ThemeCssSectionApiTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function it_validates_when_sections_are_complete(): void
+    public function test_it_validates_when_sections_are_complete(): void
     {
         $theme = Theme::factory()->create(['id' => 503]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -100,8 +96,7 @@ class ThemeCssSectionApiTest extends TestCase
         ]);
     }
 
-    /** @test */
-    public function superadmin_can_publish_theme(): void
+    public function test_superadmin_can_publish_theme(): void
     {
         $theme = Theme::factory()->create(['id' => 504]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -122,8 +117,7 @@ class ThemeCssSectionApiTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists("themes/{$theme->id}/{$theme->id}.css"));
     }
 
-    /** @test */
-    public function publish_fails_with_missing_sections(): void
+    public function test_publish_fails_with_missing_sections(): void
     {
         $theme = Theme::factory()->create(['id' => 505]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -140,8 +134,7 @@ class ThemeCssSectionApiTest extends TestCase
         $response->assertJsonValidationErrors('publish');
     }
 
-    /** @test */
-    public function non_superadmin_cannot_save_sections(): void
+    public function test_non_superadmin_cannot_save_sections(): void
     {
         $theme = Theme::factory()->create(['id' => 506]);
         $this->sectionService->initializeThemeFolder($theme);

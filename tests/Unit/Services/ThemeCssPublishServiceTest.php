@@ -22,8 +22,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->publishService = new ThemeCssPublishService($this->sectionService);
     }
 
-    /** @test */
-    public function it_validates_required_sections_missing(): void
+    public function test_it_validates_required_sections_missing(): void
     {
         $theme = Theme::factory()->create(['id' => 100]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -36,8 +35,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertContains('footer', $missing);
     }
 
-    /** @test */
-    public function it_validates_partial_sections(): void
+    public function test_it_validates_partial_sections(): void
     {
         $theme = Theme::factory()->create(['id' => 101]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -53,8 +51,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertNotContains('variables', $missing);
     }
 
-    /** @test */
-    public function it_validates_all_required_sections_present(): void
+    public function test_it_validates_all_required_sections_present(): void
     {
         $theme = Theme::factory()->create(['id' => 102]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -68,8 +65,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertEmpty($missing);
     }
 
-    /** @test */
-    public function it_merges_section_files(): void
+    public function test_it_merges_section_files(): void
     {
         $theme = Theme::factory()->create(['id' => 103]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -89,8 +85,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertStringContainsString($footer, $merged);
     }
 
-    /** @test */
-    public function it_includes_templates_in_merge(): void
+    public function test_it_includes_templates_in_merge(): void
     {
         $theme = Theme::factory()->create(['id' => 104]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -107,8 +102,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertStringContainsString('.about { }', $merged);
     }
 
-    /** @test */
-    public function it_publishes_theme_with_valid_sections(): void
+    public function test_it_publishes_theme_with_valid_sections(): void
     {
         $theme = Theme::factory()->create(['id' => 105]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -124,8 +118,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists('themes/105/105.css'));
     }
 
-    /** @test */
-    public function it_merges_in_correct_order(): void
+    public function test_it_merges_in_correct_order(): void
     {
         $theme = Theme::factory()->create(['id' => 106]);
         $this->sectionService->initializeThemeFolder($theme);
@@ -145,8 +138,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->assertLessThan($footerPos, $headerPos);
     }
 
-    /** @test */
-    public function it_throws_exception_when_publishing_with_missing_sections(): void
+    public function test_it_throws_exception_when_publishing_with_missing_sections(): void
     {
         $this->expectException(\Exception::class);
         $this->expectExceptionMessage('Missing required sections');
@@ -160,8 +152,7 @@ class ThemeCssPublishServiceTest extends TestCase
         $this->publishService->publishTheme(107);
     }
 
-    /** @test */
-    public function it_returns_css_url_with_version_hash(): void
+    public function test_it_returns_css_url_with_version_hash(): void
     {
         $theme = Theme::factory()->create(['id' => 108]);
         $this->sectionService->initializeThemeFolder($theme);

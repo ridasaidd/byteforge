@@ -19,8 +19,7 @@ class ThemeCssSectionServiceTest extends TestCase
         Storage::fake('public');
     }
 
-    /** @test */
-    public function it_creates_theme_folder(): void
+    public function test_it_creates_theme_folder(): void
     {
         $theme = Theme::factory()->create(['id' => 123]);
 
@@ -29,8 +28,7 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertTrue(Storage::disk('public')->exists('themes/123'));
     }
 
-    /** @test */
-    public function it_saves_section_css_to_file(): void
+    public function test_it_saves_section_css_to_file(): void
     {
         $theme = Theme::factory()->create(['id' => 456]);
         $this->service->initializeThemeFolder($theme);
@@ -42,8 +40,7 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertEquals($css, Storage::disk('public')->get('themes/456/456_variables.css'));
     }
 
-    /** @test */
-    public function it_retrieves_section_css(): void
+    public function test_it_retrieves_section_css(): void
     {
         $theme = Theme::factory()->create(['id' => 789]);
         $this->service->initializeThemeFolder($theme);
@@ -55,15 +52,13 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertEquals($css, $retrieved);
     }
 
-    /** @test */
-    public function it_returns_null_for_nonexistent_section(): void
+    public function test_it_returns_null_for_nonexistent_section(): void
     {
         $result = $this->service->getSectionCss(999, 'nonexistent');
         $this->assertNull($result);
     }
 
-    /** @test */
-    public function it_checks_if_section_exists(): void
+    public function test_it_checks_if_section_exists(): void
     {
         $theme = Theme::factory()->create(['id' => 101]);
         $this->service->initializeThemeFolder($theme);
@@ -75,8 +70,7 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertTrue($this->service->sectionExists(101, 'variables'));
     }
 
-    /** @test */
-    public function it_returns_required_sections(): void
+    public function test_it_returns_required_sections(): void
     {
         $required = $this->service->getRequiredSections();
 
@@ -86,8 +80,7 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertContains('footer', $required);
     }
 
-    /** @test */
-    public function it_gets_all_section_files(): void
+    public function test_it_gets_all_section_files(): void
     {
         $theme = Theme::factory()->create(['id' => 202]);
         $this->service->initializeThemeFolder($theme);
@@ -105,8 +98,7 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertContains('202_footer.css', $files);
     }
 
-    /** @test */
-    public function it_overwrites_section_css_on_resave(): void
+    public function test_it_overwrites_section_css_on_resave(): void
     {
         $theme = Theme::factory()->create(['id' => 303]);
         $this->service->initializeThemeFolder($theme);
@@ -120,8 +112,7 @@ class ThemeCssSectionServiceTest extends TestCase
         $this->assertEquals($css2, $this->service->getSectionCss(303, 'variables'));
     }
 
-    /** @test */
-    public function it_handles_template_section_names(): void
+    public function test_it_handles_template_section_names(): void
     {
         $theme = Theme::factory()->create(['id' => 404]);
         $this->service->initializeThemeFolder($theme);

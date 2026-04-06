@@ -5,6 +5,7 @@ namespace Tests\Unit;
 use App\Models\Layout;
 use App\Models\Navigation;
 use App\Models\Page;
+use App\Models\Tenant;
 use App\Models\Theme;
 use App\Models\ThemePart;
 use App\Services\PuckCompilerService;
@@ -20,11 +21,12 @@ class PuckCompilerServiceTest extends TestCase
         parent::setUp();
         $this->compiler = new PuckCompilerService();
 
-        // Note: Test fixtures seeder already creates users, no need to create additional ones
+        // Deactivate all seeded themes for test isolation
+        // DatabaseTransactions rolls this back after each test
+        Theme::query()->update(['is_active' => false]);
     }
 
-    /** @test */
-    public function it_compiles_simple_puck_data_without_modifications()
+    public function test_it_compiles_simple_puck_data_without_modifications()
     {
         $page = Page::factory()->create([
             'puck_data' => [
@@ -46,8 +48,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('Hello World', $compiled['content'][0]['props']['text']);
     }
 
-    /** @test */
-    public function it_resolves_theme_color_tokens()
+    public function test_it_resolves_theme_color_tokens()
     {
         $theme = Theme::factory()->create([
             'tenant_id' => null,
@@ -82,8 +83,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('Click Me', $compiled['content'][0]['props']['text']);
     }
 
-    /** @test */
-    public function it_resolves_typography_tokens()
+    public function test_it_resolves_typography_tokens()
     {
         $theme = Theme::factory()->create([
             'tenant_id' => null,
@@ -116,8 +116,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('1.25rem', $compiled['content'][0]['props']['fontSize']);
     }
 
-    /** @test */
-    public function it_preserves_non_token_values()
+    public function test_it_preserves_non_token_values()
     {
         $page = Page::factory()->create([
             'puck_data' => [
@@ -138,8 +137,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('#FF0000', $compiled['content'][0]['props']['backgroundColor']);
     }
 
-    /** @test */
-    public function it_embeds_navigation_data_when_navigation_component_present()
+    public function test_it_embeds_navigation_data_when_navigation_component_present()
     {
         $navigation = Navigation::factory()->create([
             'name' => 'Main Menu',
@@ -170,8 +168,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertCount(2, $compiled['content'][0]['props']['navigationData']['structure']);
     }
 
-    /** @test */
-    public function it_handles_missing_navigation_gracefully()
+    public function test_it_handles_missing_navigation_gracefully()
     {
         $page = Page::factory()->create([
             'puck_data' => [
@@ -192,8 +189,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertNull($compiled['content'][0]['props']['navigationData']);
     }
 
-    /** @test */
-    public function it_compiles_page_content_with_header_footer_from_active_theme()
+    public function test_it_compiles_page_content_with_header_footer_from_active_theme()
     {
         // Setup Tenant
         $tenant = Tenant::factory()->create();
@@ -249,8 +245,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('Copyright 2025', $compiled['content'][2]['props']['text']);
     }
 
-    /** @test */
-    public function it_compiles_theme_part_with_tokens()
+    public function test_it_compiles_theme_part_with_tokens()
     {
         $theme = Theme::factory()->create([
             'tenant_id' => null,
@@ -284,8 +279,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('#3B82F6', $compiled['content'][0]['props']['backgroundColor']);
     }
 
-    /** @test */
-    public function it_handles_nested_props_with_tokens()
+    public function test_it_handles_nested_props_with_tokens()
     {
         $theme = Theme::factory()->create([
             'tenant_id' => null,
@@ -320,8 +314,7 @@ class PuckCompilerServiceTest extends TestCase
         $this->assertEquals('1rem', $compiled['content'][0]['props']['style']['margin']);
     }
 
-    /** @test */
-    public function it_returns_empty_array_for_empty_puck_data()
+    public function test_it_returns_empty_array_for_empty_puck_data()
     {
         $page = Page::factory()->create([
             'puck_data' => [],
