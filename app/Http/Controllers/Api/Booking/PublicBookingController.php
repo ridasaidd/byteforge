@@ -161,7 +161,7 @@ class PublicBookingController extends Controller
 
         $available = $this->availability->isRangeAvailable($service, $resource, $checkIn, $checkOut);
 
-        $nights = $checkIn->diffInDays($checkOut);
+        $nights = (int) $checkIn->diffInDays($checkOut);
         $message = $available ? null : $this->unavailableMessage($service, $nights);
 
         return response()->json(array_filter([
