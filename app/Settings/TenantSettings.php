@@ -38,6 +38,22 @@ class TenantSettings extends Settings
 
     public ?string $cookie_policy_url;
 
+    // Phase 13 — Booking system
+    public string $timezone;
+
+    public bool $booking_auto_confirm;
+
+    /** @var int[] */
+    public array $booking_reminder_hours;
+
+    public int $booking_cancellation_notice_hours;
+
+    public int $booking_hold_minutes;
+
+    public string $booking_checkin_time;
+
+    public string $booking_checkout_time;
+
     public bool $ga4_enabled;
 
     public bool $gtm_enabled;
