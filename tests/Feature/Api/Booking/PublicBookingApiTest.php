@@ -9,6 +9,7 @@ use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use Laravel\Pennant\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -43,6 +44,21 @@ class PublicBookingApiTest extends TestCase
         );
     }
 
+    private function deactivateBookingAddon(Tenant $tenant): void
+    {
+        $addon = Addon::query()->where('slug', 'booking')->first();
+        if ($addon) {
+            TenantAddon::query()
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('addon_id', $addon->id)
+                ->update(['deactivated_at' => now()->subSecond()]);
+        }
+
+        // Raw query-builder updates bypass Eloquent observers, so Pennant's
+        // in-memory cache is never automatically busted. Forget it explicitly.
+        Feature::for($tenant)->forget('booking');
+    }
+
     private function makeService(string $tenantId, array $overrides = []): BookingService
     {
         return BookingService::factory()->create(array_merge([
@@ -63,6 +79,9 @@ class PublicBookingApiTest extends TestCase
     #[Test]
     public function public_services_blocked_without_booking_addon(): void
     {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->deactivateBookingAddon($tenant);
+
         $this->getJson($this->url('/api/public/booking/services'))
             ->assertForbidden();
     }
@@ -452,5 +471,58 @@ class PublicBookingApiTest extends TestCase
         // Request goes to tenant-one — should not find the token
         $this->getJson($this->url("/api/public/booking/{$token}", 'tenant-one'))
             ->assertNotFound();
+    }
+
+    // ─── GET /api/public/booking/next-available ───────────────────────────────
+
+    #[Test]
+    public function next_available_returns_date_and_first_slot_when_window_exists(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id, [
+            'duration_minutes'      => 60,
+            'slot_interval_minutes' => 60,
+            'buffer_minutes'        => 0,
+            'advance_notice_hours'  => 0,
+            'max_advance_days'      => 30,
+        ]);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+
+        // Open every day of the week so there is definitely a slot today or tomorrow
+        for ($dow = 0; $dow <= 6; $dow++) {
+            BookingAvailability::create([
+                'resource_id'   => $resource->id,
+                'day_of_week'   => $dow,
+                'specific_date' => null,
+                'starts_at'     => '09:00:00',
+                'ends_at'       => '17:00:00',
+                'is_blocked'    => false,
+            ]);
+        }
+
+        $this->getJson($this->url("/api/public/booking/next-available?service_id={$service->id}"))
+            ->assertOk()
+            ->assertJsonPath('data.date', fn ($v) => preg_match('/^\d{4}-\d{2}-\d{2}$/', $v) === 1)
+            ->assertJsonPath('data.first_slot', fn ($v) => preg_match('/^\d{2}:\d{2}$/', $v) === 1)
+            ->assertJsonPath('data.resource_id', $resource->id);
+    }
+
+    #[Test]
+    public function next_available_returns_null_when_no_windows_configured(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id, ['max_advance_days' => 7]);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+
+        // No availability windows → no slots ever
+        $this->getJson($this->url("/api/public/booking/next-available?service_id={$service->id}"))
+            ->assertOk()
+            ->assertJsonPath('data', null);
     }
 }

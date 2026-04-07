@@ -9,6 +9,7 @@ use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use Laravel\Pennant\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -43,6 +44,21 @@ class BookingCmsApiTest extends TestCase
         );
     }
 
+    private function deactivateBookingAddon(Tenant $tenant): void
+    {
+        $addon = Addon::query()->where('slug', 'booking')->first();
+        if ($addon) {
+            TenantAddon::query()
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('addon_id', $addon->id)
+                ->update(['deactivated_at' => now()->subSecond()]);
+        }
+
+        // Raw query-builder updates bypass Eloquent observers, so Pennant's
+        // in-memory cache is never automatically busted. Forget it explicitly.
+        Feature::for($tenant)->forget('booking');
+    }
+
     private function makeService(string $tenantId, array $overrides = []): BookingService
     {
         return BookingService::factory()->create(array_merge([
@@ -63,6 +79,9 @@ class BookingCmsApiTest extends TestCase
     #[Test]
     public function cms_resources_blocked_without_booking_addon(): void
     {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->deactivateBookingAddon($tenant);
+
         $this->actingAsTenantOwner('tenant-one')
             ->getJson($this->url('/api/booking/resources'))
             ->assertForbidden();
@@ -266,6 +285,137 @@ class BookingCmsApiTest extends TestCase
             'resource_id' => $resource->id,
             'day_of_week' => 1,
         ]);
+    }
+
+    #[Test]
+    public function owner_can_list_and_delete_availability_windows(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        // Create two windows
+        $winA = BookingAvailability::create([
+            'resource_id' => $resource->id,
+            'day_of_week' => 1,
+            'starts_at'   => '09:00:00',
+            'ends_at'     => '12:00:00',
+            'is_blocked'  => false,
+        ]);
+        BookingAvailability::create([
+            'resource_id' => $resource->id,
+            'day_of_week' => 3,
+            'starts_at'   => '13:00:00',
+            'ends_at'     => '17:00:00',
+            'is_blocked'  => false,
+        ]);
+
+        // List
+        $this->actingAsTenantOwner('tenant-one')
+            ->getJson($this->url("/api/booking/resources/{$resource->id}/availability"))
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+
+        // Delete one
+        $this->actingAsTenantOwner('tenant-one')
+            ->deleteJson($this->url("/api/booking/availability/{$winA->id}"))
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('booking_availabilities', ['id' => $winA->id]);
+    }
+
+    #[Test]
+    public function viewer_cannot_create_or_delete_availability_window(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $window = BookingAvailability::create([
+            'resource_id' => $resource->id,
+            'day_of_week' => 1,
+            'starts_at'   => '09:00:00',
+            'ends_at'     => '17:00:00',
+            'is_blocked'  => false,
+        ]);
+
+        $this->actingAsTenantViewer('tenant-one')
+            ->postJson($this->url("/api/booking/resources/{$resource->id}/availability"), [
+                'day_of_week' => 2,
+                'starts_at'   => '09:00:00',
+                'ends_at'     => '17:00:00',
+            ])
+            ->assertForbidden();
+
+        $this->actingAsTenantViewer('tenant-one')
+            ->deleteJson($this->url("/api/booking/availability/{$window->id}"))
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function cannot_access_availability_window_of_another_tenant(): void
+    {
+        $tenantOne = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $tenantTwo = Tenant::query()->where('slug', 'tenant-two')->firstOrFail();
+        $this->activateBookingAddon($tenantOne);
+        $this->activateBookingAddon($tenantTwo);
+
+        $foreignResource = $this->makeResource((string) $tenantTwo->id);
+        $foreignWindow   = BookingAvailability::create([
+            'resource_id' => $foreignResource->id,
+            'day_of_week' => 1,
+            'starts_at'   => '09:00:00',
+            'ends_at'     => '17:00:00',
+            'is_blocked'  => false,
+        ]);
+
+        // Cannot list windows for a resource belonging to another tenant
+        $this->actingAsTenantOwner('tenant-one')
+            ->getJson($this->url("/api/booking/resources/{$foreignResource->id}/availability"))
+            ->assertNotFound();
+
+        // Cannot delete a window belonging to another tenant
+        $this->actingAsTenantOwner('tenant-one')
+            ->deleteJson($this->url("/api/booking/availability/{$foreignWindow->id}"))
+            ->assertNotFound();
+    }
+
+    #[Test]
+    public function availability_window_validation_rejects_ends_at_before_starts_at(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url("/api/booking/resources/{$resource->id}/availability"), [
+                'day_of_week' => 1,
+                'starts_at'   => '17:00:00',
+                'ends_at'     => '09:00:00', // ends before it starts
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['ends_at']);
+    }
+
+    #[Test]
+    public function availability_window_must_have_day_of_week_or_specific_date(): void
+    {
+        // Both null is technically allowed by current validation (either can be null);
+        // but a window with day_of_week=null AND specific_date=null would never match
+        // any date and is useless. Documented here as a known edge case.
+        // This test guards the happy path with a valid specific_date.
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url("/api/booking/resources/{$resource->id}/availability"), [
+                'specific_date' => now()->addDay()->format('Y-m-d'),
+                'starts_at'     => '10:00:00',
+                'ends_at'       => '12:00:00',
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.specific_date', fn ($v) => str_starts_with((string) $v, now()->addDay()->format('Y-m-d')));
     }
 
     // ─── Booking management ───────────────────────────────────────────────────

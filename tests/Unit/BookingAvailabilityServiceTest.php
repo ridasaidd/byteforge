@@ -77,11 +77,12 @@ class BookingAvailabilityServiceTest extends TestCase
         int $dayOfWeek,
         string $startsAt = '09:00:00',
         string $endsAt = '17:00:00',
+        bool $isActive = true,
     ): BookingResource {
         $resource = BookingResource::factory()->create([
             'tenant_id' => 'test-tenant',
             'type'      => BookingResource::TYPE_PERSON,
-            'is_active' => true,
+            'is_active' => $isActive,
         ]);
 
         BookingAvailability::create([
@@ -512,5 +513,136 @@ class BookingAvailabilityServiceTest extends TestCase
         }
 
         return $resource;
+    }
+
+    // ─── getAvailableResources ─────────────────────────────────────────────────
+
+    #[Test]
+    public function get_available_resources_returns_resource_with_open_window(): void
+    {
+        $monday   = Carbon::now(self::TZ)->next('Monday')->startOfDay();
+        $resource = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek);
+
+        $service = BookingService::factory()->create([
+            'tenant_id'             => 'test-tenant',
+            'booking_mode'          => BookingService::MODE_SLOT,
+            'duration_minutes'      => 60,
+            'slot_interval_minutes' => 60,
+            'buffer_minutes'        => 0,
+            'advance_notice_hours'  => 0,
+            'max_advance_days'      => null,
+        ]);
+        $service->resources()->attach($resource->id);
+
+        $slotStart = Carbon::parse($monday->toDateString() . ' 09:00:00', self::TZ)->utc();
+        $slotEnd   = $slotStart->copy()->addHour();
+
+        $available = $this->svc->getAvailableResources($service, $slotStart, $slotEnd);
+
+        $this->assertCount(1, $available);
+        $this->assertEquals($resource->id, $available->first()->id);
+    }
+
+    #[Test]
+    public function get_available_resources_excludes_resource_with_booking_conflict(): void
+    {
+        $monday = Carbon::now(self::TZ)->next('Monday')->startOfDay();
+
+        $blockedResource = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek);
+        $freeResource    = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek);
+
+        $service = BookingService::factory()->create([
+            'tenant_id'             => 'test-tenant',
+            'booking_mode'          => BookingService::MODE_SLOT,
+            'duration_minutes'      => 60,
+            'slot_interval_minutes' => 60,
+            'buffer_minutes'        => 0,
+            'advance_notice_hours'  => 0,
+            'max_advance_days'      => null,
+        ]);
+        $service->resources()->attach([$blockedResource->id, $freeResource->id]);
+
+        $slotStart = Carbon::parse($monday->toDateString() . ' 09:00:00', self::TZ)->utc();
+        $slotEnd   = $slotStart->copy()->addHour();
+
+        // Book the first resource for this exact slot
+        Booking::factory()->create([
+            'resource_id' => $blockedResource->id,
+            'service_id'  => $service->id,
+            'tenant_id'   => 'test-tenant',
+            'starts_at'   => $slotStart,
+            'ends_at'     => $slotEnd,
+            'status'      => Booking::STATUS_CONFIRMED,
+        ]);
+
+        $available = $this->svc->getAvailableResources($service, $slotStart, $slotEnd);
+
+        $this->assertCount(1, $available);
+        $this->assertEquals($freeResource->id, $available->first()->id);
+    }
+
+    #[Test]
+    public function get_available_resources_excludes_inactive_resources(): void
+    {
+        $monday = Carbon::now(self::TZ)->next('Monday')->startOfDay();
+
+        $activeResource   = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek);
+        $inactiveResource = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek, isActive: false);
+
+        $service = BookingService::factory()->create([
+            'tenant_id'             => 'test-tenant',
+            'booking_mode'          => BookingService::MODE_SLOT,
+            'duration_minutes'      => 60,
+            'slot_interval_minutes' => 60,
+            'buffer_minutes'        => 0,
+            'advance_notice_hours'  => 0,
+            'max_advance_days'      => null,
+        ]);
+        $service->resources()->attach([$activeResource->id, $inactiveResource->id]);
+
+        $slotStart = Carbon::parse($monday->toDateString() . ' 09:00:00', self::TZ)->utc();
+        $slotEnd   = $slotStart->copy()->addHour();
+
+        $available = $this->svc->getAvailableResources($service, $slotStart, $slotEnd);
+
+        $this->assertCount(1, $available);
+        $this->assertEquals($activeResource->id, $available->first()->id);
+    }
+
+    #[Test]
+    public function get_available_resources_excludes_resource_with_explicit_block(): void
+    {
+        $monday          = Carbon::now(self::TZ)->next('Monday')->startOfDay();
+        $blockedResource = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek);
+        $freeResource    = $this->resourceWithWindow(dayOfWeek: $monday->dayOfWeek);
+
+        $service = BookingService::factory()->create([
+            'tenant_id'             => 'test-tenant',
+            'booking_mode'          => BookingService::MODE_SLOT,
+            'duration_minutes'      => 60,
+            'slot_interval_minutes' => 60,
+            'buffer_minutes'        => 0,
+            'advance_notice_hours'  => 0,
+            'max_advance_days'      => null,
+        ]);
+        $service->resources()->attach([$blockedResource->id, $freeResource->id]);
+
+        // Create an explicit block for the Monday date on the first resource
+        $user = User::factory()->create();
+        BookingResourceBlock::factory()->create([
+            'resource_id' => $blockedResource->id,
+            'start_date'  => $monday->toDateString(),
+            'end_date'    => $monday->toDateString(),
+            'reason'      => 'Maintenance',
+            'created_by'  => $user->id,
+        ]);
+
+        $slotStart = Carbon::parse($monday->toDateString() . ' 09:00:00', self::TZ)->utc();
+        $slotEnd   = $slotStart->copy()->addHour();
+
+        $available = $this->svc->getAvailableResources($service, $slotStart, $slotEnd);
+
+        $this->assertCount(1, $available);
+        $this->assertEquals($freeResource->id, $available->first()->id);
     }
 }
