@@ -128,45 +128,45 @@ export interface PaginatedBookings {
 export const cmsBookingApi = {
   // Bookings
   listBookings: (params?: BookingListParams) =>
-    http.get<PaginatedBookings>('/bookings', { params }),
+    http.get<PaginatedBookings>('/booking/bookings', { params }),
   getBooking: (id: number) =>
-    http.get<ApiResponse<CmsBooking>>(`/bookings/${id}`),
+    http.get<ApiResponse<CmsBooking>>(`/booking/bookings/${id}`),
   confirmBooking: (id: number) =>
-    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/confirm`, {}),
+    http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/confirm`, {}),
   cancelBooking: (id: number, note?: string) =>
-    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/cancel`, { note }),
+    http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/cancel`, { note }),
   completeBooking: (id: number) =>
-    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/complete`, {}),
+    http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/complete`, {}),
   rescheduleBooking: (id: number, startsAt: string, endsAt: string) =>
-    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/reschedule`, { starts_at: startsAt, ends_at: endsAt }),
+    http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/reschedule`, { starts_at: startsAt, ends_at: endsAt }),
   noShowBooking: (id: number) =>
-    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/no-show`, {}),
+    http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/no-show`, {}),
 
   // Services
   listServices: () =>
-    http.get<ApiResponse<CmsBookingService[]>>('/services'),
+    http.get<ApiResponse<CmsBookingService[]>>('/booking/services'),
   getService: (id: number) =>
-    http.get<ApiResponse<CmsBookingService>>(`/services/${id}`),
+    http.get<ApiResponse<CmsBookingService>>(`/booking/services/${id}`),
   createService: (data: CreateBookingServiceData) =>
-    http.post<ApiResponse<CmsBookingService>>('/services', data),
+    http.post<ApiResponse<CmsBookingService>>('/booking/services', data),
   updateService: (id: number, data: Partial<CreateBookingServiceData>) =>
-    http.patch<ApiResponse<CmsBookingService>>(`/services/${id}`, data),
+    http.patch<ApiResponse<CmsBookingService>>(`/booking/services/${id}`, data),
   deleteService: (id: number) =>
-    http.delete(`/services/${id}`),
+    http.delete(`/booking/services/${id}`),
   attachResource: (serviceId: number, resourceId: number) =>
-    http.post<ApiResponse<CmsBookingService>>(`/services/${serviceId}/resources`, { resource_id: resourceId }),
+    http.post<ApiResponse<CmsBookingService>>(`/booking/services/${serviceId}/resources`, { resource_id: resourceId }),
   detachResource: (serviceId: number, resourceId: number) =>
-    http.delete(`/services/${serviceId}/resources/${resourceId}`),
+    http.delete(`/booking/services/${serviceId}/resources/${resourceId}`),
 
   // Resources
   listResources: () =>
-    http.get<ApiResponse<CmsBookingResource[]>>('/resources'),
+    http.get<ApiResponse<CmsBookingResource[]>>('/booking/resources'),
   getResource: (id: number) =>
-    http.get<ApiResponse<CmsBookingResource>>(`/resources/${id}`),
+    http.get<ApiResponse<CmsBookingResource>>(`/booking/resources/${id}`),
   createResource: (data: CreateBookingResourceData) =>
-    http.post<ApiResponse<CmsBookingResource>>('/resources', data),
+    http.post<ApiResponse<CmsBookingResource>>('/booking/resources', data),
   updateResource: (id: number, data: Partial<CreateBookingResourceData>) =>
-    http.patch<ApiResponse<CmsBookingResource>>(`/resources/${id}`, data),
+    http.patch<ApiResponse<CmsBookingResource>>(`/booking/resources/${id}`, data),
   deleteResource: (id: number) =>
-    http.delete(`/resources/${id}`),
+    http.delete(`/booking/resources/${id}`),
 };

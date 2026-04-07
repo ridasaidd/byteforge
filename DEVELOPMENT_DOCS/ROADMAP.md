@@ -112,7 +112,7 @@ Last updated: April 6, 2026
 
 ---
 
-### M5: Booking Integration ⏳ IN DESIGN (Apr 6, 2026)
+### M5: Booking Integration ✅ COMPLETE (Apr 7, 2026)
 
 **Phase 13: Universal booking engine for service-based tenants**
 
@@ -130,13 +130,13 @@ Last updated: April 6, 2026
 - Forward-compatible with Phase 14 (payment × booking cross-addon)
 
 **Sub-phases:**
-- 13.1 — Data model (migrations, models, factories) ⏳
-- 13.2 — Availability engine ⏳
-- 13.3 — Public API ⏳
-- 13.4 — CMS API ⏳
-- 13.5 — Notifications ⏳
-- 13.6 — BookingWidget Puck component ⏳
-- 13.7 — CMS pages ⏳
+- 13.1 — Data model (migrations, models, factories) ✅
+- 13.2 — Availability engine ✅
+- 13.3 — Public API ✅
+- 13.4 — CMS API ✅
+- 13.5 — Notifications ✅
+- 13.6 — BookingWidget Puck component ✅
+- 13.7 — CMS pages ✅
 
 **Status:** Planning complete; implementation starting with 13.1
 
