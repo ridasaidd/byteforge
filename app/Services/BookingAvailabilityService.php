@@ -131,6 +131,17 @@ class BookingAvailabilityService
             }
         }
 
+        // Deduplicate: if two overlapping windows produce the same start time,
+        // keep the slot as available if any window considers it available.
+        $slots = $slots
+            ->groupBy(fn (array $s) => $s['starts_at']->toIso8601String())
+            ->map(fn ($group) => [
+                'starts_at' => $group->first()['starts_at'],
+                'ends_at'   => $group->first()['ends_at'],
+                'available' => $group->contains(fn ($s) => $s['available']),
+            ])
+            ->values();
+
         return $slots;
     }
 

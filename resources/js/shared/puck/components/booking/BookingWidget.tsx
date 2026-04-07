@@ -471,8 +471,17 @@ function BookingWidgetRender(props: BookingWidgetProps) {
   const isEditing = usePuckEditMode();
 
   const [state, dispatch] = useReducer(reducer, makeInitialState(serviceId));
+  const [timeFormat, setTimeFormat] = useState('HH:mm');
 
-  // ── Load services on mount if no pre-selected service ────────────────────
+  // ── Load tenant display format settings ───────────────────────────────────
+  useEffect(() => {
+    if (isEditing) return;
+    apiFetch<{ data: { time_format: string } }>('/config')
+      .then(res => setTimeFormat(res.data.time_format))
+      .catch(() => {}); // silently fall back to 24h default
+  }, [isEditing]);
+
+  // -- Load services on mount if no pre-selected service
   useEffect(() => {
     if (isEditing) return;
     if (serviceId > 0) return; // designer pre-selected a service — skip service list
@@ -749,7 +758,7 @@ function BookingWidgetRender(props: BookingWidgetProps) {
                         transition: 'all 0.15s',
                       }}
                     >
-                      {format(parseISO(slot.starts_at), 'HH:mm')}
+                      {format(parseISO(slot.starts_at), timeFormat)}
                     </button>
                   ))}
                 </div>
@@ -801,7 +810,7 @@ function BookingWidgetRender(props: BookingWidgetProps) {
               {state.selectedService.booking_mode === 'slot' && state.selectedSlot && (
                 <>
                   <Row label="Date" value={format(parseISO(state.selectedSlot.starts_at), 'PP')} />
-                  <Row label="Time" value={`${format(parseISO(state.selectedSlot.starts_at), 'HH:mm')} – ${format(parseISO(state.selectedSlot.ends_at), 'HH:mm')}`} />
+                  <Row label="Time" value={`${format(parseISO(state.selectedSlot.starts_at), timeFormat)} – ${format(parseISO(state.selectedSlot.ends_at), timeFormat)}`} />
                 </>
               )}
               {state.selectedService.booking_mode === 'range' && state.selectedDate && state.checkOut && (
@@ -816,7 +825,7 @@ function BookingWidgetRender(props: BookingWidgetProps) {
             </div>
             {state.holdExpiresAt && (
               <p style={{ fontSize: 12, color: '#6b7280', marginBottom: 8 }}>
-                Your slot is reserved until {format(parseISO(state.holdExpiresAt), 'HH:mm')}.
+                Your slot is reserved until {format(parseISO(state.holdExpiresAt), timeFormat)}.
               </p>
             )}
             <PrimaryButton

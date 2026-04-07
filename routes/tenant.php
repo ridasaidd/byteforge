@@ -150,6 +150,7 @@ Route::middleware([
 
     // Booking public API (Phase 13.3) — no auth, addon gated
     Route::prefix('public/booking')->middleware('addon:booking')->group(function () {
+        Route::get('config', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'config']);
         Route::get('services', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'services']);
         Route::get('resources', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'resources'])->middleware('throttle:60,1');
         Route::get('slots', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'slots'])->middleware('throttle:60,1');

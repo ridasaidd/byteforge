@@ -36,6 +36,28 @@ class PublicBookingController extends Controller
         private readonly BookingAvailabilityService $availability,
     ) {}
 
+    // ─── GET /api/public/booking/config ─────────────────────────────────────────
+
+    public function config(): JsonResponse
+    {
+        try {
+            $settings = app(TenantSettings::class);
+            return response()->json([
+                'data' => [
+                    'time_format' => $settings->time_format ?? 'HH:mm',
+                    'date_format' => $settings->date_format ?? 'yyyy-MM-dd',
+                ],
+            ]);
+        } catch (\Exception) {
+            return response()->json([
+                'data' => [
+                    'time_format' => 'HH:mm',
+                    'date_format' => 'yyyy-MM-dd',
+                ],
+            ]);
+        }
+    }
+
     // ─── GET /api/public/booking/services ─────────────────────────────────────
 
     public function services(): JsonResponse
