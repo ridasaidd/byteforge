@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
 import { ArrowLeft, CheckCircle2, XCircle, Flag, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { cmsBookingApi } from '@/shared/services/api/booking';
+import { tenantSettings } from '@/shared/services/api';
 import type { BookingEvent } from '@/shared/services/api/booking';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useToast } from '@/shared/hooks/useToast';
@@ -26,14 +27,19 @@ const STATUS_COLORS: Record<string, string> = {
   no_show:          'bg-orange-100 text-orange-800',
 };
 
-function fmt(iso: string | null): string {
-  if (!iso) return '—';
-  try { return format(parseISO(iso), 'PPpp'); } catch { return '—'; }
+function makeFormatter(dateFormat: string, timeFormat: string) {
+  return function fmt(iso: string | null): string {
+    if (!iso) return '—';
+    try { return format(parseISO(iso), `${dateFormat} ${timeFormat}`); } catch { return '—'; }
+  };
 }
+
+const DEFAULT_DATE_FORMAT = 'yyyy-MM-dd';
+const DEFAULT_TIME_FORMAT = 'HH:mm';
 
 // ─── Timeline ────────────────────────────────────────────────────────────────
 
-function EventTimeline({ events }: { events: BookingEvent[] }) {
+function EventTimeline({ events, fmt }: { events: BookingEvent[]; fmt: (iso: string | null) => string }) {
   if (!events.length) return <p className="text-sm text-muted-foreground">No events yet.</p>;
   return (
     <ol className="relative border-l border-muted ml-2">
@@ -188,6 +194,15 @@ export function BookingDetailPage() {
   const [showDelete, setShowDelete] = useState(false);
 
   const numericId = parseInt(id ?? '0', 10);
+
+  const { data: settingsData } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: async () => (await tenantSettings.get()).data,
+  });
+  const fmt = makeFormatter(
+    settingsData?.date_format ?? DEFAULT_DATE_FORMAT,
+    settingsData?.time_format ?? DEFAULT_TIME_FORMAT,
+  );
 
   const { data: rawBooking, isLoading, isError } = useQuery({
     queryKey: ['cms-booking', numericId],
@@ -348,7 +363,7 @@ export function BookingDetailPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Event Timeline</CardTitle></CardHeader>
         <CardContent>
-          <EventTimeline events={booking.events ?? []} />
+          <EventTimeline events={booking.events ?? []} fmt={fmt} />
         </CardContent>
       </Card>
 

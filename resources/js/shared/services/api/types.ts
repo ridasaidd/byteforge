@@ -173,6 +173,8 @@ export interface TenantSettings extends Record<string, unknown> {
   meta_pixel_enabled: boolean;
   // Phase 13 — Booking system settings
   timezone: string;
+  date_format: string;
+  time_format: string;
   booking_auto_confirm: boolean;
   booking_hold_minutes: number;
   booking_cancellation_notice_hours: number;
@@ -205,6 +207,8 @@ export interface UpdateTenantSettingsData {
   meta_pixel_enabled?: boolean;
   // Phase 13 — Booking system settings
   timezone?: string;
+  date_format?: string;
+  time_format?: string;
   booking_auto_confirm?: boolean;
   booking_hold_minutes?: number;
   booking_cancellation_notice_hours?: number;

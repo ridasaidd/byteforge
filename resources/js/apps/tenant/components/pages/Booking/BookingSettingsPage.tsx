@@ -7,6 +7,7 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 
 function toChecked(val: unknown): boolean {
   return val === true || val === 1 || val === '1';
@@ -29,6 +30,8 @@ export function BookingSettingsPage() {
   const [checkoutTime, setCheckoutTime] = useState('');
   const [reminderHours, setReminderHours] = useState('');
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState('');
+  const [dateFormat, setDateFormat] = useState('yyyy-MM-dd');
+  const [timeFormat, setTimeFormat] = useState('HH:mm');
 
   const { data, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
@@ -52,6 +55,8 @@ export function BookingSettingsPage() {
         : toNum(data.booking_reminder_hours)
     );
     setCancellationNoticeHours(toNum(data.booking_cancellation_notice_hours));
+    setDateFormat(data.date_format ?? 'yyyy-MM-dd');
+    setTimeFormat(data.time_format ?? 'HH:mm');
   }, [data]);
 
   const saveMutation = useMutation({
@@ -78,6 +83,8 @@ export function BookingSettingsPage() {
       booking_checkout_time: checkoutTime || undefined,
       booking_reminder_hours: reminderHoursArr,
       booking_cancellation_notice_hours: parseInt(cancellationNoticeHours, 10) || undefined,
+      date_format: dateFormat,
+      time_format: timeFormat,
     });
   }
 
@@ -196,6 +203,40 @@ export function BookingSettingsPage() {
             <p className="text-xs text-muted-foreground">
               Minimum hours notice required for a customer to cancel their booking.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Display Formats</CardTitle>
+          <CardDescription>How dates and times are shown in the CMS and booking confirmations.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="time-format">Time format</Label>
+            <Select value={timeFormat} onValueChange={setTimeFormat}>
+              <SelectTrigger id="time-format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="HH:mm">24-hour (14:30)</SelectItem>
+                <SelectItem value="h:mm aa">12-hour (2:30 PM)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="date-format">Date format</Label>
+            <Select value={dateFormat} onValueChange={setDateFormat}>
+              <SelectTrigger id="date-format">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yyyy-MM-dd">ISO — 2026-04-07</SelectItem>
+                <SelectItem value="dd/MM/yyyy">European — 07/04/2026</SelectItem>
+                <SelectItem value="MM/dd/yyyy">US — 04/07/2026</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

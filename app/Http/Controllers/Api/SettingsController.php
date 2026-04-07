@@ -43,6 +43,8 @@ class SettingsController extends Controller
                     'meta_pixel_enabled' => $settings->meta_pixel_enabled,
                     // Phase 13 — Booking system settings
                     'timezone' => $settings->timezone,
+                    'date_format' => $settings->date_format,
+                    'time_format' => $settings->time_format,
                     'booking_auto_confirm' => $settings->booking_auto_confirm,
                     'booking_hold_minutes' => $settings->booking_hold_minutes,
                     'booking_cancellation_notice_hours' => $settings->booking_cancellation_notice_hours,
@@ -90,6 +92,8 @@ class SettingsController extends Controller
             'meta_pixel_enabled' => ['sometimes', 'boolean'],
             // Phase 13 — Booking system settings
             'timezone' => ['sometimes', 'string', 'timezone:all'],
+            'date_format' => ['sometimes', 'string', 'in:yyyy-MM-dd,dd/MM/yyyy,MM/dd/yyyy'],
+            'time_format' => ['sometimes', 'string', 'in:HH:mm,h:mm aa'],
             'booking_auto_confirm' => ['sometimes', 'boolean'],
             'booking_hold_minutes' => ['sometimes', 'integer', 'min:1', 'max:1440'],
             'booking_cancellation_notice_hours' => ['sometimes', 'integer', 'min:0'],
@@ -237,6 +241,14 @@ class SettingsController extends Controller
                 $changedFields['timezone'] = ['old' => $settings->timezone, 'new' => $request->timezone];
                 $settings->timezone = $request->timezone;
             }
+            if ($request->has('date_format')) {
+                $changedFields['date_format'] = ['old' => $settings->date_format, 'new' => $request->date_format];
+                $settings->date_format = $request->date_format;
+            }
+            if ($request->has('time_format')) {
+                $changedFields['time_format'] = ['old' => $settings->time_format, 'new' => $request->time_format];
+                $settings->time_format = $request->time_format;
+            }
             if ($request->has('booking_auto_confirm')) {
                 $changedFields['booking_auto_confirm'] = ['old' => $settings->booking_auto_confirm, 'new' => $request->booking_auto_confirm];
                 $settings->booking_auto_confirm = $request->boolean('booking_auto_confirm');
@@ -299,6 +311,8 @@ class SettingsController extends Controller
                     'meta_pixel_enabled' => $settings->meta_pixel_enabled,
                     // Phase 13 — Booking system settings
                     'timezone' => $settings->timezone,
+                    'date_format' => $settings->date_format,
+                    'time_format' => $settings->time_format,
                     'booking_auto_confirm' => $settings->booking_auto_confirm,
                     'booking_hold_minutes' => $settings->booking_hold_minutes,
                     'booking_cancellation_notice_hours' => $settings->booking_cancellation_notice_hours,

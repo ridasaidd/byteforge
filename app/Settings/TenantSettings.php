@@ -41,6 +41,12 @@ class TenantSettings extends Settings
     // Phase 13 — Booking system
     public string $timezone;
 
+    /** date-fns date format string, e.g. 'yyyy-MM-dd' or 'dd/MM/yyyy' */
+    public string $date_format;
+
+    /** date-fns time format string: 'HH:mm' (24h) or 'h:mm aa' (12h) */
+    public string $time_format;
+
     public bool $booking_auto_confirm;
 
     /** @var int[] */
