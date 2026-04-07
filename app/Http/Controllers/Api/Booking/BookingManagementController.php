@@ -110,6 +110,7 @@ class BookingManagementController extends Controller
         $booking = $this->resolveBooking($id);
 
         $allowedStatuses = [
+            Booking::STATUS_PENDING_HOLD,
             Booking::STATUS_PENDING,
             Booking::STATUS_CONFIRMED,
         ];
