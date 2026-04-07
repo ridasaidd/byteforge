@@ -8,12 +8,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingResource;
 use App\Models\BookingService;
+use App\Models\Tenant;
+use App\Notifications\Booking\BookingCancelledByTenantNotification;
+use App\Notifications\Booking\BookingConfirmedNotification;
+use App\Notifications\Booking\BookingRescheduledNotification;
+use App\Notifications\Booking\StaffBookingAssignedNotification;
 use App\Services\BookingAvailabilityService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Validator;
 
 class BookingManagementController extends Controller
@@ -82,7 +88,19 @@ class BookingManagementController extends Controller
             $from,
         );
 
-        // TODO Phase 13.5 — dispatch booking.confirmed notification
+        $domain = $this->tenantDomain();
+        $booking->load('resource');
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingConfirmedNotification($booking, $domain));
+
+        // Notify the assigned staff member if the resource is a person with an email.
+        $resource = $booking->resource;
+        if ($resource && $resource->type === BookingResource::TYPE_PERSON && $resource->user_id) {
+            $staffUser = \App\Models\User::find($resource->user_id);
+            if ($staffUser) {
+                $staffUser->notify(new StaffBookingAssignedNotification($booking, $domain, $resource));
+            }
+        }
 
         return response()->json(['data' => $booking->fresh()]);
     }
@@ -122,7 +140,9 @@ class BookingManagementController extends Controller
             $validated['note'] ?? null,
         );
 
-        // TODO Phase 13.5 — dispatch booking.cancelled (by_tenant) notification to customer
+        $domain = $this->tenantDomain();
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingCancelledByTenantNotification($booking, $domain));
 
         return response()->json(['data' => $booking->fresh()]);
     }
@@ -180,7 +200,9 @@ class BookingManagementController extends Controller
             "Rescheduled to {$startsAt->toDateTimeString()} – {$endsAt->toDateTimeString()}",
         );
 
-        // TODO Phase 13.5 — dispatch booking.rescheduled (by_tenant) notification
+        $domain = $this->tenantDomain();
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingRescheduledNotification($booking, $domain, 'tenant'));
 
         return response()->json(['data' => $booking->fresh()]);
     }
@@ -307,6 +329,14 @@ class BookingManagementController extends Controller
     }
 
     // ─── Private ──────────────────────────────────────────────────────────────
+
+    private function tenantDomain(): string
+    {
+        /** @var Tenant $tenant */
+        $tenant = tenancy()->tenant;
+        return $tenant->domains()->first()?->domain
+            ?? "{$tenant->slug}.byteforge.se";
+    }
 
     private function resolveBooking(int $id): Booking
     {

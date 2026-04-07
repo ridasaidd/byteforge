@@ -16,6 +16,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use App\Models\Tenant;
+use App\Notifications\Booking\BookingCancelledByCustomerNotification;
+use App\Notifications\Booking\BookingReceivedNotification;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -330,7 +334,9 @@ class PublicBookingController extends Controller
             note: 'Booking created by customer',
         );
 
-        // TODO Phase 13.5: dispatch BookingCreatedNotification::class
+        $domain = $this->tenantDomain();
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingReceivedNotification($booking, $domain));
 
         return response()->json([
             'data' => [
@@ -371,7 +377,9 @@ class PublicBookingController extends Controller
             note: 'Cancelled by customer via management link',
         );
 
-        // TODO Phase 13.5: dispatch BookingCancelledByCustomerNotification::class
+        $domain = $this->tenantDomain();
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingCancelledByCustomerNotification($booking, $domain));
 
         return response()->json(['data' => ['status' => Booking::STATUS_CANCELLED]]);
     }
@@ -409,6 +417,14 @@ class PublicBookingController extends Controller
             'status'         => $booking->status,
             // management_token is in $hidden — never returned
         ];
+    }
+
+    private function tenantDomain(): string
+    {
+        /** @var Tenant $tenant */
+        $tenant = tenancy()->tenant;
+        return $tenant->domains()->first()?->domain
+            ?? "{$tenant->slug}.byteforge.se";
     }
 
     private function tenantTimezone(): string
