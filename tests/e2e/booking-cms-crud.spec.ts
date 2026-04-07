@@ -45,13 +45,35 @@ async function isBookingAddonActive(request: ApiContext, token: string): Promise
     headers: authHeaders(token),
   });
   if (!res.ok()) return false;
-  const body = await res.json() as { data: Array<{ slug: string; active: boolean }> };
-  return body.data?.some(a => a.slug === 'booking' && a.active) ?? false;
+  // GET /api/addons returns { data: string[] } — feature flag slugs, not objects.
+  const body = await res.json() as { data: string[] };
+  return Array.isArray(body.data) && body.data.includes('booking');
 }
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Booking CMS API — CRUD', () => {
+  // Serial mode: each authenticated test reuses the token from beforeAll,
+  // avoiding repeated form-logins that trip the Laravel login throttle.
+  test.describe.configure({ mode: 'serial' });
+
+  /** Auth token obtained once per suite. */
+  let crudToken = '';
+
+  test.beforeAll(async ({ browser }) => {
+    if (!tenantBaseUrl) return;
+    const ctx = await browser.newContext();
+    const p = await ctx.newPage();
+    try {
+      await p.goto(`${tenantBaseUrl}/login`);
+      await loginWithCredentials(p, tenantOwnerCredentials);
+      await p.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
+      crudToken = (await p.evaluate(() => window.localStorage.getItem('auth_token'))) ?? '';
+    } finally {
+      await ctx.close();
+    }
+  });
+
   test.beforeEach(() => {
     test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable booking CMS CRUD tests.');
   });
@@ -81,8 +103,8 @@ test.describe('Booking CMS API — CRUD', () => {
 
   // ── Resource CRUD ───────────────────────────────────────────────────────────
 
-  test('can create, read, update and delete a booking resource', async ({ page, request }) => {
-    const token = await getAuthToken(page);
+  test('can create, read, update and delete a booking resource', async ({ request }) => {
+    const token = crudToken;
     const addonActive = await isBookingAddonActive(request, token);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
@@ -147,8 +169,8 @@ test.describe('Booking CMS API — CRUD', () => {
 
   // ── Service CRUD + resource attach ─────────────────────────────────────────
 
-  test('can create, update, attach a resource, detach and delete a booking service', async ({ page, request }) => {
-    const token = await getAuthToken(page);
+  test('can create, update, attach a resource, detach and delete a booking service', async ({ request }) => {
+    const token = crudToken;
     const addonActive = await isBookingAddonActive(request, token);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
@@ -238,8 +260,8 @@ test.describe('Booking CMS API — CRUD', () => {
 
   // ── Booking list ───────────────────────────────────────────────────────────
 
-  test('GET /api/booking/bookings returns paginated shape', async ({ page, request }) => {
-    const token = await getAuthToken(page);
+  test('GET /api/booking/bookings returns paginated shape', async ({ request }) => {
+    const token = crudToken;
     const addonActive = await isBookingAddonActive(request, token);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
@@ -262,8 +284,8 @@ test.describe('Booking CMS API — CRUD', () => {
 
   // ── Validation ──────────────────────────────────────────────────────────────
 
-  test('POST /api/booking/services returns 422 when name is missing', async ({ page, request }) => {
-    const token = await getAuthToken(page);
+  test('POST /api/booking/services returns 422 when name is missing', async ({ request }) => {
+    const token = crudToken;
     const addonActive = await isBookingAddonActive(request, token);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
@@ -276,8 +298,8 @@ test.describe('Booking CMS API — CRUD', () => {
     expect(body.errors?.name).toBeDefined();
   });
 
-  test('POST /api/booking/resources returns 422 when type is invalid', async ({ page, request }) => {
-    const token = await getAuthToken(page);
+  test('POST /api/booking/resources returns 422 when type is invalid', async ({ request }) => {
+    const token = crudToken;
     const addonActive = await isBookingAddonActive(request, token);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
