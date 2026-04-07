@@ -385,6 +385,7 @@ export function ServiceManagerPage() {
       </div>
 
       <ServiceDialog
+        key={editing?.id ?? 'new'}
         open={dialogOpen}
         onClose={() => { setDialogOpen(false); setEditing(null); }}
         editing={editing}

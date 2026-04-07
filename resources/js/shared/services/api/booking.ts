@@ -107,6 +107,16 @@ export interface CreateBookingResourceData {
   is_active?: boolean;
 }
 
+export interface BookingAvailabilityWindow {
+  id: number;
+  resource_id: number;
+  day_of_week: number | null;
+  specific_date: string | null;
+  starts_at: string;
+  ends_at: string;
+  is_blocked: boolean;
+}
+
 export interface BookingListParams {
   date?: string;
   status?: string;
@@ -169,4 +179,12 @@ export const cmsBookingApi = {
     http.patch<ApiResponse<CmsBookingResource>>(`/booking/resources/${id}`, data),
   deleteResource: (id: number) =>
     http.delete(`/booking/resources/${id}`),
+
+  // Availability windows
+  listAvailability: (resourceId: number) =>
+    http.get<ApiResponse<BookingAvailabilityWindow[]>>(`/booking/resources/${resourceId}/availability`),
+  createAvailability: (resourceId: number, data: { day_of_week?: number | null; specific_date?: string | null; starts_at: string; ends_at: string; is_blocked?: boolean }) =>
+    http.post<ApiResponse<BookingAvailabilityWindow>>(`/booking/resources/${resourceId}/availability`, data),
+  deleteAvailability: (windowId: number) =>
+    http.delete(`/booking/availability/${windowId}`),
 };
