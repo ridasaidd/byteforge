@@ -72,9 +72,9 @@ class BookingManagementController extends Controller
     {
         $booking = $this->resolveBooking($id);
 
-        if ($booking->status !== Booking::STATUS_PENDING) {
+        if (!in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_PENDING_HOLD], true)) {
             return response()->json([
-                'message' => 'Only pending bookings can be confirmed.',
+                'message' => 'Only pending or pending-hold bookings can be confirmed.',
             ], 422);
         }
 
