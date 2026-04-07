@@ -40,6 +40,8 @@ class RolePermissionSeeder extends Seeder
             'view billing', 'manage billing',
             // Payments (tenant)
             'payments.view', 'payments.manage', 'payments.refund',
+            // Bookings (tenant addon)
+            'bookings.view', 'bookings.manage', 'bookings.cancel',
         ];
 
         // Create permissions for both web and api guards
@@ -68,6 +70,8 @@ class RolePermissionSeeder extends Seeder
                 'view activity logs',
                 'view settings', 'manage settings',
                 'view billing',
+                'bookings.view', 'bookings.manage', 'bookings.cancel',
+                'payments.view', 'payments.manage', 'payments.refund',
             ],
             'support' => [
                 'pages.view', 'navigation.view', 'themes.view', 'layouts.view', 'templates.view', 'media.view',

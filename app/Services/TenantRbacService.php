@@ -31,6 +31,7 @@ class TenantRbacService
                 'view settings', 'manage settings',
                 'view analytics',
                 'payments.view', 'payments.manage', 'payments.refund',
+                'bookings.view', 'bookings.manage', 'bookings.cancel',
             ],
             'support' => [
                 'pages.create', 'pages.edit', 'pages.view',
@@ -40,6 +41,7 @@ class TenantRbacService
                 'templates.view',
                 'media.view', 'media.manage',
                 'view analytics',
+                'bookings.view',
             ],
             'viewer' => [
                 'pages.view',
@@ -48,6 +50,7 @@ class TenantRbacService
                 'layouts.view',
                 'templates.view',
                 'media.view',
+                'bookings.view',
             ],
         ];
     }
