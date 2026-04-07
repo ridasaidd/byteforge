@@ -40,7 +40,7 @@ export function AddonProvider({ children }: { children: ReactNode }) {
   const hasAddon = useCallback((flag: string) => activeFlags.includes(flag), [activeFlags]);
 
   return (
-    <AddonContext.Provider value={{ activeFlags, isLoading, hasAddon }}>
+    <AddonContext.Provider value={{ activeFlags, isLoading, hasAddon, refetch: fetchFlags }}>
       {children}
     </AddonContext.Provider>
   );

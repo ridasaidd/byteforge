@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
-use App\Models\TenantAddon;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Pennant\Feature;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -27,15 +27,7 @@ class EnsureAddon
             abort(403, 'Tenant context is required.');
         }
 
-        $tenantId = (string) tenancy()->tenant->id;
-
-        $hasAddon = TenantAddon::query()
-            ->forTenant($tenantId)
-            ->active()
-            ->whereHas('addon', fn ($q) => $q->where('feature_flag', $featureFlag))
-            ->exists();
-
-        if (! $hasAddon) {
+        if (Feature::for(tenancy()->tenant)->inactive($featureFlag)) {
             return response()->json([
                 'message'         => 'This feature requires the ' . $featureFlag . ' add-on.',
                 'addon_required'  => $featureFlag,
