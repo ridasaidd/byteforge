@@ -346,6 +346,7 @@ Route::middleware([
             Route::patch('bookings/{id}/reschedule', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'reschedule'])->middleware('permission:bookings.manage');
             Route::patch('bookings/{id}/complete', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'complete'])->middleware('permission:bookings.manage');
             Route::patch('bookings/{id}/no-show', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'noShow'])->middleware('permission:bookings.manage');
+            Route::delete('bookings/{id}', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'destroy'])->middleware('permission:bookings.manage');
         });
     });
 });

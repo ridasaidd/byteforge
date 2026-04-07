@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { ArrowLeft, CheckCircle2, XCircle, Flag, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, XCircle, Flag, Clock, AlertCircle, Trash2 } from 'lucide-react';
 import { cmsBookingApi } from '@/shared/services/api/booking';
 import type { BookingEvent } from '@/shared/services/api/booking';
 import { usePermissions } from '@/shared/hooks/usePermissions';
@@ -50,6 +50,40 @@ function EventTimeline({ events }: { events: BookingEvent[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+// ─── Delete dialog ────────────────────────────────────────────────────────────
+
+function DeleteDialog({
+  open,
+  onConfirm,
+  onClose,
+  isPending,
+}: {
+  open: boolean;
+  onConfirm: () => void;
+  onClose: () => void;
+  isPending: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Booking</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          This will permanently remove the booking record. The time slot will
+          become available again. This action cannot be undone.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Back</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
+            Delete permanently
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -151,6 +185,7 @@ export function BookingDetailPage() {
 
   const [showCancel, setShowCancel] = useState(false);
   const [showReschedule, setShowReschedule] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
 
   const numericId = parseInt(id ?? '0', 10);
 
@@ -195,6 +230,16 @@ export function BookingDetailPage() {
       cmsBookingApi.rescheduleBooking(numericId, startsAt, endsAt),
     onSuccess: () => { setShowReschedule(false); invalidate(); toast({ title: 'Booking rescheduled' }); },
     onError:   () => toast({ title: 'Failed to reschedule', variant: 'destructive' }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => cmsBookingApi.deleteBooking(numericId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cms-bookings'] });
+      toast({ title: 'Booking deleted' });
+      navigate('/cms/bookings');
+    },
+    onError: () => toast({ title: 'Failed to delete booking', variant: 'destructive' }),
   });
 
   if (isLoading) {
@@ -250,6 +295,11 @@ export function BookingDetailPage() {
           {!isDone && canCancel && (
             <Button size="sm" variant="destructive" onClick={() => setShowCancel(true)}>
               <XCircle size={14} className="mr-1" /> Cancel
+            </Button>
+          )}
+          {isDone && canManage && (
+            <Button size="sm" variant="destructive" onClick={() => setShowDelete(true)}>
+              <Trash2 size={14} className="mr-1" /> Delete
             </Button>
           )}
         </CardContent>
@@ -314,6 +364,12 @@ export function BookingDetailPage() {
         initialEndsAt={booking.ends_at}
         onConfirm={(startsAt, endsAt) => rescheduleMutation.mutate({ startsAt, endsAt })}
         onClose={() => setShowReschedule(false)}
+      />
+      <DeleteDialog
+        open={showDelete}
+        onConfirm={() => deleteMutation.mutate()}
+        onClose={() => setShowDelete(false)}
+        isPending={deleteMutation.isPending}
       />
     </div>
   );

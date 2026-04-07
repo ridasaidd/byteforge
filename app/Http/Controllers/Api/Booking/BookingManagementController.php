@@ -148,6 +148,27 @@ class BookingManagementController extends Controller
         return response()->json(['data' => $booking->fresh()]);
     }
 
+    public function destroy(int $id): JsonResponse
+    {
+        $booking = $this->resolveBooking($id);
+
+        $deletableStatuses = [
+            Booking::STATUS_CANCELLED,
+            Booking::STATUS_COMPLETED,
+            Booking::STATUS_NO_SHOW,
+        ];
+
+        if (! in_array($booking->status, $deletableStatuses, true)) {
+            return response()->json([
+                'message' => 'Only cancelled, completed, or no-show bookings can be deleted.',
+            ], 422);
+        }
+
+        $booking->delete();
+
+        return response()->json(null, 204);
+    }
+
     public function reschedule(Request $request, int $id): JsonResponse
     {
         $booking = $this->resolveBooking($id);

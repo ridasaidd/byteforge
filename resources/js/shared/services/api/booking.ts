@@ -151,6 +151,8 @@ export const cmsBookingApi = {
     http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/reschedule`, { starts_at: startsAt, ends_at: endsAt }),
   noShowBooking: (id: number) =>
     http.patch<ApiResponse<CmsBooking>>(`/booking/bookings/${id}/no-show`, {}),
+  deleteBooking: (id: number) =>
+    http.delete(`/booking/bookings/${id}`),
 
   // Services
   listServices: () =>
