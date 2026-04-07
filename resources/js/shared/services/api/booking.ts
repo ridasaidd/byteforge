@@ -1,0 +1,172 @@
+/**
+ * CMS Booking API — authenticated, tenant-scoped.
+ * All paths are relative to /api (the tenant domain).
+ */
+import { http } from '../http';
+import type { ApiResponse } from './types';
+
+// ─── Booking types ────────────────────────────────────────────────────────────
+
+export type BookingStatus =
+  | 'pending'
+  | 'pending_hold'
+  | 'awaiting_payment'
+  | 'confirmed'
+  | 'completed'
+  | 'cancelled'
+  | 'no_show';
+
+export interface CmsBooking {
+  id: number;
+  service_id: number;
+  resource_id: number;
+  customer_name: string;
+  customer_email: string;
+  customer_phone: string | null;
+  customer_notes: string | null;
+  internal_notes: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: BookingStatus;
+  cancelled_at: string | null;
+  cancelled_by: 'customer' | 'tenant' | null;
+  hold_expires_at: string | null;
+  created_at: string;
+  updated_at: string;
+  service?: { id: number; name: string; booking_mode: 'slot' | 'range' };
+  resource?: { id: number; name: string; type: string };
+  events?: BookingEvent[];
+}
+
+export interface BookingEvent {
+  id: number;
+  from_status: string | null;
+  to_status: string;
+  actor_type: string;
+  actor_id: number | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface CmsBookingService {
+  id: number;
+  name: string;
+  description: string | null;
+  booking_mode: 'slot' | 'range';
+  duration_minutes: number | null;
+  slot_interval_minutes: number | null;
+  min_nights: number | null;
+  max_nights: number | null;
+  buffer_minutes: number;
+  advance_notice_hours: number;
+  max_advance_days: number | null;
+  price: number | null;
+  currency: string | null;
+  is_active: boolean;
+  resources?: { id: number; name: string; type: string }[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CmsBookingResource {
+  id: number;
+  name: string;
+  type: 'person' | 'space' | 'equipment';
+  capacity: number;
+  resource_label: string | null;
+  user_id: number | null;
+  is_active: boolean;
+  services?: { id: number; name: string; booking_mode: 'slot' | 'range' }[];
+  user?: { id: number; name: string; email: string } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateBookingServiceData {
+  name: string;
+  description?: string | null;
+  booking_mode: 'slot' | 'range';
+  duration_minutes?: number | null;
+  slot_interval_minutes?: number | null;
+  min_nights?: number | null;
+  max_nights?: number | null;
+  buffer_minutes?: number;
+  advance_notice_hours?: number;
+  max_advance_days?: number | null;
+  price?: number | null;
+  currency?: string;
+  is_active?: boolean;
+}
+
+export interface CreateBookingResourceData {
+  name: string;
+  type: 'person' | 'space' | 'equipment';
+  capacity?: number;
+  resource_label?: string | null;
+  user_id?: number | null;
+  is_active?: boolean;
+}
+
+export interface BookingListParams {
+  date?: string;
+  status?: string;
+  resource_id?: number;
+  service_id?: number;
+  page?: number;
+}
+
+export interface PaginatedBookings {
+  data: CmsBooking[];
+  current_page: number;
+  last_page: number;
+  total: number;
+  per_page: number;
+}
+
+// ─── API object ───────────────────────────────────────────────────────────────
+
+export const cmsBookingApi = {
+  // Bookings
+  listBookings: (params?: BookingListParams) =>
+    http.get<PaginatedBookings>('/bookings', { params }),
+  getBooking: (id: number) =>
+    http.get<ApiResponse<CmsBooking>>(`/bookings/${id}`),
+  confirmBooking: (id: number) =>
+    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/confirm`, {}),
+  cancelBooking: (id: number, note?: string) =>
+    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/cancel`, { note }),
+  completeBooking: (id: number) =>
+    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/complete`, {}),
+  rescheduleBooking: (id: number, startsAt: string, endsAt: string) =>
+    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/reschedule`, { starts_at: startsAt, ends_at: endsAt }),
+  noShowBooking: (id: number) =>
+    http.patch<ApiResponse<CmsBooking>>(`/bookings/${id}/no-show`, {}),
+
+  // Services
+  listServices: () =>
+    http.get<ApiResponse<CmsBookingService[]>>('/services'),
+  getService: (id: number) =>
+    http.get<ApiResponse<CmsBookingService>>(`/services/${id}`),
+  createService: (data: CreateBookingServiceData) =>
+    http.post<ApiResponse<CmsBookingService>>('/services', data),
+  updateService: (id: number, data: Partial<CreateBookingServiceData>) =>
+    http.patch<ApiResponse<CmsBookingService>>(`/services/${id}`, data),
+  deleteService: (id: number) =>
+    http.delete(`/services/${id}`),
+  attachResource: (serviceId: number, resourceId: number) =>
+    http.post<ApiResponse<CmsBookingService>>(`/services/${serviceId}/resources`, { resource_id: resourceId }),
+  detachResource: (serviceId: number, resourceId: number) =>
+    http.delete(`/services/${serviceId}/resources/${resourceId}`),
+
+  // Resources
+  listResources: () =>
+    http.get<ApiResponse<CmsBookingResource[]>>('/resources'),
+  getResource: (id: number) =>
+    http.get<ApiResponse<CmsBookingResource>>(`/resources/${id}`),
+  createResource: (data: CreateBookingResourceData) =>
+    http.post<ApiResponse<CmsBookingResource>>('/resources', data),
+  updateResource: (id: number, data: Partial<CreateBookingResourceData>) =>
+    http.patch<ApiResponse<CmsBookingResource>>(`/resources/${id}`, data),
+  deleteResource: (id: number) =>
+    http.delete(`/resources/${id}`),
+};

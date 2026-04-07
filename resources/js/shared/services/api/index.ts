@@ -19,4 +19,5 @@ export * from './paymentProviders';
 export * from './payments';
 export * from './tenantDashboard';
 export * from './tenantUsers';
+export * from './booking';
 export * from './types';

@@ -10,15 +10,18 @@ import { tenantPages } from '@/shared/services/api/pages';
 import { tenantThemeParts } from '@/shared/services/api/themeParts';
 import { tenantThemes } from '@/shared/services/api/themes';
 import { puckConfig as baseConfig } from '@/shared/puck/config';
+import { BookingWidget } from '@/shared/puck/components/booking';
 import { PageEditorPreview } from '@/shared/components/organisms/PageEditorPreview';
 import { extractCssFromPuckData } from '@/shared/puck/services/PuckCssAggregator';
 import type { ThemeData } from '@/shared/puck/services/PuckCssAggregator';
+import { useAddon } from '@/shared/hooks/useAddon';
 
 export function PageEditorPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { t } = useTranslation('pages');
+  const { hasAddon } = useAddon();
   const [isLoading, setIsLoading] = useState(true);
   const [pageData, setPageData] = useState<{ id: number; title: string; slug: string; status: string; puck_data: Record<string, unknown> | null; theme_id?: number | null } | null>(null);
   const [initialData, setInitialData] = useState<Data>({ content: [], root: {} });
@@ -45,45 +48,61 @@ export function PageEditorPage() {
     { width: 1280, height: 'auto' as const, label: t('viewport_desktop'), icon: <Monitor className="h-4 w-4" /> },
   ];
 
-  const config = useMemo<Config>(() => ({
-    ...baseConfig,
-    root: {
-      ...baseConfig.root,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      render: ({ children, backgroundColor, backgroundImage, maxWidth, paddingY }: any) => (
-        <div
-          style={{
-            backgroundColor,
-            backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-        >
-          <PageEditorPreview
-            headerData={headerData}
-            footerData={footerData}
-            config={baseConfig}
-            onEditSection={(section) => navigate(`/cms/themes?section=${section}`)}
+  const config = useMemo<Config>(() => {
+    const extraComponents: Config['components'] = {};
+    const extraCategories: Config['categories'] = {};
+
+    if (hasAddon('booking')) {
+      extraComponents.BookingWidget = BookingWidget as Config['components'][string];
+      extraCategories.bookings = {
+        components: ['BookingWidget'],
+        title: 'Bookings',
+        defaultExpanded: true,
+      };
+    }
+
+    return {
+      ...baseConfig,
+      components: { ...baseConfig.components, ...extraComponents },
+      categories: { ...baseConfig.categories, ...extraCategories },
+      root: {
+        ...baseConfig.root,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        render: ({ children, backgroundColor, backgroundImage, maxWidth, paddingY }: any) => (
+          <div
+            style={{
+              backgroundColor,
+              backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
           >
-            <div
-              style={{
-                maxWidth,
-                margin: '0 auto',
-                paddingTop: paddingY,
-                paddingBottom: paddingY,
-                width: '100%',
-                flexGrow: 1,
-              }}
+            <PageEditorPreview
+              headerData={headerData}
+              footerData={footerData}
+              config={baseConfig}
+              onEditSection={(section) => navigate(`/cms/themes?section=${section}`)}
             >
-              {children}
-            </div>
-          </PageEditorPreview>
-        </div>
-      ),
-    },
-  }), [footerData, headerData, navigate]);
+              <div
+                style={{
+                  maxWidth,
+                  margin: '0 auto',
+                  paddingTop: paddingY,
+                  paddingBottom: paddingY,
+                  width: '100%',
+                  flexGrow: 1,
+                }}
+              >
+                {children}
+              </div>
+            </PageEditorPreview>
+          </div>
+        ),
+      },
+    };
+  }, [footerData, headerData, navigate, hasAddon]);
 
   useEffect(() => {
     if (hasLoadedRef.current || !id) return;

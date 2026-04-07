@@ -1,9 +1,11 @@
-import { LayoutDashboard, FileText, Image, Menu, Settings, BarChart2, CreditCard, Palette, Users, Shield } from 'lucide-react';
+import { LayoutDashboard, FileText, Image, Menu, Settings, BarChart2, CreditCard, Palette, Users, Shield, CalendarDays, Layers, Users2, Settings2 } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 import { useTranslation } from 'react-i18next';
+import { useAddon } from '@/shared/hooks/useAddon';
 
 export function useTenantMenuItems(): MenuItem[] {
   const { t } = useTranslation('common');
+  const { hasAddon } = useAddon();
 
   return [
     {
@@ -65,5 +67,31 @@ export function useTenantMenuItems(): MenuItem[] {
       icon: Settings,
       permission: 'view settings',
     },
+    ...(hasAddon('booking') ? [
+      {
+        label: 'Bookings',
+        path: '/cms/bookings',
+        icon: CalendarDays,
+        permission: 'bookings.view',
+      },
+      {
+        label: 'Services',
+        path: '/cms/bookings/services',
+        icon: Layers,
+        permission: 'bookings.view',
+      },
+      {
+        label: 'Resources',
+        path: '/cms/bookings/resources',
+        icon: Users2,
+        permission: 'bookings.view',
+      },
+      {
+        label: 'Booking Settings',
+        path: '/cms/bookings/settings',
+        icon: Settings2,
+        permission: 'bookings.manage',
+      },
+    ] as MenuItem[] : []),
   ];
 }

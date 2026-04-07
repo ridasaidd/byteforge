@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Notifications\Booking;
 
 use App\Models\BookingNotification;
-use App\Models\Resource;
+use App\Models\BookingResource;
 use Illuminate\Notifications\Messages\MailMessage;
 
 /**
@@ -19,7 +19,7 @@ class StaffBookingAssignedNotification extends BaseBookingNotification
     public function __construct(
         \App\Models\Booking $booking,
         string $tenantDomain,
-        protected readonly Resource $resource,
+        protected readonly BookingResource $resource,
     ) {
         parent::__construct($booking, $tenantDomain);
     }

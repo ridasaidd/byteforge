@@ -349,6 +349,156 @@ class PublicBookingController extends Controller
         ], 201);
     }
 
+    // ─── POST /api/public/booking/hold ───────────────────────────────────────
+
+    public function hold(Request $request): JsonResponse
+    {
+        $validated = Validator::make($request->all(), [
+            'service_id'     => ['required', 'integer', 'exists:booking_services,id'],
+            'resource_id'    => ['required', 'integer', 'exists:booking_resources,id'],
+            'starts_at'      => ['nullable', 'date'],
+            'ends_at'        => ['nullable', 'date', 'after:starts_at'],
+            'check_in'       => ['nullable', 'date_format:Y-m-d'],
+            'check_out'      => ['nullable', 'date_format:Y-m-d', 'after:check_in'],
+            'customer_name'  => ['required', 'string', 'max:120'],
+            'customer_email' => ['required', 'email', 'max:255'],
+            'customer_phone' => ['nullable', 'string', 'max:30'],
+            'customer_notes' => ['nullable', 'string', 'max:1000'],
+        ])->validate();
+
+        $tenantId = (string) tenant('id');
+        $service  = BookingService::forTenant($tenantId)->findOrFail((int) $validated['service_id']);
+        $resource = BookingResource::forTenant($tenantId)->findOrFail((int) $validated['resource_id']);
+        $tz       = $this->tenantTimezone();
+
+        if ($service->booking_mode === BookingService::MODE_SLOT) {
+            if (empty($validated['starts_at'])) {
+                throw ValidationException::withMessages(['starts_at' => 'starts_at is required for slot-mode services.']);
+            }
+            $startsAt = Carbon::parse($validated['starts_at'])->utc();
+            $endsAt   = isset($validated['ends_at'])
+                ? Carbon::parse($validated['ends_at'])->utc()
+                : $startsAt->copy()->addMinutes((int) $service->duration_minutes);
+        } else {
+            if (empty($validated['check_in']) || empty($validated['check_out'])) {
+                throw ValidationException::withMessages(['check_in' => 'check_in and check_out are required for range-mode services.']);
+            }
+            $startsAt = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime(), $tz)->utc();
+            $endsAt   = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime(), $tz)->utc();
+        }
+
+        try {
+            $booking = DB::transaction(function () use (
+                $resource, $service, $startsAt, $endsAt, $validated, $tenantId, $tz,
+            ) {
+                BookingResource::where('id', $resource->id)->lockForUpdate()->first();
+
+                if ($service->booking_mode === BookingService::MODE_SLOT) {
+                    $date      = $startsAt->copy()->setTimezone($tz)->startOfDay();
+                    $slots     = $this->availability->getSlotsForDate($service, $resource, $date);
+                    $slotMatch = $slots->first(fn ($s) =>
+                        $s['starts_at']->equalTo($startsAt) && $s['available'] === true
+                    );
+                    if ($slotMatch === null) {
+                        throw ValidationException::withMessages([
+                            'starts_at' => 'That time slot is no longer available.',
+                        ]);
+                    }
+                } else {
+                    $checkIn  = $startsAt->copy()->setTimezone($tz);
+                    $checkOut = $endsAt->copy()->setTimezone($tz);
+                    if (!$this->availability->isRangeAvailable($service, $resource, $checkIn, $checkOut)) {
+                        throw ValidationException::withMessages([
+                            'check_in' => 'Those dates are no longer available.',
+                        ]);
+                    }
+                }
+
+                return Booking::create([
+                    'tenant_id'        => $tenantId,
+                    'service_id'       => $service->id,
+                    'resource_id'      => $resource->id,
+                    'customer_name'    => $validated['customer_name'],
+                    'customer_email'   => $validated['customer_email'],
+                    'customer_phone'   => $validated['customer_phone'] ?? null,
+                    'customer_notes'   => $validated['customer_notes'] ?? null,
+                    'starts_at'        => $startsAt,
+                    'ends_at'          => $endsAt,
+                    'status'           => Booking::STATUS_PENDING_HOLD,
+                    'management_token' => Booking::generateToken(),
+                    'token_expires_at' => null,
+                    'hold_expires_at'  => now()->addMinutes(10),
+                ]);
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw ValidationException::withMessages([
+                'starts_at' => 'That time slot was just taken. Please choose another.',
+            ]);
+        }
+
+        return response()->json([
+            'data' => [
+                'hold_token' => $booking->management_token,
+                'expires_at' => $booking->hold_expires_at?->toIso8601String(),
+            ],
+        ], 201);
+    }
+
+    // ─── POST /api/public/booking/hold/{token} ────────────────────────────────
+
+    public function confirmHold(string $token): JsonResponse
+    {
+        $booking = Booking::where('management_token', $token)
+            ->where('status', Booking::STATUS_PENDING_HOLD)
+            ->first();
+
+        if ($booking === null || (string) $booking->tenant_id !== (string) tenant('id')) {
+            abort(404);
+        }
+
+        if ($booking->hold_expires_at !== null && $booking->hold_expires_at->isPast()) {
+            return response()->json(
+                ['message' => 'This hold has expired. Please start a new booking.'],
+                410,
+            );
+        }
+
+        $settings  = $this->tenantSettings();
+        $newStatus = $settings->booking_auto_confirm
+            ? Booking::STATUS_CONFIRMED
+            : Booking::STATUS_PENDING;
+
+        $newToken = Booking::generateToken();
+
+        $booking->update([
+            'status'           => $newStatus,
+            'hold_expires_at'  => null,
+            'management_token' => $newToken,
+            'token_expires_at' => $booking->starts_at?->copy()->addHours(24),
+        ]);
+
+        $booking->recordEvent(
+            toStatus: $newStatus,
+            actorType: Booking::ACTOR_CUSTOMER,
+            fromStatus: Booking::STATUS_PENDING_HOLD,
+            note: 'Booking confirmed from hold by customer',
+        );
+
+        $domain = $this->tenantDomain();
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingReceivedNotification($booking, $domain));
+
+        return response()->json([
+            'data' => [
+                'booking_id' => $booking->id,
+                'starts_at'  => $booking->starts_at?->toIso8601String(),
+                'ends_at'    => $booking->ends_at?->toIso8601String(),
+                'status'     => $booking->status,
+                'message'    => 'Confirmation email sent.',
+            ],
+        ]);
+    }
+
     // ─── PATCH /api/public/booking/{token}/cancel ─────────────────────────────
 
     public function cancel(string $token): JsonResponse

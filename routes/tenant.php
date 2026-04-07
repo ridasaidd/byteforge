@@ -155,6 +155,8 @@ Route::middleware([
         Route::get('slots', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'slots'])->middleware('throttle:60,1');
         Route::get('availability', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'availability'])->middleware('throttle:60,1');
         Route::get('next-available', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'nextAvailable']);
+        Route::post('hold', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'hold'])->middleware('throttle:10,1');
+        Route::post('hold/{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'confirmHold'])->middleware('throttle:5,1');
         Route::post('/', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'store'])->middleware('throttle:5,1');
         Route::get('{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'show'])->middleware('throttle:20,1');
         Route::patch('{token}/cancel', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'cancel'])->middleware('throttle:10,1');
