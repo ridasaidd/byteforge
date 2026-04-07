@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
 import { cmsBookingApi } from '@/shared/services/api/booking';
@@ -322,7 +322,17 @@ export function ResourceManagerPage() {
     queryFn: () => cmsBookingApi.listResources(),
   });
 
-  const resources = data?.data ?? [];
+  const resources = useMemo(() => data?.data ?? [], [data]);
+
+  // Auto-expand all cards on first load so the schedule editor is immediately visible
+  useEffect(() => {
+    if (resources.length > 0) {
+      setExpanded(prev => {
+        if (prev.size > 0) return prev; // don't collapse cards the user has manually toggled
+        return new Set(resources.map(r => r.id));
+      });
+    }
+  }, [resources]);
 
   const saveMutation = useMutation({
     mutationFn: (payload: CreateBookingResourceData) =>

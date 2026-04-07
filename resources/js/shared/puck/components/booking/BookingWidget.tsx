@@ -725,8 +725,11 @@ function BookingWidgetRender(props: BookingWidgetProps) {
               ? <Loader2 size={24} style={{ animation: 'bw-spin 1s linear infinite', display: 'block', margin: '24px auto' }} />
               : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
-                  {state.slots.filter(s => s.available).length === 0 && (
-                    <p style={{ color: '#6b7280', fontSize: 13, gridColumn: '1/-1' }}>No slots available on this date.</p>
+                  {state.slots.length === 0 && (
+                    <p style={{ color: '#6b7280', fontSize: 13, gridColumn: '1/-1' }}>No availability configured for this date. Please try a different date.</p>
+                  )}
+                  {state.slots.length > 0 && state.slots.filter(s => s.available).length === 0 && (
+                    <p style={{ color: '#6b7280', fontSize: 13, gridColumn: '1/-1' }}>All slots are booked on this date. Please try a different date.</p>
                   )}
                   {state.slots.filter(s => s.available).map(slot => (
                     <button
