@@ -2,7 +2,9 @@
 
 namespace Tests\Tenant\Feature\Api;
 
+use App\Models\User;
 use PHPUnit\Framework\Attributes\Test;
+use Spatie\Permission\Models\Role;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
 
@@ -71,5 +73,92 @@ class TenantUsersTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.email', $editor->email);
         $response->assertJsonPath('data.roles.0.name', 'viewer');
+    }
+
+    #[Test]
+    public function tenant_owner_can_create_staff_user(): void
+    {
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/users', 'tenant-one'), [
+                'name' => 'Tenant Staff',
+                'email' => 'staff-created@tenant-one.byteforge.se',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'support',
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.email', 'staff-created@tenant-one.byteforge.se');
+        $response->assertJsonPath('data.roles.0.name', 'support');
+
+        $created = User::where('email', 'staff-created@tenant-one.byteforge.se')->first();
+        $this->assertNotNull($created);
+        $this->assertDatabaseHas('memberships', [
+            'user_id' => $created->id,
+            'tenant_id' => TestUsers::tenant('tenant-one')->id,
+            'status' => 'active',
+        ]);
+    }
+
+    #[Test]
+    public function tenant_editor_cannot_create_staff_user(): void
+    {
+        $response = $this->actingAsTenantEditor('tenant-one')
+            ->postJson($this->tenantUrl('/api/users', 'tenant-one'), [
+                'name' => 'Blocked Staff',
+                'email' => 'blocked-staff@tenant-one.byteforge.se',
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'viewer',
+            ]);
+
+        $response->assertForbidden();
+    }
+
+    #[Test]
+    public function tenant_owner_can_create_and_delete_unassigned_custom_role(): void
+    {
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/roles', 'tenant-one'), [
+                'name' => 'content_manager',
+                'permissions' => ['pages.view', 'pages.edit'],
+            ]);
+
+        $create->assertCreated();
+        $roleId = (int) $create->json('data.id');
+
+        $delete = $this->actingAsTenantOwner('tenant-one')
+            ->deleteJson($this->tenantUrl("/api/roles/{$roleId}", 'tenant-one'));
+
+        $delete->assertOk();
+
+        $this->assertNull(Role::find($roleId));
+    }
+
+    #[Test]
+    public function tenant_owner_cannot_delete_assigned_custom_role(): void
+    {
+        $viewer = TestUsers::tenantViewer('tenant-one');
+
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/roles', 'tenant-one'), [
+                'name' => 'booking_assistant',
+                'permissions' => ['bookings.view'],
+            ]);
+
+        $create->assertCreated();
+        $roleId = (int) $create->json('data.id');
+
+        $assign = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl("/api/users/{$viewer->id}/roles", 'tenant-one'), [
+                'role' => 'booking_assistant',
+            ]);
+
+        $assign->assertOk();
+
+        $delete = $this->actingAsTenantOwner('tenant-one')
+            ->deleteJson($this->tenantUrl("/api/roles/{$roleId}", 'tenant-one'));
+
+        $delete->assertForbidden();
     }
 }

@@ -12,7 +12,7 @@ use Spatie\Permission\Models\Role;
 
 class TenantRbacService
 {
-    private const TENANT_ROLE_NAMES = ['admin', 'support', 'viewer'];
+    public const TENANT_ROLE_NAMES = ['admin', 'support', 'viewer'];
 
     /**
      * @return array<string, array<int, string>>
@@ -60,7 +60,9 @@ class TenantRbacService
         return match ($membershipRole) {
             'owner', 'admin' => 'admin',
             'editor', 'support' => 'support',
-            default => 'viewer',
+            'viewer' => 'viewer',
+            null, '' => 'viewer',
+            default => $membershipRole,
         };
     }
 
@@ -69,7 +71,8 @@ class TenantRbacService
         return match ($tenantRole) {
             'admin' => 'owner',
             'support' => 'editor',
-            default => 'viewer',
+            'viewer' => 'viewer',
+            default => $tenantRole,
         };
     }
 

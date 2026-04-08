@@ -22,7 +22,7 @@ export interface User extends Record<string, unknown> {
   name: string;
   email: string;
   avatar?: string;
-  roles: (string | { name: string })[];
+  roles: (string | { name: string; membership_role?: string | null })[];
   permissions: string[];
   created_at: string;
   updated_at: string;

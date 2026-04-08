@@ -229,10 +229,16 @@ Route::middleware([
         Route::post('themes/{theme}/customization/{section}', [\App\Http\Controllers\Api\ThemeCustomizationController::class, 'saveSection'])
             ->middleware('permission:themes.manage');
 
-        Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy'])
+        Route::apiResource('users', UserController::class)->except(['update', 'destroy'])
             ->middleware('permission:users.view');
 
+        Route::post('users', [UserController::class, 'store'])->middleware('permission:users.manage');
+
         Route::get('roles', [UserController::class, 'roles'])->middleware('permission:users.view');
+        Route::get('permissions', [UserController::class, 'permissions'])->middleware('permission:roles.manage');
+        Route::post('roles', [UserController::class, 'storeRole'])->middleware('permission:roles.manage');
+        Route::put('roles/{role}', [UserController::class, 'updateRole'])->middleware('permission:roles.manage');
+        Route::delete('roles/{role}', [UserController::class, 'destroyRole'])->middleware('permission:roles.manage');
 
         // Media management — per-action permission checks
         Route::get('media', [MediaController::class, 'index'])->middleware('permission:media.view');
