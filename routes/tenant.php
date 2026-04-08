@@ -148,6 +148,21 @@ Route::middleware([
     Route::post('payments/swish/callback', [PaymentWebhookController::class, 'swish']);
     Route::post('payments/klarna/callback', [PaymentWebhookController::class, 'klarna']);
 
+    // Booking public API (Phase 13.3) — no auth, addon gated
+    Route::prefix('public/booking')->middleware('addon:booking')->group(function () {
+        Route::get('config', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'config']);
+        Route::get('services', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'services']);
+        Route::get('resources', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'resources'])->middleware('throttle:60,1');
+        Route::get('slots', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'slots'])->middleware('throttle:60,1');
+        Route::get('availability', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'availability'])->middleware('throttle:60,1');
+        Route::get('next-available', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'nextAvailable']);
+        Route::post('hold', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'hold'])->middleware('throttle:20,1');
+        Route::post('hold/{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'confirmHold'])->middleware('throttle:20,1');
+        Route::post('/', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'store'])->middleware('throttle:20,1');
+        Route::get('{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'show'])->middleware('throttle:20,1');
+        Route::patch('{token}/cancel', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'cancel'])->middleware('throttle:10,1');
+    });
+
     // Tenant auth routes
     Route::prefix('auth')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -289,5 +304,50 @@ Route::middleware([
         Route::post('payments/{payment}/refund', [PaymentController::class, 'refund'])
             ->whereNumber('payment')
             ->middleware('permission:payments.refund');
+
+        // Booking CMS API (Phase 13.4) — authenticated, addon gated
+        Route::prefix('booking')->middleware('addon:booking')->group(function () {
+            // Resources
+            Route::get('resources', [\App\Http\Controllers\Api\Booking\BookingResourceController::class, 'index'])->middleware('permission:bookings.view');
+            Route::post('resources', [\App\Http\Controllers\Api\Booking\BookingResourceController::class, 'store'])->middleware('permission:bookings.manage');
+            Route::get('resources/{id}', [\App\Http\Controllers\Api\Booking\BookingResourceController::class, 'show'])->middleware('permission:bookings.view');
+            Route::put('resources/{id}', [\App\Http\Controllers\Api\Booking\BookingResourceController::class, 'update'])->middleware('permission:bookings.manage');
+            Route::patch('resources/{id}', [\App\Http\Controllers\Api\Booking\BookingResourceController::class, 'update'])->middleware('permission:bookings.manage');
+            Route::delete('resources/{id}', [\App\Http\Controllers\Api\Booking\BookingResourceController::class, 'destroy'])->middleware('permission:bookings.manage');
+
+            // Resource availability windows
+            Route::get('resources/{id}/availability', [\App\Http\Controllers\Api\Booking\BookingAvailabilityController::class, 'index'])->middleware('permission:bookings.view');
+            Route::post('resources/{id}/availability', [\App\Http\Controllers\Api\Booking\BookingAvailabilityController::class, 'store'])->middleware('permission:bookings.manage');
+            Route::put('availability/{windowId}', [\App\Http\Controllers\Api\Booking\BookingAvailabilityController::class, 'update'])->middleware('permission:bookings.manage');
+            Route::delete('availability/{windowId}', [\App\Http\Controllers\Api\Booking\BookingAvailabilityController::class, 'destroy'])->middleware('permission:bookings.manage');
+
+            // Resource date-range blocks
+            Route::get('resources/{id}/blocks', [\App\Http\Controllers\Api\Booking\BookingResourceBlockController::class, 'index'])->middleware('permission:bookings.view');
+            Route::post('resources/{id}/blocks', [\App\Http\Controllers\Api\Booking\BookingResourceBlockController::class, 'store'])->middleware('permission:bookings.manage');
+            Route::delete('resources/{resourceId}/blocks/{blockId}', [\App\Http\Controllers\Api\Booking\BookingResourceBlockController::class, 'destroy'])->middleware('permission:bookings.manage');
+
+            // Services
+            Route::get('services', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'index'])->middleware('permission:bookings.view');
+            Route::post('services', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'store'])->middleware('permission:bookings.manage');
+            Route::get('services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'show'])->middleware('permission:bookings.view');
+            Route::put('services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'update'])->middleware('permission:bookings.manage');
+            Route::patch('services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'update'])->middleware('permission:bookings.manage');
+            Route::delete('services/{id}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'destroy'])->middleware('permission:bookings.manage');
+
+            // Resource <-> Service links
+            Route::post('services/{id}/resources', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'attachResource'])->middleware('permission:bookings.manage');
+            Route::delete('services/{id}/resources/{resourceId}', [\App\Http\Controllers\Api\Booking\BookingServiceController::class, 'detachResource'])->middleware('permission:bookings.manage');
+
+            // Booking management (CMS calendar view)
+            Route::get('bookings', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'index'])->middleware('permission:bookings.view');
+            Route::post('bookings', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'store'])->middleware('permission:bookings.manage');
+            Route::get('bookings/{id}', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'show'])->middleware('permission:bookings.view');
+            Route::patch('bookings/{id}/confirm', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'confirm'])->middleware('permission:bookings.manage');
+            Route::patch('bookings/{id}/cancel', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'cancel'])->middleware('permission:bookings.cancel');
+            Route::patch('bookings/{id}/reschedule', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'reschedule'])->middleware('permission:bookings.manage');
+            Route::patch('bookings/{id}/complete', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'complete'])->middleware('permission:bookings.manage');
+            Route::patch('bookings/{id}/no-show', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'noShow'])->middleware('permission:bookings.manage');
+            Route::delete('bookings/{id}', [\App\Http\Controllers\Api\Booking\BookingManagementController::class, 'destroy'])->middleware('permission:bookings.manage');
+        });
     });
 });

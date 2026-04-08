@@ -54,9 +54,6 @@ class TenantAddonApiTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonStructure(['data']);
-        $response->assertJsonFragment(['data' => array_values(
-            array_filter($response->json('data'), fn ($f) => $f === 'booking')
-        )]);
 
         // Simpler: just confirm booking is present
         $this->assertContains('booking', $response->json('data'));

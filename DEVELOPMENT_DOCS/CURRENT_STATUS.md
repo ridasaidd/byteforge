@@ -1,7 +1,9 @@
 # ByteForge – Current Status
 
-Last updated: April 6, 2026 (Phase 13 design complete — booking system planning doc written, implementation starting)
+Last updated: April 7, 2026
 Current branch: `main` (addon foundation merged at `4d13d08`)
+
+> **Environment notice**: This is a development server running on a Raspberry Pi 5. All data and content — tenants, users, bookings, pages, themes, media, settings — is seeded fake data for development and testing purposes only. Nothing here is live or production.
 
 ## Snapshot
 
@@ -21,7 +23,19 @@ Current branch: `main` (addon foundation merged at `4d13d08`)
 - **Phase 11 Dashboard Translation (i18n):** ✅ **COMPLETE + merged** — i18next + react-i18next infrastructure, 15 namespaces across `en/sv/ar`, user locale persistence (`preferred_locale` + `PATCH /auth/locale`), central + tenant dashboard string extraction/localization, Swedish character corrections (proper `å/ä/ö`), and RTL support (logical CSS classes + directional icon handling).
 - **Phase 12 Tenant Runtime Readiness:** ✅ **COMPLETE** — tenant login/runtime routes, membership enforcement middleware, tenant permission-gated CMS routes, storefront parity, and tenant isolation test coverage all complete. Cookie consent (GDPR) delivered: `whitecube/laravel-cookie-consent` removed, replaced with `vanilla-cookieconsent` React implementation with analytics enforcement. 18 Playwright E2E tests passing (banner behaviour + per-provider script injection/revocation). PHP: `355 passed`.
 - **Addon Foundation:** ✅ **COMPLETE + merged** (`4d13d08`) — `EnsureAddon` middleware (`addon:booking`), `GET /api/addons` endpoint, `AddonProvider` + `useAddon()` frontend context. PHP: `410 passed`.
-- **Phase 13 Booking System:** ⏳ **IN PLANNING** — Design complete. See [PHASE13_BOOKING_SYSTEM.md](./PHASE13_BOOKING_SYSTEM.md). Implementation starts with 13.1 (data model + migrations).
+- **Phase 13 Booking System:** ✅ **COMPLETE + committed** (`bdd424f`) — Full universal booking engine: data model, availability engine, public API (hold/confirm flow), CMS API, notifications (customer confirmed/cancelled/reminder, staff assigned), BookingWidget Puck component (7-step wizard + hold reservation), CMS management pages (BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage), addon-gated routing + nav. PHP: `476 passed`, `18 skipped`. TypeScript: 0 errors.
+
+  **Known gaps (April 7, 2026 audit — see PHASE13_BOOKING_SYSTEM.md for detail)**:
+  - Wizard step order should be service → date → resource → slot (currently service → resource → date → slot), so resource list is date-filtered and customers don't choose a person who turns out to have no availability that day.
+  - No "Any available" option in resource selection step.
+  - Resource step heading says "Choose a resource" instead of "Choose your [resource_label]".
+  - Tenant owner receives no email when a new booking arrives (only the customer does).
+  - Staff notification (`StaffBookingAssignedNotification`) only fires on manual CMS confirm, not on auto-confirm.
+  - Anonymous actor timeline shows "by customer #" with no ID — should drop the `#` when `actor_id` is null.
+
+- **Permission naming:** ⚠️ **Inconsistent** — two naming styles in use. Dotted convention (`bookings.view`, `pages.edit`) is the agreed standard. Natural-language legacy permissions (`manage users`, `view activity logs`, etc.) need a migration PR. Full rename table in `DESIGN_PATTERNS_AND_BEST_PRACTICES.md`.
+
+- **Tenant user management:** ⚠️ **Partially implemented** — Users can be viewed and have roles reassigned (owner-only). Missing: owner can create staff users directly (no invite flow needed), create/edit/delete custom roles, and the `owner` vs `admin` membership role distinction is invisible in the UI. Design decisions documented in `DESIGN_PATTERNS_AND_BEST_PRACTICES.md`.
 - **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
 - **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
 - **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations

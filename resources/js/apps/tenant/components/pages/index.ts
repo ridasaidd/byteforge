@@ -12,3 +12,10 @@ export { PaymentProvidersPage } from './PaymentProvidersPage';
 export { PaymentsPage } from './PaymentsPage';
 export { UsersPage } from './UsersPage';
 export { RolesPermissionsPage } from './RolesPermissionsPage';
+export {
+  ServiceManagerPage,
+  ResourceManagerPage,
+  BookingsCalendarPage,
+  BookingDetailPage,
+  BookingSettingsPage,
+} from './Booking';

@@ -63,3 +63,7 @@ export {
   type FormState,
   type FormContextValue,
 } from './forms';
+
+// Booking add-on components (conditionally registered in puckConfig when addon is active)
+export { BookingWidget, type BookingWidgetProps } from './booking';
+

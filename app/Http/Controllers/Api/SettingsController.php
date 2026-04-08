@@ -41,6 +41,16 @@ class SettingsController extends Controller
                     'clarity_enabled' => $settings->clarity_enabled,
                     'plausible_enabled' => $settings->plausible_enabled,
                     'meta_pixel_enabled' => $settings->meta_pixel_enabled,
+                    // Phase 13 — Booking system settings
+                    'timezone' => $settings->timezone,
+                    'date_format' => $settings->date_format,
+                    'time_format' => $settings->time_format,
+                    'booking_auto_confirm' => $settings->booking_auto_confirm,
+                    'booking_hold_minutes' => $settings->booking_hold_minutes,
+                    'booking_cancellation_notice_hours' => $settings->booking_cancellation_notice_hours,
+                    'booking_reminder_hours' => $settings->booking_reminder_hours,
+                    'booking_checkin_time' => $settings->booking_checkin_time,
+                    'booking_checkout_time' => $settings->booking_checkout_time,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -80,6 +90,17 @@ class SettingsController extends Controller
             'clarity_enabled' => ['sometimes', 'boolean'],
             'plausible_enabled' => ['sometimes', 'boolean'],
             'meta_pixel_enabled' => ['sometimes', 'boolean'],
+            // Phase 13 — Booking system settings
+            'timezone' => ['sometimes', 'string', 'timezone:all'],
+            'date_format' => ['sometimes', 'string', 'in:yyyy-MM-dd,dd/MM/yyyy,MM/dd/yyyy'],
+            'time_format' => ['sometimes', 'string', 'in:HH:mm,h:mm aa'],
+            'booking_auto_confirm' => ['sometimes', 'boolean'],
+            'booking_hold_minutes' => ['sometimes', 'integer', 'min:1', 'max:1440'],
+            'booking_cancellation_notice_hours' => ['sometimes', 'integer', 'min:0'],
+            'booking_reminder_hours' => ['sometimes', 'array'],
+            'booking_reminder_hours.*' => ['integer', 'min:0'],
+            'booking_checkin_time' => ['sometimes', 'string', 'date_format:H:i,H:i:s'],
+            'booking_checkout_time' => ['sometimes', 'string', 'date_format:H:i,H:i:s'],
         ]);
 
         if ($validator->fails()) {
@@ -215,6 +236,43 @@ class SettingsController extends Controller
                 $changedFields['meta_pixel_enabled'] = ['old' => $settings->meta_pixel_enabled, 'new' => $request->meta_pixel_enabled];
                 $settings->meta_pixel_enabled = $request->boolean('meta_pixel_enabled');
             }
+            // Phase 13 — Booking system settings
+            if ($request->has('timezone')) {
+                $changedFields['timezone'] = ['old' => $settings->timezone, 'new' => $request->timezone];
+                $settings->timezone = $request->timezone;
+            }
+            if ($request->has('date_format')) {
+                $changedFields['date_format'] = ['old' => $settings->date_format, 'new' => $request->date_format];
+                $settings->date_format = $request->date_format;
+            }
+            if ($request->has('time_format')) {
+                $changedFields['time_format'] = ['old' => $settings->time_format, 'new' => $request->time_format];
+                $settings->time_format = $request->time_format;
+            }
+            if ($request->has('booking_auto_confirm')) {
+                $changedFields['booking_auto_confirm'] = ['old' => $settings->booking_auto_confirm, 'new' => $request->booking_auto_confirm];
+                $settings->booking_auto_confirm = $request->boolean('booking_auto_confirm');
+            }
+            if ($request->has('booking_hold_minutes')) {
+                $changedFields['booking_hold_minutes'] = ['old' => $settings->booking_hold_minutes, 'new' => $request->booking_hold_minutes];
+                $settings->booking_hold_minutes = (int) $request->booking_hold_minutes;
+            }
+            if ($request->has('booking_cancellation_notice_hours')) {
+                $changedFields['booking_cancellation_notice_hours'] = ['old' => $settings->booking_cancellation_notice_hours, 'new' => $request->booking_cancellation_notice_hours];
+                $settings->booking_cancellation_notice_hours = (int) $request->booking_cancellation_notice_hours;
+            }
+            if ($request->has('booking_reminder_hours')) {
+                $changedFields['booking_reminder_hours'] = ['old' => $settings->booking_reminder_hours, 'new' => $request->booking_reminder_hours];
+                $settings->booking_reminder_hours = array_values(array_map('intval', $request->booking_reminder_hours));
+            }
+            if ($request->has('booking_checkin_time')) {
+                $changedFields['booking_checkin_time'] = ['old' => $settings->booking_checkin_time, 'new' => $request->booking_checkin_time];
+                $settings->booking_checkin_time = $request->booking_checkin_time;
+            }
+            if ($request->has('booking_checkout_time')) {
+                $changedFields['booking_checkout_time'] = ['old' => $settings->booking_checkout_time, 'new' => $request->booking_checkout_time];
+                $settings->booking_checkout_time = $request->booking_checkout_time;
+            }
 
             $settings->save();
 
@@ -251,6 +309,16 @@ class SettingsController extends Controller
                     'clarity_enabled' => $settings->clarity_enabled,
                     'plausible_enabled' => $settings->plausible_enabled,
                     'meta_pixel_enabled' => $settings->meta_pixel_enabled,
+                    // Phase 13 — Booking system settings
+                    'timezone' => $settings->timezone,
+                    'date_format' => $settings->date_format,
+                    'time_format' => $settings->time_format,
+                    'booking_auto_confirm' => $settings->booking_auto_confirm,
+                    'booking_hold_minutes' => $settings->booking_hold_minutes,
+                    'booking_cancellation_notice_hours' => $settings->booking_cancellation_notice_hours,
+                    'booking_reminder_hours' => $settings->booking_reminder_hours,
+                    'booking_checkin_time' => $settings->booking_checkin_time,
+                    'booking_checkout_time' => $settings->booking_checkout_time,
                 ],
             ]);
         } catch (\Exception $e) {

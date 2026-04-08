@@ -171,6 +171,16 @@ export interface TenantSettings extends Record<string, unknown> {
   clarity_enabled: boolean;
   plausible_enabled: boolean;
   meta_pixel_enabled: boolean;
+  // Phase 13 — Booking system settings
+  timezone: string;
+  date_format: string;
+  time_format: string;
+  booking_auto_confirm: boolean;
+  booking_hold_minutes: number;
+  booking_cancellation_notice_hours: number;
+  booking_reminder_hours: number[];
+  booking_checkin_time: string;
+  booking_checkout_time: string;
 }
 
 export interface UpdateTenantSettingsData {
@@ -195,6 +205,16 @@ export interface UpdateTenantSettingsData {
   clarity_enabled?: boolean;
   plausible_enabled?: boolean;
   meta_pixel_enabled?: boolean;
+  // Phase 13 — Booking system settings
+  timezone?: string;
+  date_format?: string;
+  time_format?: string;
+  booking_auto_confirm?: boolean;
+  booking_hold_minutes?: number;
+  booking_cancellation_notice_hours?: number;
+  booking_reminder_hours?: number[];
+  booking_checkin_time?: string;
+  booking_checkout_time?: string;
 }
 
 export interface Media extends Record<string, unknown> {

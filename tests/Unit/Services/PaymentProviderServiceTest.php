@@ -66,6 +66,19 @@ class PaymentProviderServiceTest extends TestCase
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
 
+        // If payments is currently active (seeded/cached), deactivate it via a
+        // model instance so TenantAddonObserver flushes the Pennant cache.
+        $addon = Addon::query()->where('feature_flag', 'payments')->first();
+        if ($addon) {
+            $row = TenantAddon::query()
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('addon_id', $addon->id)
+                ->first();
+            if ($row) {
+                $row->update(['deactivated_at' => now()]);
+            }
+        }
+
         $this->expectException(\Illuminate\Validation\ValidationException::class);
 
         $this->service->store($tenant, 'stripe', [

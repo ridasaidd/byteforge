@@ -2,13 +2,14 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage } from './components/pages';
+import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage, BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { ProfilePage } from '@/apps/central/components/pages/ProfilePage';
 import { AccountSettingsPage } from '@/apps/central/components/pages/AccountSettingsPage';
 import { useTenantMenuItems } from './config/menu';
 import { useAuth } from '@/shared/hooks/useAuth';
 import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useAddon } from '@/shared/hooks/useAddon';
 import { useTranslation } from 'react-i18next';
 
 function PermissionGate({ permission, children }: { permission: string; children: JSX.Element }) {
@@ -25,6 +26,8 @@ function ProtectedRoutes() {
   const { isAuthenticated, isLoading } = useAuth();
   const { t } = useTranslation('common');
   const tenantMenuItems = useTenantMenuItems();
+  const { hasAddon } = useAddon();
+  const hasBooking = hasAddon('booking');
 
   if (isLoading) {
     return (
@@ -153,6 +156,47 @@ function ProtectedRoutes() {
                       <RolesPermissionsPage />
                     </PermissionGate>
                   )}
+                />
+                {/* Booking addon routes */}
+                <Route
+                  path="/cms/bookings"
+                  element={hasBooking ? (
+                    <PermissionGate permission="bookings.view">
+                      <BookingsCalendarPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
+                />
+                <Route
+                  path="/cms/bookings/:id"
+                  element={hasBooking ? (
+                    <PermissionGate permission="bookings.view">
+                      <BookingDetailPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
+                />
+                <Route
+                  path="/cms/bookings/services"
+                  element={hasBooking ? (
+                    <PermissionGate permission="bookings.view">
+                      <ServiceManagerPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
+                />
+                <Route
+                  path="/cms/bookings/resources"
+                  element={hasBooking ? (
+                    <PermissionGate permission="bookings.view">
+                      <ResourceManagerPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
+                />
+                <Route
+                  path="/cms/bookings/settings"
+                  element={hasBooking ? (
+                    <PermissionGate permission="bookings.manage">
+                      <BookingSettingsPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
                 />
                 <Route path="/cms/profile" element={<ProfilePage />} />
                 <Route path="/cms/account" element={<AccountSettingsPage />} />

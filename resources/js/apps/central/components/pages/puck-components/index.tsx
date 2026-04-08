@@ -50,7 +50,21 @@ export * from '@/shared/puck/fields';
 // Re-export control presets
 export * from '@/shared/puck/controlPresets';
 
-// Import config from shared and re-export
+// Import config from shared and build renderer config
+// BookingWidget is always registered in the renderer so pages containing it
+// can render correctly on the storefront — the addon gate only belongs in
+// the editor sidebar (PageEditorPage.tsx), not in the renderer.
 import { puckConfig } from '@/shared/puck/config';
-export { puckConfig as config };
-export default puckConfig;
+import { BookingWidget } from '@/shared/puck/components/booking';
+import type { Config } from '@puckeditor/core';
+
+const rendererConfig: Config = {
+  ...puckConfig,
+  components: {
+    ...puckConfig.components,
+    BookingWidget: BookingWidget as Config['components'][string],
+  },
+};
+
+export { rendererConfig as config };
+export default rendererConfig;
