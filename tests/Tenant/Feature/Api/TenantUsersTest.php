@@ -143,7 +143,7 @@ class TenantUsersTest extends TestCase
         $create = $this->actingAsTenantOwner('tenant-one')
             ->postJson($this->tenantUrl('/api/roles', 'tenant-one'), [
                 'name' => 'booking_assistant',
-                'permissions' => ['bookings.view'],
+                'permissions' => ['pages.view'],
             ]);
 
         $create->assertCreated();

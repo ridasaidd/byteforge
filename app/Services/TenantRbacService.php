@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\TenantAddon;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\PermissionRegistrar;
@@ -15,44 +16,103 @@ class TenantRbacService
     public const TENANT_ROLE_NAMES = ['admin', 'support', 'viewer'];
 
     /**
+     * @var array<string, array<int, string>>
+     */
+    private const BASE_ROLE_DEFINITIONS = [
+        'admin' => [
+            'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
+            'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
+            'themes.view', 'themes.manage', 'themes.activate',
+            'layouts.view', 'layouts.manage',
+            'templates.view', 'templates.manage',
+            'media.view', 'media.manage',
+            'users.view', 'users.manage', 'roles.manage',
+            'settings.view', 'settings.manage',
+            'analytics.view',
+        ],
+        'support' => [
+            'pages.create', 'pages.edit', 'pages.view',
+            'navigation.create', 'navigation.edit', 'navigation.view',
+            'themes.view',
+            'layouts.view',
+            'templates.view',
+            'media.view', 'media.manage',
+            'analytics.view',
+        ],
+        'viewer' => [
+            'pages.view',
+            'navigation.view',
+            'themes.view',
+            'layouts.view',
+            'templates.view',
+            'media.view',
+        ],
+    ];
+
+    /**
+     * @var array<string, array<string, array<int, string>>>
+     */
+    private const ADDON_ROLE_DEFINITIONS = [
+        'booking' => [
+            'admin' => ['bookings.view', 'bookings.manage', 'bookings.cancel'],
+            'support' => ['bookings.view'],
+            'viewer' => ['bookings.view'],
+        ],
+        'payments' => [
+            'admin' => ['payments.view', 'payments.manage', 'payments.refund'],
+        ],
+    ];
+
+    /**
      * @return array<string, array<int, string>>
      */
-    public function roleDefinitions(): array
+    public function roleDefinitions(?string $tenantId = null): array
     {
-        return [
-            'admin' => [
-                'pages.create', 'pages.edit', 'pages.delete', 'pages.view',
-                'navigation.create', 'navigation.edit', 'navigation.delete', 'navigation.view',
-                'themes.view', 'themes.manage', 'themes.activate',
-                'layouts.view', 'layouts.manage',
-                'templates.view', 'templates.manage',
-                'media.view', 'media.manage',
-                'users.view', 'users.manage', 'roles.manage',
-                'settings.view', 'settings.manage',
-                'analytics.view',
-                'payments.view', 'payments.manage', 'payments.refund',
-                'bookings.view', 'bookings.manage', 'bookings.cancel',
-            ],
-            'support' => [
-                'pages.create', 'pages.edit', 'pages.view',
-                'navigation.create', 'navigation.edit', 'navigation.view',
-                'themes.view',
-                'layouts.view',
-                'templates.view',
-                'media.view', 'media.manage',
-                'analytics.view',
-                'bookings.view',
-            ],
-            'viewer' => [
-                'pages.view',
-                'navigation.view',
-                'themes.view',
-                'layouts.view',
-                'templates.view',
-                'media.view',
-                'bookings.view',
-            ],
-        ];
+        $definitions = self::BASE_ROLE_DEFINITIONS;
+
+        // Fixed roles always include the full platform-defined tenant permission set.
+        // Add-on-aware filtering is applied only when exposing assignable permissions in UI/API.
+        $activeFeatureFlags = array_keys(self::ADDON_ROLE_DEFINITIONS);
+
+        foreach ($activeFeatureFlags as $featureFlag) {
+            $addonDefinitions = self::ADDON_ROLE_DEFINITIONS[$featureFlag] ?? null;
+            if ($addonDefinitions === null) {
+                continue;
+            }
+
+            foreach ($addonDefinitions as $roleName => $permissionNames) {
+                $current = $definitions[$roleName] ?? [];
+                $definitions[$roleName] = array_values(array_unique(array_merge($current, $permissionNames)));
+            }
+        }
+
+        return $definitions;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    public function permissionNamesForTenant(string $tenantId): array
+    {
+        $definitions = self::BASE_ROLE_DEFINITIONS;
+
+        foreach ($this->activeAddonFeatureFlags($tenantId) as $featureFlag) {
+            $addonDefinitions = self::ADDON_ROLE_DEFINITIONS[$featureFlag] ?? null;
+            if ($addonDefinitions === null) {
+                continue;
+            }
+
+            foreach ($addonDefinitions as $roleName => $permissionNames) {
+                $current = $definitions[$roleName] ?? [];
+                $definitions[$roleName] = array_values(array_unique(array_merge($current, $permissionNames)));
+            }
+        }
+
+        return collect($definitions)
+            ->flatten()
+            ->unique()
+            ->values()
+            ->all();
     }
 
     public function membershipRoleToTenantRole(?string $membershipRole): string
@@ -223,5 +283,23 @@ class TenantRbacService
             ->where('model_id', $user->getKey())
             ->whereIn('role_id', $globalRoleIds->all())
             ->delete();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function activeAddonFeatureFlags(string $tenantId): array
+    {
+        return TenantAddon::query()
+            ->forTenant($tenantId)
+            ->active()
+            ->whereHas('addon', fn ($q) => $q->whereIn('feature_flag', array_keys(self::ADDON_ROLE_DEFINITIONS)))
+            ->with('addon:id,feature_flag')
+            ->get()
+            ->map(fn (TenantAddon $tenantAddon) => (string) optional($tenantAddon->addon)->feature_flag)
+            ->filter(fn (string $flag) => $flag !== '')
+            ->unique()
+            ->values()
+            ->all();
     }
 }

@@ -254,6 +254,7 @@ class UserController extends Controller
     {
         $tenantId = (string) tenancy()->tenant->id;
         $this->tenantRbac->ensureTenantRoles($tenantId);
+        $allowedPermissionNames = collect($this->tenantRbac->permissionNamesForTenant($tenantId));
 
         $roles = Role::query()
             ->where('guard_name', 'api')
@@ -261,6 +262,13 @@ class UserController extends Controller
             ->with(['permissions' => fn ($q) => $q->where('guard_name', 'api')->orderBy('name')])
             ->orderBy('name')
             ->get(['id', 'name', 'guard_name', 'team_id']);
+
+        $roles->each(function (Role $role) use ($allowedPermissionNames): void {
+            $role->setRelation(
+                'permissions',
+                $role->permissions->filter(fn ($perm) => $allowedPermissionNames->contains($perm->name))->values()
+            );
+        });
 
         return response()->json(['data' => $roles]);
     }
@@ -270,14 +278,12 @@ class UserController extends Controller
      */
     public function permissions(): JsonResponse
     {
-        $allowedPermissionNames = collect($this->tenantRbac->roleDefinitions())
-            ->flatten()
-            ->unique()
-            ->values();
+        $tenantId = (string) tenancy()->tenant->id;
+        $allowedPermissionNames = $this->tenantRbac->permissionNamesForTenant($tenantId);
 
         $permissions = Permission::query()
             ->where('guard_name', 'api')
-            ->whereIn('name', $allowedPermissionNames->all())
+            ->whereIn('name', $allowedPermissionNames)
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -319,7 +325,7 @@ class UserController extends Controller
             ], 422);
         }
 
-        $allowedPermissionNames = collect($this->tenantRbac->roleDefinitions())->flatten()->unique()->values();
+        $allowedPermissionNames = collect($this->tenantRbac->permissionNamesForTenant($tenantId));
         $permissionNames = collect($validated['permissions'] ?? [])->unique()->values();
 
         if ($permissionNames->diff($allowedPermissionNames)->isNotEmpty()) {
@@ -384,7 +390,7 @@ class UserController extends Controller
             return response()->json(['message' => 'Fixed tenant role names are reserved.'], 422);
         }
 
-        $allowedPermissionNames = collect($this->tenantRbac->roleDefinitions())->flatten()->unique()->values();
+        $allowedPermissionNames = collect($this->tenantRbac->permissionNamesForTenant($tenantId));
         $permissionNames = collect($validated['permissions'] ?? null);
 
         if ($permissionNames->isNotEmpty() && $permissionNames->diff($allowedPermissionNames)->isNotEmpty()) {
