@@ -65,10 +65,24 @@ class EnsureAddonTest extends TestCase
         $tenantId = $this->initTenancy('tenant-one');
         $addon = Addon::where('feature_flag', 'booking')->firstOrFail();
 
-        // Deactivate it
-        TenantAddon::where('tenant_id', $tenantId)
+        // Deactivate via a model instance so the TenantAddonObserver fires
+        // and flushes the Pennant cache. A query-builder update() bypasses
+        // model events and leaves the cached feature result stale.
+        $row = TenantAddon::where('tenant_id', $tenantId)
             ->where('addon_id', $addon->id)
-            ->update(['deactivated_at' => now()]);
+            ->first();
+
+        if ($row) {
+            $row->update(['deactivated_at' => now()]);
+        } else {
+            // Row doesn't exist yet — create one that is already deactivated.
+            TenantAddon::create([
+                'tenant_id'      => $tenantId,
+                'addon_id'       => $addon->id,
+                'activated_at'   => now()->subDay(),
+                'deactivated_at' => now(),
+            ]);
+        }
 
         $response = $this->middleware->handle(Request::create('/'), $this->makeNext(), 'booking');
 
