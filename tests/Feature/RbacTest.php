@@ -16,7 +16,7 @@ class RbacTest extends TestCase
             'layouts.view', 'layouts.manage',
             'templates.view', 'templates.manage',
             'media.view', 'media.manage',
-            'view dashboard stats',
+            'analytics.dashboard',
         ];
 
         foreach ($newPermissions as $permission) {
@@ -62,12 +62,12 @@ class RbacTest extends TestCase
             'layouts.view', 'layouts.manage',
             'templates.view', 'templates.manage',
             'media.view', 'media.manage',
-            'manage users', 'view users',
-            'manage tenants', 'view tenants',
-            'manage roles',
-            'view analytics', 'view dashboard stats',
-            'view activity logs',
-            'view settings', 'manage settings',
+            'users.manage', 'users.view',
+            'tenants.manage', 'tenants.view',
+            'roles.manage',
+            'analytics.view', 'analytics.dashboard',
+            'activity.view',
+            'settings.view', 'settings.manage',
         ];
 
         foreach ($expectedPermissions as $permission) {
@@ -88,12 +88,12 @@ class RbacTest extends TestCase
 
         // Should have view permissions
         $this->assertTrue($support->hasPermissionTo('pages.view'));
-        $this->assertTrue($support->hasPermissionTo('view users'));
-        $this->assertTrue($support->hasPermissionTo('view activity logs'));
+        $this->assertTrue($support->hasPermissionTo('users.view'));
+        $this->assertTrue($support->hasPermissionTo('activity.view'));
 
         // Should NOT have manage permissions
         $this->assertFalse($support->hasPermissionTo('pages.create'));
-        $this->assertFalse($support->hasPermissionTo('manage users'));
+        $this->assertFalse($support->hasPermissionTo('users.manage'));
     }
 
     public function test_viewer_role_is_most_restricted()
@@ -106,11 +106,11 @@ class RbacTest extends TestCase
 
         // Should have minimal view permissions
         $this->assertTrue($viewer->hasPermissionTo('pages.view'));
-        $this->assertTrue($viewer->hasPermissionTo('view users'));
+        $this->assertTrue($viewer->hasPermissionTo('users.view'));
 
         // Should NOT have activity log access
-        $this->assertFalse($viewer->hasPermissionTo('view activity logs'));
-        $this->assertFalse($viewer->hasPermissionTo('manage users'));
+        $this->assertFalse($viewer->hasPermissionTo('activity.view'));
+        $this->assertFalse($viewer->hasPermissionTo('users.manage'));
     }
 
     public function test_dashboard_stats_requires_permission()

@@ -15,8 +15,8 @@ class RolesPermissionsTest extends TestCase
         $super = \Tests\Support\TestUsers::centralSuperadmin();
 
         $this->assertTrue($super->hasRole('superadmin'));
-        $this->assertTrue($super->hasPermissionTo('manage users'));
-        $this->assertTrue($super->hasPermissionTo('manage tenants'));
+        $this->assertTrue($super->hasPermissionTo('users.manage'));
+        $this->assertTrue($super->hasPermissionTo('tenants.manage'));
         $this->assertFalse($super->hasRole('tenant_owner'));
     }
 

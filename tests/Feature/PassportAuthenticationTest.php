@@ -15,8 +15,8 @@ class PassportAuthenticationTest extends TestCase
         $super = TestUsers::centralSuperadmin();
 
         $this->assertTrue($super->hasRole('superadmin'));
-        $this->assertTrue($super->hasPermissionTo('manage users', 'api'));
-        $this->assertTrue($super->hasPermissionTo('manage tenants', 'api'));
+        $this->assertTrue($super->hasPermissionTo('users.manage', 'api'));
+        $this->assertTrue($super->hasPermissionTo('tenants.manage', 'api'));
         $this->assertFalse($super->hasRole('tenant_owner'));
     }
 
@@ -29,8 +29,8 @@ class PassportAuthenticationTest extends TestCase
 
         $super = TestUsers::centralSuperadmin();
 
-        $this->assertTrue($super->hasPermissionTo('manage tenants', 'api'));
-        $this->assertTrue($super->hasPermissionTo('manage users', 'api'));
+        $this->assertTrue($super->hasPermissionTo('tenants.manage', 'api'));
+        $this->assertTrue($super->hasPermissionTo('users.manage', 'api'));
         $this->assertFalse($super->hasRole('tenant_owner'));
     }
 

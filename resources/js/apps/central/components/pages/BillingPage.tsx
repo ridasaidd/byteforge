@@ -46,7 +46,7 @@ export function BillingPage() {
   const { t } = useTranslation('billing');
   const { hasPermission } = usePermissions();
   const queryClient = useQueryClient();
-  const canManageBilling = hasPermission('manage billing');
+  const canManageBilling = hasPermission('billing.manage');
 
   const [tenantId, setTenantId] = useState('');
   const syncAttempted = useRef(false);

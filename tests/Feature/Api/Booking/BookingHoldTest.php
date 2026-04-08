@@ -9,6 +9,8 @@ use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use App\Settings\TenantSettings;
+use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingReceivedNotification;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
@@ -45,6 +47,17 @@ class BookingHoldTest extends TestCase
         );
     }
 
+    private function setBookingAutoConfirm(Tenant $tenant, bool $enabled): void
+    {
+        tenancy()->initialize($tenant);
+
+        $settings = app(TenantSettings::class);
+        $settings->booking_auto_confirm = $enabled;
+        $settings->save();
+
+        tenancy()->end();
+    }
+
     private function makeService(string $tenantId, array $overrides = []): BookingService
     {
         return BookingService::factory()->create(array_merge([
@@ -78,6 +91,7 @@ class BookingHoldTest extends TestCase
     {
         $tenant = Tenant::where('slug', 'tenant-one')->firstOrFail();
         $this->activateBookingAddon($tenant);
+        $this->setBookingAutoConfirm($tenant, false);
 
         $service  = $this->makeService((string) $tenant->id, ['duration_minutes' => 60]);
         $resource = $this->makeResource((string) $tenant->id);
@@ -169,7 +183,11 @@ class BookingHoldTest extends TestCase
         $this->assertNotSame(Booking::STATUS_PENDING_HOLD, $booking->status);
         $this->assertContains($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED]);
 
-        Notification::assertSentOnDemand(BookingReceivedNotification::class);
+        if ($booking->status === Booking::STATUS_CONFIRMED) {
+            Notification::assertSentOnDemand(BookingConfirmedNotification::class);
+        } else {
+            Notification::assertSentOnDemand(BookingReceivedNotification::class);
+        }
     }
 
     #[Test]

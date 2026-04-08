@@ -10,6 +10,7 @@ use App\Models\BookingService;
 use App\Models\BookingNotification;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use App\Settings\TenantSettings;
 use App\Notifications\Booking\BookingCancelledByCustomerNotification;
 use App\Notifications\Booking\BookingCancelledByTenantNotification;
 use App\Notifications\Booking\BookingConfirmedNotification;
@@ -50,6 +51,17 @@ class BookingNotificationTest extends TestCase
         );
     }
 
+    private function setBookingAutoConfirm(Tenant $tenant, bool $enabled): void
+    {
+        tenancy()->initialize($tenant);
+
+        $settings = app(TenantSettings::class);
+        $settings->booking_auto_confirm = $enabled;
+        $settings->save();
+
+        tenancy()->end();
+    }
+
     private function makeService(string $tenantId, array $overrides = []): BookingService
     {
         return BookingService::factory()->create(array_merge([
@@ -85,6 +97,7 @@ class BookingNotificationTest extends TestCase
 
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
         $this->activateBookingAddon($tenant);
+        $this->setBookingAutoConfirm($tenant, false);
 
         $service  = $this->makeService((string) $tenant->id);
         $resource = $this->makeResource((string) $tenant->id);

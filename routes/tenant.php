@@ -230,9 +230,9 @@ Route::middleware([
             ->middleware('permission:themes.manage');
 
         Route::apiResource('users', UserController::class)->except(['store', 'update', 'destroy'])
-            ->middleware('permission:view users');
+            ->middleware('permission:users.view');
 
-        Route::get('roles', [UserController::class, 'roles'])->middleware('permission:view users');
+        Route::get('roles', [UserController::class, 'roles'])->middleware('permission:users.view');
 
         // Media management — per-action permission checks
         Route::get('media', [MediaController::class, 'index'])->middleware('permission:media.view');
@@ -249,23 +249,23 @@ Route::middleware([
             ->middleware('permission:media.view');
 
         // User role management
-        Route::post('users/{user}/roles', [UserController::class, 'assignRole'])->middleware('permission:manage users');
-        Route::delete('users/{user}/roles/{role}', [UserController::class, 'removeRole'])->middleware('permission:manage users');
+        Route::post('users/{user}/roles', [UserController::class, 'assignRole'])->middleware('permission:users.manage');
+        Route::delete('users/{user}/roles/{role}', [UserController::class, 'removeRole'])->middleware('permission:users.manage');
 
         // Settings management
-        Route::get('settings', [SettingsController::class, 'index'])->middleware('permission:view settings');
-        Route::put('settings', [SettingsController::class, 'update'])->middleware('permission:manage settings');
+        Route::get('settings', [SettingsController::class, 'index'])->middleware('permission:settings.view');
+        Route::put('settings', [SettingsController::class, 'update'])->middleware('permission:settings.manage');
 
         // Activity logs
-        Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:view activity logs');
-        Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('permission:view activity logs');
+        Route::get('activity-logs', [ActivityLogController::class, 'index'])->middleware('permission:activity.view');
+        Route::get('activity-logs/{id}', [ActivityLogController::class, 'show'])->middleware('permission:activity.view');
 
         // Analytics (tenant-scoped events only)
         Route::prefix('analytics')->group(function () {
-            Route::get('overview',  [AnalyticsController::class, 'overview'])->middleware('permission:view analytics');
-            Route::get('pages',     [AnalyticsController::class, 'pages'])->middleware('permission:view analytics');
-            Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:view analytics');  // empty until Phase 11
-            Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:view analytics');   // empty until Phase 10
+            Route::get('overview',  [AnalyticsController::class, 'overview'])->middleware('permission:analytics.view');
+            Route::get('pages',     [AnalyticsController::class, 'pages'])->middleware('permission:analytics.view');
+            Route::get('bookings',  [AnalyticsController::class, 'bookings'])->middleware('permission:analytics.view');  // empty until Phase 11
+            Route::get('revenue',   [AnalyticsController::class, 'revenue'])->middleware('permission:analytics.view');   // empty until Phase 10
         });
 
         // Payment provider configuration (Phase 10.3)

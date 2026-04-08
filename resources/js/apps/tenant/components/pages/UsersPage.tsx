@@ -48,7 +48,7 @@ export function UsersPage() {
   const qc = useQueryClient();
   const { hasPermission } = usePermissions();
   const { user: currentUser } = useAuth();
-  const canManage = hasPermission('manage users');
+  const canManage = hasPermission('users.manage');
 
   const [page, setPage] = useState(1);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
