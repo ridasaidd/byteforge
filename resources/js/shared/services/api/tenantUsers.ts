@@ -8,9 +8,23 @@ export interface TenantRole {
   permissions?: Array<{ id: number; name: string }>;
 }
 
+export interface TenantPermission {
+  id: number;
+  name: string;
+}
+
 export const tenantUsers = {
   list: (params?: { page?: number; per_page?: number; search?: string }) =>
     http.getAll<PaginatedResponse<User>>('/users', params as Record<string, string | number | boolean>),
+
+  create: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    password_confirmation: string;
+    role: string;
+  }) =>
+    http.post<ApiResponse<User>>('/users', payload),
 
   get: (id: string | number) =>
     http.getOne<ApiResponse<User>>('/users', id),
@@ -26,4 +40,16 @@ export const tenantUsers = {
   /** List roles assignable through the tenant CMS. */
   listRoles: () =>
     http.get<{ data: TenantRole[] }>('/roles'),
+
+  listPermissions: () =>
+    http.get<{ data: TenantPermission[] }>('/permissions'),
+
+  createRole: (payload: { name: string; permissions: string[] }) =>
+    http.post<{ data: TenantRole }>('/roles', payload),
+
+  updateRole: (roleId: string | number, payload: { name?: string; permissions?: string[] }) =>
+    http.put<{ data: TenantRole }>(`/roles/${roleId}`, payload),
+
+  deleteRole: (roleId: string | number) =>
+    http.delete<{ message: string }>(`/roles/${roleId}`),
 };

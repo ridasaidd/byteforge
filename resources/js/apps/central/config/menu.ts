@@ -34,13 +34,13 @@ export function useCentralMenuItems(): MenuItem[] {
       label: t('menu_tenants'),
       path: '/dashboard/tenants',
       icon: Building2,
-      permission: 'view tenants',
+      permission: 'tenants.view',
     },
     {
       label: t('menu_users'),
       path: '/dashboard/users',
       icon: Users,
-      permission: 'view users',
+      permission: 'users.view',
     },
     {
       label: t('menu_media_library'),
@@ -52,31 +52,31 @@ export function useCentralMenuItems(): MenuItem[] {
       label: t('menu_roles_permissions'),
       path: '/dashboard/roles-permissions',
       icon: Shield,
-      permission: 'manage roles',
+      permission: 'roles.manage',
     },
     {
       label: t('menu_activity_log'),
       path: '/dashboard/activity',
       icon: Activity,
-      permission: 'view activity logs',
+      permission: 'activity.view',
     },
     {
       label: t('menu_analytics'),
       path: '/dashboard/analytics',
       icon: BarChart2,
-      permission: 'view platform analytics',
+      permission: 'analytics.platform',
     },
     {
       label: t('menu_billing'),
       path: '/dashboard/billing',
       icon: Wallet,
-      permission: 'view billing',
+      permission: 'billing.view',
     },
     {
       label: t('menu_settings'),
       path: '/dashboard/settings',
       icon: Settings,
-      permission: 'view settings',
+      permission: 'settings.view',
     },
   ];
 }

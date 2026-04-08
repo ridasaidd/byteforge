@@ -96,7 +96,7 @@ function ProtectedRoutes() {
                 <Route
                   path="/cms/analytics"
                   element={(
-                    <PermissionGate permission="view analytics">
+                    <PermissionGate permission="analytics.view">
                       <AnalyticsPage />
                     </PermissionGate>
                   )}
@@ -136,7 +136,7 @@ function ProtectedRoutes() {
                 <Route
                   path="/cms/settings"
                   element={(
-                    <PermissionGate permission="view settings">
+                    <PermissionGate permission="settings.view">
                       <SettingsPage />
                     </PermissionGate>
                   )}
@@ -144,7 +144,7 @@ function ProtectedRoutes() {
                 <Route
                   path="/cms/users"
                   element={(
-                    <PermissionGate permission="view users">
+                    <PermissionGate permission="users.view">
                       <UsersPage />
                     </PermissionGate>
                   )}
@@ -152,7 +152,7 @@ function ProtectedRoutes() {
                 <Route
                   path="/cms/roles-permissions"
                   element={(
-                    <PermissionGate permission="view users">
+                    <PermissionGate permission="users.view">
                       <RolesPermissionsPage />
                     </PermissionGate>
                   )}

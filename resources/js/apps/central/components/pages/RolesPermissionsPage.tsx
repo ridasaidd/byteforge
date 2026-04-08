@@ -195,7 +195,7 @@ const RolesPermissionsPage = () => {
       {/* Roles CRUD */}
       {activeTab === 'roles' && (
       <div className="space-y-4">
-        <Can permission="manage roles">
+        <Can permission="roles.manage">
           <div className="flex gap-2">
             <Input
               placeholder={t('new_role_placeholder')}
@@ -234,7 +234,7 @@ const RolesPermissionsPage = () => {
                   </TableCell>
                   <TableCell className="text-end space-x-2">
                     {editingRole?.id === role.id ? (
-                      <Can permission="manage roles">
+                      <Can permission="roles.manage">
                         <>
                           <Button size="sm" variant="secondary" onClick={() => setEditingRole(null)}>{t('cancel')}</Button>
                           <Button size="sm" onClick={handleUpdate} disabled={updateRole.isPending}>{t('save')}</Button>
@@ -242,17 +242,17 @@ const RolesPermissionsPage = () => {
                       </Can>
                     ) : (
                       <>
-                        <Can permission="manage roles">
+                        <Can permission="roles.manage">
                           <Button size="sm" variant="outline" onClick={() => startEdit(role)}>
                             <Pencil className="size-4" /> {t('edit')}
                           </Button>
                         </Can>
-                        <Can permission="manage roles">
+                        <Can permission="roles.manage">
                           <Button size="sm" variant="outline" onClick={() => { setManagePermRole(role); setSelectedPerms(new Set((role.permissions ?? []).map(p => p.name))); }}>
                             {t('manage_permissions')}
                           </Button>
                         </Can>
-                        <Can permission="manage roles">
+                        <Can permission="roles.manage">
                           <Button size="sm" variant="destructive" onClick={() => setDeletingRole(role)} disabled={deleteRole.isPending}>
                             <Trash2 className="size-4" /> {t('delete')}
                           </Button>
@@ -282,7 +282,7 @@ const RolesPermissionsPage = () => {
       {/* Permissions CRUD */}
       {activeTab === 'permissions' && (
         <div className="space-y-4">
-          <Can permission="manage roles">
+          <Can permission="roles.manage">
             <div className="flex gap-2">
               <Input
                 placeholder={t('new_permission_placeholder')}
@@ -321,7 +321,7 @@ const RolesPermissionsPage = () => {
                     </TableCell>
                     <TableCell className="text-end space-x-2">
                       {editingPermission?.id === permission.id ? (
-                        <Can permission="manage roles">
+                        <Can permission="roles.manage">
                           <>
                             <Button size="sm" variant="secondary" onClick={() => setEditingPermission(null)}>{t('cancel')}</Button>
                             <Button size="sm" onClick={handleUpdatePermission} disabled={updatePermission.isPending}>{t('save')}</Button>
@@ -329,12 +329,12 @@ const RolesPermissionsPage = () => {
                         </Can>
                       ) : (
                         <>
-                          <Can permission="manage roles">
+                          <Can permission="roles.manage">
                             <Button size="sm" variant="outline" onClick={() => startEditPermission(permission)}>
                               <Pencil className="size-4" /> {t('edit')}
                             </Button>
                           </Can>
-                          <Can permission="manage roles">
+                          <Can permission="roles.manage">
                             <Button size="sm" variant="destructive" onClick={() => setDeletingPermission(permission)} disabled={deletePermission.isPending}>
                               <Trash2 className="size-4" /> {t('delete')}
                             </Button>

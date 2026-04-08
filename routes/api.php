@@ -38,22 +38,22 @@ foreach (config('tenancy.central_domains') as $domain) {
         // Superadmin routes - require superadmin role
         Route::prefix('superadmin')->middleware(['auth:api'])->group(function () {
             // Dashboard stats (aggregated, cached)
-            Route::get('dashboard/stats', [\App\Http\Controllers\Api\StatsController::class, 'getDashboardStats'])->middleware('permission:view dashboard stats');
-            Route::post('dashboard/stats/refresh', [\App\Http\Controllers\Api\StatsController::class, 'refresh'])->middleware('permission:view dashboard stats');
+            Route::get('dashboard/stats', [\App\Http\Controllers\Api\StatsController::class, 'getDashboardStats'])->middleware('permission:analytics.dashboard');
+            Route::post('dashboard/stats/refresh', [\App\Http\Controllers\Api\StatsController::class, 'refresh'])->middleware('permission:analytics.dashboard');
 
             // Tenants management
-            Route::get('tenants', [SuperadminController::class, 'indexTenants'])->middleware('permission:view tenants');
-            Route::post('tenants', [SuperadminController::class, 'storeTenant'])->middleware('permission:manage tenants');
-            Route::get('tenants/{tenant}', [SuperadminController::class, 'showTenant'])->middleware('permission:view tenants');
-            Route::put('tenants/{tenant}', [SuperadminController::class, 'updateTenant'])->middleware('permission:manage tenants');
-            Route::delete('tenants/{tenant}', [SuperadminController::class, 'destroyTenant'])->middleware('permission:manage tenants');
+            Route::get('tenants', [SuperadminController::class, 'indexTenants'])->middleware('permission:tenants.view');
+            Route::post('tenants', [SuperadminController::class, 'storeTenant'])->middleware('permission:tenants.manage');
+            Route::get('tenants/{tenant}', [SuperadminController::class, 'showTenant'])->middleware('permission:tenants.view');
+            Route::put('tenants/{tenant}', [SuperadminController::class, 'updateTenant'])->middleware('permission:tenants.manage');
+            Route::delete('tenants/{tenant}', [SuperadminController::class, 'destroyTenant'])->middleware('permission:tenants.manage');
 
             // Users management
-            Route::get('users', [SuperadminController::class, 'indexUsers'])->middleware('permission:view users');
-            Route::post('users', [SuperadminController::class, 'storeUser'])->middleware('permission:manage users');
-            Route::get('users/{user}', [SuperadminController::class, 'showUser'])->middleware('permission:view users');
-            Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:manage users');
-            Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:manage users');
+            Route::get('users', [SuperadminController::class, 'indexUsers'])->middleware('permission:users.view');
+            Route::post('users', [SuperadminController::class, 'storeUser'])->middleware('permission:users.manage');
+            Route::get('users/{user}', [SuperadminController::class, 'showUser'])->middleware('permission:users.view');
+            Route::put('users/{user}', [SuperadminController::class, 'updateUser'])->middleware('permission:users.manage');
+            Route::delete('users/{user}', [SuperadminController::class, 'destroyUser'])->middleware('permission:users.manage');
 
             // Pages management (for central public site) — per-action permission checks
             Route::get('pages', [\App\Http\Controllers\Api\PageController::class, 'index'])->middleware('permission:pages.view');
@@ -143,50 +143,50 @@ foreach (config('tenancy.central_domains') as $domain) {
                 ->middleware('permission:themes.manage');
 
             // Activity logs (central)
-            Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:view activity logs');
+            Route::get('activity-logs', [SuperadminController::class, 'indexActivity'])->middleware('permission:activity.view');
 
             // Analytics (platform-level and cross-tenant aggregates)
             Route::prefix('analytics')->group(function () {
                 Route::get('overview', [PlatformAnalyticsController::class, 'overview'])
-                    ->middleware('permission:view platform analytics');
+                    ->middleware('permission:analytics.platform');
                 Route::get('tenants/overview', [PlatformAnalyticsController::class, 'tenantsOverview'])
-                    ->middleware('permission:view platform analytics');
+                    ->middleware('permission:analytics.platform');
             });
 
             // Settings management
-            Route::get('settings', [SuperadminController::class, 'getSettings'])->middleware('permission:view settings');
-            Route::put('settings', [SuperadminController::class, 'updateSettings'])->middleware('permission:manage settings');
+            Route::get('settings', [SuperadminController::class, 'getSettings'])->middleware('permission:settings.view');
+            Route::put('settings', [SuperadminController::class, 'updateSettings'])->middleware('permission:settings.manage');
 
             // Tenant-User relationships
-            Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant'])->middleware('permission:manage tenants');
-            Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant'])->middleware('permission:manage tenants');
+            Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant'])->middleware('permission:tenants.manage');
+            Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant'])->middleware('permission:tenants.manage');
 
             // Roles management
-            Route::get('roles', [\App\Http\Controllers\Api\RoleController::class, 'index'])->middleware('permission:view users|manage users|manage roles');
-            Route::post('roles', [\App\Http\Controllers\Api\RoleController::class, 'store'])->middleware('permission:manage roles');
-            Route::get('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'show'])->middleware('permission:manage roles');
-            Route::put('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'update'])->middleware('permission:manage roles');
-            Route::delete('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'destroy'])->middleware('permission:manage roles');
+            Route::get('roles', [\App\Http\Controllers\Api\RoleController::class, 'index'])->middleware('permission:users.view|users.manage|roles.manage');
+            Route::post('roles', [\App\Http\Controllers\Api\RoleController::class, 'store'])->middleware('permission:roles.manage');
+            Route::get('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'show'])->middleware('permission:roles.manage');
+            Route::put('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'update'])->middleware('permission:roles.manage');
+            Route::delete('roles/{role}', [\App\Http\Controllers\Api\RoleController::class, 'destroy'])->middleware('permission:roles.manage');
 
             // Permissions management
-            Route::apiResource('permissions', \App\Http\Controllers\Api\PermissionController::class)->middleware('permission:manage roles');
+            Route::apiResource('permissions', \App\Http\Controllers\Api\PermissionController::class)->middleware('permission:roles.manage');
 
             // Assign permissions to a role
-            Route::post('roles/{role}/permissions', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignPermissions'])->middleware('permission:manage roles');
+            Route::post('roles/{role}/permissions', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignPermissions'])->middleware('permission:roles.manage');
 
             // Assign roles to a user
-            Route::post('users/{user}/roles', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignRoles'])->middleware('permission:manage users');
+            Route::post('users/{user}/roles', [\App\Http\Controllers\Api\RoleAssignmentController::class, 'assignRoles'])->middleware('permission:users.manage');
 
             // Central billing (Phase 10.2)
             Route::prefix('billing')->group(function () {
-                Route::get('plans', [BillingController::class, 'plans'])->middleware('permission:view billing');
-                Route::get('addons', [BillingController::class, 'addons'])->middleware('permission:view billing');
-                Route::get('subscription', [BillingController::class, 'subscription'])->middleware('permission:view billing');
-                Route::post('checkout', [BillingController::class, 'checkout'])->middleware('permission:manage billing');
-                Route::post('addons/{addon:slug}/activate', [BillingController::class, 'activateAddon'])->middleware('permission:manage billing');
-                Route::post('addons/{addon:slug}/deactivate', [BillingController::class, 'deactivateAddon'])->middleware('permission:manage billing');
-                Route::get('portal', [BillingController::class, 'portal'])->middleware('permission:manage billing');
-                Route::post('sync', [BillingController::class, 'syncSubscription'])->middleware('permission:manage billing');
+                Route::get('plans', [BillingController::class, 'plans'])->middleware('permission:billing.view');
+                Route::get('addons', [BillingController::class, 'addons'])->middleware('permission:billing.view');
+                Route::get('subscription', [BillingController::class, 'subscription'])->middleware('permission:billing.view');
+                Route::post('checkout', [BillingController::class, 'checkout'])->middleware('permission:billing.manage');
+                Route::post('addons/{addon:slug}/activate', [BillingController::class, 'activateAddon'])->middleware('permission:billing.manage');
+                Route::post('addons/{addon:slug}/deactivate', [BillingController::class, 'deactivateAddon'])->middleware('permission:billing.manage');
+                Route::get('portal', [BillingController::class, 'portal'])->middleware('permission:billing.manage');
+                Route::post('sync', [BillingController::class, 'syncSubscription'])->middleware('permission:billing.manage');
             });
         });
 

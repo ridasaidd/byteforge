@@ -58,12 +58,12 @@ export function DashboardPage() {
   const { hasPermission } = usePermissions();
 
   // Check permissions
-  const canViewTenants = hasPermission('view tenants');
-  const canViewUsers = hasPermission('view users');
-  const canViewActivity = hasPermission('view activity logs');
-  const canManageTenants = hasPermission('manage tenants');
-  const canManageUsers = hasPermission('manage users');
-  const canManageSettings = hasPermission('manage settings');
+  const canViewTenants = hasPermission('tenants.view');
+  const canViewUsers = hasPermission('users.view');
+  const canViewActivity = hasPermission('activity.view');
+  const canManageTenants = hasPermission('tenants.manage');
+  const canManageUsers = hasPermission('users.manage');
+  const canManageSettings = hasPermission('settings.manage');
 
   // Fetch dashboard stats
   const { data: statsData, isLoading: statsLoading } = useQuery({

@@ -23,7 +23,7 @@ export function useTenantMenuItems(): MenuItem[] {
       label: t('menu_analytics'),
       path: '/cms/analytics',
       icon: BarChart2,
-      permission: 'view analytics',
+      permission: 'analytics.view',
     },
     {
       label: t('menu_payments'),
@@ -53,19 +53,19 @@ export function useTenantMenuItems(): MenuItem[] {
       label: t('menu_users'),
       path: '/cms/users',
       icon: Users,
-      permission: 'view users',
+      permission: 'users.view',
     },
     {
       label: t('menu_roles_permissions'),
       path: '/cms/roles-permissions',
       icon: Shield,
-      permission: 'view users',
+      permission: 'users.view',
     },
     {
       label: t('menu_settings'),
       path: '/cms/settings',
       icon: Settings,
-      permission: 'view settings',
+      permission: 'settings.view',
     },
     ...(hasAddon('booking') ? [
       {

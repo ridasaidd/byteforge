@@ -26,18 +26,18 @@ class RolePermissionSeeder extends Seeder
             // Media
             'media.view', 'media.manage',
             // Users & tenants
-            'view users', 'manage users',
-            'view tenants', 'manage tenants',
+            'users.view', 'users.manage',
+            'tenants.view', 'tenants.manage',
             // Roles & permissions
-            'manage roles',
+            'roles.manage',
             // Activity Logs
-            'view activity logs',
+            'activity.view',
             // Settings
-            'view settings', 'manage settings',
+            'settings.view', 'settings.manage',
             // Analytics & dashboard
-            'view analytics', 'view platform analytics', 'view dashboard stats',
+            'analytics.view', 'analytics.platform', 'analytics.dashboard',
             // Billing (central)
-            'view billing', 'manage billing',
+            'billing.view', 'billing.manage',
             // Payments (tenant)
             'payments.view', 'payments.manage', 'payments.refund',
             // Bookings (tenant addon)
@@ -63,26 +63,26 @@ class RolePermissionSeeder extends Seeder
                 'layouts.view', 'layouts.manage',
                 'templates.view', 'templates.manage',
                 'media.view', 'media.manage',
-                'manage users', 'view users',
-                'manage tenants', 'view tenants',
-                'manage roles',
-                'view analytics', 'view platform analytics', 'view dashboard stats',
-                'view activity logs',
-                'view settings', 'manage settings',
-                'view billing',
+                'users.manage', 'users.view',
+                'tenants.manage', 'tenants.view',
+                'roles.manage',
+                'analytics.view', 'analytics.platform', 'analytics.dashboard',
+                'activity.view',
+                'settings.view', 'settings.manage',
+                'billing.view',
                 'bookings.view', 'bookings.manage', 'bookings.cancel',
                 'payments.view', 'payments.manage', 'payments.refund',
             ],
             'support' => [
                 'pages.view', 'navigation.view', 'themes.view', 'layouts.view', 'templates.view', 'media.view',
-                'view users', 'view tenants',
-                'view analytics', 'view dashboard stats',
-                'view activity logs',
+                'users.view', 'tenants.view',
+                'analytics.view', 'analytics.dashboard',
+                'activity.view',
             ],
             'viewer' => [
                 'pages.view', 'navigation.view', 'themes.view', 'layouts.view', 'templates.view', 'media.view',
-                'view users', 'view tenants',
-                'view analytics', 'view dashboard stats',
+                'users.view', 'tenants.view',
+                'analytics.view', 'analytics.dashboard',
             ],
         ];
 

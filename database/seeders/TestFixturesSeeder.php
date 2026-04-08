@@ -71,7 +71,7 @@ class TestFixturesSeeder extends Seeder
                 'layouts.view', 'layouts.manage',
                 'templates.view', 'templates.manage',
                 'media.view', 'media.manage',
-                'view analytics',
+                'analytics.view',
                 'payments.view', 'payments.manage', 'payments.refund',
             ],
             'tenant_editor' => [
@@ -81,7 +81,7 @@ class TestFixturesSeeder extends Seeder
                 'layouts.view',
                 'templates.view',
                 'media.view', 'media.manage',
-                'view analytics',
+                'analytics.view',
                 'payments.view',
             ],
             'tenant_viewer' => [

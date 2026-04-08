@@ -82,7 +82,7 @@ function ProtectedRoutes() {
               <Route
                 path="billing"
                 element={(
-                  <PermissionGate permission="view billing">
+                  <PermissionGate permission="billing.view">
                     <BillingPage />
                   </PermissionGate>
                 )}
