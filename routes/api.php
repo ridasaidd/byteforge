@@ -227,6 +227,15 @@ foreach (config('tenancy.central_domains') as $domain) {
         Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
             ->middleware('throttle:60,1');
 
+        // Mechanic marketplace – public search (no auth required, rate-limited)
+        Route::prefix('mechanics')->group(function () {
+            Route::get('search', [\App\Http\Controllers\Api\MechanicSearchController::class, 'search'])
+                ->middleware('throttle:120,1');
+            Route::get('{id}', [\App\Http\Controllers\Api\MechanicSearchController::class, 'show'])
+                ->whereNumber('id')
+                ->middleware('throttle:120,1');
+        });
+
         // Stripe webhook endpoint (central billing) — rate-limited to prevent flood
         Route::post('stripe/webhook', [BillingController::class, 'handleWebhook'])
             ->middleware('throttle:120,1');
