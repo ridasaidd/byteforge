@@ -2171,6 +2171,116 @@ jobs:
 
 ---
 
-**Last Updated:** January 22, 2026  
+**Last Updated:** January 22, 2026 (permission naming & tenant user management added April 7, 2026)  
 **Next Review:** February 2026  
 **Maintainers:** Development Team
+
+---
+
+## Platform Conventions (April 7, 2026)
+
+Decisions made during code review and stakeholder sessions that apply project-wide. These are active standards, not recommendations.
+
+---
+
+### Permission Naming — Dot Notation Standard
+
+**Decision**: All permission names use `domain.action` dot notation. This is the enforced standard going forward.
+
+**Rationale**: The booking and payment phases introduced dotted permissions (`bookings.view`, `payments.refund`, `pages.create`). The early central-admin permissions were written before this convention existed and use natural language (`manage users`, `view activity logs`, `manage roles`). Having two naming styles in the same codebase makes permission checks harder to skim and grep.
+
+**Standard format**: `{domain}.{action}` — lowercase, singular domain noun, no spaces, no verbs in the domain part.
+
+Examples:
+```
+users.view          users.manage
+roles.view          roles.manage
+settings.view       settings.manage
+analytics.view      analytics.platform
+billing.view        billing.manage
+activity.view
+```
+
+**Migration required**: The following permissions exist in the codebase with the old naming and must be renamed in a dedicated migration PR. Every rename requires updating: `RolePermissionSeeder`, `TenantRbacService`, route `permission:` middleware declarations, and all test fixtures.
+
+| Old name | New name |
+|---|---|
+| `view users` | `users.view` |
+| `manage users` | `users.manage` |
+| `manage roles` | `roles.manage` |
+| `view activity logs` | `activity.view` |
+| `view settings` | `settings.view` |
+| `manage settings` | `settings.manage` |
+| `view analytics` | `analytics.view` |
+| `view platform analytics` | `analytics.platform` |
+| `view dashboard stats` | `analytics.dashboard` |
+| `view billing` | `billing.view` |
+| `manage billing` | `billing.manage` |
+| `view tenants` | `tenants.view` |
+| `manage tenants` | `tenants.manage` |
+
+**Migration PR checklist**:
+1. Add `web_refresh_sessions` migration that renames the rows in `permissions` table
+2. Update `RolePermissionSeeder::$permissions` array
+3. Update `TenantRbacService::roleDefinitions()`
+4. Update all `permission:` middleware in `routes/tenant.php` and `routes/api.php`
+5. Update `TestFixturesSeeder` and `FixedTestDataSeeder`
+6. Run `php artisan permission:cache-reset` in migration's `up()`
+7. Run full test suite — permission name mismatches will surface immediately as 403s
+
+**Note on `view users` in route middleware**: `routes/tenant.php` currently has `permission:view users`. After migration this becomes `permission:users.view`. Grep for the old strings to find all occurrences before filing the PR.
+
+**Note on data migration**: This is a development environment with seeded fake data only — no live data exists. The migration PR just needs the seeder changes and a `DB::table('permissions')` rename sweep, followed by `php artisan permission:cache-reset`. Run `php artisan migrate:fresh --seed` after to verify a clean state.
+
+---
+
+### Tenant User Management — Decisions (April 7, 2026)
+
+This section documents the agreed architecture for how tenant owners manage their staff accounts. ByteForge tenants are small businesses — the user management model should reflect that simplicity.
+
+#### User creation
+
+Tenant owners can create user accounts directly from the CMS Users page. No email invitation flow is needed. The owner sets:
+- Name
+- Email address
+- Starter password (owner-defined, communicated out-of-band)
+
+The staff member logs in with the starter password and is prompted to change it on first login (enforced by a `must_change_password` boolean on `users`, checked by auth middleware or a post-login redirect).
+
+New user creation adds a `memberships` row for the current tenant with the chosen role, and triggers Spatie role assignment via `TenantRbacService::syncUserRoleFromMembership()`. The created user account lives on the central `users` table — the same table used by central admins, but scoped to the tenant via their membership.
+
+**Backend**: `POST /api/users` — tenant route, `permission:users.manage`, creates the user and membership in a single DB transaction. Validates unique email across the `users` table.
+
+**Frontend**: "Add staff member" button on `UsersPage` opens a modal/panel with name, email, password, password confirmation, and role selector.
+
+#### Role management
+
+Tenant owners can:
+- Assign any existing role (fixed or custom) to a user
+- Create custom roles with a chosen name and a set of permissions selected from the available permission list
+- Edit custom roles (rename, change permissions)
+- Delete custom roles (only if no users are currently assigned to them)
+
+**Fixed roles** (`admin`, `support`, `viewer`) are created and managed by the platform via `TenantRbacService`. Tenants cannot delete or rename these. The fixed `admin` role always has the full tenant permission set as defined in `TenantRbacService::roleDefinitions()`.
+
+**Custom roles** are tenant-scoped Spatie `Role` records (`team_id = tenant_id`). They sit alongside the fixed roles in the same `roles` table. The `GET /api/roles` endpoint already returns all tenant-scoped roles — both fixed and custom. Custom roles are distinguished from fixed ones by a flag or by checking if the role name is in the `TenantRbacService::TENANT_ROLE_NAMES` constant.
+
+**Backend endpoints needed**:
+```
+POST   /api/roles               — create custom role {name, permissions[]}  (roles.manage)
+PUT    /api/roles/{id}          — update custom role name or permissions     (roles.manage)
+DELETE /api/roles/{id}          — delete custom role (403 if users assigned) (roles.manage)
+```
+
+**Frontend**: Extend `RolesPermissionsPage` from read-only display to a full CRUD page. Fixed roles show as read-only (lock icon). Custom roles show edit/delete controls. "New role" button opens a panel with a name field and a permission checklist.
+
+#### The `owner` vs `admin` confusion
+
+The `memberships.role` column has an `owner` value that maps to the Spatie `admin` role via `TenantRbacService::membershipRoleToTenantRole()`. This means the Spatie role visible in the UI says `admin`, but the underlying membership role is `owner`. Only membership-`owner` users can reassign other users' roles — a check done against the raw membership record, not the Spatie role name.
+
+This is invisible to the tenant and confusing. **Resolution (deferred)**:
+- Expose the membership role (`owner` / `admin` / etc.) separately from the Spatie role in the `formatUser()` response
+- Show "Owner" as a badge on the Users page for membership-`owner` users, alongside their Spatie role
+- The role assignment dropdown should not allow an `admin` (non-owner membership) to assign roles — the UI should hide the role selector entirely if the current user is not a membership `owner`
+
+Until this is resolved, the `assignRole` endpoint will continue to return 403 with the message "Only tenant owners can change user roles." — which is correct but opaque in the UI.

@@ -142,7 +142,57 @@ Last updated: April 6, 2026
 
 ---
 
-### M6: Advanced Analytics (FUTURE)
+### M6: Payment × Booking Integration (FUTURE — Phase 14)
+
+**Strategic decision (Apr 7, 2026):**
+
+The Payment add-on has no standalone utility for tenants in the current architecture — without something to sell (like bookings), activating it alone does nothing. This has two implications:
+
+1. **The payment add-on should be bundled free** with any paid add-on that consumes it (initially: booking). Tenants should not be charged separately for payment capability — it's an enhancement to booking, not a product in itself. Its value is in converting free bookings to paid ones, which drives tenant retention and willingness to pay for the booking add-on itself.
+
+2. **Payment should not be surfaced as a standalone add-on toggle** in the UI. Instead, payment configuration (API keys, provider selection) should live inside the Booking settings page and only appear when the booking add-on is active. The `addon:payment` middleware check should piggyback on the booking add-on check.
+
+**Design doc:** [DEVELOPMENT_DOCS/PHASE13_BOOKING_SYSTEM.md](./PHASE13_BOOKING_SYSTEM.md) (see Phase 14 forward-compatibility note)
+
+**Scope (when ready to implement):**
+- Per-service `requires_payment` flag on `BookingService` (some services free, some paid — more flexible than per-tenant)
+- Widget flow: after hold → if `requires_payment` and payment add-on keys configured → `STATUS_AWAITING_PAYMENT` → provider checkout → webhook confirms → `STATUS_PENDING` / `STATUS_CONFIRMED`
+- If payment add-on not configured, skip payment step regardless of flag
+- Booking analytics events fire `booking.payment_received` into Phase 9 pipeline
+- Refund path: `BookingManagementController::cancel()` triggers refund via existing payment orchestration if booking was paid
+
+---
+
+### M7: Guest Authentication System (FUTURE — Phase 15)
+
+**Design doc:** [DEVELOPMENT_DOCS/PHASE15_GUEST_AUTH.md](./PHASE15_GUEST_AUTH.md)
+
+**Dependencies:**
+- Phase 13 (Booking) — ✅ complete
+- `AUTH_HTTPONLY_MIGRATION_PLAN.md` Phase 1 (schema) must ship first for `web_refresh_sessions` extension
+
+**Scope:**
+- Central `guest_users` table — separate from `users` (admin/staff), one identity per email across all tenants
+- Magic link (passwordless) as primary authenticator; no password in V1
+- Cross-domain auth is tenant-proxied: guest authenticates on tenant domain → tenant API calls central to verify magic link → tenant issues guest session via HttpOnly cookie
+- Guest sessions mirror the HttpOnly auth refactor model: short-lived HMAC access token (not Passport), `byteforge_guest_refresh` HttpOnly cookie, `web_refresh_sessions` row with nullable `guest_user_id` alongside existing `user_id`
+- `auth:guest` tenant middleware — HMAC-based, no Passport guard
+- Retroactive booking linking: after first sign-in, all anonymous bookings matching `customer_email` are linked to the `guest_user_id`
+- Guest portal at `/my-bookings` (fixed system route, not a Puck page type; only visible when `addon:booking` active)
+- Post-booking "Save to your account" prompt in BookingWidget success step
+
+**Implementation sub-phases:**
+- 15.1 — Central `guest_users` + `MagicLinkToken` + `GuestMagicLinkService` + central internal API
+- 15.2 — Add `guest_user_id` to `web_refresh_sessions` (depends on AUTH refactor Phase 1)
+- 15.3 — Tenant guest auth endpoints + `auth:guest` middleware
+- 15.4 — Retroactive booking linking
+- 15.5 — Guest portal UI (`/my-bookings`)
+- 15.6 — BookingWidget "save to account" integration
+- 15.7 — Tests + Playwright E2E
+
+---
+
+### M8: Advanced Analytics (FUTURE)
 - Booking analytics: revenue trends, peak hours, popular services
 - Platform analytics: subscription revenue, feature adoption
 - Aggregation cron jobs for pre-computed roll-ups
@@ -150,7 +200,7 @@ Last updated: April 6, 2026
 
 ---
 
-### M7: Platform Enhancements (FUTURE)
+### M9: Platform Enhancements (FUTURE)
 - Tenant dashboard access (scoped pages, media, themes for tenant users)
 - Subscription billing and usage quotas
 - Navigation drag-and-drop tree UI

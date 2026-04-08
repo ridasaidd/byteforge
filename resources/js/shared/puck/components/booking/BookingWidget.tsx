@@ -7,7 +7,10 @@
  * tenants who don't have the add-on.
  *
  * Multi-step wizard flow:
- *   service → resource → date → slot/range → customer → confirm → success
+ *   service → date → resource → slot/range → customer → confirm → success
+ *
+ * Date is picked before resource so the resource list can be filtered
+ * to only show options that actually have availability on the chosen date.
  */
 
 import type { ComponentConfig } from '@puckeditor/core';
@@ -108,7 +111,7 @@ type WizardAction =
 
 function makeInitialState(initialServiceId: number): WizardState {
   return {
-    step: initialServiceId > 0 ? 'resource' : 'service',
+    step: initialServiceId > 0 ? 'date' : 'service',
     services: [],
     resources: [],
     slots: [],
@@ -147,24 +150,26 @@ function reducer(state: WizardState, action: WizardAction): WizardState {
         checkOut: null,
         resources: [],
         slots: [],
-        step: 'resource',
-      };
-    case 'SELECT_RESOURCE':
-      return {
-        ...state,
-        selectedResource: action.resource,
-        selectedDate: null,
-        selectedSlot: null,
-        checkIn: null,
-        checkOut: null,
-        slots: [],
         step: 'date',
       };
     case 'SELECT_DATE':
       return {
         ...state,
         selectedDate: action.date,
+        selectedResource: null,
         selectedSlot: null,
+        checkIn: null,
+        checkOut: null,
+        resources: [],
+        slots: [],
+        step: 'resource',
+      };
+    case 'SELECT_RESOURCE':
+      return {
+        ...state,
+        selectedResource: action.resource,
+        selectedSlot: null,
+        checkOut: null,
         slots: [],
         step: state.selectedService?.booking_mode === 'slot' ? 'slot' : 'range_checkout',
       };
@@ -507,16 +512,18 @@ function BookingWidgetRender(props: BookingWidgetProps) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, serviceId]);
 
-  // ── Load resources when a service is selected ─────────────────────────────
+  // ── Load resources when service + date are selected (date-filtered) ────────
   useEffect(() => {
-    if (isEditing || !state.selectedService) return;
+    if (isEditing || !state.selectedService || !state.selectedDate) return;
     if (state.step !== 'resource') return;
 
     dispatch({ type: 'SET_LOADING', loading: true });
-    apiFetch<{ data: BookingResource[] }>(`/resources?service_id=${state.selectedService.id}`)
+    apiFetch<{ data: BookingResource[] }>(
+      `/resources?service_id=${state.selectedService.id}&date=${state.selectedDate}`,
+    )
       .then(res => dispatch({ type: 'SET_RESOURCES', resources: res.data }))
       .catch(err => dispatch({ type: 'SET_ERROR', error: err.message ?? 'Failed to load resources.' }));
-  }, [isEditing, state.selectedService, state.step]);
+  }, [isEditing, state.selectedService, state.selectedDate, state.step]);
 
   // ── Load slots when a date is selected (slot mode) ────────────────────────
   useEffect(() => {
@@ -676,39 +683,10 @@ function BookingWidgetRender(props: BookingWidgetProps) {
           </>
         )}
 
-        {/* ── Step: resource ── */}
-        {state.step === 'resource' && (
-          <>
-            {serviceId === 0 && <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'service' })} />}
-            <StepHeading>
-              {state.selectedService?.name}
-              {' — '}
-              {state.selectedService?.booking_mode === 'range' ? 'Choose your accommodation' : 'Choose a resource'}
-            </StepHeading>
-            {state.loading
-              ? <Loader2 size={24} style={{ animation: 'bw-spin 1s linear infinite', display: 'block', margin: '24px auto' }} />
-              : (
-                <CardGrid>
-                  {state.resources.length === 0
-                    ? <p style={{ color: '#6b7280', fontSize: 13 }}>No resources available at this time.</p>
-                    : state.resources.map(r => (
-                      <SelectCard
-                        key={r.id}
-                        label={r.name}
-                        sublabel={r.resource_label ?? undefined}
-                        onClick={() => dispatch({ type: 'SELECT_RESOURCE', resource: r })}
-                        primaryColor={primaryColor}
-                      />
-                    ))}
-                </CardGrid>
-              )}
-          </>
-        )}
-
         {/* ── Step: date ── */}
         {state.step === 'date' && (
           <>
-            <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'resource' })} />
+            {serviceId === 0 && <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'service' })} />}
             <StepHeading>
               {state.selectedService?.booking_mode === 'range' ? 'Choose check-in date' : 'Choose a date'}
             </StepHeading>
@@ -723,10 +701,57 @@ function BookingWidgetRender(props: BookingWidgetProps) {
           </>
         )}
 
+        {/* ── Step: resource ── */}
+        {state.step === 'resource' && (() => {
+          const resourceLabel = state.resources.length > 0
+            ? (state.resources[0].resource_label ?? null)
+            : null;
+          return (
+            <>
+              <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'date' })} />
+              <StepHeading>
+                {state.selectedService?.name
+                  ? `${state.selectedService.name} — `
+                  : ''}
+                {resourceLabel ? `Choose your ${resourceLabel}` : 'Choose a resource'}
+              </StepHeading>
+              {state.loading
+                ? <Loader2 size={24} style={{ animation: 'bw-spin 1s linear infinite', display: 'block', margin: '24px auto' }} />
+                : (
+                  <CardGrid>
+                    {state.resources.length === 0
+                      ? <p style={{ color: '#6b7280', fontSize: 13 }}>No resources available on this date.</p>
+                      : (
+                        <>
+                          {state.resources.length > 1 && (
+                            <SelectCard
+                              key="any"
+                              label={resourceLabel ? `Any ${resourceLabel}` : 'Any available'}
+                              sublabel="Assign me to the first available slot"
+                              onClick={() => dispatch({ type: 'SELECT_RESOURCE', resource: state.resources[0] })}
+                              primaryColor={primaryColor}
+                            />
+                          )}
+                          {state.resources.map(r => (
+                            <SelectCard
+                              key={r.id}
+                              label={r.name}
+                              onClick={() => dispatch({ type: 'SELECT_RESOURCE', resource: r })}
+                              primaryColor={primaryColor}
+                            />
+                          ))}
+                        </>
+                      )}
+                  </CardGrid>
+                )}
+            </>
+          );
+        })()}
+
         {/* ── Step: slot ── */}
         {state.step === 'slot' && (
           <>
-            <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'date' })} />
+            <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'resource' })} />
             <StepHeading>
               Slots for {state.selectedDate ? format(parseISO(state.selectedDate), 'PP') : ''}
             </StepHeading>
@@ -769,7 +794,7 @@ function BookingWidgetRender(props: BookingWidgetProps) {
         {/* ── Step: range_checkout ── */}
         {state.step === 'range_checkout' && (
           <>
-            <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'date' })} />
+            <BackButton onClick={() => dispatch({ type: 'GO_STEP', step: 'resource' })} />
             <StepHeading>Choose check-out date</StepHeading>
             <p style={{ fontSize: 13, color: '#6b7280', margin: '0 0 12px' }}>
               Check-in: {state.checkIn ? format(parseISO(state.checkIn), 'PP') : state.selectedDate ? format(parseISO(state.selectedDate), 'PP') : ''}

@@ -17,8 +17,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Tenant;
+use App\Models\User;
 use App\Notifications\Booking\BookingCancelledByCustomerNotification;
+use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingReceivedNotification;
+use App\Notifications\Booking\StaffBookingAssignedNotification;
+use App\Notifications\Booking\TenantNewBookingNotification;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -357,8 +361,30 @@ class PublicBookingController extends Controller
         );
 
         $domain = $this->tenantDomain();
-        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
-            ->notify(new BookingReceivedNotification($booking, $domain));
+        $booking->load('resource');
+
+        if ($booking->status === Booking::STATUS_CONFIRMED) {
+            Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+                ->notify(new BookingConfirmedNotification($booking, $domain));
+
+            // Notify assigned staff member if resource is a person with a linked user.
+            $resource = $booking->resource;
+            if ($resource?->type === BookingResource::TYPE_PERSON && $resource->user_id) {
+                $staffUser = User::find($resource->user_id);
+                if ($staffUser) {
+                    $staffUser->notify(new StaffBookingAssignedNotification($booking, $domain, $resource));
+                }
+            }
+        } else {
+            Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+                ->notify(new BookingReceivedNotification($booking, $domain));
+        }
+
+        // Notify the tenant owner.
+        $owner = $this->tenantOwner();
+        if ($owner) {
+            $owner->notify(new TenantNewBookingNotification($booking, $domain));
+        }
 
         return response()->json([
             'data' => [
@@ -507,8 +533,30 @@ class PublicBookingController extends Controller
         );
 
         $domain = $this->tenantDomain();
-        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
-            ->notify(new BookingReceivedNotification($booking, $domain));
+        $booking->load('resource');
+
+        if ($newStatus === Booking::STATUS_CONFIRMED) {
+            Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+                ->notify(new BookingConfirmedNotification($booking, $domain));
+
+            // Notify assigned staff member if resource is a person with a linked user.
+            $resource = $booking->resource;
+            if ($resource?->type === BookingResource::TYPE_PERSON && $resource->user_id) {
+                $staffUser = User::find($resource->user_id);
+                if ($staffUser) {
+                    $staffUser->notify(new StaffBookingAssignedNotification($booking, $domain, $resource));
+                }
+            }
+        } else {
+            Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+                ->notify(new BookingReceivedNotification($booking, $domain));
+        }
+
+        // Notify the tenant owner.
+        $owner = $this->tenantOwner();
+        if ($owner) {
+            $owner->notify(new TenantNewBookingNotification($booking, $domain));
+        }
 
         return response()->json([
             'data' => [
@@ -597,6 +645,18 @@ class PublicBookingController extends Controller
         $tenant = tenancy()->tenant;
         return $tenant->domains()->first()?->domain
             ?? "{$tenant->slug}.byteforge.se";
+    }
+
+    /**
+     * Return the tenant owner User, or null if none is configured.
+     * Membership records live on the central DB via the Tenant model relationship.
+     */
+    private function tenantOwner(): ?User
+    {
+        /** @var Tenant $tenant */
+        $tenant = tenancy()->tenant;
+        $membership = $tenant->memberships()->where('role', 'owner')->with('user')->first();
+        return $membership?->user;
     }
 
     private function tenantTimezone(): string

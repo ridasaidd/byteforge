@@ -52,7 +52,9 @@ function EventTimeline({ events, fmt }: { events: BookingEvent[]; fmt: (iso: str
             {ev.to_status.replace(/_/g, ' ')}
           </div>
           {ev.note && <div className="text-xs text-muted-foreground mt-0.5">{ev.note}</div>}
-          <div className="text-xs text-muted-foreground">by {ev.actor_type} #{ev.actor_id}</div>
+          <div className="text-xs text-muted-foreground">
+            by {ev.actor_type}{ev.actor_id != null ? ` #${ev.actor_id}` : ''}
+          </div>
         </li>
       ))}
     </ol>

@@ -1094,3 +1094,101 @@ Completion criteria for 13.1:
 - [ ] Verify the `booking` addon seed row exists (`feature_flag = 'booking'`) in the central `addons` table
 
 Then proceed to **13.2** (availability engine) — the engine is the hardest part and is fully testable in isolation before any HTTP layer exists.
+
+---
+
+## Post-Implementation Audit — April 7, 2026
+
+Phase 13 shipped and is fully functional. The following gaps were identified after real-world use and stakeholder review. These are not regressions — the original spec was correct — they are UX and notification improvements that belong in a follow-up pass before Phase 13 is considered fully closed.
+
+---
+
+### Gap 1: Widget Resource Step — Human UX
+
+**Current behaviour**: Step 2 of the booking widget always shows the heading "Choose a resource" regardless of what kind of resource is being selected.
+
+**Expected behaviour**: The heading should read "Choose your [resource_label]" — e.g. "Choose your therapist", "Choose your room", "Choose your vehicle". `resource_label` is already a field on `BookingResource` and already returned by the public resources API. The widget just needs to use it in the step heading.
+
+**Implementation note**: `state.resources[0].resource_label` is a reliable source for the category label since all resources linked to the same service should share a resource_label category. Fall back to "resource" if null.
+
+---
+
+### Gap 2: Widget Resource Step — "No Preference" Option
+
+**Current behaviour**: The customer must always pick a specific named resource. There is no "Any available" option.
+
+**Design decision**: Add an "Any available" card at the top of the resource list for `person` and `equipment` type resources. `space` types (rooms, apartments) should NOT get this option — you always want to know which room you booked.
+
+**Backend support**: `BookingAvailabilityService::getAvailableResources()` already exists in the spec (Edge Case 17 above). The assignment algorithm is round-robin based on least-loaded resource (fewest confirmed bookings this week). The confirmation email should name the assigned resource: "You'll be seen by Anna."
+
+**Slot hold with "any"**: The hold endpoint (`POST /api/public/booking/hold`) must resolve the actual resource at hold time and return `resource_id` in the hold response so the confirm step can show who the customer is booked with. The customer cannot switch resource after hold is placed.
+
+---
+
+### Gap 3: Widget Resource Step — Date-Filtered Resource List
+
+**Current behaviour**: Resources are fetched at Step 2 (before the customer picks a date at Step 3). The API returns all active resources without any date-based filtering. A customer can choose a specific staff member, then discover at the slot step that this person is fully booked on the chosen date.
+
+**Expected behaviour**: Two options, one better than the other:
+
+- **Option A (Quick fix)**: After the customer picks a date (Step 3), re-fetch resources filtered by that date via `GET /api/public/booking/resources?service_id=&date=`. Move to a "Choose resource" sub-step after date selection if more than one resource has availability. Already supported by the backend — `date` is an optional query parameter on that endpoint.
+- **Option B (Preferred UX)**: Reorder the wizard to `service → date → resource → slot`. This is more natural for most service businesses: the customer first picks when they want to come, then sees who is available on that day. This matches how most booking systems (e.g. Fresha, Timely) work.
+
+**Recommendation**: Implement Option B. The wizard step order change is frontend-only. The backend already supports `GET /resources?service_id=&date=`. The `date` parameter fetches only resources with at least one available slot on that date.
+
+**Revised wizard flow after this change**:
+```
+Step 1: Select service
+Step 2: Select date
+Step 3: Select resource (filtered to those available on chosen date, + "Any available")
+Step 4: Select time slot / check-out date
+Step 5: Customer details
+Step 6: Confirm + submit
+Step 7: Success
+```
+
+---
+
+### Gap 4: Missing Owner Notification on New Booking
+
+**Current behaviour**: When a guest submits a booking from the widget, only the customer receives an email (`BookingReceivedNotification`). The tenant owner receives no email notification.
+
+**Expected behaviour**: The tenant owner (or a configurable notification email) should receive an email when a new booking arrives, when a booking is cancelled by a customer, and when a booking is rescheduled by a customer. These are the three events initiated by the customer side that the business needs to be aware of immediately.
+
+**Implementation**:
+- Add `notification_email` to `TenantSettings` (defaults to the owner membership user's email if not set). This gives tenants a single configurable destination for all operational notifications.
+- Create `OwnerBookingReceivedNotification`, `OwnerBookingCancelledNotification`, `OwnerBookingRescheduledNotification` — or a single parameterised `OwnerBookingAlertNotification` with a `$event` type string.
+- Fire alongside the existing customer notifications in `PublicBookingController::store()`, `confirmFromHold()`, and the customer cancel endpoint.
+
+**Notification table**: The `booking_notifications` table already has `recipient ENUM('customer','staff','admin')` — the `admin` variant is unused. These owner notifications should be recorded with `recipient = 'admin'`.
+
+---
+
+### Gap 5: Staff Notification Timing
+
+**Current behaviour**: `StaffBookingAssignedNotification` is only fired when a tenant user clicks "Confirm" from the CMS (`BookingManagementController::confirm()`). Staff linked to a resource receive no notification when a booking arrives — only when it is manually confirmed.
+
+**Design decision**: Staff should be notified as soon as the booking is confirmed. This is already the behaviour for manually-confirmed bookings. The gap is for auto-confirmed bookings (if `auto_confirm` is enabled in `BookingSettingsPage`): in that case `confirmFromHold()` transitions directly to `confirmed` but does not fire the staff notification.
+
+**Fix**: Move the staff notification dispatch into a shared private method `notifyStaffIfApplicable(Booking $booking, string $domain)` and call it from both `confirm()` and `confirmFromHold()` after every confirmed status transition.
+
+---
+
+### Gap 6: "by customer #" Display with No ID
+
+**Current behaviour**: The `BookingDetailPage` event timeline renders `by customer #` with no number for anonymous guest bookings where `actor_id` is null.
+
+**Fix**: In `BookingDetailPage` (and the `EventTimeline` sub-component), check `actor_id !== null` before rendering `#${actor_id}`. For `actor_type === 'customer'` with `actor_id === null`, render simply "by customer" (no hash, no null).
+
+---
+
+### Implementation Priority
+
+| Gap | Priority | Effort |
+|-----|----------|--------|
+| Gap 3 (wizard reorder: service → date → resource → slot) | High | Medium — frontend only, affects widget state machine |
+| Gap 4 (owner notification on new booking) | High | Low — add notification + `notification_email` setting |
+| Gap 5 (staff notification timing for auto-confirm) | Medium | Low — extract shared method |
+| Gap 2 ("Any available" option) | Medium | Medium — backend `getAvailableResources()` + widget card |
+| Gap 1 (resource step heading) | Low | Trivial |
+| Gap 6 (null actor display) | Low | Trivial |
