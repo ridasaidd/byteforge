@@ -31,6 +31,9 @@ class TenantRbacService
                 'view settings', 'manage settings',
                 'view analytics',
                 'payments.view', 'payments.manage', 'payments.refund',
+                'workshops.view', 'workshops.create', 'workshops.edit', 'workshops.delete', 'workshops.manage',
+                'reviews.view', 'reviews.create', 'reviews.manage',
+                'bookings.view', 'bookings.create', 'bookings.manage',
             ],
             'support' => [
                 'pages.create', 'pages.edit', 'pages.view',
@@ -40,6 +43,9 @@ class TenantRbacService
                 'templates.view',
                 'media.view', 'media.manage',
                 'view analytics',
+                'workshops.view',
+                'reviews.view', 'reviews.manage',
+                'bookings.view',
             ],
             'viewer' => [
                 'pages.view',
@@ -48,6 +54,21 @@ class TenantRbacService
                 'layouts.view',
                 'templates.view',
                 'media.view',
+                'workshops.view',
+                'reviews.view',
+                'bookings.view',
+            ],
+            // Workshop owner: can manage their own workshop listing and view their bookings
+            'workshop_owner' => [
+                'workshops.view', 'workshops.create', 'workshops.edit',
+                'reviews.view',
+                'bookings.view', 'bookings.manage',
+            ],
+            // Customer: can browse workshops, leave reviews, and create bookings
+            'customer' => [
+                'workshops.view',
+                'reviews.view', 'reviews.create',
+                'bookings.view', 'bookings.create',
             ],
         ];
     }
@@ -57,6 +78,8 @@ class TenantRbacService
         return match ($membershipRole) {
             'owner', 'admin' => 'admin',
             'editor', 'support' => 'support',
+            'workshop_owner' => 'workshop_owner',
+            'customer' => 'customer',
             default => 'viewer',
         };
     }
@@ -66,6 +89,8 @@ class TenantRbacService
         return match ($tenantRole) {
             'admin' => 'owner',
             'support' => 'editor',
+            'workshop_owner' => 'workshop_owner',
+            'customer' => 'customer',
             default => 'viewer',
         };
     }

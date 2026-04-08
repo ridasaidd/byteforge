@@ -25,6 +25,7 @@ Last updated: March 14, 2026
 - [COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md](COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md) - GDPR cookie consent audit, scope rules, and implementation plan
 - [AUTH_HTTPONLY_MIGRATION_PLAN.md](AUTH_HTTPONLY_MIGRATION_PLAN.md) - Planned migration from browser storage tokens to host-scoped HttpOnly refresh-cookie auth
 - Booking Integration (Phase 13) - planned after tenant runtime readiness
+- [MECHANIC_WORKSHOP_ADDON.md](MECHANIC_WORKSHOP_ADDON.md) - **Custom add-on: location-based mechanic workshop directory**
 - [PHASE7_FONT_SYSTEM_COMPLETE.md](PHASE7_FONT_SYSTEM_COMPLETE.md) - Completed font system implementation summary
 - [NAVIGATION_REFACTOR_PLAN.md](NAVIGATION_REFACTOR_PLAN.md) - Navigation v2 architecture and refactor plan (implemented)
 
