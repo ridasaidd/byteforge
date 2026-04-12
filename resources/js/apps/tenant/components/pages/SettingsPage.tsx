@@ -9,6 +9,7 @@ import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { useToast } from '@/shared/hooks';
 import { useTranslation } from 'react-i18next';
@@ -35,6 +36,8 @@ type SettingsFormData = {
   clarity_enabled: boolean;
   plausible_enabled: boolean;
   meta_pixel_enabled: boolean;
+  date_format: string;
+  time_format: string;
 };
 
 // ============================================================================
@@ -64,6 +67,8 @@ export function SettingsPage() {
     clarity_enabled: z.boolean(),
     plausible_enabled: z.boolean(),
     meta_pixel_enabled: z.boolean(),
+    date_format: z.enum(['yyyy-MM-dd', 'dd/MM/yyyy', 'MM/dd/yyyy']),
+    time_format: z.enum(['HH:mm', 'h:mm aa']),
   }), [t]);
 
   const { data, isLoading } = useQuery({
@@ -114,6 +119,8 @@ export function SettingsPage() {
       clarity_enabled: false,
       plausible_enabled: false,
       meta_pixel_enabled: false,
+      date_format: 'yyyy-MM-dd',
+      time_format: 'HH:mm',
     },
   });
 
@@ -137,6 +144,8 @@ export function SettingsPage() {
         clarity_enabled: Boolean(data.clarity_enabled),
         plausible_enabled: Boolean(data.plausible_enabled),
         meta_pixel_enabled: Boolean(data.meta_pixel_enabled),
+        date_format: data.date_format || 'yyyy-MM-dd',
+        time_format: data.time_format || 'HH:mm',
       });
     }
   }, [data, form]);
@@ -160,6 +169,8 @@ export function SettingsPage() {
       clarity_enabled: formData.clarity_enabled,
       plausible_enabled: formData.plausible_enabled,
       meta_pixel_enabled: formData.meta_pixel_enabled,
+      date_format: formData.date_format,
+      time_format: formData.time_format,
     });
   };
 
@@ -368,6 +379,42 @@ export function SettingsPage() {
                 checked={form.watch('meta_pixel_enabled')}
                 onChange={(e) => form.setValue('meta_pixel_enabled', e.target.checked, { shouldDirty: true })}
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Display Format */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Display Format</CardTitle>
+            <CardDescription>Set default date and time formats used across tenant interfaces.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="time_format">Time format</Label>
+              <Select value={form.watch('time_format')} onValueChange={(value) => form.setValue('time_format', value, { shouldDirty: true })}>
+                <SelectTrigger id="time_format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HH:mm">24-hour (14:30)</SelectItem>
+                  <SelectItem value="h:mm aa">12-hour (2:30 PM)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="date_format">Date format</Label>
+              <Select value={form.watch('date_format')} onValueChange={(value) => form.setValue('date_format', value, { shouldDirty: true })}>
+                <SelectTrigger id="date_format">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="yyyy-MM-dd">ISO - 2026-04-07</SelectItem>
+                  <SelectItem value="dd/MM/yyyy">European - 07/04/2026</SelectItem>
+                  <SelectItem value="MM/dd/yyyy">US - 04/07/2026</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
         </Card>

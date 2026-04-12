@@ -29,16 +29,24 @@ class BookingResourceController extends Controller
         $validated = Validator::make($request->all(), [
             'name'           => ['required', 'string', 'max:120'],
             'type'           => ['required', 'string', 'in:person,space,equipment'],
+            'description'    => ['nullable', 'string', 'max:1000'],
+            'checkin_time'   => ['nullable', 'string', 'date_format:H:i,H:i:s'],
+            'checkout_time'  => ['nullable', 'string', 'date_format:H:i,H:i:s'],
             'capacity'       => ['sometimes', 'integer', 'min:1', 'max:255'],
             'resource_label' => ['nullable', 'string', 'max:60'],
             'user_id'        => ['nullable', 'integer', 'exists:users,id'],
             'is_active'      => ['sometimes', 'boolean'],
         ])->validate();
 
+        $validated = $this->normalizePersonFields($validated);
+
         $resource = BookingResource::create([
             'tenant_id'      => (string) tenant('id'),
             'name'           => $validated['name'],
             'type'           => $validated['type'],
+            'description'    => $validated['description'] ?? null,
+            'checkin_time'   => $validated['checkin_time'] ?? null,
+            'checkout_time'  => $validated['checkout_time'] ?? null,
             'capacity'       => $validated['capacity'] ?? 1,
             'resource_label' => $validated['resource_label'] ?? null,
             'user_id'        => $validated['user_id'] ?? null,
@@ -64,11 +72,17 @@ class BookingResourceController extends Controller
         $validated = Validator::make($request->all(), [
             'name'           => ['sometimes', 'string', 'max:120'],
             'type'           => ['sometimes', 'string', 'in:person,space,equipment'],
+            'description'    => ['nullable', 'string', 'max:1000'],
+            'checkin_time'   => ['nullable', 'string', 'date_format:H:i,H:i:s'],
+            'checkout_time'  => ['nullable', 'string', 'date_format:H:i,H:i:s'],
             'capacity'       => ['sometimes', 'integer', 'min:1', 'max:255'],
             'resource_label' => ['nullable', 'string', 'max:60'],
             'user_id'        => ['nullable', 'integer', 'exists:users,id'],
             'is_active'      => ['sometimes', 'boolean'],
         ])->validate();
+
+        $effectiveType = $validated['type'] ?? $resource->type;
+        $validated = $this->normalizePersonFields($validated, $effectiveType);
 
         $resource->update($validated);
 
@@ -86,5 +100,26 @@ class BookingResourceController extends Controller
     private function resolveResource(int $id): BookingResource
     {
         return BookingResource::forTenant((string) tenant('id'))->findOrFail($id);
+    }
+
+    /**
+     * Enforce person resource invariants regardless of client payload.
+     * A staff member can only serve one customer at a time and uses `name` as identifier.
+     *
+     * @param array<string, mixed> $validated
+     * @return array<string, mixed>
+     */
+    private function normalizePersonFields(array $validated, ?string $type = null): array
+    {
+        $effectiveType = $type ?? ($validated['type'] ?? null);
+
+        if ($effectiveType === BookingResource::TYPE_PERSON) {
+            $validated['capacity'] = 1;
+            $validated['resource_label'] = null;
+            $validated['checkin_time'] = null;
+            $validated['checkout_time'] = null;
+        }
+
+        return $validated;
     }
 }

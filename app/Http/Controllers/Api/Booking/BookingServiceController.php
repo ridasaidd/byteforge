@@ -108,6 +108,7 @@ class BookingServiceController extends Controller
             'max_advance_days'      => ['nullable', 'integer', 'min:1'],
             'price'                 => ['nullable', 'numeric', 'min:0'],
             'currency'              => ['sometimes', 'string', 'size:3'],
+            'requires_payment'      => ['sometimes', 'boolean'],
             'is_active'             => ['sometimes', 'boolean'],
         ];
 

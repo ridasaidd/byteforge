@@ -83,6 +83,9 @@ class AnalyticsEvent extends Model
     const TYPE_BOOKING_CANCELLED = 'booking.cancelled';
     const TYPE_BOOKING_COMPLETED = 'booking.completed';
 
+    // Phase 14 — payment × booking integration
+    const TYPE_BOOKING_PAYMENT_RECEIVED = 'booking.payment_received';
+
     // =========================================================================
     // Query Scopes
     // =========================================================================

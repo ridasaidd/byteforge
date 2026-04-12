@@ -135,6 +135,236 @@ test.describe('Booking CMS — regression', () => {
 
   // ── Regression 2: Schedule → public slots ───────────────────────────────────
 
+  test('person resource payload normalizes capacity and label', async ({ request }) => {
+    const addonActive = await isBookingAddonActive(request, ownerToken);
+    test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
+
+    const createRes = await request.post(`${tenantBaseUrl}/api/booking/resources`, {
+      headers: authHeaders(ownerToken),
+      data: {
+        name: `Stylist ${Date.now()}`,
+        type: 'person',
+        capacity: 5,
+        resource_label: 'Should be removed',
+        is_active: true,
+      },
+    });
+
+    expect(createRes.status()).toBe(201);
+    const { data: created } = await createRes.json() as {
+      data: { id: number; type: string; capacity: number; resource_label: string | null };
+    };
+
+    expect(created.type).toBe('person');
+    expect(created.capacity).toBe(1);
+    expect(created.resource_label).toBeNull();
+
+    try {
+      const patchRes = await request.patch(`${tenantBaseUrl}/api/booking/resources/${created.id}`, {
+        headers: authHeaders(ownerToken),
+        data: {
+          capacity: 9,
+          resource_label: 'Still should be removed',
+        },
+      });
+
+      expect(patchRes.status()).toBe(200);
+      const { data: updated } = await patchRes.json() as {
+        data: { capacity: number; resource_label: string | null };
+      };
+
+      expect(updated.capacity).toBe(1);
+      expect(updated.resource_label).toBeNull();
+    } finally {
+      await request.delete(`${tenantBaseUrl}/api/booking/resources/${created.id}`, {
+        headers: authHeaders(ownerToken),
+      });
+    }
+  });
+
+  test('booking detail reflects tenant display format settings', async ({ page, request }) => {
+    const addonActive = await isBookingAddonActive(request, ownerToken);
+    test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
+
+    const headers = authHeaders(ownerToken);
+
+    const settingsBeforeRes = await request.get(`${tenantBaseUrl}/api/settings`, { headers });
+    expect(settingsBeforeRes.ok()).toBeTruthy();
+    const settingsBefore = await settingsBeforeRes.json() as {
+      data: { date_format: string; time_format: string };
+    };
+
+    const serviceRes = await request.post(`${tenantBaseUrl}/api/booking/services`, {
+      headers,
+      data: {
+        name: `Format Service ${Date.now()}`,
+        booking_mode: 'slot',
+        duration_minutes: 60,
+        slot_interval_minutes: 60,
+      },
+    });
+    expect(serviceRes.status()).toBe(201);
+    const { data: service } = await serviceRes.json() as { data: { id: number } };
+
+    const resourceRes = await request.post(`${tenantBaseUrl}/api/booking/resources`, {
+      headers,
+      data: {
+        name: `Format Resource ${Date.now()}`,
+        type: 'space',
+        is_active: true,
+      },
+    });
+    expect(resourceRes.status()).toBe(201);
+    const { data: resource } = await resourceRes.json() as { data: { id: number } };
+
+    await request.post(`${tenantBaseUrl}/api/booking/services/${service.id}/resources`, {
+      headers,
+      data: { resource_id: resource.id },
+    });
+
+    const startsAt = new Date(Date.UTC(2026, 3, 25, 13, 45, 0));
+    const endsAt = new Date(Date.UTC(2026, 3, 25, 14, 45, 0));
+
+    const bookingRes = await request.post(`${tenantBaseUrl}/api/booking/bookings`, {
+      headers,
+      data: {
+        service_id: service.id,
+        resource_id: resource.id,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        customer_name: 'Format Test Customer',
+        customer_email: 'format-test@example.com',
+        force: true,
+      },
+    });
+    expect(bookingRes.status()).toBe(201);
+    const { data: booking } = await bookingRes.json() as { data: { id: number } };
+
+    try {
+      const setRes = await request.put(`${tenantBaseUrl}/api/settings`, {
+        headers,
+        data: {
+          date_format: 'dd/MM/yyyy',
+          time_format: 'h:mm aa',
+        },
+      });
+      expect(setRes.ok()).toBeTruthy();
+
+      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/${booking.id}`, ownerToken);
+      await expect(page.getByRole('heading', { name: /booking #/i })).toBeVisible({ timeout: 10_000 });
+      await expect(page.getByText('25/04/2026').first()).toBeVisible();
+      await expect(page.getByText(/\b(AM|PM)\b/).first()).toBeVisible();
+    } finally {
+      await request.put(`${tenantBaseUrl}/api/settings`, {
+        headers,
+        data: {
+          date_format: settingsBefore.data.date_format,
+          time_format: settingsBefore.data.time_format,
+        },
+      });
+
+      await request.delete(`${tenantBaseUrl}/api/booking/bookings/${booking.id}`, { headers });
+      await request.delete(`${tenantBaseUrl}/api/booking/resources/${resource.id}`, { headers });
+      await request.delete(`${tenantBaseUrl}/api/booking/services/${service.id}`, { headers });
+    }
+  });
+
+  test('month overflow opens drilldown with hidden bookings', async ({ page, request }) => {
+    const addonActive = await isBookingAddonActive(request, ownerToken);
+    test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
+
+    const headers = authHeaders(ownerToken);
+
+    const serviceRes = await request.post(`${tenantBaseUrl}/api/booking/services`, {
+      headers,
+      data: {
+        name: `Overflow Service ${Date.now()}`,
+        booking_mode: 'slot',
+        duration_minutes: 60,
+        slot_interval_minutes: 60,
+      },
+    });
+    expect(serviceRes.status()).toBe(201);
+    const { data: service } = await serviceRes.json() as { data: { id: number } };
+
+    const resourceRes = await request.post(`${tenantBaseUrl}/api/booking/resources`, {
+      headers,
+      data: {
+        name: `Overflow Resource ${Date.now()}`,
+        type: 'space',
+        is_active: true,
+      },
+    });
+    expect(resourceRes.status()).toBe(201);
+    const { data: resource } = await resourceRes.json() as { data: { id: number } };
+
+    await request.post(`${tenantBaseUrl}/api/booking/services/${service.id}/resources`, {
+      headers,
+      data: { resource_id: resource.id },
+    });
+
+    const target = new Date();
+    target.setDate(Math.min(25, new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()));
+    target.setHours(9, 0, 0, 0);
+
+    const customers = [
+      `Overflow A ${Date.now()}`,
+      `Overflow B ${Date.now()}`,
+      `Overflow C ${Date.now()}`,
+    ];
+
+    const createdBookingIds: number[] = [];
+
+    try {
+      for (let i = 0; i < customers.length; i++) {
+        const start = new Date(target);
+        start.setHours(9 + i, 0, 0, 0);
+        const end = new Date(start);
+        end.setHours(start.getHours() + 1);
+
+        const createBookingRes = await request.post(`${tenantBaseUrl}/api/booking/bookings`, {
+          headers,
+          data: {
+            service_id: service.id,
+            resource_id: resource.id,
+            starts_at: start.toISOString(),
+            ends_at: end.toISOString(),
+            customer_name: customers[i],
+            customer_email: `overflow-${i}-${Date.now()}@example.com`,
+            force: true,
+          },
+        });
+
+        expect(createBookingRes.status()).toBe(201);
+        const body = await createBookingRes.json() as { data: { id: number } };
+        createdBookingIds.push(body.data.id);
+      }
+
+      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerToken);
+      await expect(page.getByRole('button', { name: /month/i })).toBeVisible({ timeout: 10_000 });
+
+      const visibleBooking = page.getByRole('button', { name: new RegExp(customers[0]) }).first();
+      await expect(visibleBooking).toBeVisible({ timeout: 10_000 });
+
+      const dayCard = visibleBooking.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-md")]').first();
+      const moreButton = dayCard.getByRole('button', { name: /\+\d+ more/i });
+      await expect(moreButton).toBeVisible();
+      await moreButton.click();
+
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText(customers[0])).toBeVisible();
+      await expect(dialog.getByText(customers[1])).toBeVisible();
+      await expect(dialog.getByText(customers[2])).toBeVisible();
+    } finally {
+      for (const id of createdBookingIds) {
+        await request.delete(`${tenantBaseUrl}/api/booking/bookings/${id}`, { headers });
+      }
+      await request.delete(`${tenantBaseUrl}/api/booking/resources/${resource.id}`, { headers });
+      await request.delete(`${tenantBaseUrl}/api/booking/services/${service.id}`, { headers });
+    }
+  });
+
   test('creating availability window makes public slots appear for that resource', async ({ request }) => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'Booking addon not active — skipping regression test.');

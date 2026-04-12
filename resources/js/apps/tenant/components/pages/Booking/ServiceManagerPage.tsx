@@ -27,6 +27,7 @@ type FormData = {
   advance_notice_hours: string;
   price: string;
   currency: string;
+  requires_payment: boolean;
   is_active: boolean;
 };
 
@@ -43,6 +44,7 @@ function defaultForm(svc?: CmsBookingService): FormData {
     advance_notice_hours:   String(svc?.advance_notice_hours ?? 0),
     price:                  String(svc?.price ?? ''),
     currency:               svc?.currency ?? 'SEK',
+    requires_payment:       svc?.requires_payment ?? false,
     is_active:              svc?.is_active ?? true,
   };
 }
@@ -60,6 +62,7 @@ function formToPayload(f: FormData): CreateBookingServiceData {
     advance_notice_hours:   parseInt(f.advance_notice_hours) || 0,
     price:                  f.price ? parseFloat(f.price) : null,
     currency:               f.currency || 'SEK',
+    requires_payment:       f.requires_payment,
     is_active:              f.is_active,
   };
 }
@@ -154,6 +157,10 @@ function ServiceDialog({
               <Label>Currency</Label>
               <Input maxLength={3} value={form.currency} onChange={e => set('currency', e.target.value.toUpperCase())} />
             </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="requires_payment" checked={form.requires_payment} onChange={e => set('requires_payment', e.target.checked)} />
+            <Label htmlFor="requires_payment">Require payment before booking confirmation</Label>
           </div>
           <div>
             <Label>Advance notice required (hours)</Label>
@@ -342,6 +349,9 @@ export function ServiceManagerPage() {
                     {svc.is_active ? 'Active' : 'Inactive'}
                   </Badge>
                   <Badge variant="outline">{svc.booking_mode}</Badge>
+                  {svc.requires_payment && (
+                    <Badge variant="outline">Paid</Badge>
+                  )}
                   {svc.price != null && (
                     <span className="text-sm text-muted-foreground">{svc.price} {svc.currency}</span>
                   )}

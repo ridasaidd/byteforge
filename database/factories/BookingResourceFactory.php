@@ -19,6 +19,7 @@ class BookingResourceFactory extends Factory
                 BookingResource::TYPE_SPACE,
                 BookingResource::TYPE_EQUIPMENT,
             ]),
+            'description' => null,
             'capacity' => 1,
             'resource_label' => null,
             'user_id' => null,

@@ -14,6 +14,7 @@ use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingRescheduledNotification;
 use App\Notifications\Booking\StaffBookingAssignedNotification;
 use App\Services\BookingAvailabilityService;
+use App\Services\BookingPaymentService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class BookingManagementController extends Controller
 {
     public function __construct(
         private readonly BookingAvailabilityService $availability,
+        private readonly BookingPaymentService $bookingPayment,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -124,6 +126,23 @@ class BookingManagementController extends Controller
         $validated = Validator::make($request->all(), [
             'note' => ['nullable', 'string', 'max:500'],
         ])->validate();
+
+        // Phase 14: Process refund if booking has an associated payment
+        if ($booking->payment_id) {
+            $refundSucceeded = $this->bookingPayment->refundBookingIfPaid(
+                $booking,
+                $validated['note'] ?? 'Cancelled by tenant'
+            );
+
+            if (!$refundSucceeded) {
+                return response()->json(
+                    [
+                        'message' => 'Refund processing failed. Please try again or contact support.',
+                    ],
+                    422,
+                );
+            }
+        }
 
         $from = $booking->status;
 

@@ -6,9 +6,12 @@ namespace App\Http\Controllers\Api\Booking;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\Payment;
 use App\Models\BookingResource;
 use App\Models\BookingService;
+use App\Models\TenantPaymentProvider;
 use App\Services\BookingAvailabilityService;
+use App\Services\BookingPaymentService;
 use App\Settings\TenantSettings;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -38,6 +41,7 @@ class PublicBookingController extends Controller
 {
     public function __construct(
         private readonly BookingAvailabilityService $availability,
+        private readonly BookingPaymentService $bookingPayment,
     ) {}
 
     // ─── GET /api/public/booking/config ─────────────────────────────────────────
@@ -119,7 +123,10 @@ class PublicBookingController extends Controller
             'id'             => $r->id,
             'name'           => $r->name,
             'type'           => $r->type,
+            'description'    => $r->description,
             'resource_label' => $r->resource_label,
+            'checkin_time'   => $r->checkin_time,
+            'checkout_time'  => $r->checkout_time,
         ]);
 
         return response()->json(['data' => $data]);
@@ -182,8 +189,8 @@ class PublicBookingController extends Controller
         }
 
         $tz       = $this->tenantTimezone();
-        $checkIn  = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime(), $tz);
-        $checkOut = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime(), $tz);
+        $checkIn  = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime($resource), $tz);
+        $checkOut = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime($resource), $tz);
 
         $available = $this->availability->isRangeAvailable($service, $resource, $checkIn, $checkOut);
 
@@ -289,8 +296,8 @@ class PublicBookingController extends Controller
             if (empty($validated['check_in']) || empty($validated['check_out'])) {
                 throw ValidationException::withMessages(['check_in' => 'check_in and check_out are required for range-mode services.']);
             }
-            $startsAt = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime(), $tz)->utc();
-            $endsAt   = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime(), $tz)->utc();
+            $startsAt = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime($resource), $tz)->utc();
+            $endsAt   = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime($resource), $tz)->utc();
         }
 
         // Create booking inside a transaction with pessimistic lock on the resource row
@@ -431,8 +438,8 @@ class PublicBookingController extends Controller
             if (empty($validated['check_in']) || empty($validated['check_out'])) {
                 throw ValidationException::withMessages(['check_in' => 'check_in and check_out are required for range-mode services.']);
             }
-            $startsAt = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime(), $tz)->utc();
-            $endsAt   = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime(), $tz)->utc();
+            $startsAt = Carbon::parse($validated['check_in'] . ' ' . $this->checkinTime($resource), $tz)->utc();
+            $endsAt   = Carbon::parse($validated['check_out'] . ' ' . $this->checkoutTime($resource), $tz)->utc();
         }
 
         try {
@@ -511,6 +518,40 @@ class PublicBookingController extends Controller
             );
         }
 
+        // Phase 14: Check if payment is required for this booking
+        if ($this->bookingPayment->bookingRequiresPayment($booking)) {
+            try {
+                // Create payment; this updates the booking to awaiting_payment status
+                $payment = $this->bookingPayment->createPaymentForBooking($booking);
+
+                // Refresh booking after status update
+                $booking->refresh();
+
+                // Return response with payment gateway information
+                // The frontend will use this to redirect to payment provider
+                return response()->json([
+                    'data' => [
+                        'booking_id' => $booking->id,
+                        'starts_at'  => $booking->starts_at?->toIso8601String(),
+                        'ends_at'    => $booking->ends_at?->toIso8601String(),
+                        'status'     => $booking->status,
+                        'payment_id' => $payment?->id,
+                        'payment'    => $payment ? $this->publicPaymentPayload($payment) : null,
+                        'message'    => 'Payment required. Redirecting to payment provider...',
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                return response()->json(
+                    [
+                        'message' => 'Payment processing failed. Please try again later.',
+                        'error'   => config('app.debug') ? $e->getMessage() : null,
+                    ],
+                    422,
+                );
+            }
+        }
+
+        // No payment required — proceed with existing flow
         $settings  = $this->tenantSettings();
         $newStatus = $settings->booking_auto_confirm
             ? Booking::STATUS_CONFIRMED
@@ -583,6 +624,24 @@ class PublicBookingController extends Controller
         }
 
         $fromStatus = $booking->status;
+
+        // Phase 14: Process refund if booking has an associated payment
+        $refundSucceeded = true;
+        if ($booking->payment_id) {
+            $refundSucceeded = $this->bookingPayment->refundBookingIfPaid(
+                $booking,
+                'Cancelled by customer via management link'
+            );
+
+            if (!$refundSucceeded) {
+                return response()->json(
+                    [
+                        'message' => 'Refund processing failed. Please contact support to process your refund manually.',
+                    ],
+                    422,
+                );
+            }
+        }
 
         $booking->update([
             'status'       => Booking::STATUS_CANCELLED,
@@ -673,8 +732,56 @@ class PublicBookingController extends Controller
         return app(TenantSettings::class);
     }
 
-    private function checkinTime(): string
+    /**
+     * Build a guest-safe payment payload for the booking widget.
+     *
+     * Only provider data needed to continue the guest payment flow should be returned.
+     * Secrets remain server-side.
+     *
+     * @return array<string, mixed>
+     */
+    private function publicPaymentPayload(Payment $payment): array
     {
+        $providerConfig = TenantPaymentProvider::query()
+            ->forTenant((string) $payment->tenant_id)
+            ->where('provider', (string) $payment->provider)
+            ->active()
+            ->first();
+
+        $payload = [
+            'id' => $payment->id,
+            'provider' => $payment->provider,
+            'provider_transaction_id' => $payment->provider_transaction_id,
+            'status' => $payment->status,
+            'amount' => $payment->amount,
+            'currency' => $payment->currency,
+        ];
+
+        if ($payment->provider === 'stripe') {
+            $payload['client_secret'] = data_get($payment->provider_response, 'client_secret');
+            $payload['publishable_key'] = data_get($providerConfig?->credentials, 'publishable_key');
+        }
+
+        if ($payment->provider === 'swish') {
+            $payload['redirect_url'] = data_get($payment->provider_response, 'paymentRequestUrl')
+                ?? data_get($payment->provider_response, 'location')
+                ?? data_get($payment->provider_response, 'redirect_url');
+        }
+
+        if ($payment->provider === 'klarna') {
+            $payload['client_token'] = data_get($payment->provider_response, 'client_token');
+            $payload['session_id'] = data_get($payment->provider_response, 'session_id', $payment->provider_transaction_id);
+        }
+
+        return $payload;
+    }
+
+    private function checkinTime(?BookingResource $resource = null): string
+    {
+        if ($resource?->type === BookingResource::TYPE_SPACE && ! empty($resource->checkin_time)) {
+            return substr((string) $resource->checkin_time, 0, 5);
+        }
+
         try {
             return app(TenantSettings::class)->booking_checkin_time;
         } catch (\Throwable) {
@@ -682,8 +789,12 @@ class PublicBookingController extends Controller
         }
     }
 
-    private function checkoutTime(): string
+    private function checkoutTime(?BookingResource $resource = null): string
     {
+        if ($resource?->type === BookingResource::TYPE_SPACE && ! empty($resource->checkout_time)) {
+            return substr((string) $resource->checkout_time, 0, 5);
+        }
+
         try {
             return app(TenantSettings::class)->booking_checkout_time;
         } catch (\Throwable) {

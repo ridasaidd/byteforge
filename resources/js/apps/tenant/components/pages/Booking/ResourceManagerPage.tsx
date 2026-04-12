@@ -20,6 +20,9 @@ import { usePermissions } from '@/shared/hooks/usePermissions';
 type FormData = {
   name: string;
   type: 'person' | 'space' | 'equipment';
+  description: string;
+  checkin_time: string;
+  checkout_time: string;
   capacity: string;
   resource_label: string;
   user_id: string;
@@ -30,6 +33,9 @@ function defaultForm(r?: CmsBookingResource): FormData {
   return {
     name:           r?.name ?? '',
     type:           r?.type ?? 'space',
+    description:    r?.description ?? '',
+    checkin_time:   r?.checkin_time ?? '',
+    checkout_time:  r?.checkout_time ?? '',
     capacity:       String(r?.capacity ?? 1),
     resource_label: r?.resource_label ?? '',
     user_id:        String(r?.user_id ?? ''),
@@ -41,6 +47,9 @@ function formToPayload(f: FormData): CreateBookingResourceData {
   return {
     name:           f.name,
     type:           f.type,
+    description:    f.description || null,
+    checkin_time:   f.checkin_time || null,
+    checkout_time:  f.checkout_time || null,
     capacity:       parseInt(f.capacity) || 1,
     resource_label: f.resource_label || null,
     user_id:        f.user_id ? parseInt(f.user_id) : null,
@@ -86,27 +95,52 @@ function ResourceDialog({
             <Input required maxLength={120} value={form.name} onChange={e => set('name', e.target.value)} />
           </div>
           <div>
+            <Label>Description</Label>
+            <textarea
+              className="w-full border rounded-md px-3 py-2 text-sm min-h-[88px]"
+              maxLength={1000}
+              placeholder="Optional details for tenants/customers (skills, room features, equipment notes)."
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+            />
+            <p className="mt-1 text-xs text-muted-foreground">{form.description.length}/1000</p>
+          </div>
+          <div>
             <Label>Type *</Label>
             <select
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={form.type}
               onChange={e => set('type', e.target.value as 'person' | 'space' | 'equipment')}
             >
-              <option value="space">Space (room, cabin, etc.)</option>
+              <option value="space">Room / Cabin</option>
               <option value="person">Person (staff member)</option>
               <option value="equipment">Equipment</option>
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Capacity</Label>
-              <Input type="number" min={1} max={255} value={form.capacity} onChange={e => set('capacity', e.target.value)} />
+          {form.type === 'space' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Default check-in time</Label>
+                <Input type="time" value={form.checkin_time} onChange={e => set('checkin_time', e.target.value)} />
+              </div>
+              <div>
+                <Label>Default check-out time</Label>
+                <Input type="time" value={form.checkout_time} onChange={e => set('checkout_time', e.target.value)} />
+              </div>
             </div>
-            <div>
-              <Label>Label</Label>
-              <Input maxLength={60} placeholder="Room 1, Suite A…" value={form.resource_label} onChange={e => set('resource_label', e.target.value)} />
+          )}
+          {form.type !== 'person' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Capacity</Label>
+                <Input type="number" min={1} max={255} value={form.capacity} onChange={e => set('capacity', e.target.value)} />
+              </div>
+              <div>
+                <Label>Label</Label>
+                <Input maxLength={60} placeholder="Room 1, Suite A…" value={form.resource_label} onChange={e => set('resource_label', e.target.value)} />
+              </div>
             </div>
-          </div>
+          )}
           {form.type === 'person' && (
             <div>
               <Label>Linked tenant user</Label>
@@ -156,9 +190,11 @@ const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
 function AvailabilityManager({
   resourceId,
+  resourceType,
   canManage,
 }: {
   resourceId: number;
+  resourceType: 'person' | 'space' | 'equipment';
   canManage: boolean;
 }) {
   const qc = useQueryClient();
@@ -203,7 +239,12 @@ function AvailabilityManager({
 
   return (
     <div className="mt-2 pt-3 border-t">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Weekly Schedule</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Availability Schedule</p>
+      <p className="text-xs text-muted-foreground mb-2">
+        {resourceType === 'person' && 'Set this staff member\'s working hours for booking availability.'}
+        {resourceType === 'space' && 'Set when this room/space is bookable (for example around cleaning or maintenance).'}
+        {resourceType === 'equipment' && 'Set when this equipment can be reserved and avoid overlapping usage.'}
+      </p>
       {isLoading ? (
         <p className="text-xs text-muted-foreground">Loading…</p>
       ) : (
@@ -289,7 +330,7 @@ function AvailabilityManager({
 
 const TYPE_LABELS: Record<string, string> = {
   person:    'Person',
-  space:     'Space',
+  space:     'Room/Cabin',
   equipment: 'Equipment',
 };
 
@@ -406,12 +447,20 @@ export function ResourceManagerPage() {
             </CardHeader>
             {isExpanded && (
               <CardContent className="pt-0 pb-4 px-4">
+                {r.description && (
+                  <p className="text-sm text-muted-foreground mb-2">{r.description}</p>
+                )}
+                {r.type === 'space' && (r.checkin_time || r.checkout_time) && (
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Default stay times: {r.checkin_time || '—'} check-in · {r.checkout_time || '—'} check-out
+                  </p>
+                )}
                 {r.services && r.services.length > 0 && (
                   <p className="text-xs text-muted-foreground mb-2">
                     Services: {r.services.map(s => s.name).join(', ')}
                   </p>
                 )}
-                <AvailabilityManager resourceId={r.id} canManage={canManage} />
+                <AvailabilityManager resourceId={r.id} resourceType={r.type} canManage={canManage} />
               </CardContent>
             )}
           </Card>

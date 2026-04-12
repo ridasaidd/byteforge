@@ -25,6 +25,7 @@ class BookingServiceFactory extends Factory
             'max_advance_days' => null,
             'price' => fake()->optional()->randomFloat(2, 100, 5000),
             'currency' => 'SEK',
+            'requires_payment' => false,
             'is_active' => true,
         ];
     }

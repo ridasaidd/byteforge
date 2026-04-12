@@ -9,6 +9,7 @@ use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use App\Settings\TenantSettings;
 use Laravel\Pennant\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -74,6 +75,19 @@ class PublicBookingApiTest extends TestCase
         ], $overrides));
     }
 
+    private function setBookingRangeDefaults(Tenant $tenant, string $checkinTime, string $checkoutTime): void
+    {
+        tenancy()->initialize($tenant);
+
+        $settings = app(TenantSettings::class);
+        $settings->timezone = 'UTC';
+        $settings->booking_checkin_time = $checkinTime;
+        $settings->booking_checkout_time = $checkoutTime;
+        $settings->save();
+
+        tenancy()->end();
+    }
+
     // ─── Addon gating ────────────────────────────────────────────────────────
 
     #[Test]
@@ -134,7 +148,9 @@ class PublicBookingApiTest extends TestCase
         $this->activateBookingAddon($tenant);
 
         $service  = $this->makeService((string) $tenant->id);
-        $resource = $this->makeResource((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id, [
+            'description' => 'Window-facing room with treatment chair.',
+        ]);
         $service->resources()->attach($resource->id);
 
         $resp = $this->getJson($this->url("/api/public/booking/resources?service_id={$service->id}"));
@@ -142,6 +158,12 @@ class PublicBookingApiTest extends TestCase
         $resp->assertOk();
         $ids = collect($resp->json('data'))->pluck('id');
         $this->assertTrue($ids->contains($resource->id));
+        $this->assertTrue(
+            collect($resp->json('data'))->contains(fn (array $r) =>
+                (int) ($r['id'] ?? 0) === $resource->id
+                && ($r['description'] ?? null) === 'Window-facing room with treatment chair.'
+            )
+        );
     }
 
     #[Test]
@@ -284,6 +306,90 @@ class PublicBookingApiTest extends TestCase
         $resp->assertCreated();
         $this->assertArrayHasKey('booking_id', $resp->json('data'));
         $this->assertArrayHasKey('status', $resp->json('data'));
+    }
+
+    #[Test]
+    public function range_booking_uses_resource_checkin_checkout_overrides(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+        $this->setBookingRangeDefaults($tenant, '15:00', '11:00');
+
+        $service = $this->makeService((string) $tenant->id, ['booking_mode' => BookingService::MODE_RANGE]);
+        $resource = $this->makeResource((string) $tenant->id, [
+            'type' => BookingResource::TYPE_SPACE,
+            'checkin_time' => '17:30:00',
+            'checkout_time' => '10:15:00',
+        ]);
+        $service->resources()->attach($resource->id);
+
+        for ($day = 0; $day <= 6; $day++) {
+            BookingAvailability::create([
+                'resource_id' => $resource->id,
+                'day_of_week' => $day,
+                'starts_at' => '00:00:00',
+                'ends_at' => '23:59:00',
+                'is_blocked' => false,
+            ]);
+        }
+
+        $checkIn = now()->addDays(6)->format('Y-m-d');
+        $checkOut = now()->addDays(8)->format('Y-m-d');
+
+        $resp = $this->postJson($this->url('/api/public/booking'), [
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'customer_name' => 'Range Customer',
+            'customer_email' => 'range@example.com',
+        ]);
+
+        $resp->assertCreated();
+        $this->assertStringContainsString('T17:30:', (string) $resp->json('data.starts_at'));
+        $this->assertStringContainsString('T10:15:', (string) $resp->json('data.ends_at'));
+    }
+
+    #[Test]
+    public function range_booking_falls_back_to_tenant_defaults_when_resource_override_is_missing(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+        $this->setBookingRangeDefaults($tenant, '16:00', '09:30');
+
+        $service = $this->makeService((string) $tenant->id, ['booking_mode' => BookingService::MODE_RANGE]);
+        $resource = $this->makeResource((string) $tenant->id, [
+            'type' => BookingResource::TYPE_SPACE,
+            'checkin_time' => null,
+            'checkout_time' => null,
+        ]);
+        $service->resources()->attach($resource->id);
+
+        for ($day = 0; $day <= 6; $day++) {
+            BookingAvailability::create([
+                'resource_id' => $resource->id,
+                'day_of_week' => $day,
+                'starts_at' => '00:00:00',
+                'ends_at' => '23:59:00',
+                'is_blocked' => false,
+            ]);
+        }
+
+        $checkIn = now()->addDays(10)->format('Y-m-d');
+        $checkOut = now()->addDays(11)->format('Y-m-d');
+
+        $resp = $this->postJson($this->url('/api/public/booking'), [
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'check_in' => $checkIn,
+            'check_out' => $checkOut,
+            'customer_name' => 'Fallback Customer',
+            'customer_email' => 'fallback@example.com',
+        ]);
+
+        $resp->assertCreated();
+        $this->assertStringContainsString('T16:00:', (string) $resp->json('data.starts_at'));
+        $this->assertStringContainsString('T09:30:', (string) $resp->json('data.ends_at'));
     }
 
     #[Test]

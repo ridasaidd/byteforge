@@ -30,6 +30,7 @@ class BookingService extends Model
         'max_advance_days',
         'price',
         'currency',
+        'requires_payment',
         'is_active',
     ];
 
@@ -43,6 +44,7 @@ class BookingService extends Model
         'advance_notice_hours' => 'integer',
         'max_advance_days' => 'integer',
         'price' => 'decimal:2',
+        'requires_payment' => 'boolean',
         'is_active' => 'boolean',
     ];
 

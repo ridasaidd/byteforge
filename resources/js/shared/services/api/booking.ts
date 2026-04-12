@@ -62,6 +62,7 @@ export interface CmsBookingService {
   max_advance_days: number | null;
   price: number | null;
   currency: string | null;
+  requires_payment: boolean;
   is_active: boolean;
   resources?: { id: number; name: string; type: string }[];
   created_at: string;
@@ -72,6 +73,9 @@ export interface CmsBookingResource {
   id: number;
   name: string;
   type: 'person' | 'space' | 'equipment';
+  description: string | null;
+  checkin_time: string | null;
+  checkout_time: string | null;
   capacity: number;
   resource_label: string | null;
   user_id: number | null;
@@ -95,12 +99,16 @@ export interface CreateBookingServiceData {
   max_advance_days?: number | null;
   price?: number | null;
   currency?: string;
+  requires_payment?: boolean;
   is_active?: boolean;
 }
 
 export interface CreateBookingResourceData {
   name: string;
   type: 'person' | 'space' | 'equipment';
+  description?: string | null;
+  checkin_time?: string | null;
+  checkout_time?: string | null;
   capacity?: number;
   resource_label?: string | null;
   user_id?: number | null;

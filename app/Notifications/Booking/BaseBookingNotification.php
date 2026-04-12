@@ -29,10 +29,16 @@ abstract class BaseBookingNotification extends Notification implements ShouldQue
 {
     use Queueable;
 
+    protected Booking $booking;
+
+    protected string $tenantDomain;
+
     public function __construct(
-        protected readonly Booking $booking,
-        protected readonly string $tenantDomain,
+        Booking $booking,
+        string $tenantDomain,
     ) {
+        $this->booking = $booking;
+        $this->tenantDomain = $tenantDomain;
         $this->onQueue('notifications');
     }
 

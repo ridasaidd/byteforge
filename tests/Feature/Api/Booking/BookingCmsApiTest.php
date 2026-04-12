@@ -127,23 +127,28 @@ class BookingCmsApiTest extends TestCase
             ->postJson($this->url('/api/booking/resources'), [
                 'name' => 'Meeting Room Alpha',
                 'type' => BookingResource::TYPE_SPACE,
+                'description' => 'Quiet room suitable for private sessions.',
             ]);
         $create->assertCreated()->assertJsonPath('data.name', 'Meeting Room Alpha');
+        $create->assertJsonPath('data.description', 'Quiet room suitable for private sessions.');
         $id = $create->json('data.id');
 
         // Read
         $this->actingAsTenantOwner('tenant-one')
             ->getJson($this->url("/api/booking/resources/{$id}"))
             ->assertOk()
-            ->assertJsonPath('data.name', 'Meeting Room Alpha');
+            ->assertJsonPath('data.name', 'Meeting Room Alpha')
+            ->assertJsonPath('data.description', 'Quiet room suitable for private sessions.');
 
         // Update
         $this->actingAsTenantOwner('tenant-one')
             ->putJson($this->url("/api/booking/resources/{$id}"), [
                 'name' => 'Meeting Room Beta',
+                'description' => 'Updated room details for staff and guests.',
             ])
             ->assertOk()
-            ->assertJsonPath('data.name', 'Meeting Room Beta');
+            ->assertJsonPath('data.name', 'Meeting Room Beta')
+            ->assertJsonPath('data.description', 'Updated room details for staff and guests.');
 
         // Delete
         $this->actingAsTenantOwner('tenant-one')
@@ -151,6 +156,77 @@ class BookingCmsApiTest extends TestCase
             ->assertNoContent();
 
         $this->assertDatabaseMissing('booking_resources', ['id' => $id]);
+    }
+
+    #[Test]
+    public function owner_can_clear_resource_description(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $resource = $this->makeResource((string) $tenant->id, [
+            'description' => 'Temporary note to remove',
+        ]);
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->patchJson($this->url("/api/booking/resources/{$resource->id}"), [
+                'description' => null,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.description', null);
+
+        $this->assertDatabaseHas('booking_resources', [
+            'id' => $resource->id,
+            'description' => null,
+        ]);
+    }
+
+    #[Test]
+    public function person_resource_normalizes_capacity_and_label(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/booking/resources'), [
+                'name' => 'Alice Stylist',
+                'type' => BookingResource::TYPE_PERSON,
+                'capacity' => 4,
+                'resource_label' => 'Chair 1',
+                'checkin_time' => '15:00:00',
+                'checkout_time' => '11:00:00',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.type', BookingResource::TYPE_PERSON)
+            ->assertJsonPath('data.capacity', 1)
+            ->assertJsonPath('data.resource_label', null)
+            ->assertJsonPath('data.checkin_time', null)
+            ->assertJsonPath('data.checkout_time', null);
+
+        $id = (int) $create->json('data.id');
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->patchJson($this->url("/api/booking/resources/{$id}"), [
+                'capacity' => 7,
+                'resource_label' => 'Any label',
+                'checkin_time' => '16:00:00',
+                'checkout_time' => '10:00:00',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.capacity', 1)
+            ->assertJsonPath('data.resource_label', null)
+            ->assertJsonPath('data.checkin_time', null)
+            ->assertJsonPath('data.checkout_time', null);
+
+        $this->assertDatabaseHas('booking_resources', [
+            'id' => $id,
+            'type' => BookingResource::TYPE_PERSON,
+            'capacity' => 1,
+            'resource_label' => null,
+            'checkin_time' => null,
+            'checkout_time' => null,
+        ]);
     }
 
     #[Test]

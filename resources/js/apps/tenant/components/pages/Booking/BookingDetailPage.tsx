@@ -27,6 +27,20 @@ const STATUS_COLORS: Record<string, string> = {
   no_show:          'bg-orange-100 text-orange-800',
 };
 
+const SERVICE_COLORS = [
+  { dot: 'bg-blue-500', softBg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
+  { dot: 'bg-emerald-500', softBg: 'bg-emerald-50', text: 'text-emerald-800', border: 'border-emerald-200' },
+  { dot: 'bg-rose-500', softBg: 'bg-rose-50', text: 'text-rose-800', border: 'border-rose-200' },
+  { dot: 'bg-amber-500', softBg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
+  { dot: 'bg-violet-500', softBg: 'bg-violet-50', text: 'text-violet-800', border: 'border-violet-200' },
+  { dot: 'bg-cyan-500', softBg: 'bg-cyan-50', text: 'text-cyan-800', border: 'border-cyan-200' },
+];
+
+function colorForService(serviceId: number | undefined) {
+  if (!serviceId) return SERVICE_COLORS[0];
+  return SERVICE_COLORS[Math.abs(serviceId) % SERVICE_COLORS.length];
+}
+
 function makeFormatter(dateFormat: string, timeFormat: string) {
   return function fmt(iso: string | null): string {
     if (!iso) return '—';
@@ -39,14 +53,34 @@ const DEFAULT_TIME_FORMAT = 'HH:mm';
 
 // ─── Timeline ────────────────────────────────────────────────────────────────
 
-function EventTimeline({ events, fmt }: { events: BookingEvent[]; fmt: (iso: string | null) => string }) {
+function EventTimeline({
+  events,
+  fmt,
+  serviceId,
+  serviceName,
+}: {
+  events: BookingEvent[];
+  fmt: (iso: string | null) => string;
+  serviceId?: number;
+  serviceName?: string;
+}) {
   if (!events.length) return <p className="text-sm text-muted-foreground">No events yet.</p>;
+  const color = colorForService(serviceId);
+
   return (
     <ol className="relative border-l border-muted ml-2">
       {[...events].reverse().map(ev => (
         <li key={ev.id} className="ml-4 mb-4">
           <div className="absolute -left-1.5 mt-1 w-3 h-3 rounded-full bg-primary/70" />
-          <span className="text-xs text-muted-foreground">{fmt(ev.created_at)}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">{fmt(ev.created_at)}</span>
+            {serviceName && (
+              <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${color.softBg} ${color.border} ${color.text}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${color.dot}`} />
+                {serviceName}
+              </span>
+            )}
+          </div>
           <div className="text-sm font-medium capitalize">
             {ev.from_status ? `${ev.from_status.replace(/_/g, ' ')} → ` : ''}
             {ev.to_status.replace(/_/g, ' ')}
@@ -199,7 +233,15 @@ export function BookingDetailPage() {
 
   const { data: settingsData } = useQuery({
     queryKey: ['tenant-settings'],
-    queryFn: async () => (await tenantSettings.get()).data,
+    queryFn: async () => {
+      try {
+        return (await tenantSettings.get()).data;
+      } catch {
+        // Booking detail should still render with defaults even if settings are inaccessible.
+        return null;
+      }
+    },
+    retry: false,
   });
   const fmt = makeFormatter(
     settingsData?.date_format ?? DEFAULT_DATE_FORMAT,
@@ -270,6 +312,7 @@ export function BookingDetailPage() {
   const isPending   = status === 'pending' || status === 'pending_hold';
   const isConfirmed = status === 'confirmed';
   const isDone      = status === 'completed' || status === 'cancelled' || status === 'no_show';
+  const serviceColor = colorForService(booking.service_id);
 
   return (
     <div className="space-y-6">
@@ -346,6 +389,15 @@ export function BookingDetailPage() {
           <CardHeader><CardTitle className="text-base">Booking Details</CardTitle></CardHeader>
           <CardContent className="space-y-1.5 text-sm">
             <div><span className="text-muted-foreground">Service</span> {booking.service?.name ?? '—'}</div>
+            {booking.service?.name && (
+              <div>
+                <span className="text-muted-foreground">Service color</span>{' '}
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${serviceColor.softBg} ${serviceColor.border} ${serviceColor.text}`}>
+                  <span className={`h-2 w-2 rounded-full ${serviceColor.dot}`} />
+                  {booking.service.name}
+                </span>
+              </div>
+            )}
             <div><span className="text-muted-foreground">Resource</span> {booking.resource?.name ?? '—'}</div>
             <div><span className="text-muted-foreground">Mode</span> {booking.service?.booking_mode ?? '—'}</div>
             <div><span className="text-muted-foreground">Start</span> {fmt(booking.starts_at)}</div>
@@ -365,7 +417,12 @@ export function BookingDetailPage() {
       <Card>
         <CardHeader><CardTitle className="text-base">Event Timeline</CardTitle></CardHeader>
         <CardContent>
-          <EventTimeline events={booking.events ?? []} fmt={fmt} />
+          <EventTimeline
+            events={booking.events ?? []}
+            fmt={fmt}
+            serviceId={booking.service_id}
+            serviceName={booking.service?.name}
+          />
         </CardContent>
       </Card>
 
