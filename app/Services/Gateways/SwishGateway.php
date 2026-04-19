@@ -63,6 +63,7 @@ class SwishGateway implements PaymentGatewayContract
                 redirectUrl: 'https://mss.cpc.getswish.net/swish-cpcapi/api/v1/paymentrequests/' . $id,
                 rawResponse: [
                     'id' => $id,
+                    'message' => $payload['message'],
                     'paymentRequestToken' => 'token_test_123',
                 ],
             );

@@ -24,6 +24,7 @@ class SwishGatewayTest extends TestCase
                 $called = true;
                 $this->assertSame('199.00', $payload['amount']);
                 $this->assertSame('SEK', $payload['currency']);
+                $this->assertSame('Swish test payment', $payload['message']);
 
                 return [
                     'id' => '11111111-1111-1111-1111-111111111111',

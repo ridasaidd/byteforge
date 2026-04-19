@@ -68,6 +68,28 @@ class SwishPaymentFlowTest extends TestCase
     }
 
     #[Test]
+    public function create_swish_payment_normalizes_message_before_gateway_handoff(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activatePaymentsAddonForTenant($tenant);
+        $this->upsertSwishProvider($tenant);
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/payments/swish/create'), [
+                'amount' => 19900,
+                'currency' => 'SEK',
+                'payer_alias' => '46701234567',
+                'message' => "  <b>Flow\n payment</b> \t ",
+            ]);
+
+        $response->assertOk();
+
+        $payment = Payment::query()->findOrFail((int) $response->json('payment_id'));
+
+        $this->assertSame('Flow payment', data_get($payment->provider_response, 'message'));
+    }
+
+    #[Test]
     public function swish_callback_updates_payment_to_completed_and_records_analytics(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
