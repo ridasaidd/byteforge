@@ -181,6 +181,7 @@ export interface TenantSettings extends Record<string, unknown> {
   booking_reminder_hours: number[];
   booking_checkin_time: string;
   booking_checkout_time: string;
+  booking_payment_page_id: number | null;
 }
 
 export interface UpdateTenantSettingsData {
@@ -215,6 +216,7 @@ export interface UpdateTenantSettingsData {
   booking_reminder_hours?: number[];
   booking_checkin_time?: string;
   booking_checkout_time?: string;
+  booking_payment_page_id?: number | null;
 }
 
 export interface Media extends Record<string, unknown> {

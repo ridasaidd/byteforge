@@ -56,6 +56,11 @@ class StripePaymentFlowTest extends TestCase
             'provider_transaction_id',
         ]);
 
+        $this->assertMatchesRegularExpression(
+            '/^pi_[A-Za-z0-9]+_secret_[A-Za-z0-9]+$/',
+            (string) $response->json('client_secret')
+        );
+
         $paymentId = (int) $response->json('payment_id');
         $providerTransactionId = (string) $response->json('provider_transaction_id');
 

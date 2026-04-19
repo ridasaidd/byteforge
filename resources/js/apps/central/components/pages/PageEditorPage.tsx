@@ -158,7 +158,7 @@ export function PageEditorPage() {
       // Ensure _rootId is set for root CSS generation
       const rootProps = (puckDataRef.current.root as { props?: Record<string, unknown> })?.props || {};
       (puckDataRef.current as any).root = { ...puckDataRef.current.root, props: { ...rootProps, _rootId: id } };
-      const pageCss = themeData ? extractCssFromPuckData(puckDataRef.current, themeData, false) : '';
+      const pageCss = extractCssFromPuckData(puckDataRef.current, themeData ?? undefined, false);
 
       await pages.update(Number(id), {
         puck_data: puckDataRef.current as Record<string, unknown>,

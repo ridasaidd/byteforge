@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\Booking;
 
 use App\Models\Addon;
 use App\Models\Booking;
+use App\Models\Page;
 use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\Payment;
@@ -187,7 +188,9 @@ class BookingPaymentIntegrationTest extends TestCase
         $response->assertJson(['data' => [
             'booking_id' => $booking->id,
             'status' => Booking::STATUS_AWAITING_PAYMENT,
+            'next_action' => 'payment_required',
         ]]);
+        $response->assertJsonPath('data.payment_url', $this->url('/booking/payment') . '#token=' . $booking->management_token);
         $response->assertJsonPath('data.payment.provider', 'stripe');
         $response->assertJsonPath('data.payment.publishable_key', 'pk_test_123');
         $response->assertJsonPath('data.payment.id', $response->json('data.payment_id'));
@@ -195,6 +198,7 @@ class BookingPaymentIntegrationTest extends TestCase
         $clientSecret = $response->json('data.payment.client_secret');
         $this->assertIsString($clientSecret);
         $this->assertNotSame('', $clientSecret);
+        $this->assertMatchesRegularExpression('/^pi_[A-Za-z0-9]+_secret_[A-Za-z0-9]+$/', $clientSecret);
 
         // Verify booking status changed
         $booking->refresh();
@@ -204,6 +208,178 @@ class BookingPaymentIntegrationTest extends TestCase
         $this->assertNotNull($booking->payment_id);
         $payment = $booking->payment;
         $this->assertEquals((int) ($this->paidService->price * 100), $payment->amount);
+    }
+
+    public function test_confirm_hold_uses_configured_payment_page_when_present(): void
+    {
+        $settings = app(TenantSettings::class);
+
+        $paymentPage = Page::factory()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'title' => 'Booking Payment',
+            'slug' => 'booking-payment',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+
+        $settings->booking_payment_page_id = $paymentPage->id;
+        $settings->save();
+
+        TenantPaymentProvider::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'provider' => 'stripe',
+            'credentials' => [
+                'publishable_key' => 'pk_test_123',
+                'secret_key' => 'sk_test_123',
+            ],
+            'is_active' => true,
+        ]);
+
+        $booking = Booking::factory()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'service_id' => $this->paidService->id,
+            'resource_id' => $this->resource->id,
+            'status' => Booking::STATUS_PENDING_HOLD,
+            'hold_expires_at' => now()->addMinutes(10),
+            'management_token' => Booking::generateToken(),
+        ]);
+
+        $response = $this->postJson($this->url("/api/public/booking/hold/{$booking->management_token}"));
+
+        $response->assertOk();
+        $response->assertJsonPath('data.payment_url', $this->url('/pages/booking-payment') . '#token=' . $booking->management_token);
+    }
+
+    public function test_confirm_hold_falls_back_when_configured_payment_page_is_missing(): void
+    {
+        $settings = app(TenantSettings::class);
+        $settings->booking_payment_page_id = 999999;
+        $settings->save();
+
+        TenantPaymentProvider::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'provider' => 'stripe',
+            'credentials' => [
+                'publishable_key' => 'pk_test_123',
+                'secret_key' => 'sk_test_123',
+            ],
+            'is_active' => true,
+        ]);
+
+        $booking = Booking::factory()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'service_id' => $this->paidService->id,
+            'resource_id' => $this->resource->id,
+            'status' => Booking::STATUS_PENDING_HOLD,
+            'hold_expires_at' => now()->addMinutes(10),
+            'management_token' => Booking::generateToken(),
+        ]);
+
+        $response = $this->postJson($this->url("/api/public/booking/hold/{$booking->management_token}"));
+
+        $response->assertOk();
+        $response->assertJsonPath('data.payment_url', $this->url('/booking/payment') . '#token=' . $booking->management_token);
+    }
+
+    /**
+     * Security/correctness: payment creation for the same pending hold must be
+     * idempotent. Re-entering the service path must not create a second charge.
+     */
+    public function test_create_payment_for_booking_does_not_create_duplicates_for_same_booking(): void
+    {
+        TenantPaymentProvider::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'provider' => 'stripe',
+            'credentials' => [
+                'publishable_key' => 'pk_test_123',
+                'secret_key' => 'sk_test_123',
+            ],
+            'is_active' => true,
+        ]);
+
+        $service = $this->app->make(BookingPaymentService::class);
+
+        $booking = Booking::factory()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'service_id' => $this->paidService->id,
+            'resource_id' => $this->resource->id,
+            'status' => Booking::STATUS_PENDING_HOLD,
+            'hold_expires_at' => now()->addMinutes(10),
+            'management_token' => Booking::generateToken(),
+        ]);
+
+        $firstPayment = $service->createPaymentForBooking($booking);
+        $booking->refresh();
+
+        $this->assertNotNull($firstPayment);
+        $this->assertSame(Booking::STATUS_AWAITING_PAYMENT, $booking->status);
+        $this->assertSame(
+            1,
+            Payment::query()
+                ->forTenant((string) $this->tenant->id)
+                ->where('metadata->booking_id', $booking->id)
+                ->count()
+        );
+
+        $secondPayment = $service->createPaymentForBooking($booking);
+        $booking->refresh();
+
+        $this->assertNotNull($secondPayment);
+        $this->assertSame(
+            $firstPayment->id,
+            $secondPayment->id,
+            'The same booking should reuse the existing payment instead of creating a new one.'
+        );
+        $this->assertSame(
+            1,
+            Payment::query()
+                ->forTenant((string) $this->tenant->id)
+                ->where('metadata->booking_id', $booking->id)
+                ->count(),
+            'A duplicate payment record was created for the same booking.'
+        );
+    }
+
+    public function test_payment_session_endpoint_returns_guest_safe_payment_payload(): void
+    {
+        $provider = TenantPaymentProvider::factory()->create([
+            'tenant_id' => $this->tenant->id,
+            'provider' => 'stripe',
+            'credentials' => [
+                'publishable_key' => 'pk_test_123',
+                'secret_key' => 'sk_test_123',
+            ],
+            'is_active' => true,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'provider' => 'stripe',
+            'status' => Payment::STATUS_PROCESSING,
+            'provider_response' => [
+                'client_secret' => 'pi_abc123_secret_def456',
+            ],
+        ]);
+
+        $booking = Booking::factory()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'service_id' => $this->paidService->id,
+            'resource_id' => $this->resource->id,
+            'status' => Booking::STATUS_AWAITING_PAYMENT,
+            'management_token' => Booking::generateToken(),
+            'payment_id' => $payment->id,
+            'customer_email' => 'guest@example.com',
+        ]);
+
+        $response = $this->getJson($this->url("/api/public/booking/payment/{$booking->management_token}"));
+
+        $response->assertOk();
+        $response->assertJsonPath('data.booking_id', $booking->id);
+        $response->assertJsonPath('data.status', Booking::STATUS_AWAITING_PAYMENT);
+        $response->assertJsonPath('data.customer_email', 'guest@example.com');
+        $response->assertJsonPath('data.payment.provider', 'stripe');
+        $response->assertJsonPath('data.payment.publishable_key', data_get($provider->credentials, 'publishable_key'));
+        $response->assertJsonPath('data.payment.client_secret', 'pi_abc123_secret_def456');
     }
 
     /**

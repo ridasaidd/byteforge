@@ -183,7 +183,7 @@ class BookingManagementController extends Controller
             ], 422);
         }
 
-        $booking->delete();
+        $booking->forceDelete();
 
         return response()->json(null, 204);
     }

@@ -287,6 +287,47 @@ class BookingCmsApiTest extends TestCase
         $this->assertDatabaseMissing('booking_services', ['id' => $id]);
     }
 
+    #[Test]
+    public function deleting_a_cancelled_booking_force_removes_it_so_service_cleanup_can_succeed(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id, [
+            'type' => BookingResource::TYPE_PERSON,
+        ]);
+        $service->resources()->attach($resource->id);
+
+        $booking = Booking::factory()->create([
+            'tenant_id' => (string) $tenant->id,
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'status' => Booking::STATUS_CANCELLED,
+            'starts_at' => now()->addDay(),
+            'ends_at' => now()->addDay()->addHour(),
+        ]);
+        $booking->recordEvent(
+            Booking::STATUS_CANCELLED,
+            Booking::ACTOR_TENANT_USER,
+            null,
+            Booking::STATUS_CONFIRMED,
+            'Cancelled before deletion in API regression test.',
+        );
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->deleteJson($this->url("/api/booking/bookings/{$booking->id}"))
+            ->assertNoContent();
+
+        $this->assertNull(Booking::withTrashed()->find($booking->id));
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->deleteJson($this->url("/api/booking/services/{$service->id}"))
+            ->assertNoContent();
+
+        $this->assertDatabaseMissing('booking_services', ['id' => $service->id]);
+    }
+
     // ─── Resource ↔ Service links ─────────────────────────────────────────────
 
     #[Test]

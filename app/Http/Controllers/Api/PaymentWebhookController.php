@@ -252,12 +252,12 @@ class PaymentWebhookController extends Controller
     {
         $reference = (string) data_get($payment->metadata, 'reference', '');
 
-        if (! str_starts_with($reference, 'booking:')) {
+        $bookingId = $this->extractBookingIdFromReference($reference, $payment->id);
+        if ($bookingId === null) {
             return;
         }
 
         try {
-            $bookingId = (int) substr($reference, 8);
             $this->bookingPayment->confirmBookingAfterPayment($bookingId, $tenantId);
 
             Log::info('Booking confirmed after payment webhook', [
@@ -271,5 +271,24 @@ class PaymentWebhookController extends Controller
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function extractBookingIdFromReference(string $reference, int $paymentId): ?int
+    {
+        if (! str_starts_with($reference, 'booking:')) {
+            return null;
+        }
+
+        $bookingId = substr($reference, 8);
+        if ($bookingId === '' || ! ctype_digit($bookingId) || (int) $bookingId < 1) {
+            Log::warning('Ignoring malformed booking payment reference', [
+                'payment_id' => $paymentId,
+                'payment_reference' => $reference,
+            ]);
+
+            return null;
+        }
+
+        return (int) $bookingId;
     }
 }

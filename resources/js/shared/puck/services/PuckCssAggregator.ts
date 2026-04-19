@@ -1,8 +1,6 @@
 import type { Data } from '@puckeditor/core';
 import { generateFontCSSFromThemeData } from '@/shared/services/fonts/generateFontCss';
 import {
-  buildLayoutCSS,
-  buildTypographyCSS,
   generateFontSizeCSS,
   generateLineHeightCSS,
   generateLetterSpacingCSS,
@@ -26,7 +24,13 @@ import {
   type ResponsiveZIndexValue,
   type ShadowValue,
 } from '../fields';
+import { buildLayoutCSS, buildTypographyCSS } from '../fields/cssBuilder';
 import { buildNavigationMenuCss as buildNavMenuCss } from '../components/navigation_v2/shared/navCssBuilder';
+import {
+  BOOKING_WIDGET_STATIC_CSS,
+  buildBookingWidgetCssVars,
+  getBookingWidgetInstanceClassName,
+} from '../components/booking/styles';
 
 export type ThemeData = Record<string, unknown>;
 
@@ -146,6 +150,7 @@ function isLayoutComponent(type?: string): boolean {
     'box',
     'card',
     'button',
+    'bookingwidget',
     'image',
     'navigationmenu',
     'form',
@@ -156,6 +161,13 @@ function isLayoutComponent(type?: string): boolean {
     'checkbox',
     'submitbutton',
   ].includes(type.toLowerCase());
+}
+
+function buildBookingWidgetCss(component: PuckComponent, resolver: ThemeResolver): string {
+  const props = (component.props || {}) as Record<string, unknown>;
+  const instanceClassName = getBookingWidgetInstanceClassName((props.id as string) || component.id || 'unknown');
+
+  return buildBookingWidgetCssVars(`.${instanceClassName}`, props, resolver);
 }
 
 function isTypographyComponent(type?: string): boolean {
@@ -879,6 +891,7 @@ function buildFormComponentCss(component: PuckComponent, resolver: ThemeResolver
 export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData): string {
   const resolver = createThemeResolver(themeData);
   const cssRules: string[] = [];
+  let hasBookingWidget = false;
 
   collectComponents(puckData).forEach((component) => {
     if (!isLayoutComponent(component.type)) return;
@@ -893,6 +906,10 @@ export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData
         break;
       case 'button':
         cssRules.push(buildButtonCss(component, resolver));
+        break;
+      case 'bookingwidget':
+        hasBookingWidget = true;
+        cssRules.push(buildBookingWidgetCss(component, resolver));
         break;
       case 'image':
         cssRules.push(buildImageCss(component, resolver));
@@ -913,6 +930,10 @@ export function extractLayoutComponentsCss(puckData: Data, themeData?: ThemeData
         break;
     }
   });
+
+  if (hasBookingWidget) {
+    cssRules.unshift(BOOKING_WIDGET_STATIC_CSS);
+  }
 
   return cssRules.filter(Boolean).join('\n');
 }

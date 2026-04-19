@@ -6,6 +6,7 @@ namespace Tests\Feature\Api\Booking;
 
 use App\Models\Addon;
 use App\Models\Booking;
+use App\Models\BookingAvailability;
 use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\Payment;
@@ -122,6 +123,14 @@ class BookingPaymentSecurityTest extends TestCase
         );
     }
 
+    private function stripeSignatureHeader(string $payload, string $secret): string
+    {
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp . '.' . $payload, $secret);
+
+        return sprintf('t=%d,v1=%s', $timestamp, $signature);
+    }
+
     // =========================================================================
     // A07 — Authentication: Unauthenticated access to CMS booking endpoints
     // =========================================================================
@@ -231,6 +240,35 @@ class BookingPaymentSecurityTest extends TestCase
         $this->assertEquals(Booking::STATUS_CONFIRMED, $tenantTwoBooking->status);
     }
 
+    /**
+     * A01/IDOR: A guest must not be able to load tenant-two's payment session
+     * from tenant-one's domain using a valid management token.
+     */
+    public function test_public_payment_session_token_is_scoped_to_issuing_tenant(): void
+    {
+        $payment = Payment::factory()->create([
+            'tenant_id' => (string) $this->tenantTwo->id,
+            'provider' => 'stripe',
+            'status' => Payment::STATUS_PROCESSING,
+            'provider_response' => [
+                'client_secret' => 'pi_cross_tenant_secret',
+            ],
+        ]);
+
+        $tenantTwoBooking = $this->makeBookingForTenant($this->tenantTwo, [
+            'status' => Booking::STATUS_AWAITING_PAYMENT,
+            'management_token' => Booking::generateToken(),
+            'token_expires_at' => now()->addDays(7),
+            'payment_id' => $payment->id,
+        ]);
+
+        $response = $this->getJson(
+            $this->url("/api/public/booking/payment/{$tenantTwoBooking->management_token}", 'tenant-one')
+        );
+
+        $response->assertStatus(404);
+    }
+
     // =========================================================================
     // A02 — Sensitive Data Exposure: Stripe secret key must never leave server
     // =========================================================================
@@ -327,6 +365,70 @@ class BookingPaymentSecurityTest extends TestCase
     }
 
     /**
+     * A08: A malformed booking reference in payment metadata must not trigger
+     * booking confirmation when a webhook marks the payment completed.
+     */
+    public function test_stripe_webhook_ignores_malformed_booking_reference(): void
+    {
+        $provider = $this->upsertStripeProvider($this->tenantOne, [
+            'publishable_key' => 'pk_test_123',
+            'secret_key' => 'sk_test_123',
+            'webhook_secret' => 'whsec_booking_reference',
+        ]);
+
+        $booking = $this->makeBookingForTenant($this->tenantOne, [
+            'status' => Booking::STATUS_AWAITING_PAYMENT,
+        ]);
+
+        $payment = Payment::factory()->create([
+            'tenant_id' => (string) $this->tenantOne->id,
+            'provider' => 'stripe',
+            'provider_transaction_id' => 'pi_booking_reference_123',
+            'status' => Payment::STATUS_PROCESSING,
+            'metadata' => ['reference' => 'booking:not-a-number'],
+        ]);
+
+        $booking->update(['payment_id' => $payment->id]);
+
+        $payload = json_encode([
+            'id' => 'evt_booking_reference_1',
+            'object' => 'event',
+            'type' => 'payment_intent.succeeded',
+            'data' => [
+                'object' => [
+                    'id' => 'pi_booking_reference_123',
+                    'status' => 'succeeded',
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+
+        $response = $this->call(
+            'POST',
+            $this->url('/api/payments/stripe/webhook'),
+            [],
+            [],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_STRIPE_SIGNATURE' => $this->stripeSignatureHeader(
+                    $payload,
+                    (string) data_get($provider->credentials, 'webhook_secret')
+                ),
+            ],
+            $payload,
+        );
+
+        $response->assertOk();
+
+        $booking->refresh();
+        $payment->refresh();
+
+        $this->assertSame(Booking::STATUS_AWAITING_PAYMENT, $booking->status);
+        $this->assertSame(Payment::STATUS_COMPLETED, $payment->status);
+    }
+
+    /**
      * A08: A Swish callback without being verifiable via Swish's own status API
      * (503 from their side) must be rejected rather than processed.
      * This ensures we never trust the raw callback payload.
@@ -381,6 +483,181 @@ class BookingPaymentSecurityTest extends TestCase
         // Booking must not be cancelled
         $booking->refresh();
         $this->assertEquals(Booking::STATUS_CONFIRMED, $booking->status);
+    }
+
+    /**
+     * A01: An expired management token must not allow access to the guest
+     * payment session endpoint.
+     */
+    public function test_expired_management_token_cannot_access_payment_session(): void
+    {
+        $payment = Payment::factory()->create([
+            'tenant_id' => (string) $this->tenantOne->id,
+            'provider' => 'stripe',
+            'status' => Payment::STATUS_PROCESSING,
+            'provider_response' => [
+                'client_secret' => 'pi_expired_secret',
+            ],
+        ]);
+
+        $booking = $this->makeBookingForTenant($this->tenantOne, [
+            'status' => Booking::STATUS_AWAITING_PAYMENT,
+            'management_token' => Booking::generateToken(),
+            'token_expires_at' => now()->subHour(),
+            'payment_id' => $payment->id,
+        ]);
+
+        $response = $this->getJson(
+            $this->url("/api/public/booking/payment/{$booking->management_token}")
+        );
+
+        $response->assertStatus(410);
+    }
+
+    /**
+     * A02: The guest payment page URL must place the management token in the
+     * fragment, not in the request path, to reduce log and referrer exposure.
+     */
+    public function test_payment_handoff_url_uses_fragment_token_instead_of_path_token(): void
+    {
+        tenancy()->initialize($this->tenantOne);
+
+        $resource = BookingResource::factory()->create([
+            'tenant_id' => (string) $this->tenantOne->id,
+        ]);
+
+        $service = BookingService::factory()->create([
+            'tenant_id' => (string) $this->tenantOne->id,
+            'booking_mode' => BookingService::MODE_SLOT,
+            'duration_minutes' => 30,
+            'price' => 499.00,
+            'currency' => 'SEK',
+            'requires_payment' => true,
+        ]);
+        $service->resources()->attach($resource->id);
+
+        $this->upsertStripeProvider($this->tenantOne, [
+            'publishable_key' => 'pk_test_VISIBLE',
+            'secret_key' => 'sk_test_MUST_NOT_APPEAR',
+        ]);
+
+        $booking = Booking::factory()->create([
+            'tenant_id' => (string) $this->tenantOne->id,
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'status' => Booking::STATUS_PENDING_HOLD,
+            'hold_expires_at' => now()->addMinutes(10),
+            'management_token' => Booking::generateToken(),
+        ]);
+
+        $response = $this->postJson(
+            $this->url("/api/public/booking/hold/{$booking->management_token}")
+        );
+
+        $response->assertStatus(200);
+        $response->assertJsonPath(
+            'data.payment_url',
+            $this->url('/booking/payment') . '#token=' . $booking->management_token
+        );
+    }
+
+    /**
+     * A01/tenant isolation: a forged foreign-tenant booking row referencing the
+     * current tenant's resource must not block public slot availability.
+     */
+    public function test_foreign_tenant_booking_row_does_not_block_slot_availability(): void
+    {
+        $resource = $this->makeResourceForTenant($this->tenantOne);
+        $service = $this->makeServiceForTenant($this->tenantOne, [
+            'booking_mode' => BookingService::MODE_SLOT,
+            'duration_minutes' => 60,
+            'slot_interval_minutes' => 60,
+        ]);
+        $service->resources()->syncWithoutDetaching([$resource->id]);
+
+        $date = now()->addDays(5)->format('Y-m-d');
+
+        BookingAvailability::create([
+            'resource_id' => $resource->id,
+            'specific_date' => $date,
+            'starts_at' => '09:00:00',
+            'ends_at' => '12:00:00',
+            'is_blocked' => false,
+        ]);
+
+        $tenantTwoService = $this->makeServiceForTenant($this->tenantTwo, [
+            'booking_mode' => BookingService::MODE_SLOT,
+            'duration_minutes' => 60,
+        ]);
+
+        Booking::factory()->create([
+            'tenant_id' => (string) $this->tenantTwo->id,
+            'service_id' => $tenantTwoService->id,
+            'resource_id' => $resource->id,
+            'status' => Booking::STATUS_CONFIRMED,
+            'starts_at' => "{$date} 09:00:00",
+            'ends_at' => "{$date} 10:00:00",
+        ]);
+
+        $response = $this->getJson(
+            $this->url("/api/public/booking/slots?service_id={$service->id}&resource_id={$resource->id}&date={$date}")
+        );
+
+        $response->assertOk();
+        $slot = collect($response->json('data'))->first(
+            fn (array $item) => str_contains((string) ($item['starts_at'] ?? ''), 'T09:00:00')
+        );
+
+        $this->assertNotNull($slot);
+        $this->assertTrue((bool) ($slot['available'] ?? false));
+    }
+
+    /**
+     * A01/tenant isolation: a forged foreign-tenant booking row referencing the
+     * current tenant's resource must not block range availability checks.
+     */
+    public function test_foreign_tenant_booking_row_does_not_block_range_availability(): void
+    {
+        $resource = $this->makeResourceForTenant($this->tenantOne);
+        $service = $this->makeServiceForTenant($this->tenantOne, [
+            'booking_mode' => BookingService::MODE_RANGE,
+        ]);
+        $service->resources()->syncWithoutDetaching([$resource->id]);
+
+        for ($day = 0; $day <= 6; $day++) {
+            BookingAvailability::create([
+                'resource_id' => $resource->id,
+                'day_of_week' => $day,
+                'starts_at' => '00:00:00',
+                'ends_at' => '23:59:00',
+                'is_blocked' => false,
+            ]);
+        }
+
+        $checkIn = now()->addDays(7)->format('Y-m-d');
+        $checkOut = now()->addDays(9)->format('Y-m-d');
+
+        $tenantTwoService = $this->makeServiceForTenant($this->tenantTwo, [
+            'booking_mode' => BookingService::MODE_RANGE,
+        ]);
+
+        Booking::factory()->create([
+            'tenant_id' => (string) $this->tenantTwo->id,
+            'service_id' => $tenantTwoService->id,
+            'resource_id' => $resource->id,
+            'status' => Booking::STATUS_CONFIRMED,
+            'starts_at' => "{$checkIn} 15:00:00",
+            'ends_at' => "{$checkOut} 11:00:00",
+        ]);
+
+        $response = $this->getJson(
+            $this->url(
+                "/api/public/booking/availability?service_id={$service->id}&resource_id={$resource->id}&check_in={$checkIn}&check_out={$checkOut}"
+            )
+        );
+
+        $response->assertOk();
+        $response->assertJsonPath('available', true);
     }
 
     // =========================================================================

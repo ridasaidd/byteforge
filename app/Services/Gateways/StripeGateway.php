@@ -16,6 +16,9 @@ use UnexpectedValueException;
 
 class StripeGateway implements PaymentGatewayContract
 {
+    private const TEST_INTENT_ID_PATTERN = 'pi_%s';
+    private const TEST_CLIENT_SECRET_PATTERN = 'pi_%s_secret_%s';
+
     /**
      * @param array<string, mixed> $credentials
      */
@@ -49,13 +52,16 @@ class StripeGateway implements PaymentGatewayContract
         }
 
         if (app()->environment('testing')) {
-            $id = 'pi_test_' . str_replace('.', '', uniqid('', true));
+            $intentToken = bin2hex(random_bytes(12));
+            $secretToken = bin2hex(random_bytes(16));
+            $id = sprintf(self::TEST_INTENT_ID_PATTERN, $intentToken);
+            $clientSecret = sprintf(self::TEST_CLIENT_SECRET_PATTERN, $intentToken, $secretToken);
 
             return new PaymentResult(
                 success: true,
                 providerTransactionId: $id,
-                clientSecret: $id . '_secret_test',
-                rawResponse: ['id' => $id, 'client_secret' => $id . '_secret_test'],
+                clientSecret: $clientSecret,
+                rawResponse: ['id' => $id, 'client_secret' => $clientSecret],
             );
         }
 
