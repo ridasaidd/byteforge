@@ -23,6 +23,43 @@ use Illuminate\Support\Facades\Route;
 use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
 use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
+$renderPublicTenantView = function (?string $slug = null) {
+    try {
+        $analyticsSettings = app(\App\Settings\TenantSettings::class);
+    } catch (\Throwable $e) {
+        $analyticsSettings = null;
+    }
+
+    $initialPageTitle = null;
+
+    try {
+        $pageQuery = Page::query()
+            ->where('tenant_id', tenant('id'))
+            ->where('status', 'published');
+
+        $page = $slug
+            ? $pageQuery->where('slug', $slug)->first()
+            : $pageQuery->where('is_homepage', true)->first();
+
+        if ($page) {
+            $initialPageTitle = $page->meta_data['meta_title'] ?? $page->title;
+        }
+    } catch (\Throwable $e) {
+        $initialPageTitle = null;
+    }
+
+    try {
+        $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
+        if ($activeTheme) {
+            app(\App\Services\ThemeService::class)->ensureThemeCssFileExistsForTheme($activeTheme);
+        }
+    } catch (\Throwable $e) {
+        $activeTheme = null;
+    }
+
+    return view('public-tenant', compact('analyticsSettings', 'activeTheme', 'initialPageTitle'));
+};
+
 /*
 |--------------------------------------------------------------------------
 | Tenant Routes
@@ -40,68 +77,18 @@ Route::middleware([
     InitializeTenancyByDomain::class,
     PreventAccessFromCentralDomains::class,
     'permission.team',
-])->group(function () {
+])->group(function () use ($renderPublicTenantView) {
     // Public storefront — serve tenant SPA with theme + analytics scripts injected
-    Route::get('/', function () {
-        try {
-            $analyticsSettings = app(\App\Settings\TenantSettings::class);
-        } catch (\Throwable $e) {
-            $analyticsSettings = null;
-        }
-        $initialPageTitle = null;
-        try {
-            $homepage = Page::query()
-                ->where('tenant_id', tenant('id'))
-                ->where('is_homepage', true)
-                ->where('status', 'published')
-                ->first();
-
-            if ($homepage) {
-                $initialPageTitle = $homepage->meta_data['meta_title'] ?? $homepage->title;
-            }
-        } catch (\Throwable $e) {
-            $initialPageTitle = null;
-        }
-        try {
-            $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
-            if ($activeTheme) {
-                app(\App\Services\ThemeService::class)->ensureThemeCssFileExistsForTheme($activeTheme);
-            }
-        } catch (\Throwable $e) {
-            $activeTheme = null;
-        }
-        return view('public-tenant', compact('analyticsSettings', 'activeTheme', 'initialPageTitle'));
+    Route::get('/', function () use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
     });
 
-    Route::get('/pages/{slug}', function (string $slug) {
-        try {
-            $analyticsSettings = app(\App\Settings\TenantSettings::class);
-        } catch (\Throwable $e) {
-            $analyticsSettings = null;
-        }
-        $initialPageTitle = null;
-        try {
-            $page = Page::query()
-                ->where('tenant_id', tenant('id'))
-                ->where('slug', $slug)
-                ->where('status', 'published')
-                ->first();
+    Route::get('/booking/payment', function () use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    });
 
-            if ($page) {
-                $initialPageTitle = $page->meta_data['meta_title'] ?? $page->title;
-            }
-        } catch (\Throwable $e) {
-            $initialPageTitle = null;
-        }
-        try {
-            $activeTheme = app(\App\Services\ThemeService::class)->getActiveTheme(tenant('id'));
-            if ($activeTheme) {
-                app(\App\Services\ThemeService::class)->ensureThemeCssFileExistsForTheme($activeTheme);
-            }
-        } catch (\Throwable $e) {
-            $activeTheme = null;
-        }
-        return view('public-tenant', compact('analyticsSettings', 'activeTheme', 'initialPageTitle'));
+    Route::get('/pages/{slug}', function (string $slug) use ($renderPublicTenantView) {
+        return $renderPublicTenantView($slug);
     })->where('slug', '[a-z0-9\-]+');
 
     // Tenant CMS shell and login page
@@ -156,6 +143,7 @@ Route::middleware([
         Route::get('slots', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'slots'])->middleware('throttle:60,1');
         Route::get('availability', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'availability'])->middleware('throttle:60,1');
         Route::get('next-available', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'nextAvailable']);
+        Route::get('payment/{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'paymentSession'])->middleware('throttle:20,1');
         Route::post('hold', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'hold'])->middleware('throttle:20,1');
         Route::post('hold/{token}', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'confirmHold'])->middleware('throttle:20,1');
         Route::post('/', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'store'])->middleware('throttle:20,1');

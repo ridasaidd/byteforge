@@ -211,7 +211,8 @@ class BookingAvailabilityService
         $startsAtUtc = $checkIn->utc()->toDateTimeString();
         $endsAtUtc   = $checkOut->utc()->toDateTimeString();
 
-        $conflict = Booking::where('resource_id', $resource->id)
+        $conflict = Booking::forTenant((string) $resource->tenant_id)
+            ->where('resource_id', $resource->id)
             ->whereIn('status', [
                 Booking::STATUS_CONFIRMED,
                 Booking::STATUS_PENDING_HOLD,
@@ -272,7 +273,8 @@ class BookingAvailabilityService
 
         $bufferMinutes = (int) ($service->buffer_minutes ?? 0);
 
-        $conflict = Booking::where('resource_id', $resource->id)
+        $conflict = Booking::forTenant((string) $resource->tenant_id)
+            ->where('resource_id', $resource->id)
             ->whereIn('status', [
                 Booking::STATUS_CONFIRMED,
                 Booking::STATUS_PENDING_HOLD,
@@ -350,7 +352,8 @@ class BookingAvailabilityService
         $dayStart = $date->copy()->startOfDay()->utc()->toDateTimeString();
         $dayEnd   = $date->copy()->endOfDay()->utc()->toDateTimeString();
 
-        return Booking::where('resource_id', $resource->id)
+        return Booking::forTenant((string) $resource->tenant_id)
+            ->where('resource_id', $resource->id)
             ->whereIn('status', [
                 Booking::STATUS_CONFIRMED,
                 Booking::STATUS_PENDING_HOLD,

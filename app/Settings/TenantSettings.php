@@ -60,6 +60,8 @@ class TenantSettings extends Settings
 
     public string $booking_checkout_time;
 
+    public ?int $booking_payment_page_id;
+
     public bool $ga4_enabled;
 
     public bool $gtm_enabled;

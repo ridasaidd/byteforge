@@ -8,6 +8,7 @@ use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\TenantPaymentProvider;
 use App\Notifications\Booking\BookingConfirmedNotification;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
@@ -83,68 +84,85 @@ class BookingPaymentService
             return null;
         }
 
-        // Load relationships
-        if (! $booking->relationLoaded('service')) {
-            $booking->load('service');
-        }
-
-        $service = $booking->service;
-
-        // Create payment data structure
-        $paymentData = new PaymentData(
-            amount: (int) ($service->price * 100), // Convert to cents
-            currency: $service->currency,
-            description: "Booking: {$service->name} on {$booking->starts_at->format('Y-m-d')}",
-            customerName: $booking->customer_name,
-            customerEmail: $booking->customer_email,
-            metadata: [
-                'booking_id' => $booking->id,
-                'reference' => "booking:{$booking->id}",
-            ],
-        );
-
         try {
-            // Get the first active payment provider for tenant
-            $provider = TenantPaymentProvider::forTenant($booking->tenant_id)
-                ->active()
-                ->first();
+            return DB::transaction(function () use ($booking) {
+                $lockedBooking = Booking::query()
+                    ->whereKey($booking->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            if (! $provider) {
-                throw new \Exception('No active payment provider configured for tenant');
-            }
+                if ($lockedBooking->payment_id !== null) {
+                    $existingPayment = Payment::query()
+                        ->forTenant((string) $lockedBooking->tenant_id)
+                        ->find($lockedBooking->payment_id);
 
-            // Create payment via PaymentService (external call — cannot be rolled back)
-            $paymentResult = $this->paymentService->processPayment(
-                $booking->tenant_id,
-                $provider->provider,
-                $paymentData,
-            );
+                    if ($existingPayment instanceof Payment) {
+                        return $existingPayment;
+                    }
+                }
 
-            if (! $paymentResult->success) {
-                Log::warning('Failed to create payment for booking', [
-                    'booking_id' => $booking->id,
-                    'error' => $paymentResult->errorMessage,
-                ]);
+                if ($lockedBooking->status === Booking::STATUS_AWAITING_PAYMENT) {
+                    throw new ModelNotFoundException('Booking is awaiting payment but has no linked payment record.');
+                }
 
-                throw new \Exception("Payment creation failed: {$paymentResult->errorMessage}");
-            }
+                if ($lockedBooking->status !== Booking::STATUS_PENDING_HOLD) {
+                    throw new \RuntimeException(
+                        "Booking {$lockedBooking->id} cannot start payment from status {$lockedBooking->status}."
+                    );
+                }
 
-            // Wrap all DB writes in a transaction so the booking status update and
-            // payment_id link are atomic. If this fails after the external charge,
-            // an error is logged for manual recovery.
-            return DB::transaction(function () use ($booking, $paymentResult) {
-                $payment = Payment::forTenant($booking->tenant_id)
+                if (! $lockedBooking->relationLoaded('service')) {
+                    $lockedBooking->load('service');
+                }
+
+                $service = $lockedBooking->service;
+
+                $provider = TenantPaymentProvider::forTenant($lockedBooking->tenant_id)
+                    ->active()
+                    ->first();
+
+                if (! $provider) {
+                    throw new \Exception('No active payment provider configured for tenant');
+                }
+
+                $paymentData = new PaymentData(
+                    amount: (int) ($service->price * 100),
+                    currency: $service->currency,
+                    description: "Booking: {$service->name} on {$lockedBooking->starts_at->format('Y-m-d')}",
+                    customerName: $lockedBooking->customer_name,
+                    customerEmail: $lockedBooking->customer_email,
+                    metadata: [
+                        'booking_id' => $lockedBooking->id,
+                        'reference' => "booking:{$lockedBooking->id}",
+                    ],
+                );
+
+                $paymentResult = $this->paymentService->processPayment(
+                    (string) $lockedBooking->tenant_id,
+                    (string) $provider->provider,
+                    $paymentData,
+                );
+
+                if (! $paymentResult->success) {
+                    Log::warning('Failed to create payment for booking', [
+                        'booking_id' => $lockedBooking->id,
+                        'error' => $paymentResult->errorMessage,
+                    ]);
+
+                    throw new \Exception("Payment creation failed: {$paymentResult->errorMessage}");
+                }
+
+                $payment = Payment::forTenant((string) $lockedBooking->tenant_id)
                     ->where('provider_transaction_id', $paymentResult->providerTransactionId)
                     ->firstOrFail();
 
-                $booking->update([
-                    'status'          => Booking::STATUS_AWAITING_PAYMENT,
-                    'payment_id'      => $payment->id,
-                    // Clear hold deadline — payment flow has its own expiry window
+                $lockedBooking->update([
+                    'status' => Booking::STATUS_AWAITING_PAYMENT,
+                    'payment_id' => $payment->id,
                     'hold_expires_at' => null,
                 ]);
 
-                $booking->recordEvent(
+                $lockedBooking->recordEvent(
                     toStatus: Booking::STATUS_AWAITING_PAYMENT,
                     actorType: Booking::ACTOR_SYSTEM,
                     fromStatus: Booking::STATUS_PENDING_HOLD,

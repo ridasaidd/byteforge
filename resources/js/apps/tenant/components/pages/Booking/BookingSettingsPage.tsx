@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tenantSettings, type UpdateTenantSettingsData } from '@/shared/services/api';
+import { tenantPages } from '@/shared/services/api/pages';
 import { useToast } from '@/shared/hooks/useToast';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/shared/components/ui/card';
+import type { Page } from '@/shared/services/api/types';
 
 function toChecked(val: unknown): boolean {
   return val === true || val === 1 || val === '1';
@@ -29,12 +31,21 @@ export function BookingSettingsPage() {
   const [checkoutTime, setCheckoutTime] = useState('');
   const [reminderHours, setReminderHours] = useState('');
   const [cancellationNoticeHours, setCancellationNoticeHours] = useState('');
+  const [paymentPageId, setPaymentPageId] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['tenant-settings'],
     queryFn: async () => {
       const res = await tenantSettings.get();
       return res.data;
+    },
+  });
+
+  const { data: publishedPages = [], isLoading: isLoadingPages } = useQuery({
+    queryKey: ['tenant-pages', 'published-for-booking-payment'],
+    queryFn: async () => {
+      const response = await tenantPages.list({ per_page: 100, status: 'published' });
+      return response.data;
     },
   });
 
@@ -52,7 +63,10 @@ export function BookingSettingsPage() {
         : toNum(data.booking_reminder_hours)
     );
     setCancellationNoticeHours(toNum(data.booking_cancellation_notice_hours));
+    setPaymentPageId(toNum(data.booking_payment_page_id));
   }, [data]);
+
+  const paymentPageOptions = publishedPages.filter((page: Page) => page.status === 'published');
 
   const saveMutation = useMutation({
     mutationFn: (payload: UpdateTenantSettingsData) => tenantSettings.update(payload),
@@ -78,6 +92,7 @@ export function BookingSettingsPage() {
       booking_checkout_time: checkoutTime || undefined,
       booking_reminder_hours: reminderHoursArr,
       booking_cancellation_notice_hours: parseInt(cancellationNoticeHours, 10) || undefined,
+      booking_payment_page_id: paymentPageId ? parseInt(paymentPageId, 10) : null,
     });
   }
 
@@ -133,6 +148,27 @@ export function BookingSettingsPage() {
             />
             <p className="text-xs text-muted-foreground">
               How long a booking hold is reserved before releasing the slot.
+            </p>
+          </div>
+
+          <div className="grid gap-1.5 max-w-md">
+            <Label htmlFor="payment-page">Payment page</Label>
+            <select
+              id="payment-page"
+              value={paymentPageId}
+              onChange={(event) => setPaymentPageId(event.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+              disabled={isLoadingPages}
+            >
+              <option value="">System fallback payment page</option>
+              {paymentPageOptions.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.is_homepage ? `${page.title} (Homepage)` : `${page.title} (/pages/${page.slug})`}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Select the published CMS page that contains the Payment Widget. When unset, bookings fall back to the built-in payment page.
             </p>
           </div>
         </CardContent>

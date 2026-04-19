@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Booking;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Models\Page;
 use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\TenantPaymentProvider;
@@ -83,6 +84,7 @@ class PublicBookingController extends Controller
                 'duration_minutes' => $s->duration_minutes,
                 'price'            => $s->price,
                 'currency'         => $s->currency,
+                'requires_payment' => (bool) $s->requires_payment,
             ]);
 
         return response()->json(['data' => $rows]);
@@ -257,6 +259,26 @@ class PublicBookingController extends Controller
 
         return response()->json([
             'data' => $this->publicBookingShape($booking),
+        ]);
+    }
+
+    public function paymentSession(string $token): JsonResponse
+    {
+        $booking = $this->resolveByToken($token);
+
+        if (!in_array($booking->status, [Booking::STATUS_AWAITING_PAYMENT, Booking::STATUS_CONFIRMED], true)) {
+            return response()->json([
+                'message' => 'This booking does not have an active payment session.',
+            ], 422);
+        }
+
+        return response()->json([
+            'data' => [
+                'booking_id' => $booking->id,
+                'status' => $booking->status,
+                'customer_email' => $booking->customer_email,
+                'payment' => $booking->payment ? $this->publicPaymentPayload($booking->payment) : null,
+            ],
         ]);
     }
 
@@ -535,6 +557,8 @@ class PublicBookingController extends Controller
                         'starts_at'  => $booking->starts_at?->toIso8601String(),
                         'ends_at'    => $booking->ends_at?->toIso8601String(),
                         'status'     => $booking->status,
+                        'next_action' => 'payment_required',
+                        'payment_url' => $this->paymentUrl($booking->management_token),
                         'payment_id' => $payment?->id,
                         'payment'    => $payment ? $this->publicPaymentPayload($payment) : null,
                         'message'    => 'Payment required. Redirecting to payment provider...',
@@ -605,6 +629,7 @@ class PublicBookingController extends Controller
                 'starts_at'  => $booking->starts_at?->toIso8601String(),
                 'ends_at'    => $booking->ends_at?->toIso8601String(),
                 'status'     => $booking->status,
+                'next_action' => 'confirmed',
                 'message'    => 'Confirmation email sent.',
             ],
         ]);
@@ -694,8 +719,33 @@ class PublicBookingController extends Controller
             'starts_at'      => $booking->starts_at?->toIso8601String(),
             'ends_at'        => $booking->ends_at?->toIso8601String(),
             'status'         => $booking->status,
+            'payment'        => $booking->payment ? $this->publicPaymentPayload($booking->payment) : null,
             // management_token is in $hidden — never returned
         ];
+    }
+
+    private function paymentUrl(string $token): string
+    {
+        $path = '/booking/payment';
+
+        try {
+            $paymentPageId = $this->tenantSettings()->booking_payment_page_id;
+
+            if ($paymentPageId !== null) {
+                $page = Page::query()
+                    ->where('tenant_id', (string) tenant('id'))
+                    ->whereKey($paymentPageId)
+                    ->where('status', 'published')
+                    ->first();
+
+                if ($page !== null) {
+                    $path = $page->is_homepage ? '/' : "/pages/{$page->slug}";
+                }
+            }
+        } catch (\Throwable) {
+        }
+
+        return url($path) . '#token=' . $token;
     }
 
     private function tenantDomain(): string

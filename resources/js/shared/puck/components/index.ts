@@ -65,5 +65,5 @@ export {
 } from './forms';
 
 // Booking add-on components (conditionally registered in puckConfig when addon is active)
-export { BookingWidget, type BookingWidgetProps } from './booking';
+export { BookingWidget, PaymentWidget, type BookingWidgetProps, type PaymentWidgetProps } from './booking';
 

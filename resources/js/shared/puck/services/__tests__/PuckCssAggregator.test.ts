@@ -320,5 +320,27 @@ describe('PuckCssAggregator', () => {
       expect(css).toMatch(/{|}/);
       expect(css.length).toBeGreaterThan(0);
     });
+
+    it('should extract booking widget CSS for legacy primaryColor data', () => {
+      const puckData: Partial<Data> = {
+        content: [
+          {
+            type: 'BookingWidget',
+            id: 'booking-legacy',
+            props: {
+              id: 'booking-legacy',
+              primaryColor: '#ff0000',
+            },
+          },
+        ],
+      };
+
+      const css = extractCssFromPuckData(puckData as Data);
+
+      expect(css).toContain('.bw-root');
+      expect(css).toContain('.bw-booking-legacy');
+      expect(css).toContain('--bw-header-bg: #ff0000;');
+      expect(css).toContain('--bw-btn-bg: #ff0000;');
+    });
   });
 });

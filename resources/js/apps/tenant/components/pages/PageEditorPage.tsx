@@ -10,7 +10,7 @@ import { tenantPages } from '@/shared/services/api/pages';
 import { tenantThemeParts } from '@/shared/services/api/themeParts';
 import { tenantThemes } from '@/shared/services/api/themes';
 import { puckConfig as baseConfig } from '@/shared/puck/config';
-import { BookingWidget } from '@/shared/puck/components/booking';
+import { BookingWidget, PaymentWidget, bookingPuckSectionComponents } from '@/shared/puck/components/booking';
 import { PageEditorPreview } from '@/shared/components/organisms/PageEditorPreview';
 import { extractCssFromPuckData } from '@/shared/puck/services/PuckCssAggregator';
 import type { ThemeData } from '@/shared/puck/services/PuckCssAggregator';
@@ -54,8 +54,10 @@ export function PageEditorPage() {
 
     if (hasAddon('booking')) {
       extraComponents.BookingWidget = BookingWidget as Config['components'][string];
+      extraComponents.PaymentWidget = PaymentWidget as Config['components'][string];
+      Object.assign(extraComponents, bookingPuckSectionComponents);
       extraCategories.bookings = {
-        components: ['BookingWidget'],
+        components: ['BookingWidget', 'PaymentWidget'],
         title: 'Bookings',
         defaultExpanded: true,
       };
@@ -180,7 +182,7 @@ export function PageEditorPage() {
       const rootProps = (puckDataRef.current.root as { props?: Record<string, unknown> })?.props || {};
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (puckDataRef.current as any).root = { ...puckDataRef.current.root, props: { ...rootProps, _rootId: id } };
-      const pageCss = themeData ? extractCssFromPuckData(puckDataRef.current, themeData, false) : '';
+      const pageCss = extractCssFromPuckData(puckDataRef.current, themeData ?? undefined, false);
 
       await tenantPages.update(Number(id), {
         puck_data: puckDataRef.current as Record<string, unknown>,

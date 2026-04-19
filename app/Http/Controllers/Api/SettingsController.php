@@ -7,6 +7,7 @@ use App\Settings\TenantSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
@@ -51,6 +52,7 @@ class SettingsController extends Controller
                     'booking_reminder_hours' => $settings->booking_reminder_hours,
                     'booking_checkin_time' => $settings->booking_checkin_time,
                     'booking_checkout_time' => $settings->booking_checkout_time,
+                    'booking_payment_page_id' => $settings->booking_payment_page_id,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -101,6 +103,14 @@ class SettingsController extends Controller
             'booking_reminder_hours.*' => ['integer', 'min:0'],
             'booking_checkin_time' => ['sometimes', 'string', 'date_format:H:i,H:i:s'],
             'booking_checkout_time' => ['sometimes', 'string', 'date_format:H:i,H:i:s'],
+            'booking_payment_page_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('pages', 'id')->where(function ($query) {
+                    $query->where('tenant_id', (string) tenant('id'))
+                        ->where('status', 'published');
+                }),
+            ],
         ]);
 
         if ($validator->fails()) {
@@ -273,6 +283,11 @@ class SettingsController extends Controller
                 $changedFields['booking_checkout_time'] = ['old' => $settings->booking_checkout_time, 'new' => $request->booking_checkout_time];
                 $settings->booking_checkout_time = $request->booking_checkout_time;
             }
+            if ($request->exists('booking_payment_page_id')) {
+                $nextPageId = $request->input('booking_payment_page_id');
+                $changedFields['booking_payment_page_id'] = ['old' => $settings->booking_payment_page_id, 'new' => $nextPageId];
+                $settings->booking_payment_page_id = $nextPageId !== null ? (int) $nextPageId : null;
+            }
 
             $settings->save();
 
@@ -319,6 +334,7 @@ class SettingsController extends Controller
                     'booking_reminder_hours' => $settings->booking_reminder_hours,
                     'booking_checkin_time' => $settings->booking_checkin_time,
                     'booking_checkout_time' => $settings->booking_checkout_time,
+                    'booking_payment_page_id' => $settings->booking_payment_page_id,
                 ],
             ]);
         } catch (\Exception $e) {
