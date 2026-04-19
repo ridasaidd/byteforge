@@ -69,6 +69,45 @@ export interface Tenant extends Record<string, unknown> {
   updated_at: string;
 }
 
+export interface TenantInspectionSummary extends Record<string, unknown> {
+  tenant: Tenant;
+  stats: {
+    total_pages: number;
+    published_pages: number;
+    total_themes: number;
+    recent_activity_count: number;
+  };
+  active_theme: {
+    id: number;
+    name: string;
+    slug: string;
+    is_active: boolean;
+    updated_at: string | null;
+  } | null;
+}
+
+export interface TenantInspectionTheme extends Record<string, unknown> {
+  id: number;
+  tenant_id: string | null;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_system_theme: boolean;
+  is_active: boolean;
+  updated_at: string | null;
+}
+
+export interface TenantInspectionPage extends Record<string, unknown> {
+  id: number;
+  title: string;
+  slug: string;
+  page_type: string;
+  status: string;
+  is_homepage: boolean;
+  published_at: string | null;
+  updated_at: string;
+}
+
 export interface CreateTenantData {
   name: string;
   domain: string;

@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { DashboardPage } from './components/pages/DashboardPage';
 import { LoginPage } from './components/pages/LoginPage';
-import { PagesPage, PageEditorPage, ThemesPage, ThemeBuilderPage } from './components/pages';
+import { PagesPage, PageEditorPage, ThemesPage, ThemeBuilderPage, TenantInspectionPage } from './components/pages';
 import { PublicPage } from './components/pages/PublicPage';
 import { NavigationsPage } from './components/pages/NavigationsPage';
 import { TenantsPage } from './components/pages/TenantsPage';
@@ -74,6 +74,14 @@ function ProtectedRoutes() {
               <Route path="navigations" element={<NavigationsPage />} />
               <Route path="themes" element={<ThemesPage />} />
               <Route path="tenants" element={<TenantsPage />} />
+              <Route
+                path="tenants/:id"
+                element={(
+                  <PermissionGate permission="tenants.manage">
+                    <TenantInspectionPage />
+                  </PermissionGate>
+                )}
+              />
               <Route path="users" element={<UsersPage />} />
               <Route path="media" element={<MediaLibraryPage />} />
               <Route path="roles-permissions" element={<RolesPermissionsPage />} />

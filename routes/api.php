@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
+use App\Http\Controllers\Api\CentralTenantOperationsController;
 use App\Http\Controllers\Api\PlatformAnalyticsController;
 use App\Http\Controllers\Api\SuperadminController;
 use App\Http\Controllers\Api\ThemeCssController;
@@ -47,6 +48,11 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::get('tenants/{tenant}', [SuperadminController::class, 'showTenant'])->middleware('permission:tenants.view');
             Route::put('tenants/{tenant}', [SuperadminController::class, 'updateTenant'])->middleware('permission:tenants.manage');
             Route::delete('tenants/{tenant}', [SuperadminController::class, 'destroyTenant'])->middleware('permission:tenants.manage');
+            Route::get('tenants/{tenant}/summary', [CentralTenantOperationsController::class, 'summary'])->middleware('permission:tenants.operate|tenants.manage');
+            Route::get('tenants/{tenant}/themes', [CentralTenantOperationsController::class, 'themes'])->middleware('permission:tenants.themes.view|tenants.manage');
+            Route::post('tenants/{tenant}/themes/activate', [CentralTenantOperationsController::class, 'activateTheme'])->middleware('permission:tenants.themes.manage|tenants.manage');
+            Route::get('tenants/{tenant}/pages', [CentralTenantOperationsController::class, 'pages'])->middleware('permission:tenants.pages.view|tenants.manage');
+            Route::get('tenants/{tenant}/activity-logs', [CentralTenantOperationsController::class, 'activity'])->middleware('permission:tenants.activity.view|tenants.manage');
 
             // Users management
             Route::get('users', [SuperadminController::class, 'indexUsers'])->middleware('permission:users.view');

@@ -1,0 +1,213 @@
+<?php
+
+namespace Tests\Feature\Api;
+
+use App\Models\Page;
+use App\Models\TenantActivity;
+use App\Models\Theme;
+use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\TestUsers;
+use Tests\TestCase;
+
+class CentralTenantOperationsTest extends TestCase
+{
+    private function central(): array
+    {
+        return ['HTTP_HOST' => 'localhost'];
+    }
+
+    #[Test]
+    public function central_admin_can_view_tenant_inspection_summary(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $baselineTotalPages = Page::query()->where('tenant_id', $tenant->id)->count();
+        $baselinePublishedPages = Page::query()->where('tenant_id', $tenant->id)->where('status', 'published')->count();
+
+        $theme = Theme::factory()->create([
+            'tenant_id' => $tenant->id,
+            'is_active' => true,
+            'is_system_theme' => false,
+            'slug' => 'inspection-active-theme',
+            'name' => 'Inspection Active Theme',
+        ]);
+
+        Page::factory()->create([
+            'tenant_id' => $tenant->id,
+            'title' => 'Inspection Published Page',
+            'status' => 'published',
+        ]);
+
+        Page::factory()->create([
+            'tenant_id' => $tenant->id,
+            'title' => 'Inspection Draft Page',
+            'status' => 'draft',
+        ]);
+
+        TenantActivity::query()->create([
+            'tenant_id' => $tenant->id,
+            'log_name' => 'tenant',
+            'event' => 'updated',
+            'description' => 'Inspection activity entry',
+            'subject_type' => Page::class,
+            'subject_id' => 1,
+            'causer_type' => null,
+            'causer_id' => null,
+            'properties' => ['source' => 'test'],
+        ]);
+
+        $response = $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/summary");
+
+        $response->assertOk()
+            ->assertJsonPath('data.tenant.id', $tenant->id)
+            ->assertJsonPath('data.stats.total_pages', $baselineTotalPages + 2)
+            ->assertJsonPath('data.stats.published_pages', $baselinePublishedPages + 1)
+            ->assertJsonPath('data.active_theme.id', $theme->id);
+    }
+
+    #[Test]
+    public function central_admin_can_list_tenant_themes_pages_and_activity(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $otherTenant = TestUsers::tenant('tenant-two');
+
+        Theme::factory()->create([
+            'tenant_id' => null,
+            'is_system_theme' => true,
+            'slug' => 'inspection-system-theme',
+            'name' => 'Inspection System Theme',
+        ]);
+
+        Theme::factory()->create([
+            'tenant_id' => $tenant->id,
+            'is_system_theme' => false,
+            'is_active' => true,
+            'slug' => 'inspection-tenant-theme',
+            'name' => 'Inspection Tenant Theme',
+        ]);
+
+        Theme::factory()->create([
+            'tenant_id' => $otherTenant->id,
+            'is_system_theme' => false,
+            'slug' => 'inspection-other-tenant-theme',
+            'name' => 'Inspection Other Tenant Theme',
+        ]);
+
+        $visiblePage = Page::factory()->create([
+            'tenant_id' => $tenant->id,
+            'title' => 'Visible Tenant Page',
+            'slug' => 'visible-tenant-page',
+            'status' => 'published',
+        ]);
+
+        Page::factory()->create([
+            'tenant_id' => $otherTenant->id,
+            'title' => 'Other Tenant Page',
+            'slug' => 'other-tenant-page',
+            'status' => 'published',
+        ]);
+
+        TenantActivity::query()->create([
+            'tenant_id' => $tenant->id,
+            'log_name' => 'tenant',
+            'event' => 'created',
+            'description' => 'Tenant page created',
+            'subject_type' => Page::class,
+            'subject_id' => $visiblePage->id,
+            'causer_type' => null,
+            'causer_id' => null,
+            'properties' => ['source' => 'test'],
+        ]);
+
+        TenantActivity::query()->create([
+            'tenant_id' => $otherTenant->id,
+            'log_name' => 'tenant',
+            'event' => 'created',
+            'description' => 'Other tenant activity',
+            'subject_type' => Page::class,
+            'subject_id' => 999,
+            'causer_type' => null,
+            'causer_id' => null,
+            'properties' => ['source' => 'test'],
+        ]);
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/themes")
+            ->assertOk()
+            ->assertJsonFragment(['slug' => 'inspection-tenant-theme'])
+            ->assertJsonFragment(['slug' => 'inspection-system-theme'])
+            ->assertJsonMissing(['slug' => 'inspection-other-tenant-theme']);
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/pages?search=visible-tenant-page")
+            ->assertOk()
+            ->assertJsonFragment(['slug' => 'visible-tenant-page'])
+            ->assertJsonMissing(['slug' => 'other-tenant-page']);
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/activity-logs")
+            ->assertOk()
+            ->assertJsonFragment(['description' => 'Tenant page created'])
+            ->assertJsonMissing(['description' => 'Other tenant activity']);
+    }
+
+    #[Test]
+    public function support_and_viewer_cannot_access_central_tenant_operator_endpoints(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+
+        $this->actingAsCentralSupport()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/summary")
+            ->assertForbidden();
+
+        $this->actingAsCentralViewer()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/pages")
+            ->assertForbidden();
+    }
+
+    #[Test]
+    public function central_admin_can_activate_a_tenant_theme_from_central(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+
+        Theme::query()->where('tenant_id', $tenant->id)->update(['is_active' => false]);
+
+        Theme::factory()->create([
+            'tenant_id' => $tenant->id,
+            'is_system_theme' => false,
+            'is_active' => true,
+            'slug' => 'tenant-current-theme',
+            'name' => 'Tenant Current Theme',
+        ]);
+
+        Theme::factory()->create([
+            'tenant_id' => null,
+            'is_system_theme' => true,
+            'is_active' => false,
+            'slug' => 'tenant-activation-system-theme',
+            'name' => 'Tenant Activation System Theme',
+        ]);
+
+        $response = $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenant->id}/themes/activate", [
+                'slug' => 'tenant-activation-system-theme',
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.slug', 'tenant-activation-system-theme')
+            ->assertJsonPath('data.tenant_id', $tenant->id)
+            ->assertJsonPath('data.is_active', true);
+
+        $this->assertSame(
+            1,
+            Theme::query()->where('tenant_id', $tenant->id)->where('slug', 'tenant-activation-system-theme')->where('is_active', true)->count(),
+        );
+    }
+}

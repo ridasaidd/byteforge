@@ -28,6 +28,7 @@ class RolePermissionSeeder extends Seeder
             // Users & tenants
             'users.view', 'users.manage',
             'tenants.view', 'tenants.manage',
+            'tenants.operate', 'tenants.pages.view', 'tenants.themes.view', 'tenants.themes.manage', 'tenants.activity.view',
             // Roles & permissions
             'roles.manage',
             // Activity Logs
@@ -65,6 +66,7 @@ class RolePermissionSeeder extends Seeder
                 'media.view', 'media.manage',
                 'users.manage', 'users.view',
                 'tenants.manage', 'tenants.view',
+                'tenants.operate', 'tenants.pages.view', 'tenants.themes.view', 'tenants.themes.manage', 'tenants.activity.view',
                 'roles.manage',
                 'analytics.view', 'analytics.platform', 'analytics.dashboard',
                 'activity.view',

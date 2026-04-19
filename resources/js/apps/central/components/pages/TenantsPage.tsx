@@ -7,6 +7,7 @@ type ApiService<T, CreateData, UpdateData> = {
   delete: (id: string | number) => Promise<void>;
 };
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { z } from 'zod';
 import { Trans, useTranslation } from 'react-i18next';
@@ -23,6 +24,7 @@ import { useToast, useCrud } from '@/shared/hooks';
 export function TenantsPage() {
   const { t, i18n } = useTranslation('tenants');
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const tenantSchema = z.object({
     name: z.string().min(1, t('name_required')).max(255, t('name_too_long')),
@@ -71,12 +73,16 @@ export function TenantsPage() {
 
   const handleCreate = async (data: z.infer<typeof tenantSchema>) => {
     try {
-  tenantsData.create.mutate(data);
+      const response = await tenantsData.create.mutateAsync(data) as { data?: Tenant };
       toast({
         title: t('tenant_created_title'),
         description: t('tenant_created_description'),
       });
       setIsCreateModalOpen(false);
+
+      if (response.data?.id) {
+        navigate(`/dashboard/tenants/${response.data.id}`);
+      }
     } catch (error) {
       toast({
         title: t('error_title'),
@@ -90,7 +96,7 @@ export function TenantsPage() {
     if (!editingTenant) return;
 
     try {
-  tenantsData.update.mutate({ id: editingTenant.id, data });
+      await tenantsData.update.mutateAsync({ id: editingTenant.id, data });
       toast({
         title: t('tenant_updated_title'),
         description: t('tenant_updated_description'),
@@ -109,7 +115,7 @@ export function TenantsPage() {
     if (!deletingTenant) return;
 
     try {
-  tenantsData.delete.mutate(deletingTenant.id);
+      await tenantsData.delete.mutateAsync(deletingTenant.id);
       toast({
         title: t('tenant_deleted_title'),
         description: t('tenant_deleted_description'),
@@ -213,15 +219,16 @@ export function TenantsPage() {
       />
 
       <DataTable<Tenant>
-  data={tenantsData.list.data?.data || []}
+        data={tenantsData.list.data?.data || []}
         columns={columns}
-  isLoading={tenantsData.list.isLoading}
-      emptyMessage={t('empty_title')}
+        isLoading={tenantsData.list.isLoading}
+        emptyMessage={t('empty_title')}
         emptyDescription={t('empty_description')}
+        onRowClick={(tenant) => navigate(`/dashboard/tenants/${tenant.id}`)}
         actions={actions}
-  currentPage={tenantsData.list.data?.meta.current_page}
-  totalPages={tenantsData.list.data?.meta.last_page}
-  onPageChange={tenantsData.pagination.setPage}
+        currentPage={tenantsData.list.data?.meta.current_page}
+        totalPages={tenantsData.list.data?.meta.last_page}
+        onPageChange={tenantsData.pagination.setPage}
       />
 
       {/* Create Modal */}
@@ -233,7 +240,7 @@ export function TenantsPage() {
         description={t('create_tenant_description')}
         fields={formFields}
         schema={tenantSchema}
-  isLoading={tenantsData.create.isPending}
+          isLoading={tenantsData.create.isPending}
         submitText={t('create')}
       />
 
@@ -247,7 +254,7 @@ export function TenantsPage() {
         fields={formFields}
         schema={tenantSchema}
         defaultValues={editingTenant || undefined}
-  isLoading={tenantsData.update.isPending}
+          isLoading={tenantsData.update.isPending}
         submitText={t('save_changes')}
       />
 
@@ -267,7 +274,7 @@ export function TenantsPage() {
         }
         confirmText={t('delete')}
         variant="destructive"
-  isLoading={tenantsData.delete.isPending}
+        isLoading={tenantsData.delete.isPending}
       />
     </div>
   );

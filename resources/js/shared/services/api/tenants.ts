@@ -1,5 +1,16 @@
 import { http } from '../http';
-import type { Tenant, CreateTenantData, UpdateTenantData, PaginatedResponse, ApiResponse } from './types';
+import type {
+  ActivityLog,
+  ActivateThemeData,
+  ApiResponse,
+  CreateTenantData,
+  PaginatedResponse,
+  Tenant,
+  TenantInspectionPage,
+  TenantInspectionSummary,
+  TenantInspectionTheme,
+  UpdateTenantData,
+} from './types';
 
 export const tenants = {
   list: (params?: { page?: number; per_page?: number; search?: string }) =>
@@ -12,4 +23,14 @@ export const tenants = {
     http.update<ApiResponse<Tenant>>('/superadmin/tenants', id, data),
   delete: (id: string) =>
     http.remove<{ message: string }>('/superadmin/tenants', id),
+  summary: (id: string) =>
+    http.get<ApiResponse<TenantInspectionSummary>>(`/superadmin/tenants/${id}/summary`),
+  themes: (id: string) =>
+    http.get<ApiResponse<TenantInspectionTheme[]>>(`/superadmin/tenants/${id}/themes`),
+  pages: (id: string, params?: { page?: number; per_page?: number; search?: string; status?: string }) =>
+    http.get<PaginatedResponse<TenantInspectionPage>>(`/superadmin/tenants/${id}/pages`, { params }),
+  activity: (id: string, params?: { page?: number; per_page?: number; event?: string }) =>
+    http.get<PaginatedResponse<ActivityLog>>(`/superadmin/tenants/${id}/activity-logs`, { params }),
+  activateTheme: (id: string, data: ActivateThemeData) =>
+    http.post<{ data: TenantInspectionTheme; message: string }>(`/superadmin/tenants/${id}/themes/activate`, data),
 };

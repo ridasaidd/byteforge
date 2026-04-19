@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Tenant;
+use App\Models\Theme;
 use Stancl\Tenancy\Database\Models\Domain;
 use Tests\TestCase;
 
@@ -53,6 +54,39 @@ class TenantManagementTest extends TestCase
 
         $this->assertDatabaseHas('tenants', ['name' => 'New Test Tenant']);
         $this->assertDatabaseHas('domains', ['domain' => 'newtest.example.com']);
+    }
+
+    public function test_newly_created_tenant_gets_a_default_active_theme_when_system_themes_exist(): void
+    {
+        Theme::factory()->create([
+            'tenant_id' => null,
+            'is_system_theme' => true,
+            'is_active' => false,
+            'slug' => 'tenant-create-default-theme',
+            'name' => 'Tenant Create Default Theme',
+        ]);
+
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
+            'name' => 'Provisioned Tenant',
+            'domain' => 'provisioned.example.com',
+        ]);
+
+        $response->assertStatus(201);
+
+        $tenantId = $response->json('data.id');
+
+        $this->assertNotNull($tenantId);
+        $this->assertSame(
+            1,
+            Theme::query()->where('tenant_id', $tenantId)->where('is_active', true)->count(),
+            'Newly created tenants should have exactly one active tenant-scoped theme.',
+        );
+
+        $this->assertDatabaseHas('themes', [
+            'tenant_id' => $tenantId,
+            'is_active' => true,
+            'is_system_theme' => false,
+        ]);
     }
 
     public function test_cannot_create_tenant_without_name(): void
