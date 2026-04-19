@@ -1034,6 +1034,6 @@ Before any code changes, capture screenshots of the current widget rendering. Af
 - [controlPresets.tsx](../resources/js/shared/puck/controlPresets.tsx) — Semantic control collections
 - [cssBuilder.ts](../resources/js/shared/puck/fields/cssBuilder.ts) — `buildLayoutCSS()` responsive CSS generator
 - [PuckCssAggregator.ts](../resources/js/shared/puck/services/PuckCssAggregator.ts) — Storefront CSS generation pipeline
-- [THEME_SYSTEM_ARCHITECTURE.md](./THEME_SYSTEM_ARCHITECTURE.md) — Three-layer theme architecture and token system
+- [reference/THEME_SYSTEM_ARCHITECTURE.md](./reference/THEME_SYSTEM_ARCHITECTURE.md) — Three-layer theme architecture and token system
 - [PUCK_CONTROLS_AUDIT.md](./PUCK_CONTROLS_AUDIT.md) — Known control issues to avoid
 - [VISUAL_EDITOR_AUDIT.md](./VISUAL_EDITOR_AUDIT.md) — Aggregator bugs (className mismatch pattern to avoid)

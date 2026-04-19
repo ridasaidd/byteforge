@@ -429,7 +429,7 @@ This means the migration does not need a new tenant-specific access token format
 ### Phase 5. Cleanup
 
 1. Remove obsolete tokenStorage persistence helpers.
-2. Update `AUTH_STRATEGY.md` and testing documentation.
+2. Update `reference/AUTH_STRATEGY.md` and testing documentation.
 3. Document deploy behavior and one-time re-login expectations.
 
 ---
@@ -557,7 +557,7 @@ Frontend:
 
 Documentation:
 
-- `DEVELOPMENT_DOCS/AUTH_STRATEGY.md`
+- `DEVELOPMENT_DOCS/reference/AUTH_STRATEGY.md`
 - `DEVELOPMENT_DOCS/TESTING.md`
 - `DEVELOPMENT_DOCS/CURRENT_STATUS.md`
 

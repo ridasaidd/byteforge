@@ -1,256 +1,104 @@
 # AI Collaboration Guide
 
-> **Last Updated:** December 17, 2025  
-> **Purpose:** Structured collaboration protocol for AI-human development
+Status: supporting
+Audience: AI agent + human collaborator
+Last verified: 2026-04-19
 
----
+This guide describes how AI agents should work inside the ByteForge repo after
+loading the canonical docs.
 
-## Core Principles
+## Read First
 
-### Project Phase: DEVELOPMENT 🚧
-- **No legacy support needed**: We can break things, change APIs, refactor freely
-- **No backwards compatibility**: If something is wrong, fix it properly
-- **No migration paths**: Just change it directly
-- **Move fast**: Don't over-engineer for future scenarios that may never happen
+Before substantial work, read these in order:
 
-### Always Do ✅
-- **Ask before assuming**: 2-3 clarifying questions for ambiguous requests
-- **Start small**: Minimal working solutions, iterate based on feedback
-- **Reference docs**: Check `CURRENT_STATUS.md` and `PUCK_IMPLEMENTATION_CHECKLIST.md`
-- **State assumptions**: Make default choices explicit
-- **Verify context**: Read relevant code before editing
-- **Test proposals**: Offer 2-3 implementation options when appropriate
-- **Check installed packages first**: Run `grep package.json` before building custom solutions
-- **Use existing tools**: clsx, cva, tailwind-merge, etc. are there for a reason
-- **Read documentation**: Fetch docs from official sources when unsure
-- **Check source code**: Use `github_repo` tool to read actual implementations
-- **Suggest proven packages**: Recommend battle-tested solutions over custom code
+1. [AGENT_START.md](AGENT_START.md)
+2. [CURRENT_STATUS.md](CURRENT_STATUS.md)
+3. [TESTING.md](TESTING.md)
 
-### Never Do ❌
-- **Assume requirements**: Always clarify ambiguous requests
-- **Over-engineer**: Avoid "perfect" solutions, focus on working code
-- **Change scope**: Stick to current task unless explicitly requested
-- **Skip testing**: Always consider testing implications
-- **Agree blindly**: Validate suggestions against project standards
-- **Reinvent the wheel**: Don't build what npm/composer packages already solve
-- **Guess at APIs**: Read the docs or source code instead
+Use [README.md](README.md) as the document map and precedence reference.
 
----
+## Agent Working Style
 
-## Response Format
+- inspect the relevant code before proposing architecture changes
+- prefer focused changes over broad incidental refactors
+- validate with the smallest meaningful test suite first
+- update canonical docs when implementation changes the real system state
+- treat historical docs as context only, not as the source of truth
 
-For complex tasks, structure responses as:
+## Authority Rules
 
-```
-🎯 SCOPE
-- What we're building
-- Why (business value)
-- Success criteria
+- trust canonical docs over older phase narratives
+- trust current code over outdated prose when the code is unambiguous
+- when docs and code diverge, fix the docs as part of the work if practical
 
-🤔 QUESTIONS (if needed)
-- 2-3 specific clarifications
-- Stated assumptions
+## Comment Policy
 
-📋 APPROACH
-- Files to modify
-- Implementation strategy
-- Testing plan
+Comments help when they remove local ambiguity. They hurt when they restate the
+obvious or become stale faster than the code.
 
-⚡ ACTION
-[Proceed with implementation]
-```
+### Add comments when
 
-For simple tasks, skip the ceremony and just do it.
+- a trust boundary or security invariant is easy to break
+- a state transition or workflow is non-obvious
+- tenant isolation, auth, booking, or payment behavior depends on a subtle rule
+- normalization or escaping exists for a specific threat or product reason
+- the code intentionally does something surprising to preserve correctness
 
----
+### Do not add comments when
 
-## Project Context
+- the code is already self-explanatory
+- the comment only paraphrases a variable assignment or condition
+- the comment repeats framework behavior without adding intent
+- the comment describes temporary confusion instead of a stable rule
 
-**Current State:** See `DEVELOPMENT_DOCS/CURRENT_STATUS.md`
+### Preferred comment style
 
-**Active Work:**
-- 70% Puck Page Builder complete
-- Pages list UI needed
-- Performance optimizations optional
+- explain why, boundary, or invariant
+- keep comments short and local
+- prefer one precise comment over many weak comments
 
-**Tech Stack:**
-- Backend: Laravel 11, PHP 8.3, Multi-tenancy (Stancl)
-- Frontend: React 18, TypeScript, TailwindCSS, React Query
-- Page Builder: Puck (@measured/puck)
-- Deployment: VPS (byteforge.se)
+Good examples:
 
----
+- why a token must stay host-scoped
+- why a sanitizer applies to display fields but not provider payloads
+- why a booking transition is rejected for a given status
 
-## Code Standards
+Bad examples:
 
-**PHP/Laravel:**
-- PSR-12 formatting
-- Type hints for all parameters and returns
-- Comprehensive PHPDoc
-- Feature tests for new functionality
+- "assign the email to the model"
+- "loop through the items"
+- "check if the user is logged in"
 
-**React/TypeScript:**
-- Strict TypeScript mode
-- Functional components with hooks
-- Atomic design principles (atoms → molecules → organisms)
-- JSDoc for complex functions
+## Docs Versus Comments
 
-**General:**
-- Meaningful variable/function names
-- Comments for "why", not "what"
-- DRY principle but avoid premature abstraction
-- Security first (validation, sanitization, authorization)
+Use comments for local reasoning in code. Use docs for cross-cutting context,
+phase status, verification guidance, and security policy.
 
----
+- project-wide workflows belong in docs
+- endpoint-specific or function-specific invariants may belong in code comments
+- if a rule must stay true across many files, document it centrally and comment
+	only where it is easy to violate locally
 
-## Common Workflows
+## Verification Expectations
 
-### Adding a New Feature
-1. Check `CURRENT_STATUS.md` for conflicts
-2. Read existing related code
-3. Create minimal implementation
-4. Add tests
-5. Update relevant documentation
-6. Request feedback
+- run focused tests for the touched domain before broader suites
+- keep verification commands easy to repeat from the docs
+- if no tests exist for a risky change, add focused regression coverage
 
-### Fixing a Bug
-1. Understand the issue (ask questions if unclear)
-2. Locate root cause
-3. Fix with minimal changes
-4. Add test to prevent regression
-5. Verify no side effects
+## Sensitive Domains
 
-### Refactoring
-1. Get explicit approval first
-2. Maintain existing behavior
-3. Refactor incrementally
-4. Keep tests passing
-5. Document changes
+Slow down and verify carefully in these areas:
 
----
+- auth and token/session handling
+- tenant isolation and scoped queries
+- payments, callbacks, refunds, and signatures
+- booking state transitions, holds, and management tokens
+- input normalization, escaping, and public-facing content rendering
 
-## Decision Matrix
+## When Unsure
 
-| Situation | Action |
-|-----------|--------|
-| Requirements unclear | Ask 2-3 specific questions |
-| Multiple solutions possible | Present 2-3 options with trade-offs |
-| Breaking change needed | Just do it - we're in development |
-| New dependency needed | Check if similar already installed, justify with clear benefit |
-| Architecture change | Reference existing patterns, get approval |
-| Scope creep detected | Redirect to current goals, suggest future task |
-| Unsure about API/library | Read docs or source code first, don't guess |
-| Building something common | Search for existing npm/composer packages first |
-| Legacy/backwards compat | Not needed - we're in development, change it directly |
+If architecture or scope is unclear:
 
----
-
-## Quality Gates
-
-**Before Submitting Code:**
-- ✅ Code compiles/runs without errors
-- ✅ Follows project conventions
-- ✅ Has appropriate comments
-- ✅ Considers security implications
-- ✅ No obvious performance issues
-- ✅ Tested (manually at minimum)
-
-**Before Marking Complete:**
-- ✅ Original request fully addressed
-- ✅ No regressions introduced
-- ✅ Documentation updated if needed
-- ✅ Next steps identified (if any)
-
----
-
-## Communication Guidelines
-
-**Be Direct:**
-- Skip fluff like "I'll use the X tool" - just use it
-- Avoid unnecessary introductions
-- Get to the point quickly
-
-**Be Precise:**
-- Exact file paths with line numbers
-- Specific error messages
-- Clear reproduction steps
-
-**Be Helpful:**
-- Explain *why*, not just *how*
-- Anticipate follow-up questions
-- Suggest related improvements (without implementing them)
-
----
-
-## Emergency Protocols
-
-**When Stuck:**
-1. State exactly what's blocking progress
-2. Show what you've tried
-3. Ask specific question
-4. Propose workaround if possible
-
-**When Requirements Change:**
-1. Acknowledge the change
-2. Assess impact on current work
-3. Suggest approach (continue, pivot, or restart)
-4. Wait for approval
-
-**When Standards Conflict:**
-1. Point out the conflict
-2. Present options with pros/cons
-3. Recommend approach based on project goals
-4. Get decision from human
-
----
-
-## Success Metrics
-
-**Quality:**
-- Zero ambiguous implementations
-- All code tested and documented
-- No regressions
-- Standards consistently followed
-
-**Efficiency:**
-- Fast iteration cycles
-- Clear communication
-- Predictable delivery
-- Minimal back-and-forth
-
-**Collaboration:**
-- Human feels empowered, not dependent
-- AI provides value without overstepping
-- Shared understanding of goals
-- Continuous improvement
-
----
-
-## Quick Reference
-
-**Key Files:**
-- Status: `DEVELOPMENT_DOCS/CURRENT_STATUS.md`
-- Checklist: `DEVELOPMENT_DOCS/PUCK_IMPLEMENTATION_CHECKLIST.md`
-- Roadmap: `DEVELOPMENT_DOCS/ROADMAP.md`
-- API Docs: `DEVELOPMENT_DOCS/API_DOCUMENTATION.md`
-
-**Code Locations:**
-- Puck components: `resources/js/shared/puck/components/`
-- API services: `resources/js/shared/services/api/`
-- Backend controllers: `app/Http/Controllers/Api/`
-- Services: `app/Services/`
-
-**Available Tools (check package.json for more):**
-- Class utilities: `clsx`, `tailwind-merge`, `class-variance-authority`
-- State: `@tanstack/react-query`, `zustand`
-- Forms: `react-hook-form`, `zod`
-- UI: `@radix-ui/*`, `lucide-react`
-
-**Research Before Building:**
-- `github_repo` tool: Read source code of any package
-- `fetch_webpage` tool: Read official documentation
-- `grep package.json`: Check what's already installed
-
----
-
-**Remember:** The goal is productive collaboration, not perfect process. Adapt this guide as needed, focus on outcomes over ceremony, and always prioritize clear communication.
+1. confirm current truth from canonical docs and code
+2. prefer the smallest coherent implementation
+3. document any important state correction discovered during the work

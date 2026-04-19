@@ -1,109 +1,112 @@
 # ByteForge Documentation Index
 
-This folder contains organized documentation for the ByteForge multi-tenant CMS platform.
+Status: canonical
+Audience: human + AI agent
+Last verified: 2026-04-19
 
-Last updated: March 14, 2026
+This folder documents the current ByteForge product, the active implementation
+plan, and the stable reference material needed to work safely in the codebase.
 
----
+## What ByteForge Is
 
-## Quick Start
+ByteForge is a multi-tenant Laravel + React CMS with:
 
-| Document | Description |
-|----------|-------------|
-| [CURRENT_STATUS.md](CURRENT_STATUS.md) | What's done, what's next, recent changes |
-| [ROADMAP.md](ROADMAP.md) | Milestones, priorities, estimates |
-| [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) | Tech stack, folder structure, setup |
+- central and tenant dashboard applications,
+- a Puck-based visual page builder and theme system,
+- tenant-scoped media, navigation, pages, settings, and RBAC,
+- analytics, payments, and booking subsystems,
+- public storefront runtime on tenant domains.
 
----
+As of 2026-04-19, Phases 9 through 14 are implemented on `main`. Phase 15
+(guest authentication) is still future work.
 
-## Active Documentation
+## Read In This Order
 
-### 📋 Status & Planning
-- [CURRENT_STATUS.md](CURRENT_STATUS.md) - Current state, completed features, next steps
-- [ROADMAP.md](ROADMAP.md) - Milestones and priorities
-- [PHASE12_TENANT_RUNTIME_READINESS.md](PHASE12_TENANT_RUNTIME_READINESS.md) - **Current phase: tenant storefront/login/dashboard readiness gate**
-- [COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md](COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md) - GDPR cookie consent audit, scope rules, and implementation plan
-- [AUTH_HTTPONLY_MIGRATION_PLAN.md](AUTH_HTTPONLY_MIGRATION_PLAN.md) - Planned migration from browser storage tokens to host-scoped HttpOnly refresh-cookie auth
-- Booking Integration (Phase 13) - planned after tenant runtime readiness
-- [PHASE7_FONT_SYSTEM_COMPLETE.md](PHASE7_FONT_SYSTEM_COMPLETE.md) - Completed font system implementation summary
-- [NAVIGATION_REFACTOR_PLAN.md](NAVIGATION_REFACTOR_PLAN.md) - Navigation v2 architecture and refactor plan (implemented)
+If you are an AI agent or a new contributor, read these first:
 
-### 📐 Architecture
-- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md) - Complete tech stack, packages, structure
-- [THEME_SYSTEM_ARCHITECTURE.md](THEME_SYSTEM_ARCHITECTURE.md) - Theme system design
-- [API_DOCUMENTATION.md](API_DOCUMENTATION.md) - REST API endpoints
-- [AUTH_STRATEGY.md](AUTH_STRATEGY.md) - Authentication & authorization
+1. [AGENT_START.md](AGENT_START.md)
+2. [CURRENT_STATUS.md](CURRENT_STATUS.md)
+3. [TESTING.md](TESTING.md)
+4. [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
+5. [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
 
-### 🎯 Guidelines
-- [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md) - Core development principles
-- [DESIGN_PATTERNS_AND_BEST_PRACTICES.md](DESIGN_PATTERNS_AND_BEST_PRACTICES.md) - Patterns & practices
-- [AI_COLLABORATION_GUIDE.md](AI_COLLABORATION_GUIDE.md) - AI pair programming guidelines
-- [ACTIVITY_LOGGING_COVERAGE.md](ACTIVITY_LOGGING_COVERAGE.md) - Activity log implementation
+## Canonical Documents
 
-### 🧪 Testing
-- [TESTING.md](TESTING.md) - **Comprehensive testing guide** (backend + frontend)
+These documents are intended to be authoritative and should be kept in sync
+before updating supporting or historical material.
 
----
+- [AGENT_START.md](AGENT_START.md)
+- [CURRENT_STATUS.md](CURRENT_STATUS.md)
+- [ROADMAP.md](ROADMAP.md)
+- [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
+- [TESTING.md](TESTING.md)
+- [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
 
-## Archive
+## Regular Reference Documents
 
-Historical documentation for completed phases and audits:
+These are not the first docs to read, but they are important recurring
+references while implementing changes.
 
-```
-archive/
-├── completed-phases/     # Completed phase implementation docs
-│   ├── PHASE5*.md        # CSS generation phases
-│   ├── PHASE6*.md        # Theme customization phases  
-│   ├── PHASE9*.md        # Analytics foundation
-│   ├── PHASE10*.md       # Payments core
-│   ├── PHASE11*.md       # Dashboard translation/i18n
-│   └── THEME_*.md        # Theme architecture docs
-├── audits/               # One-time audits and analysis
-│   ├── AUDIT_*.md
-│   └── *_AUDIT.md
-└── *.md                  # Legacy testing docs (now in TESTING.md)
-```
+- [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md)
+- [DESIGN_PATTERNS_AND_BEST_PRACTICES.md](DESIGN_PATTERNS_AND_BEST_PRACTICES.md)
+- [AI_COLLABORATION_GUIDE.md](AI_COLLABORATION_GUIDE.md)
+- [reference/AUTH_STRATEGY.md](reference/AUTH_STRATEGY.md)
+- [reference/API_DOCUMENTATION.md](reference/API_DOCUMENTATION.md)
+- [plans/BOOKING_SECURITY_FINDINGS.md](plans/BOOKING_SECURITY_FINDINGS.md)
 
----
+## Active Implementation Plans
 
-## What's Implemented ✅
+These are current or near-future work tracks. They should reflect the actual
+code state, not just older planning assumptions.
 
-- **Multi-tenant backend** with Passport auth, RBAC, activity logging
-- **Full media library** with folders, conversions, responsive images
-- **Puck Page Builder** with 15 themed components and advanced controls
-- **Theme system** with blueprints, placeholders, customization
-- **Navigation v2 refactor** merged with field-group CSS architecture
-- **CSS generation** with section files and dual-mode rendering
-- **Central admin** for pages, themes, media, users, tenants, settings
-- **Dashboard** with stats, activity, and permission-based visibility
+- [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md)
+- [plans/PHASE13_BOOKING_SYSTEM.md](plans/PHASE13_BOOKING_SYSTEM.md)
+- [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md)
+- [plans/PHASE15_GUEST_AUTH.md](plans/PHASE15_GUEST_AUTH.md)
 
----
+## Supporting Reference Material
 
-## Key Code Locations
+- [reference/THEME_SYSTEM_ARCHITECTURE.md](reference/THEME_SYSTEM_ARCHITECTURE.md)
+- [reference/ACTIVITY_LOGGING_COVERAGE.md](reference/ACTIVITY_LOGGING_COVERAGE.md)
+- [reference/COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md](reference/COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md)
+- [PHASE12_TENANT_RUNTIME_READINESS.md](PHASE12_TENANT_RUNTIME_READINESS.md)
 
-| Feature | Location |
-|---------|----------|
-| Puck Components | `resources/js/shared/puck/components/` |
-| Puck Fields | `resources/js/shared/puck/fields/` |
-| Theme Context | `resources/js/shared/contexts/ThemeContext.tsx` |
-| API Services | `resources/js/shared/services/api/` |
-| Backend Services | `app/Services/` |
-| Backend Actions | `app/Actions/` |
+## Historical Material
 
----
+Anything under [archive/](archive/) should be treated as historical unless it is
+explicitly referenced by a canonical or active plan document.
 
-## For New Contributors
+## Document Precedence
 
-1. **Read first:** [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
-2. **Understand current state:** [CURRENT_STATUS.md](CURRENT_STATUS.md)
-3. **Follow guidelines:** [DEVELOPMENT_PRINCIPLES.md](DEVELOPMENT_PRINCIPLES.md)
-4. **Testing:** [TESTING.md](TESTING.md)
+If two documents disagree, trust them in this order:
 
----
+1. [AGENT_START.md](AGENT_START.md)
+2. [CURRENT_STATUS.md](CURRENT_STATUS.md)
+3. [ROADMAP.md](ROADMAP.md)
+4. The relevant active phase or domain plan
+5. Supporting references
+6. Historical material in [archive/](archive/)
 
-## Document Maintenance
+## By Task
 
-When completing a phase:
-1. Update [ROADMAP.md](ROADMAP.md) - Mark phase as complete
-2. Update [CURRENT_STATUS.md](CURRENT_STATUS.md) - Add to completed features
-3. Move phase docs to `archive/completed-phases/`
+Use this map instead of guessing.
+
+- Current truth and next work: [CURRENT_STATUS.md](CURRENT_STATUS.md)
+- Future sequencing: [ROADMAP.md](ROADMAP.md)
+- Safe verification commands: [TESTING.md](TESTING.md)
+- Security-sensitive changes: [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
+- Auth and session work: [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md), [reference/AUTH_STRATEGY.md](reference/AUTH_STRATEGY.md), [plans/PHASE15_GUEST_AUTH.md](plans/PHASE15_GUEST_AUTH.md)
+- Booking work: [plans/PHASE13_BOOKING_SYSTEM.md](plans/PHASE13_BOOKING_SYSTEM.md), [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md), [plans/BOOKING_SECURITY_FINDINGS.md](plans/BOOKING_SECURITY_FINDINGS.md)
+- Architecture and patterns: [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md), [DESIGN_PATTERNS_AND_BEST_PRACTICES.md](DESIGN_PATTERNS_AND_BEST_PRACTICES.md)
+
+## Maintenance Rules
+
+When work changes the real system state:
+
+1. Update [CURRENT_STATUS.md](CURRENT_STATUS.md).
+2. Update [ROADMAP.md](ROADMAP.md) if sequencing changed.
+3. Update the relevant active phase or security doc.
+4. Update this index only if authority, scope, or doc categories changed.
+
+When a plan is fully implemented and no longer drives work, archive it or mark
+it explicitly as historical at the top.

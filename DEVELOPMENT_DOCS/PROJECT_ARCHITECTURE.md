@@ -196,8 +196,8 @@ byteforge/
 │
 ├── DEVELOPMENT_DOCS/            # Project documentation
 │   ├── PROJECT_ARCHITECTURE.md  # This file
-│   ├── THEME_SYSTEM_ARCHITECTURE.md
-│   ├── API_DOCUMENTATION.md
+│   ├── reference/THEME_SYSTEM_ARCHITECTURE.md
+│   ├── reference/API_DOCUMENTATION.md
 │   ├── PUCK_COMPONENT_TESTING_GUIDE.md
 │   ├── CURRENT_STATUS.md
 │   └── ...
@@ -774,8 +774,8 @@ php artisan queue:work --tries=3
 
 ## Related Documentation
 
-- **Theme System**: `THEME_SYSTEM_ARCHITECTURE.md`
-- **API Reference**: `API_DOCUMENTATION.md`
+- **Theme System**: `reference/THEME_SYSTEM_ARCHITECTURE.md`
+- **API Reference**: `reference/API_DOCUMENTATION.md`
 - **Puck Components**: `PUCK_COMPONENT_TESTING_GUIDE.md`
 - **Current Status**: `CURRENT_STATUS.md`
 - **Roadmap**: `ROADMAP.md`

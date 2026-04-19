@@ -2,7 +2,7 @@
 
 Last updated: April 7, 2026
 Status: Planned — not yet started
-Depends on: Phase 13 (Booking), `AUTH_HTTPONLY_MIGRATION_PLAN.md` migration shipped
+Depends on: Phase 13 (Booking), `plans/AUTH_HTTPONLY_MIGRATION_PLAN.md` migration shipped
 Recommended branch later: `feature/phase15-guest-auth`
 
 ---
@@ -47,7 +47,7 @@ Recommended guest-auth boundary:
 
 ## How This Fits the HttpOnly Auth Refactor
 
-The `AUTH_HTTPONLY_MIGRATION_PLAN.md` introduces:
+The `plans/AUTH_HTTPONLY_MIGRATION_PLAN.md` introduces:
 
 - `web_refresh_sessions` table with a `user_id` foreign key
 - Short-lived Passport access tokens (in memory only, not localStorage)

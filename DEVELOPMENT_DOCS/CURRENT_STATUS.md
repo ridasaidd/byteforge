@@ -1,437 +1,95 @@
-# ByteForge – Current Status
+# ByteForge Current Status
 
-Last updated: April 7, 2026
-Current branch: `main` (addon foundation merged at `4d13d08`)
-
-> **Environment notice**: This is a development server running on a Raspberry Pi 5. All data and content — tenants, users, bookings, pages, themes, media, settings — is seeded fake data for development and testing purposes only. Nothing here is live or production.
+Status: canonical
+Audience: human + AI agent
+Last verified: 2026-04-19
+Primary branch: `main`
 
 ## Snapshot
 
-- **Backend:** 100% complete (multi‑tenancy, auth, RBAC, pages, navigation, media, settings, activity log, theme-compilation)
-- **Frontend:** 100% feature-complete (Page Editor, Themes, Media, Users, Tenants, Activity, Settings, Roles)
-- **Testing:** 
-  - ✅ **Backend:** All tests passing (Fixed regressions in Observer and Compiler Service)
-  - ⚠️ **Frontend:** Test suite requires maintenance (infrastructure issues), but feature compiles and runs.
-- **Page Builder:** 100% complete and merged to main
-- **Performance:** One-query page loads, 5-10ms cached responses, HTTP caching with ETag
-- **Theme system:** ✅ **COMPLETE** - Blueprints, placeholders, customization, CSS generation
-- **Phase 7 Font System:** ✅ **COMPLETE** - Fonts, RichText, CSS loading, storefront parity
-- **Phase 8 Page System Refactor:** ✅ **COMPLETE** - Decoupled header/footer/layout from DB columns.
-- **Navigation Refactor (navigation_v2):** ✅ **COMPLETE** - Monolith split into field-group driven CSS pipeline architecture.
-- **Phase 9 Analytics Foundation:** ✅ **COMPLETE** — Event pipeline, tenant/central isolation, page view tracking, dashboard widgets, third-party integrations (GA4/GTM/Clarity/Plausible/Meta Pixel), tenant CMS settings page. Merged `6f7bd1d`.
-- **Phase 10 Payments Core:** ✅ **COMPLETE + merged** — central billing, tenant provider config, Stripe/Swish/Klarna gateways, payment/refund orchestration, analytics event wiring, dashboard pages (`BillingPage`, `PaymentProvidersPage`, `PaymentsPage`), webhook idempotency/rate-limiting hardening, and checkout-return subscription sync. Full regression executed: `304 passed`, `15 skipped`.
-- **Phase 11 Dashboard Translation (i18n):** ✅ **COMPLETE + merged** — i18next + react-i18next infrastructure, 15 namespaces across `en/sv/ar`, user locale persistence (`preferred_locale` + `PATCH /auth/locale`), central + tenant dashboard string extraction/localization, Swedish character corrections (proper `å/ä/ö`), and RTL support (logical CSS classes + directional icon handling).
-- **Phase 12 Tenant Runtime Readiness:** ✅ **COMPLETE** — tenant login/runtime routes, membership enforcement middleware, tenant permission-gated CMS routes, storefront parity, and tenant isolation test coverage all complete. Cookie consent (GDPR) delivered: `whitecube/laravel-cookie-consent` removed, replaced with `vanilla-cookieconsent` React implementation with analytics enforcement. 18 Playwright E2E tests passing (banner behaviour + per-provider script injection/revocation). PHP: `355 passed`.
-- **Addon Foundation:** ✅ **COMPLETE + merged** (`4d13d08`) — `EnsureAddon` middleware (`addon:booking`), `GET /api/addons` endpoint, `AddonProvider` + `useAddon()` frontend context. PHP: `410 passed`.
-- **Phase 13 Booking System:** ✅ **COMPLETE + committed** (`bdd424f`) — Full universal booking engine: data model, availability engine, public API (hold/confirm flow), CMS API, notifications (customer confirmed/cancelled/reminder, staff assigned), BookingWidget Puck component (7-step wizard + hold reservation), CMS management pages (BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage), addon-gated routing + nav. PHP: `476 passed`, `18 skipped`. TypeScript: 0 errors.
-
-  **Known gaps (April 7, 2026 audit — see PHASE13_BOOKING_SYSTEM.md for detail)**:
-  - Wizard step order should be service → date → resource → slot (currently service → resource → date → slot), so resource list is date-filtered and customers don't choose a person who turns out to have no availability that day.
-  - No "Any available" option in resource selection step.
-  - Resource step heading says "Choose a resource" instead of "Choose your [resource_label]".
-  - Tenant owner receives no email when a new booking arrives (only the customer does).
-  - Staff notification (`StaffBookingAssignedNotification`) only fires on manual CMS confirm, not on auto-confirm.
-  - Anonymous actor timeline shows "by customer #" with no ID — should drop the `#` when `actor_id` is null.
-
-- **Permission naming:** ⚠️ **Inconsistent** — two naming styles in use. Dotted convention (`bookings.view`, `pages.edit`) is the agreed standard. Natural-language legacy permissions (`manage users`, `view activity logs`, etc.) need a migration PR. Full rename table in `DESIGN_PATTERNS_AND_BEST_PRACTICES.md`.
-
-- **Tenant user management:** ⚠️ **Partially implemented** — Users can be viewed and have roles reassigned (owner-only). Missing: owner can create staff users directly (no invite flow needed), create/edit/delete custom roles, and the `owner` vs `admin` membership role distinction is invisible in the UI. Design decisions documented in `DESIGN_PATTERNS_AND_BEST_PRACTICES.md`.
-- **Media:** Upload/delete, folders CRUD, picker modal integrated, validation & security, responsive images
-- **Theme CSS Generation:** ✅ **COMPLETE** - All phases merged
-- **Phase 6 Theme Customization:** ✅ **COMPLETE** - Blueprint/instance separation, scoped customizations
-- **Phase 6.1 Theme Manager:** ✅ **COMPLETE** - Safety features, preview images, responsive images
-
-Testing status (Feb 2, 2026):
-- ✅ **Backend:** All tests passing (Migration 2026_02_02 verified)
-- ✅ **CSS Files:** All sections generating valid CSS
-- ✅ **Refactor:** Removed legacy `layout_id`, `header_id`, `footer_id` columns successfully.
-
-—
-
-## What's Complete ✅
-
-**Backend:**
-- Multi‑tenancy (Stancl), Passport OAuth2, Spatie permissions/activity/media
-- PuckCompilerService with metadata injection (`gatherMetadata()`)
-- NavigationObserver for automatic page recompilation
-- HTTP caching (ETag, Cache-Control) on public page endpoints
-- APIs: users, tenants, pages, navigation, media, settings, themes
-- **Phase 3**: ThemeCssSectionService (section file management), ThemeCssPublishService (validation & publishing), ThemeCssController (REST API)
-- **Phase 6**: ThemePlaceholderController (blueprint placeholder management), ThemeCustomizationController (scoped customizations), ThemeService refactored (no theme cloning, placeholder copying)
-- **Phase 6.1**: Media conversion URLs (thumb/small/medium/large/webp), DeleteMediaAction with directory cleanup
-
-**Frontend:**
-- PageEditorPage with Puck visual editor (viewport switcher)
-- PagesPage with full CRUD UI (create, read, update, delete with data table and forms)
-- Navigation component with metadata support (instant rendering)
-- Mobile navigation styles: none, hamburger-dropdown, off-canvas, full-width
-- Public renderer for Puck pages with active theme
-- Theme context + resolve() for tokens
-- ColorPickerControlColorful with react-colorful (RGBA, theme swatches, semantic colors)
-- CSS builder with theme token resolution for dynamic styles
-- Media library with folders
-- Dashboard pages: Themes, Users, Tenants, Settings, Activity, Roles/Permissions
-- Dashboard home with real stats, recent tenants/activity, permission-based visibility
-- **Phase 4**: PuckCssAggregator (extract CSS from Puck data), themeCssApi client
-- **Phase 5a-d**: ThemeStepCssGenerator, useEditorCssLoader, all 15 Puck components migrated
-- **Phase 6**: ThemeBuilderPage with mode prop ('create' | 'customize'), ThemeCustomizePage wrapper, themeCustomization API client, themePlaceholders API client
-- **Phase 6.1**: Theme preview images in cards, responsive Image component with srcset/sizes, MediaCard confirm dialog simplified
-
-**Phase 6.1: Theme Manager Refinements (COMPLETE Jan 31):**
-- ✅ Deletion protection - Disabled delete button for active themes + backend validation
-- ✅ Theme switch warning - 5-second countdown dialog before activation
-- ✅ Theme rollback - Reset button with confirmation to restore blueprint defaults
-- ✅ Preview image - MediaPicker integration, theme cards show preview (medium conversion)
-- ✅ Responsive images - srcset/sizes auto-generated from media library URL pattern
-- ✅ Image conversions - API returns thumb/small/medium/large/webp URLs
-- ✅ Media cleanup - DeleteMediaAction removes empty parent directories
-
-**Performance:**
-- Metadata injection eliminates 3+ API calls
-- Server-side caching (1hr TTL) for metadata
-- HTTP caching reduces bandwidth
-- Navigation auto-recompiles on changes
-- Dashboard stats fetches via frontend aggregation
-- Public/dashboard blade separation reduces initial page load
-- Responsive images reduce bandwidth (95% smaller on mobile)
-
-—
-
-## What's Remaining
-
-### **Current Priority: Phase 12 Tenant Runtime Readiness (Closeout)**
-
-**Summary:**
-- Make tenant runtime fully production-ready before adding new business modules
-- Finalize tenant storefront behavior, tenant auth/login flow, and tenant dashboard access UX
-- Close tenant runtime gaps (redirects, permissions, session/token handling, runtime QA)
-- Add a readiness gate with explicit acceptance criteria and smoke tests
-
-**Status**: In progress (runtime hardening complete; final QA/docs closeout pending)
-
----
-
-### **Phase 13: Booking Integration**
-
-**Summary:**
-- Integrate existing booking system into multi-tenant CMS
-- Adapt appointment/scheduling models to tenancy
-- Fires `booking.*` events into analytics pipeline
-- `<BookingWidget>` Puck component
-
-**Status**: Planned (after Tenant Runtime Readiness)
-
----
-
-### **Future Phases (Optional Optimizations)**
-
-**Architecture Refactor (OPTIONAL):**
-If current approach becomes a bottleneck, consider pivot table refactor (see old Phase 7 notes).
-
-**Priority 2 - Central Admin Features:**
-- [ ] Settings management UI (email, SMTP, general config)
-- [ ] Analytics dashboard (activity trends, usage metrics)
-- [ ] Performance monitoring & optimization
-
-**Priority 3 - Business/Platform:**
-- [ ] Payment/billing system (subscriptions, Stripe integration)
-- [ ] Tenant dashboard access (scoped pages, media, themes for tenant users)
-- [ ] Usage tracking & quotas
-
-**Later (not blocking):**
-- [ ] Loading shell/splash screen with branding
-- [ ] Performance benchmarks and testing
-- [ ] Theme customization live preview with versioning
-- [ ] Navigation drag-and-drop tree UI
-- [ ] Content/version history for pages
-- [ ] Role-scoped UI with feature flags
-
-—
-
-## Key Implementations (Recent)
-
-**March 3, 2026 (Documentation Sync):**
-- ✅ Updated status and roadmap to reflect merged `navigation_v2` refactor
-- ✅ Aligned phase sequencing across docs (Phase 7 + Phase 8 complete; Tenant Runtime Readiness next)
-- ✅ Updated docs index links to point to current active/completed planning documents
-
-**March 3, 2026 (Navigation Refactor Complete):**
-- ✅ navigation_v2 refactor merged into main (`b47648c`)
-- ✅ Navigation component architecture simplified and aligned with shared field/CSS builder patterns
-- ✅ Documentation plan committed and merged (`333ac10`)
-- ✅ Feature implementation commit merged (`0b1df8c`)
-
-**March 8, 2026 (Phase 10 Complete):**
-- ✅ Completed sub-phases 10.1-10.7 (billing + provider config + Stripe/Swish/Klarna + payment/refund orchestration)
-- ✅ Completed frontend dashboard pages for central/tenant payment management
-- ✅ Hardened central Stripe webhook flow (idempotency table, duplicate-event skip, route throttling, Cashier default webhook route disabled)
-- ✅ Added checkout-return subscription sync to avoid stale "Free" state when webhook delivery is delayed
-- ✅ Regression green after merge: `304 passed`, `15 skipped`
-
-**March 14, 2026 (Phase 11 Complete):**
-- ✅ Completed dashboard translation for central + tenant apps (English/Swedish/Arabic)
-- ✅ Added locale persistence end-to-end (`preferred_locale`, locale middleware, `/auth/locale` API, selector wiring)
-- ✅ Added RTL support hardening (logical Tailwind properties + directional icon mirroring)
-- ✅ Archived completed planning docs under `archive/completed-phases/`
-- ✅ Set next active phase to Tenant Runtime Readiness before Booking Integration
-
-**April 3, 2026 (Phase 12 Validation Pass):**
-- ✅ Fixed tenant storefront fixture-collision regressions in `TenantStorefrontTest` (duplicate `tenant_id + slug` collisions)
-- ✅ Tenant runtime suite now green with expected auth-key skips: `50 passed`, `3 skipped`, `0 failed` (`php artisan test tests/Tenant`)
-- ✅ Central analytics API tests made fixture-safe by range-scoped assertions (`CentralAnalyticsApiTest`)
-- ✅ `M4 / Phase 12` status aligned to "in progress closeout" before starting Booking Integration
-
-**February 2, 2026 (Phase 7 - Font System Complete):**
-- ✅ Self-hosted variable font system (sans/serif/mono) with CSS generation
-- ✅ RichText component with inline editing and typography CSS
-- ✅ Storefront CSS loading cleaned up (consolidated theme CSS + scoped customizations)
-- ✅ Tailwind removed from public storefront bundle
-
-**January 30, 2026 (Phase 6 - Theme Customization Complete):**
-- ✅ Implemented three-layer theme architecture:
-  - **Blueprints (themes table)**: Immutable theme definitions with styling (theme_data)
-  - **Placeholders (theme_placeholders table)**: Blueprint header/footer/sidebar content
-  - **Theme Parts (theme_parts table)**: Scoped instances per tenant/central with customizations
-- ✅ ThemeService refactored:
-  - `activateTheme()` no longer clones themes - just copies placeholders to theme_parts
-  - `ensureThemePartsExist()` creates scoped header/footer/settings parts from placeholders
-  - Settings part uses type='settings' with settings_css and puck_data_raw (theme_data override)
-- ✅ ThemeCustomizationController rewritten:
-  - `getCustomization()` returns merged theme_data + header_data + footer_data
-  - `saveSection()` saves to theme_parts (not themes table) for settings/header/footer
-  - Blueprint's theme_data stays untouched when customizing
-- ✅ ThemePlaceholderController created:
-  - CRUD for blueprint placeholder content (header, footer, sidebar_left, etc.)
-  - Only allowed for system themes (is_system_theme=true)
-- ✅ Frontend ThemeBuilderPage updated:
-  - mode='create': Full builder with Info, Settings, Header, Footer, Pages tabs
-  - mode='customize': Settings, Header, Footer tabs only
-  - Customize mode loads from customization endpoint, saves to theme_parts
-- ✅ Database migrations:
-  - `theme_placeholders` table for blueprint content
-  - `settings_css` column on theme_parts for CSS customizations
-  - `settings` added to theme_parts type ENUM
-  - Migration to move blueprint parts to placeholders table
-- ✅ Tests: ThemeServiceTest, ThemePlaceholderApiTest, ThemeCustomizationApiTest, ThemeBuilderPage.mode.test
-- **Verified**: Blueprint styling and placeholder content persistent, customization isolated per scope
-
-**January 25, 2026 (Phase 5b - PuckCssAggregator Fixes):**
-- ✅ Fixed recursive component collection in PuckCssAggregator
-  - `collectComponents()` now properly traverses nested Box slots and zones
-  - Fixed duplication bug where `props.items` was visited twice
-  - Components in Box containers now correctly extracted from Puck data
-- ✅ Implemented theme-aware CSS builders
-  - `buildBoxCss()`, `buildHeadingCss()`, `buildTextCss()` use field module's CSS builders
-  - Proper theme token resolution via `createThemeResolver()`
-  - Class name generation matches runtime selectors (`.box-{id}`, `.heading-{id}`)
-- ✅ Fixed heading font-weight resolution
-  - `resolveHeadingFontWeight()` prioritizes level-based CSS vars (h1/h2=bold, h3/h4=semibold, h5/h6=medium)
-  - Only overridden when user explicitly customizes font-weight
-- ✅ TypeScript strict mode compliance
-  - Added `@ts-expect-error` comments for Puck's dynamic runtime data fields
-  - All compilation errors resolved
-- **Validated**: Theme 2 save generates correct CSS with Box + Heading rules, proper font-weights, no duplication
-
-**January 24, 2026:**
-- Finalized Theme CSS architecture decision
-- Two-layer model: shared base CSS + tenant overrides in DB
-- Atomic section saves for Theme Builder
-- Updated THEME_CSS_IMPLEMENTATION_GUIDE.md with 10-phase plan
-
-**December 16-17, 2025:**
-- Navigation component rewrite with metadata support
-- Mobile navigation enhancements (4 styles)
-- Fixed hamburger menu positioning and interaction
-- Instant navigation rendering (no loading flash)
-
-**January 8, 2026:**
-- Migrated all color controls to ColorPickerControlColorful (react-colorful)
-- Enhanced CSS builder with theme token resolution for borders
-- Fixed color picker state sync issues (no more reset to primary color)
-- BorderControl now uses RGBA picker with theme swatches and semantic colors
-- Added resolveToken support to buildLayoutCSS and buildTypographyCSS
-
-**January 21, 2026:**
-- Dashboard home page with real data (stats, recent tenants, activity)
-- Permission-based dashboard visibility using usePermissions hook
-- Added stats API service (frontend aggregatio
-
-**January 23, 2026:**
-- Fixed activity logging to prevent cross-tenant and central/tenant leakage:
-  - User, Tenant, ThemePart, Media, MediaFolder models now use context-aware log names
-  - Central queries hardened with `whereNull('tenant_id')` AND `log_name = 'central'`
-  - Tenant queries use `forTenant()` scope for strict `tenant_id` isolation
-- Added isolation tests:
-  - `CentralActivityLogIsolationTest`: Verifies central dashboard excludes tenant logs (17 assertions)
-  - `TenantActivityLogIsolationTest`: Verifies tenant queries don't leak between tenants (8 assertions)
-  - Run: `php artisan test --without-tty --filter="ActivityLogIsolation"`
-- Separated public and dashboard Blade templates for performance
-  - `public-central.blade.php`: Minimal JS/CSS for storefront visitors
-  - `dash-central.blade.php`: Full admin bundle for authenticated users
-  - Eliminates unnecessary code loading for public-facing pages
-- Dashboard stats widget fully functional with permission-based visibility
-- Recent tenants and activity feeds with formatted timestamps
-- Quick action buttons for common tasks
-- Loading skeletons and empty states
-- date-fns integration for relative timestamps
-- **Planned:** Theme CSS architecture (generate base CSS on disk, store customizations in DB)
-- **Planned:** Adopt hybrid build + patterns approach (DDD, CQRS, Events incrementally)
-
-**November 2025:**
-- PuckCompilerService metadata injection
-- NavigationObserver for auto-recompilation
-- HTTP caching with ETag support
-- PageEditorPage creation
-
-—
-
-## Phase 1 & 2: Theme CSS Generator & Blade Integration (Completed Jan 23, 2026)
-
-### Phase 1: Backend CSS Generator
-
-**Service:** `app/Services/ThemeCssGeneratorService.php`
-
-**Key Methods:**
-- `generateCss(?array $themeData): string` - Flattens nested theme data to CSS variables
-- `getCssUrl(int $themeId, string $version): string` - Returns `/storage/themes/{id}.css?v={version}`
-- `getCssVersion(): string` - Timestamp-based version for cache-busting
-- `writeCssFile(int $themeId, string $css): bool` - Writes CSS to storage
-- `deleteCssFile(int $themeId): bool` - Removes CSS file
-
-**Tests:**
-- Unit tests: `tests/Unit/Services/ThemeCssGeneratorServiceTest.php` (10 tests, 48 assertions)
-- Feature tests: `tests/Feature/ThemeCssGenerationTest.php` (5 tests, 18 assertions)
-
-### Phase 2: Blade Integration & CSS Injection
-
-**Theme Model Updates:**
-- `getCssUrl(): string` - Returns `/storage/themes/{id}.css?v={version}` for theme
-- `getCssVersion(): string` - Returns `updated_at` timestamp for cache-busting
-
-**ThemeService Integration:**
-- Constructor injection of ThemeCssGeneratorService
-- `activateTheme()` - Generates CSS after theme activation
-- `updateTheme()` - Regenerates CSS after theme data updates
-
-**CSS Injection:**
-- Blade: `public-central.blade.php` - Conditional CSS link tag with `id='theme-css-link'`
-- React SPA: `ThemeProvider.tsx` - useEffect that injects/updates theme CSS dynamically
-
-**Tests:**
-- Feature tests: `tests/Feature/ThemeActivationCssGenerationTest.php` (7 tests, 23 assertions)
-- Feature tests: `tests/Feature/BladeCssLinkRenderingTest.php` (4 tests, 12 assertions)
-
-**Test Coverage:**
-- ✅ Theme activation triggers CSS generation
-- ✅ Theme updates trigger CSS regeneration
-- ✅ CSS file is created in storage/public/themes/
-- ✅ CSS URL format with cache-busting version
-- ✅ Multiple theme activations maintain separate CSS files
-- ✅ Blade view can access theme CSS URL
-- ✅ SPA can dynamically inject theme CSS link
-
-**Git History:**
-- Commit 1: `83c25ae` - "feat: implement ThemeCssGeneratorService with TDD (Phase 1)"
-- Commit 2: `1168660` - "feat: add feature tests for CSS generation (Phase 1 integration)"
-- Commit 3: `dbd28fc` - "feat: implement Phase 2 - Blade integration & CSS injection (TDD)"
-- Branch: `feature/theme-css-v2`
-
-**Total Tests: 26 passed (101 assertions)**
-
-**Next Phases (3-5):**
-1. **Phase 3:** CSS injection in Puck editor (1 hr)
-2. **Phase 4:** Component conversion to CSS variables (2-3 hrs)
-3. **Phase 5:** Testing & validation (1 hr)
-
-—
-
-## Handy References
-
-**Code Locations:**
-- Puck components: `resources/js/apps/central/components/pages/puck-components/`
-- Navigation: `resources/js/apps/central/components/pages/puck-components/Navigation.tsx`
-- Page editor: `resources/js/apps/central/components/pages/PageEditorPage.tsx`
-- Public renderer: `resources/js/apps/central/components/pages/PublicPage.tsx`
-- Theme context: `resources/js/shared/contexts/ThemeContext.tsx`
-- Theme CSS Generator: `app/Services/ThemeCssGeneratorService.php` ← **Phase 1 NEW**
-- API services: `resources/js/shared/services/api/`
-
-**Backend Services:**
-- Compiler: `app/Services/PuckCompilerService.php`
-- Theme CSS Generator: `app/Services/ThemeCssGeneratorService.php` ← **Phase 1 NEW**
-- Observer: `app/Observers/NavigationObserver.php`
-- Controller: `app/Http/Controllers/Api/PageController.php`
-
-**Documentation:**
-- Implementation checklist: `DEVELOPMENT_DOCS/PUCK_IMPLEMENTATION_CHECKLIST.md`
-- Roadmap: `DEVELOPMENT_DOCS/ROADMAP.md`
-- API docs: `DEVELOPMENT_DOCS/API_DOCUMENTATION.md`
-
-See ROADMAP.md for milestone timeline.
-
-—
-
-## Development Workflow Standards
-
-**Always use Feature Branches:**
+- ByteForge is a multi-tenant CMS and storefront platform with central and
+  tenant dashboards, a Puck-based page builder, themes, media, analytics,
+  payments, and booking.
+- Phases 9 through 14 are implemented on `main`.
+- Phase 15 guest authentication is not implemented yet.
+- The HttpOnly auth migration is planned, but browser auth still uses the
+  older token-storage model described in
+  [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md).
+- Shared input normalization across payments and auth is not implemented yet.
+  The only current normalization layer is booking-specific in
+  `app/Actions/Api/SanitizeBookingCustomerInputAction.php`.
+- Booking dashboard localization and booking guest-input hardening were merged
+  on 2026-04-19.
+
+## Implemented Milestones
+
+- Phase 9 Analytics Foundation: complete on `main`
+- Phase 10 Payments Core: complete on `main`
+- Phase 11 Dashboard Translation: complete on `main`
+- Phase 12 Tenant Runtime Readiness: complete on `main`
+- Phase 13 Booking System: implemented on `main`
+- Phase 14 Payment x Booking Integration: implemented on `main`
+
+## Current Recommended Work Order
+
+1. Keep the documentation baseline accurate and authoritative.
+2. Introduce a shared, field-family input normalization layer on a dedicated
+   branch instead of expanding the booking-specific sanitizer ad hoc.
+3. Apply that shared normalization first to payment-adjacent customer display
+   fields and future auth-related ordinary text inputs.
+4. Continue with the HttpOnly auth migration groundwork.
+5. Build guest authentication after the auth/session foundation is ready.
+
+## Current Reality Checks
+
+These are the main state corrections that matter for future work.
+
+- Booking is not planned work anymore; it already exists in production code.
+- Payment x booking integration is not future design only; it already exists in
+  production code, including booking payment creation, webhook confirmation,
+  and refund-aware cancellation flows.
+- Guest authentication does not yet exist in routes, middleware, or backend
+  domain code.
+- The docs previously drifted on these points, so agents should trust this file
+  over older phase headers unless a newer canonical document says otherwise.
+
+## Active Known Gaps
+
+### Booking follow-ups
+
+These remain the main booking product gaps still worth tracking:
+
+- booking wizard order should become `service -> date -> resource -> slot`
+- resource step should support an "Any available" option
+- resource step heading should reflect the configured `resource_label`
+- tenant owner should receive a new-booking email where appropriate
+- staff assignment notifications should cover auto-confirm paths consistently
+- anonymous timeline entries should not render a dangling customer `#`
+
+### Security and auth follow-ups
+
+- browser auth still uses the older persistent token storage model
+- shared normalization policy exists as a direction, not a shared abstraction
+- guest authentication is still future work
+
+## Verification Baseline
+
+For safe focused checks, start with [TESTING.md](TESTING.md).
+
+Recent booking-focused verification that is known green:
+
 ```bash
-# ❌ Never code directly on main
-git checkout main
-
-# ✅ Create feature branch from main
-git checkout -b feature/theme-css-architecture
-
-# Make changes, commit, push
-git push origin feature/theme-css-architecture
-
-# Create PR before merging to main
+npm run test:run -- resources/js/apps/tenant/config/__tests__/menu.test.tsx resources/js/apps/tenant/components/pages/Booking/__tests__/BookingSettingsPage.test.tsx resources/js/apps/tenant/components/pages/Booking/__tests__/BookingsCalendarPage.test.tsx resources/js/apps/tenant/components/pages/Booking/__tests__/BookingDetailPage.test.tsx
 ```
 
-**Before Creating a PR:**
-1. ✅ Run tests: `npm run test` + `php artisan test` (all 700+ must pass)
-2. ✅ Check lint: `npm run lint` + `php artisan lint`
-3. ✅ Update CURRENT_STATUS.md with your changes
-4. ✅ Create descriptive commit messages
-5. ✅ Ensure branch name is clear (`feature/*`, `fix/*`, `refactor/*`)
-
-**Testing is Non-Negotiable:**
-- Unit tests for new services (ThemeCssGeneratorService)
-- Feature tests for user workflows (theme creation, activation)
-- Component tests for UI changes (Puck components with CSS vars)
-- All existing tests must still pass (no regressions)
-- Target: 80%+ coverage on new code
-
-**Code Review Checklist Before Merge:**
-- [ ] All tests pass (700+ tests)
-- [ ] No direct main commits in history
-- [ ] Branch name is descriptive
-- [ ] CURRENT_STATUS.md is updated
-- [ ] Documentation is clear (comments, README)
-- [ ] No console.logs or debug code left in
-
-**Example Workflow for Theme CSS Feature:**
 ```bash
-# Start on main, pull latest
-git checkout main
-git pull origin main
-
-# Create feature branch
-git checkout -b feature/theme-css-architecture
-
-# Work on: 
-#  - ThemeCssGeneratorService
-#  - Public blade link
-#  - Puck component updates
-#  - Tests for all above
-
-# Before PR, run tests
-npm run test && php artisan test
-
-# Commit and push
-git add .
-git commit -m "feat: implement theme CSS generation and disk storage"
-git push origin feature/theme-css-architecture
-
-# Create PR in GitHub
-# Wait for review, then merge
+php artisan test tests/Feature/Api/Booking/PublicBookingApiTest.php tests/Feature/Api/Booking/BookingHoldTest.php tests/Feature/Api/Booking/BookingCmsApiTest.php
 ```
+
+## Read Next
+
+- For exact next-work sequencing: [ROADMAP.md](ROADMAP.md)
+- For agent operating context: [AGENT_START.md](AGENT_START.md)
+- For testing and verification: [TESTING.md](TESTING.md)
+- For auth/session work: [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md)
+- For booking and payment integration details: [plans/PHASE13_BOOKING_SYSTEM.md](plans/PHASE13_BOOKING_SYSTEM.md) and [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md)
