@@ -99,10 +99,16 @@ Likely focus areas:
 Examples:
 
 - tenant dashboard access refinements
+- narrow central support tooling such as temporary tenant support access for named support staff
 - usage tracking and quotas
 - content/version history
 - navigation drag-and-drop tree UI
 - selected static HTML generation capabilities for system pages
+
+Guidance:
+
+- prefer inspection and bounded support workflows over broad central cross-tenant CRUD
+- do not expand central into a second full tenant CMS unless repeated operational needs justify it
 
 ## Out Of Scope For This Roadmap
 
