@@ -251,4 +251,35 @@ class BookingHoldTest extends TestCase
         $response->assertStatus(422)
             ->assertJsonValidationErrors(['customer_name', 'customer_email']);
     }
+
+    #[Test]
+    public function hold_sanitizes_customer_fields_before_storage(): void
+    {
+        $tenant = Tenant::where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id, ['duration_minutes' => 60]);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+        $this->makeAvailability($resource);
+
+        $startsAt = now()->addDay()->startOfDay()->addHours(10);
+
+        $this->postJson($this->url('/api/public/booking/hold'), [
+            'service_id'     => $service->id,
+            'resource_id'    => $resource->id,
+            'starts_at'      => $startsAt->toIso8601String(),
+            'customer_name'  => "  <i>Hold\n Tester</i>  ",
+            'customer_email' => " hold@example.com ",
+            'customer_notes' => "<b>Need help</b>\r\nSoon\x07",
+        ])->assertStatus(201);
+
+        $this->assertDatabaseHas('bookings', [
+            'tenant_id' => (string) $tenant->id,
+            'status' => Booking::STATUS_PENDING_HOLD,
+            'customer_name' => 'Hold Tester',
+            'customer_email' => 'hold@example.com',
+            'customer_notes' => "Need help\nSoon",
+        ]);
+    }
 }

@@ -69,25 +69,25 @@ export function useTenantMenuItems(): MenuItem[] {
     },
     ...(hasAddon('booking') ? [
       {
-        label: 'Bookings',
+        label: t('menu_bookings'),
         path: '/cms/bookings',
         icon: CalendarDays,
         permission: 'bookings.view',
       },
       {
-        label: 'Services',
+        label: t('menu_booking_services'),
         path: '/cms/bookings/services',
         icon: Layers,
         permission: 'bookings.view',
       },
       {
-        label: 'Resources',
+        label: t('menu_booking_resources'),
         path: '/cms/bookings/resources',
         icon: Users2,
         permission: 'bookings.view',
       },
       {
-        label: 'Booking Settings',
+        label: t('menu_booking_settings'),
         path: '/cms/bookings/settings',
         icon: Settings2,
         permission: 'bookings.manage',

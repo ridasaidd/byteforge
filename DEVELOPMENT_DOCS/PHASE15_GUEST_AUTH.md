@@ -25,6 +25,23 @@ Guest authentication solves this without breaking the anonymous-first model: it 
 4. **Magic link is the primary authenticator.** No password from day one. Email-first is correct for the infrequent usage pattern (a guest logs in a few times per year, not daily).
 5. **Token model mirrors the staff HttpOnly auth refactor.** Guest access tokens are short-lived; refresh sessions are stored server-side; the refresh token is delivered as an HttpOnly cookie. The mechanism is structurally identical — only the actor type differs.
 6. **Cross-domain auth is tenant-proxied.** Tenants have their own domains. Guest identity lives centrally (one guest, any tenant). Tenant API calls central to verify magic link tokens and centralises guest session creation — guests never get redirected to a central auth domain.
+7. **Input normalization must be field-aware.** Normalize guest name/email and other ordinary contact text before validation, but never run the same sanitizer across passwords, magic-link tokens, refresh cookies, signatures, or other security-sensitive values.
+
+## Input Normalization Follow-Up
+
+The booking branch now normalizes booking customer text at the write boundary.
+That pattern should be generalized later for guest-auth work, but only as a
+shared reusable normalization layer, not as a global request middleware.
+
+Recommended guest-auth boundary:
+
+- normalize ordinary guest profile fields such as `name` and `email`,
+- preserve exact values for passwords if a password-based guest flow is ever
+  introduced later,
+- preserve exact values for magic-link tokens, access tokens, refresh tokens,
+  OTP codes, HMAC payloads, and cookie/session identifiers,
+- prefer `FormRequest::prepareForValidation()` or explicit request-shaping in
+  the owning action/controller so the behavior stays visible and testable.
 
 ---
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cmsBookingApi } from '@/shared/services/api/booking';
 import type { CmsBookingResource, CreateBookingResourceData, BookingAvailabilityWindow } from '@/shared/services/api/booking';
 import { tenantUsers } from '@/shared/services/api/tenantUsers';
@@ -74,6 +75,7 @@ function ResourceDialog({
   saving: boolean;
   users: User[];
 }) {
+  const { t } = useTranslation('booking');
   const [form, setForm] = useState<FormData>(() => defaultForm(editing ?? undefined));
   const set = (k: keyof FormData, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }));
@@ -87,44 +89,44 @@ function ResourceDialog({
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Resource' : 'New Resource'}</DialogTitle>
+          <DialogTitle>{editing ? t('edit_resource_title') : t('new_resource_title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Name *</Label>
+            <Label>{t('name_required')}</Label>
             <Input required maxLength={120} value={form.name} onChange={e => set('name', e.target.value)} />
           </div>
           <div>
-            <Label>Description</Label>
+            <Label>{t('description')}</Label>
             <textarea
               className="w-full border rounded-md px-3 py-2 text-sm min-h-[88px]"
               maxLength={1000}
-              placeholder="Optional details for tenants/customers (skills, room features, equipment notes)."
+              placeholder={t('description_placeholder_resource')}
               value={form.description}
               onChange={e => set('description', e.target.value)}
             />
             <p className="mt-1 text-xs text-muted-foreground">{form.description.length}/1000</p>
           </div>
           <div>
-            <Label>Type *</Label>
+            <Label>{t('type_required')}</Label>
             <select
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={form.type}
               onChange={e => set('type', e.target.value as 'person' | 'space' | 'equipment')}
             >
-              <option value="space">Room / Cabin</option>
-              <option value="person">Person (staff member)</option>
-              <option value="equipment">Equipment</option>
+              <option value="space">{t('type_space')}</option>
+              <option value="person">{t('type_person')}</option>
+              <option value="equipment">{t('type_equipment')}</option>
             </select>
           </div>
           {form.type === 'space' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Default check-in time</Label>
+                <Label>{t('default_checkin_time')}</Label>
                 <Input type="time" value={form.checkin_time} onChange={e => set('checkin_time', e.target.value)} />
               </div>
               <div>
-                <Label>Default check-out time</Label>
+                <Label>{t('default_checkout_time')}</Label>
                 <Input type="time" value={form.checkout_time} onChange={e => set('checkout_time', e.target.value)} />
               </div>
             </div>
@@ -132,18 +134,18 @@ function ResourceDialog({
           {form.type !== 'person' && (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Capacity</Label>
+                <Label>{t('capacity')}</Label>
                 <Input type="number" min={1} max={255} value={form.capacity} onChange={e => set('capacity', e.target.value)} />
               </div>
               <div>
-                <Label>Label</Label>
-                <Input maxLength={60} placeholder="Room 1, Suite A…" value={form.resource_label} onChange={e => set('resource_label', e.target.value)} />
+                <Label>{t('label')}</Label>
+                <Input maxLength={60} placeholder={t('label_placeholder')} value={form.resource_label} onChange={e => set('resource_label', e.target.value)} />
               </div>
             </div>
           )}
           {form.type === 'person' && (
             <div>
-              <Label>Linked tenant user</Label>
+              <Label>{t('linked_tenant_user')}</Label>
               <select
                 className="w-full border rounded-md px-3 py-2 text-sm"
                 value={form.user_id}
@@ -159,7 +161,7 @@ function ResourceDialog({
                   }
                 }}
               >
-                <option value="">— No linked account —</option>
+                <option value="">{t('no_linked_account')}</option>
                 {users.map(u => (
                   <option key={u.id} value={String(u.id)}>
                     {u.name} ({u.email})
@@ -170,11 +172,11 @@ function ResourceDialog({
           )}
           <div className="flex items-center gap-2">
             <input type="checkbox" id="res_active" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
-            <Label htmlFor="res_active">Active</Label>
+            <Label htmlFor="res_active">{t('active')}</Label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('cancel')}</Button>
+            <Button type="submit" disabled={saving}>{saving ? t('saving') : t('save')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -199,6 +201,7 @@ function AvailabilityManager({
 }) {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation('booking');
 
   const { data, isLoading } = useQuery({
     queryKey: ['cms-booking-availability', resourceId],
@@ -213,18 +216,18 @@ function AvailabilityManager({
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-booking-availability', resourceId] });
       setAdding(null);
-      toast({ title: 'Time window added' });
+      toast({ title: t('time_window_added') });
     },
-    onError: () => toast({ title: 'Failed to save window', variant: 'destructive' }),
+    onError: () => toast({ title: t('failed_save_window'), variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (windowId: number) => cmsBookingApi.deleteAvailability(windowId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-booking-availability', resourceId] });
-      toast({ title: 'Time window removed' });
+      toast({ title: t('time_window_removed') });
     },
-    onError: () => toast({ title: 'Failed to remove window', variant: 'destructive' }),
+    onError: () => toast({ title: t('failed_remove_window'), variant: 'destructive' }),
   });
 
   const byDay = useMemo(() => {
@@ -239,14 +242,14 @@ function AvailabilityManager({
 
   return (
     <div className="mt-2 pt-3 border-t">
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Availability Schedule</p>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{t('availability_schedule')}</p>
       <p className="text-xs text-muted-foreground mb-2">
-        {resourceType === 'person' && 'Set this staff member\'s working hours for booking availability.'}
-        {resourceType === 'space' && 'Set when this room/space is bookable (for example around cleaning or maintenance).'}
-        {resourceType === 'equipment' && 'Set when this equipment can be reserved and avoid overlapping usage.'}
+        {resourceType === 'person' && t('availability_help_person')}
+        {resourceType === 'space' && t('availability_help_space')}
+        {resourceType === 'equipment' && t('availability_help_equipment')}
       </p>
       {isLoading ? (
-        <p className="text-xs text-muted-foreground">Loading…</p>
+        <p className="text-xs text-muted-foreground">{t('loading')}</p>
       ) : (
         <div className="space-y-1.5">
           {DAY_ORDER.map(dayOfWeek => {
@@ -264,7 +267,7 @@ function AvailabilityManager({
                           type="button"
                           onClick={() => deleteMutation.mutate(w.id)}
                           className="ml-1 text-muted-foreground hover:text-destructive leading-none"
-                          aria-label="Remove window"
+                          aria-label={t('remove_window')}
                         >×</button>
                       )}
                     </span>
@@ -301,19 +304,19 @@ function AvailabilityManager({
                               });
                             }
                           }}
-                        >{addMutation.isPending ? '…' : 'Save'}</button>
+                        >{addMutation.isPending ? '...' : t('save_window')}</button>
                         <button
                           type="button"
                           className="text-xs text-muted-foreground hover:underline"
                           onClick={() => setAdding(null)}
-                        >Cancel</button>
+                        >{t('cancel')}</button>
                       </span>
                     ) : (
                       <button
                         type="button"
                         className="text-xs text-primary hover:underline"
                         onClick={() => setAdding({ dayOfWeek, startsAt: '09:00', endsAt: '17:00' })}
-                      >+ Add</button>
+                      >+ {t('add')}</button>
                     )
                   )}
                 </div>
@@ -329,12 +332,13 @@ function AvailabilityManager({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 const TYPE_LABELS: Record<string, string> = {
-  person:    'Person',
-  space:     'Room/Cabin',
-  equipment: 'Equipment',
+  person: 'type_person',
+  space: 'type_space',
+  equipment: 'type_equipment',
 };
 
 export function ResourceManagerPage() {
+  const { t } = useTranslation('booking');
   const { toast } = useToast();
   const qc = useQueryClient();
   const { hasPermission } = usePermissions();
@@ -384,18 +388,18 @@ export function ResourceManagerPage() {
       qc.invalidateQueries({ queryKey: ['cms-booking-resources'] });
       setDialogOpen(false);
       setEditing(null);
-      toast({ title: editing ? 'Resource updated' : 'Resource created' });
+      toast({ title: editing ? t('resource_updated') : t('resource_created') });
     },
-    onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
+    onError: () => toast({ title: t('save_failed'), variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => cmsBookingApi.deleteResource(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-booking-resources'] });
-      toast({ title: 'Resource deleted' });
+      toast({ title: t('resource_deleted') });
     },
-    onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
+    onError: () => toast({ title: t('delete_failed'), variant: 'destructive' }),
   });
 
   function openNew() { setEditing(null); setDialogOpen(true); }
@@ -404,16 +408,16 @@ export function ResourceManagerPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Booking Resources"
-        description="Manage rooms, staff, and equipment that can be booked."
+        title={t('resources_page_title')}
+        description={t('resources_page_description')}
         actions={canManage ? (
           <Button onClick={openNew}>
-            <Plus size={16} className="mr-1" /> New resource
+            <Plus size={16} className="mr-1" /> {t('new_resource')}
           </Button>
         ) : undefined}
       />
 
-      {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+      {isLoading && <p className="text-sm text-muted-foreground">{t('loading')}</p>}
 
       <div className="space-y-3">
         {resources.map(r => {
@@ -426,9 +430,9 @@ export function ResourceManagerPage() {
                   {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                 </button>
                 <CardTitle className="text-base flex-1">{r.name}</CardTitle>
-                <Badge variant="outline">{TYPE_LABELS[r.type] ?? r.type}</Badge>
+                <Badge variant="outline">{t(TYPE_LABELS[r.type] ?? r.type)}</Badge>
                 <Badge variant={r.is_active ? 'default' : 'secondary'}>
-                  {r.is_active ? 'Active' : 'Inactive'}
+                  {r.is_active ? t('active') : t('inactive')}
                 </Badge>
                 {r.resource_label && (
                   <span className="text-sm text-muted-foreground">{r.resource_label}</span>
@@ -452,12 +456,12 @@ export function ResourceManagerPage() {
                 )}
                 {r.type === 'space' && (r.checkin_time || r.checkout_time) && (
                   <p className="text-xs text-muted-foreground mb-2">
-                    Default stay times: {r.checkin_time || '—'} check-in · {r.checkout_time || '—'} check-out
+                    {t('default_stay_times', { checkin: r.checkin_time || '-', checkout: r.checkout_time || '-' })}
                   </p>
                 )}
                 {r.services && r.services.length > 0 && (
                   <p className="text-xs text-muted-foreground mb-2">
-                    Services: {r.services.map(s => s.name).join(', ')}
+                    {t('services_label_long')}: {r.services.map(s => s.name).join(', ')}
                   </p>
                 )}
                 <AvailabilityManager resourceId={r.id} resourceType={r.type} canManage={canManage} />
@@ -467,7 +471,7 @@ export function ResourceManagerPage() {
           );
         })}
         {!isLoading && resources.length === 0 && (
-          <p className="text-sm text-muted-foreground">No resources yet.</p>
+          <p className="text-sm text-muted-foreground">{t('no_resources_yet')}</p>
         )}
       </div>
 

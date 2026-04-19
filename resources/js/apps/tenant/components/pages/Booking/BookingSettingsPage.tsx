@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { tenantSettings, type UpdateTenantSettingsData } from '@/shared/services/api';
 import { tenantPages } from '@/shared/services/api/pages';
 import { useToast } from '@/shared/hooks/useToast';
@@ -22,6 +23,7 @@ function toNum(val: unknown): string {
 export function BookingSettingsPage() {
   const qc = useQueryClient();
   const { toast } = useToast();
+  const { t } = useTranslation('booking');
 
   // Form state
   const [timezone, setTimezone] = useState('');
@@ -72,9 +74,9 @@ export function BookingSettingsPage() {
     mutationFn: (payload: UpdateTenantSettingsData) => tenantSettings.update(payload),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['tenant-settings'] });
-      toast({ title: 'Booking settings saved' });
+      toast({ title: t('booking_settings_saved') });
     },
-    onError: () => toast({ title: 'Failed to save settings', variant: 'destructive' }),
+    onError: () => toast({ title: t('booking_settings_save_failed'), variant: 'destructive' }),
   });
 
   function handleSave() {
@@ -97,32 +99,32 @@ export function BookingSettingsPage() {
   }
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground p-8 text-center">Loading settings…</p>;
+    return <p className="text-sm text-muted-foreground p-8 text-center">{t('loading_settings')}</p>;
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Booking Settings"
-        description="Configure how bookings behave for your tenancy."
+        title={t('page_title_settings')}
+        description={t('page_description_settings')}
       />
 
       <Card>
         <CardHeader>
-          <CardTitle>General</CardTitle>
-          <CardDescription>Timezone and confirmation behaviour.</CardDescription>
+          <CardTitle>{t('general_title')}</CardTitle>
+          <CardDescription>{t('general_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-1.5">
-            <Label htmlFor="timezone">Timezone</Label>
+            <Label htmlFor="timezone">{t('timezone')}</Label>
             <Input
               id="timezone"
-              placeholder="e.g. Europe/Stockholm"
+              placeholder={t('timezone_placeholder')}
               value={timezone}
               onChange={e => setTimezone(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              IANA timezone string. Used for availability calculations and notifications.
+              {t('timezone_help')}
             </p>
           </div>
 
@@ -134,11 +136,11 @@ export function BookingSettingsPage() {
               onChange={e => setAutoConfirm(e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
             />
-            <Label htmlFor="auto-confirm">Auto-confirm bookings</Label>
+            <Label htmlFor="auto-confirm">{t('auto_confirm_bookings')}</Label>
           </div>
 
           <div className="grid gap-1.5 max-w-xs">
-            <Label htmlFor="hold-minutes">Hold expiry (minutes)</Label>
+            <Label htmlFor="hold-minutes">{t('hold_expiry_minutes')}</Label>
             <Input
               id="hold-minutes"
               type="number"
@@ -147,12 +149,12 @@ export function BookingSettingsPage() {
               onChange={e => setHoldMinutes(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              How long a booking hold is reserved before releasing the slot.
+              {t('hold_expiry_help')}
             </p>
           </div>
 
           <div className="grid gap-1.5 max-w-md">
-            <Label htmlFor="payment-page">Payment page</Label>
+            <Label htmlFor="payment-page">{t('payment_page')}</Label>
             <select
               id="payment-page"
               value={paymentPageId}
@@ -160,15 +162,17 @@ export function BookingSettingsPage() {
               className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
               disabled={isLoadingPages}
             >
-              <option value="">System fallback payment page</option>
+              <option value="">{t('payment_page_fallback')}</option>
               {paymentPageOptions.map((page) => (
                 <option key={page.id} value={page.id}>
-                  {page.is_homepage ? `${page.title} (Homepage)` : `${page.title} (/pages/${page.slug})`}
+                  {page.is_homepage
+                    ? t('payment_page_option_homepage', { title: page.title })
+                    : t('payment_page_option_path', { title: page.title, slug: page.slug })}
                 </option>
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              Select the published CMS page that contains the Payment Widget. When unset, bookings fall back to the built-in payment page.
+              {t('payment_page_help')}
             </p>
           </div>
         </CardContent>
@@ -176,12 +180,12 @@ export function BookingSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Check-in / Check-out</CardTitle>
-          <CardDescription>Default times used for range-based (per-night) bookings.</CardDescription>
+          <CardTitle>{t('checkin_checkout_title')}</CardTitle>
+          <CardDescription>{t('checkin_checkout_description')}</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <Label htmlFor="checkin">Check-in time</Label>
+            <Label htmlFor="checkin">{t('checkin_time')}</Label>
             <Input
               id="checkin"
               type="time"
@@ -190,7 +194,7 @@ export function BookingSettingsPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="checkout">Check-out time</Label>
+            <Label htmlFor="checkout">{t('checkout_time')}</Label>
             <Input
               id="checkout"
               type="time"
@@ -203,25 +207,25 @@ export function BookingSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>Control when reminder emails are sent.</CardDescription>
+          <CardTitle>{t('notifications_title')}</CardTitle>
+          <CardDescription>{t('notifications_description')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-1.5 max-w-sm">
-            <Label htmlFor="reminder-hours">Reminder hours before (comma-separated)</Label>
+            <Label htmlFor="reminder-hours">{t('reminder_hours_before')}</Label>
             <Input
               id="reminder-hours"
-              placeholder="e.g. 24, 2"
+              placeholder={t('reminder_hours_placeholder')}
               value={reminderHours}
               onChange={e => setReminderHours(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Send reminder emails these many hours before the booking starts.
+              {t('reminder_hours_help')}
             </p>
           </div>
 
           <div className="grid gap-1.5 max-w-xs">
-            <Label htmlFor="cancel-hours">Cancellation notice (hours)</Label>
+            <Label htmlFor="cancel-hours">{t('cancellation_notice_hours')}</Label>
             <Input
               id="cancel-hours"
               type="number"
@@ -230,7 +234,7 @@ export function BookingSettingsPage() {
               onChange={e => setCancellationNoticeHours(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Minimum hours notice required for a customer to cancel their booking.
+              {t('cancellation_notice_help')}
             </p>
           </div>
         </CardContent>
@@ -238,7 +242,7 @@ export function BookingSettingsPage() {
 
       <div className="flex justify-end">
         <Button onClick={handleSave} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? 'Saving…' : 'Save settings'}
+          {saveMutation.isPending ? t('saving') : t('save_settings')}
         </Button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 # Booking Security Findings
 
-Last updated: 2026-04-18
+Last updated: 2026-04-19
 
 ## Scope
 
@@ -18,6 +18,10 @@ checked off only after:
 
 ```bash
 php artisan test tests/Feature/Api/Booking/BookingPaymentSecurityTest.php tests/Feature/Api/Booking/BookingPaymentIntegrationTest.php
+```
+
+```bash
+php artisan test tests/Feature/Api/Booking/PublicBookingApiTest.php tests/Feature/Api/Booking/BookingHoldTest.php tests/Feature/Api/Booking/BookingCmsApiTest.php
 ```
 
 ```bash
@@ -148,12 +152,51 @@ not currently represented by a red test in the focused suite.
   - Regression coverage verifies both the backend handoff URL format and the
     frontend fragment-token parsing and cleanup behavior.
 
+### [x] BF-BOOKING-HARDEN-004 Normalize guest/customer input before validation and storage
+
+- Severity: Medium
+- Relevant code:
+  - `app/Actions/Api/SanitizeBookingCustomerInputAction.php`
+  - `app/Http/Controllers/Api/Booking/PublicBookingController.php`
+  - `app/Http/Controllers/Api/Booking/BookingManagementController.php`
+- Notes:
+  - Public booking create, public hold, and tenant-side manual booking creation
+    now normalize customer-facing text fields before validation and persistence.
+  - The normalization layer strips markup tags, removes control characters,
+    normalizes line endings for multiline notes, and squishes single-line
+    whitespace so the database does not retain noisy payloads.
+  - This is defense in depth only. Output escaping remains the primary XSS
+    control, and no blanket sanitizer middleware was added at the API level.
+  - Regression coverage now exists for all three booking write paths listed in
+    the focused verification command above.
+
+## Deferred wider follow-up
+
+The booking branch intentionally stops at booking-owned customer fields.
+
+Broader input normalization across future payment, guest-auth, and staff-auth
+flows should be implemented as a shared field-family normalization layer in the
+branch that owns those systems, not as a global request-munging middleware.
+
+Current recommended direction:
+
+- keep only minimal framework-safe request normalization globally,
+- add reusable normalizers for field families such as person/contact text and
+  multiline notes,
+- apply them explicitly per request or via `FormRequest::prepareForValidation()`,
+- never mutate passwords, tokens, signatures, raw provider payloads, CSS, or
+  builder/content JSON with the same sanitizer used for customer-facing text.
+
 ## Next verification step after each fix
 
 After any remediation, re-run:
 
 ```bash
 php artisan test tests/Feature/Api/Booking/BookingPaymentSecurityTest.php tests/Feature/Api/Booking/BookingPaymentIntegrationTest.php
+```
+
+```bash
+php artisan test tests/Feature/Api/Booking/PublicBookingApiTest.php tests/Feature/Api/Booking/BookingHoldTest.php tests/Feature/Api/Booking/BookingCmsApiTest.php
 ```
 
 All currently tracked booking findings in this document are now covered by

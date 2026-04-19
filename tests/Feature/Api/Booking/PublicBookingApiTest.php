@@ -428,6 +428,48 @@ class PublicBookingApiTest extends TestCase
     }
 
     #[Test]
+    public function create_booking_sanitizes_customer_fields_before_storage(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id, ['booking_mode' => BookingService::MODE_SLOT, 'duration_minutes' => 60]);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+
+        $date = now()->addDays(4)->format('Y-m-d');
+        BookingAvailability::create([
+            'resource_id'   => $resource->id,
+            'specific_date' => $date,
+            'starts_at'     => '08:00:00',
+            'ends_at'       => '18:00:00',
+            'is_blocked'    => false,
+        ]);
+
+        $startsAt = now()->addDays(4)->setTimeFromTimeString('10:00:00')->toIso8601String();
+        $endsAt   = now()->addDays(4)->setTimeFromTimeString('11:00:00')->toIso8601String();
+
+        $this->postJson($this->url('/api/public/booking'), [
+            'service_id'     => $service->id,
+            'resource_id'    => $resource->id,
+            'starts_at'      => $startsAt,
+            'ends_at'        => $endsAt,
+            'customer_name'  => "  <b>Test\n Customer</b>  ",
+            'customer_email' => "  test@example.com\t ",
+            'customer_phone' => "\t +46 70 123 45 67 \x07",
+            'customer_notes' => "<b>Hello</b>\r\nTeam\x07",
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('bookings', [
+            'tenant_id' => (string) $tenant->id,
+            'customer_name' => 'Test Customer',
+            'customer_email' => 'test@example.com',
+            'customer_phone' => '+46 70 123 45 67',
+            'customer_notes' => "Hello\nTeam",
+        ]);
+    }
+
+    #[Test]
     public function create_booking_validates_required_fields(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();

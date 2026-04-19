@@ -44,6 +44,17 @@ Phase 14 integrates the payment system (Phase 10) with the booking system (Phase
 - Refund state is tracked separately from booking state
 - If refund fails, cancellation is rejected (safeguard against lost money)
 
+### 6. Input Normalization Boundary For Payment Flows
+- Payment-related customer display fields should use the shared text/contact
+   normalization layer when that abstraction is introduced.
+- This should apply to human-entered fields such as customer name, customer
+   email, and refund reason.
+- It should not mutate gateway-facing identifiers or opaque data such as
+   amounts, currencies, metadata blobs, provider transaction IDs, aliases,
+   signatures, tokens, or webhook payloads.
+- The recommended implementation point is explicit per-request normalization,
+   not a blanket API middleware that rewrites every request body.
+
 ---
 
 ## Data Model Changes
