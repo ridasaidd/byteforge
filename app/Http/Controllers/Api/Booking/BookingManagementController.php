@@ -37,6 +37,16 @@ class BookingManagementController extends Controller
         $query = Booking::forTenant((string) tenant('id'))
             ->with(['service:id,name,booking_mode', 'resource:id,name,type']);
 
+        if ($request->filled('starts_from')) {
+            $startsFrom = Carbon::parse($request->input('starts_from'))->startOfDay();
+            $query->where('starts_at', '>=', $startsFrom);
+        }
+
+        if ($request->filled('starts_to')) {
+            $startsTo = Carbon::parse($request->input('starts_to'))->endOfDay();
+            $query->where('starts_at', '<=', $startsTo);
+        }
+
         if ($request->filled('date')) {
             $date = Carbon::parse($request->input('date'));
             $query->whereDate('starts_at', $date);
@@ -54,7 +64,9 @@ class BookingManagementController extends Controller
             $query->where('service_id', (int) $request->input('service_id'));
         }
 
-        $results = $query->orderBy('starts_at')->paginate(50);
+        $perPage = min(max((int) $request->input('per_page', 50), 1), 500);
+
+        $results = $query->orderBy('starts_at')->paginate($perPage);
 
         return response()->json($results);
     }

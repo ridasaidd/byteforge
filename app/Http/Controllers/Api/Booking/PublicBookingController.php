@@ -77,7 +77,7 @@ class PublicBookingController extends Controller
 
         $rows = BookingService::forTenant($tenantId)
             ->active()
-            ->get(['id', 'name', 'description', 'booking_mode', 'duration_minutes', 'price', 'currency'])
+            ->get(['id', 'name', 'description', 'booking_mode', 'duration_minutes', 'price', 'currency', 'requires_payment'])
             ->map(fn (BookingService $s) => [
                 'id'               => $s->id,
                 'name'             => $s->name,

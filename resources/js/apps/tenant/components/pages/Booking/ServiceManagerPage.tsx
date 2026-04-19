@@ -103,12 +103,12 @@ function ServiceDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>{t('name_required')}</Label>
-            <Input required maxLength={120} value={form.name} onChange={e => set('name', e.target.value)} />
+            <Label htmlFor="service-name">{t('name_required')}</Label>
+            <Input id="service-name" name="name" required maxLength={120} value={form.name} onChange={e => set('name', e.target.value)} />
           </div>
           <div>
-            <Label>{t('description')}</Label>
-            <Input value={form.description} onChange={e => set('description', e.target.value)} />
+            <Label htmlFor="service-description">{t('description')}</Label>
+            <Input id="service-description" name="description" value={form.description} onChange={e => set('description', e.target.value)} />
           </div>
           <div>
             <Label>{t('booking_mode_required')}</Label>
@@ -342,7 +342,7 @@ export function ServiceManagerPage() {
         {services.map(svc => {
           const isExpanded = expanded.has(svc.id);
           return (
-            <Card key={svc.id}>
+            <Card key={svc.id} data-testid="service-card" data-service-id={svc.id}>
               <CardHeader className="py-3 px-4">
                 <div className="flex items-center gap-3">
                   <button type="button" onClick={() => toggleExpand(svc.id)} className="text-muted-foreground">
@@ -364,10 +364,10 @@ export function ServiceManagerPage() {
                       <Button size="icon" variant="ghost" onClick={() => setAttachDialog(svc)} title={t('manage_resources_action')}>
                         <Link2 size={15} />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(svc)}>
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(svc)} title={t('edit_service_title')} aria-label={t('edit_service_title')} data-testid={`service-edit-${svc.id}`}>
                         <Pencil size={15} />
                       </Button>
-                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(svc.id)}>
+                      <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(svc.id)} title={t('delete_service')} aria-label={t('delete_service')}>
                         <Trash2 size={15} />
                       </Button>
                     </div>

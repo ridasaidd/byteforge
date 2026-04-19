@@ -421,16 +421,49 @@ export function BookingsCalendarPage() {
     }));
   }, [dateLocale]);
 
-  // Fetch all bookings for current week (week view) or all (list view)
-  const dateParam = viewMode === 'week' ? undefined : undefined;
+  const visibleRange = useMemo(() => {
+    if (viewMode === 'list') {
+      return null;
+    }
+
+    return {
+      startsFrom: format(
+        viewMode === 'week'
+          ? startOfWeek(currentDate, { weekStartsOn: 1 })
+          : startOfMonth(currentDate),
+        'yyyy-MM-dd',
+      ),
+      startsTo: format(
+        viewMode === 'week'
+          ? endOfWeek(currentDate, { weekStartsOn: 1 })
+          : endOfMonth(currentDate),
+        'yyyy-MM-dd',
+      ),
+    };
+  }, [viewMode, currentDate]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['cms-bookings', statusFilter, serviceFilter, resourceFilter, viewMode, currentDate.toISOString()],
+    queryKey: [
+      'cms-bookings',
+      statusFilter,
+      serviceFilter,
+      resourceFilter,
+      viewMode,
+      currentDate.toISOString(),
+      visibleRange?.startsFrom,
+      visibleRange?.startsTo,
+    ],
     queryFn: () => cmsBookingApi.listBookings({
       status: statusFilter || undefined,
       service_id: serviceFilter ? parseInt(serviceFilter) : undefined,
       resource_id: resourceFilter ? parseInt(resourceFilter) : undefined,
-      ...(dateParam ? { date: dateParam } : {}),
+      ...(visibleRange
+        ? {
+            starts_from: visibleRange.startsFrom,
+            starts_to: visibleRange.startsTo,
+            per_page: 500,
+          }
+        : {}),
     }),
   });
 
@@ -572,6 +605,9 @@ export function BookingsCalendarPage() {
               <Button
                 size="sm"
                 variant="outline"
+                aria-label={viewMode === 'month'
+                  ? t('previous_month', { defaultValue: 'Previous month' })
+                  : t('previous_week', { defaultValue: 'Previous week' })}
                 onClick={() => setCurrentDate(d => viewMode === 'month' ? subMonths(d, 1) : subWeeks(d, 1))}
               >
                 <ChevronLeft size={14} />
@@ -587,6 +623,9 @@ export function BookingsCalendarPage() {
                 <Button
                   size="sm"
                   variant="outline"
+                  aria-label={viewMode === 'month'
+                    ? t('next_month', { defaultValue: 'Next month' })
+                    : t('next_week', { defaultValue: 'Next week' })}
                   onClick={() => setCurrentDate(d => viewMode === 'month' ? addMonths(d, 1) : addWeeks(d, 1))}
                 >
                   <ChevronRight size={14} />

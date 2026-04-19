@@ -16,9 +16,17 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { gotoWithAuthCookies, loginAndCaptureAuthSession, tenantOwnerCredentials } from './support/auth';
+import { submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
+
+const EDIT_BUTTON_NAME = /edit|redigera|تحرير/i;
+const NAME_FIELD_LABEL = /name|namn|اسم/i;
+const BOOKING_DETAIL_HEADING = /booking #|bokning #|الحجز #/i;
+const MONTH_BUTTON = /^(month|månad|شهر)$/i;
+const LOCALIZED_TWELVE_HOUR_TIME = /\b\d{1,2}:\d{2}\s*(AM|PM|am|pm|fm|em|ص|م)\b/;
+const MORE_OVERFLOW_BUTTON = /\+\d+\s+(more|fler|أخرى)/i;
+const NEXT_MONTH_BUTTON = /next month|nästa månad|الشهر التالي/i;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,39 +49,26 @@ async function isBookingAddonActive(request: ApiContext, token: string): Promise
   return Array.isArray(body.data) && body.data.includes('booking');
 }
 
-/**
- * Seed the authenticated refresh-cookie session into the browser context before
- * navigating so CMS pages can bootstrap auth without repeated form logins.
- */
-async function gotoWithAuth(
-  page: import('@playwright/test').Page,
-  url: string,
-  cookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>>,
-): Promise<void> {
-  await gotoWithAuthCookies(page, url, cookies);
-}
-
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Booking CMS — regression', () => {
   test.describe.configure({ mode: 'serial' });
 
   let ownerToken = '';
-  let ownerCookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>> = [];
+  let sharedPage: import('@playwright/test').Page;
+  let sharedContext: import('@playwright/test').BrowserContext;
 
   test.beforeAll(async ({ browser }) => {
     if (!tenantBaseUrl) return;
-    const ctx = await browser.newContext();
-    const p = await ctx.newPage();
-    try {
-      await p.goto(`${tenantBaseUrl}/login`);
-      const session = await loginAndCaptureAuthSession(p, tenantOwnerCredentials);
-      await p.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
-      ownerToken = session.token;
-      ownerCookies = session.cookies;
-    } finally {
-      await ctx.close();
-    }
+    sharedContext = await browser.newContext();
+    sharedPage = await sharedContext.newPage();
+    await sharedPage.goto(`${tenantBaseUrl}/login`);
+    ownerToken = await submitLoginAndCaptureToken(sharedPage, tenantOwnerCredentials);
+    await sharedPage.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
+  });
+
+  test.afterAll(async () => {
+    await sharedContext?.close();
   });
 
   test.beforeEach(() => {
@@ -82,7 +77,7 @@ test.describe('Booking CMS — regression', () => {
 
   // ── Regression 1: Edit dialog pre-population ────────────────────────────────
 
-  test('editing a service pre-populates the dialog with the service name', async ({ page, request }) => {
+  test('editing a service pre-populates the dialog with the service name', async ({ request }) => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
 
@@ -103,26 +98,18 @@ test.describe('Booking CMS — regression', () => {
 
     try {
       // Navigate to the service manager page
-      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerCookies);
+      await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/services`);
 
       // Wait for the service card to appear
-      await expect(page.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
+      await expect(sharedPage.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
 
-      // Click the Edit button associated with this service card
-      const serviceCard = page.locator('[data-testid="service-card"]', { hasText: uniqueName })
-        .or(page.locator('li,article,div', { hasText: uniqueName }).first());
-
-      const editButton = serviceCard.getByRole('button', { name: /edit/i })
-        .or(serviceCard.locator('button[aria-label*="edit" i]'))
-        .or(serviceCard.locator('button').filter({ hasText: /edit/i })).first();
-
-      await editButton.click();
+      await sharedPage.getByTestId(`service-edit-${serviceId}`).click();
 
       // The dialog should open — find the Name input
-      const dialog = page.getByRole('dialog');
+      const dialog = sharedPage.getByRole('dialog');
       await expect(dialog).toBeVisible({ timeout: 5_000 });
 
-      const nameInput = dialog.getByLabel(/name/i).or(dialog.locator('input[name="name"],input[placeholder*="name" i]')).first();
+      const nameInput = dialog.getByLabel(NAME_FIELD_LABEL).or(dialog.locator('input[name="name"],input[placeholder*="name" i]')).first();
       await expect(nameInput).toHaveValue(uniqueName, { timeout: 5_000 });
     } finally {
       // Clean up the created service
@@ -181,7 +168,7 @@ test.describe('Booking CMS — regression', () => {
     }
   });
 
-  test('booking detail reflects tenant display format settings', async ({ page, request }) => {
+  test('booking detail reflects tenant display format settings', async ({ request }) => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
 
@@ -249,10 +236,10 @@ test.describe('Booking CMS — regression', () => {
       });
       expect(setRes.ok()).toBeTruthy();
 
-      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/${booking.id}`, ownerCookies);
-      await expect(page.getByRole('heading', { name: /booking #/i })).toBeVisible({ timeout: 10_000 });
-      await expect(page.getByText('25/04/2026').first()).toBeVisible();
-      await expect(page.getByText(/\b(AM|PM)\b/).first()).toBeVisible();
+      await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/${booking.id}`);
+      await expect(sharedPage.getByRole('heading', { name: BOOKING_DETAIL_HEADING })).toBeVisible({ timeout: 10_000 });
+      await expect(sharedPage.getByText('25/04/2026').first()).toBeVisible();
+      await expect(sharedPage.getByText(LOCALIZED_TWELVE_HOUR_TIME).first()).toBeVisible();
     } finally {
       await request.put(`${tenantBaseUrl}/api/settings`, {
         headers,
@@ -268,7 +255,7 @@ test.describe('Booking CMS — regression', () => {
     }
   });
 
-  test('month overflow opens drilldown with hidden bookings', async ({ page, request }) => {
+  test('month overflow opens drilldown with hidden bookings', async ({ request }) => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
 
@@ -303,7 +290,8 @@ test.describe('Booking CMS — regression', () => {
     });
 
     const target = new Date();
-    target.setDate(Math.min(25, new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()));
+    target.setMonth(target.getMonth() + 2, 1);
+    target.setDate(Math.min(17, new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate()));
     target.setHours(9, 0, 0, 0);
 
     const customers = [
@@ -339,22 +327,25 @@ test.describe('Booking CMS — regression', () => {
         createdBookingIds.push(body.data.id);
       }
 
-      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerCookies);
-      await expect(page.getByRole('button', { name: /month/i })).toBeVisible({ timeout: 10_000 });
+      await sharedPage.goto(`${tenantBaseUrl}/cms/bookings`);
+      await expect(sharedPage.getByRole('button', { name: MONTH_BUTTON })).toBeVisible({ timeout: 10_000 });
+      await sharedPage.getByRole('button', { name: MONTH_BUTTON }).click();
+      await sharedPage.getByRole('button', { name: NEXT_MONTH_BUTTON }).click();
+      await sharedPage.getByRole('button', { name: NEXT_MONTH_BUTTON }).click();
 
-      const visibleBooking = page.getByRole('button', { name: new RegExp(customers[0]) }).first();
-      await expect(visibleBooking).toBeVisible({ timeout: 10_000 });
+      const dayCard = sharedPage.locator('div.border.rounded-md', {
+        has: sharedPage.getByText(String(target.getDate()), { exact: true }),
+      }).filter({
+        has: sharedPage.getByRole('button', { name: MORE_OVERFLOW_BUTTON }),
+      }).first();
 
-      const dayCard = visibleBooking.locator('xpath=ancestor::div[contains(@class,"border") and contains(@class,"rounded-md")]').first();
-      const moreButton = dayCard.getByRole('button', { name: /\+\d+ more/i });
+      const moreButton = dayCard.getByRole('button', { name: MORE_OVERFLOW_BUTTON }).first();
       await expect(moreButton).toBeVisible();
       await moreButton.click();
 
-      const dialog = page.getByRole('dialog');
+      const dialog = sharedPage.getByRole('dialog');
       await expect(dialog).toBeVisible();
-      await expect(dialog.getByText(customers[0])).toBeVisible();
-      await expect(dialog.getByText(customers[1])).toBeVisible();
-      await expect(dialog.getByText(customers[2])).toBeVisible();
+  await expect(dialog.getByRole('button').filter({ hasText: service.name })).toHaveCount(3);
     } finally {
       for (const id of createdBookingIds) {
         await request.delete(`${tenantBaseUrl}/api/booking/bookings/${id}`, { headers });
@@ -392,9 +383,11 @@ test.describe('Booking CMS — regression', () => {
     const { data: resource } = await resourceRes.json() as { data: { id: number } };
 
     // Attach resource to service
-    await request.post(`${tenantBaseUrl}/api/booking/services/${service.id}/resources/${resource.id}`, {
+    const attachRes = await request.post(`${tenantBaseUrl}/api/booking/services/${service.id}/resources`, {
       headers: authHeaders(ownerToken),
+      data: { resource_id: resource.id },
     });
+    expect(attachRes.ok()).toBeTruthy();
 
     try {
       // Add availability window: open every day of the week, 09:00–17:00
@@ -413,19 +406,7 @@ test.describe('Booking CMS — regression', () => {
         expect(winRes.status()).toBe(201);
       }
 
-      // Query the public slots endpoint for today
-      const today = new Date().toISOString().split('T')[0];
-      const slotsRes = await request.get(
-        `${tenantBaseUrl}/api/public/booking/slots?service_id=${service.id}&resource_id=${resource.id}&date=${today}`,
-        { headers: { Accept: 'application/json' } },
-      );
-      expect(slotsRes.status()).toBe(200);
-
-      const { data: slots } = await slotsRes.json() as { data: Array<{ available: boolean }> };
-      const availableSlots = slots.filter((s) => s.available);
-      expect(availableSlots.length).toBeGreaterThan(0);
-
-      // next-available should also return a date
+      // Use the backend's next-available date to avoid timezone and late-day flakiness.
       const nextRes = await request.get(
         `${tenantBaseUrl}/api/public/booking/next-available?service_id=${service.id}&resource_id=${resource.id}`,
         { headers: { Accept: 'application/json' } },
@@ -435,6 +416,17 @@ test.describe('Booking CMS — regression', () => {
       expect(next).not.toBeNull();
       expect(next!.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(next!.first_slot).toMatch(/^\d{2}:\d{2}$/);
+
+      // Query the public slots endpoint for the next available date.
+      const slotsRes = await request.get(
+        `${tenantBaseUrl}/api/public/booking/slots?service_id=${service.id}&resource_id=${resource.id}&date=${next!.date}`,
+        { headers: { Accept: 'application/json' } },
+      );
+      expect(slotsRes.status()).toBe(200);
+
+      const { data: slots } = await slotsRes.json() as { data: Array<{ available: boolean }> };
+      const availableSlots = slots.filter((s) => s.available);
+      expect(availableSlots.length).toBeGreaterThan(0);
     } finally {
       // Clean up
       await request.delete(`${tenantBaseUrl}/api/booking/resources/${resource.id}`, {

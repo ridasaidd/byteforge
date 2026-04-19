@@ -19,9 +19,31 @@
 
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
-import { gotoWithAuthCookies, loginAndCaptureAuthSession, tenantOwnerCredentials } from './support/auth';
+import { submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
+
+const BOOKINGS_HEADING = /bookings|bokningar|الحجوزات/i;
+const SERVICES_HEADING = /booking services|bokningstjänster|tjänster|خدمات الحجز/i;
+const RESOURCES_HEADING = /booking resources|bokningsresurser|resurser|موارد الحجز/i;
+const SETTINGS_HEADING = /booking settings|bokningsinställningar|إعدادات الحجز/i;
+const WEEK_BUTTON = /^(week|vecka|أسبوع)$/i;
+const LIST_BUTTON = /^(list|lista|قائمة)$/i;
+const NEW_SERVICE_BUTTON = /new service|ny tjänst|خدمة جديدة/i;
+const NEW_RESOURCE_BUTTON = /new resource|ny resurs|مورد جديد/i;
+const SAVE_SETTINGS_BUTTON = /save settings|spara inställningar|حفظ الإعدادات/i;
+const DASHBOARD_LINK = /dashboard|instrumentpanel|لوحة التحكم/i;
+const SERVICES_LINK = /services|tjänster|الخدمات/i;
+const RESOURCES_LINK = /resources|resurser|الموارد/i;
+const BOOKING_SETTINGS_LINK = /booking settings|bokningsinställningar|إعدادات الحجز/i;
+const MONTH_BUTTON = /month|månad|شهر/i;
+const CUSTOMER_HEADER = /customer|kund|العميل/i;
+const SERVICE_HEADER = /service|tjänst|الخدمة/i;
+const STATUS_HEADER = /status|statusar|الحالة/i;
+const CANCEL_BUTTON = /cancel|avbryt|إلغاء/i;
+const TIMEZONE_LABEL = /timezone|tidszon|المنطقة الزمنية/i;
+const AUTO_CONFIRM_LABEL = /auto-confirm|confirm bookings automatically|bekräfta bokningar automatiskt|تأكيد الحجوزات تلقائيا/i;
+const HOLD_EXPIRY_LABEL = /hold expiry|reservationstid|reservationstid \(minuter\)|مدة الحجز|hold expiry minutes/i;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -41,19 +63,6 @@ async function isBookingAddonActive(
   return Array.isArray(body.data) && body.data.includes('booking');
 }
 
-/**
- * Navigate to a CMS page by reusing the authenticated refresh-cookie session.
- * This avoids repeated form logins and matches the current cookie-backed
- * session bootstrap model.
- */
-async function gotoWithAuth(
-  page: import('@playwright/test').Page,
-  url: string,
-  cookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>>,
-): Promise<void> {
-  await gotoWithAuthCookies(page, url, cookies);
-}
-
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe('Booking CMS pages — smoke', () => {
@@ -63,175 +72,184 @@ test.describe('Booking CMS pages — smoke', () => {
 
   /** Auth token obtained once per suite and reused by all tests. */
   let ownerToken = '';
-  let ownerCookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>> = [];
+  let sharedPage: import('@playwright/test').Page;
+  let sharedContext: import('@playwright/test').BrowserContext;
+  let runtimeIssues: ReturnType<typeof attachRuntimeGuards>;
 
   test.beforeAll(async ({ browser }) => {
     if (!tenantBaseUrl) return;
-    const ctx = await browser.newContext();
-    const p = await ctx.newPage();
-    try {
-      await p.goto(`${tenantBaseUrl}/login`);
-      const session = await loginAndCaptureAuthSession(p, tenantOwnerCredentials);
-      await p.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
-      ownerToken = session.token;
-      ownerCookies = session.cookies;
-    } finally {
-      await ctx.close();
-    }
+    sharedContext = await browser.newContext();
+    sharedPage = await sharedContext.newPage();
+    runtimeIssues = attachRuntimeGuards(sharedPage);
+    await sharedPage.goto(`${tenantBaseUrl}/login`);
+    ownerToken = await submitLoginAndCaptureToken(sharedPage, tenantOwnerCredentials);
+    await sharedPage.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
+  });
+
+  test.afterAll(async () => {
+    await sharedContext?.close();
   });
 
   test.beforeEach(() => {
     test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable booking CMS smoke tests.');
   });
 
-  test('/cms/bookings renders the Bookings calendar page without errors', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('/cms/bookings renders the Bookings calendar page without errors', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerCookies);
-    await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings(/|$)`));
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings`);
+    await expect(sharedPage).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings(/|$)`));
 
     // Page heading
-    await expect(page.getByRole('heading', { name: /bookings/i })).toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: BOOKINGS_HEADING })).toBeVisible();
 
     // Week / List toggle buttons visible
-    await expect(page.getByRole('button', { name: /week/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /list/i })).toBeVisible();
+    await expect(sharedPage.getByRole('button', { name: WEEK_BUTTON })).toBeVisible();
+    await expect(sharedPage.getByRole('button', { name: LIST_BUTTON })).toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors on /cms/bookings:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('/cms/bookings/services renders the Services manager without errors', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('/cms/bookings/services renders the Services manager without errors', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerCookies);
-    await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/services(/|$)`));
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/services`);
+    await expect(sharedPage).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/services(/|$)`));
 
-    await expect(page.getByRole('heading', { name: /booking services/i })).toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: SERVICES_HEADING })).toBeVisible();
     // "New service" button is visible for tenant owner
-    await expect(page.getByRole('button', { name: /new service/i })).toBeVisible();
+    await expect(sharedPage.getByRole('button', { name: NEW_SERVICE_BUTTON })).toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors on /cms/bookings/services:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('/cms/bookings/resources renders the Resources manager without errors', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('/cms/bookings/resources renders the Resources manager without errors', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/resources`, ownerCookies);
-    await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/resources(/|$)`));
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/resources`);
+    await expect(sharedPage).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/resources(/|$)`));
 
-    await expect(page.getByRole('heading', { name: /booking resources/i })).toBeVisible();
-    await expect(page.getByRole('button', { name: /new resource/i })).toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: RESOURCES_HEADING })).toBeVisible();
+    await expect(sharedPage.getByRole('button', { name: NEW_RESOURCE_BUTTON })).toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors on /cms/bookings/resources:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('/cms/bookings/settings renders the Booking settings form without errors', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('/cms/bookings/settings renders the Booking settings form without errors', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/settings`, ownerCookies);
-    await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/settings(/|$)`));
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/settings`);
+    await expect(sharedPage).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/settings(/|$)`));
 
-    await expect(page.getByRole('heading', { name: /booking settings/i })).toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: SETTINGS_HEADING })).toBeVisible();
 
     // Core form fields should be present
-    await expect(page.getByLabel(/timezone/i)).toBeVisible();
-    await expect(page.getByLabel(/auto-confirm/i)).toBeVisible();
-    await expect(page.getByLabel(/hold expiry/i)).toBeVisible();
+    await expect(sharedPage.getByLabel(TIMEZONE_LABEL)).toBeVisible();
+    await expect(sharedPage.getByLabel(AUTO_CONFIRM_LABEL)).toBeVisible();
+    await expect(sharedPage.getByLabel(HOLD_EXPIRY_LABEL)).toBeVisible();
 
     // Save button present
-    await expect(page.getByRole('button', { name: /save settings/i })).toBeVisible();
+    await expect(sharedPage.getByRole('button', { name: SAVE_SETTINGS_BUTTON })).toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors on /cms/bookings/settings:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('booking menu items are visible in sidebar when addon is active', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('booking menu items are visible in sidebar when addon is active', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms`, ownerCookies);
+    await sharedPage.goto(`${tenantBaseUrl}/cms`);
 
     // Sidebar should contain booking nav entries
-    await expect(page.getByRole('link', { name: /^bookings$/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /^services$/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /^resources$/i })).toBeVisible();
-    await expect(page.getByRole('link', { name: /booking settings/i })).toBeVisible();
+    await expect(sharedPage.getByRole('link', { name: BOOKINGS_HEADING })).toBeVisible();
+    await expect(sharedPage.getByRole('link', { name: SERVICES_LINK })).toBeVisible();
+    await expect(sharedPage.getByRole('link', { name: RESOURCES_LINK })).toBeVisible();
+    await expect(sharedPage.getByRole('link', { name: BOOKING_SETTINGS_LINK })).toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors on CMS dashboard:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('can open the New Service dialog and it renders without errors', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('can open the New Service dialog and it renders without errors', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerCookies);
-    await page.getByRole('button', { name: /new service/i }).click();
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/services`);
+    await sharedPage.getByRole('button', { name: NEW_SERVICE_BUTTON }).click();
 
     // Dialog appears
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /new service/i })).toBeVisible();
+    await expect(sharedPage.getByRole('dialog')).toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: NEW_SERVICE_BUTTON })).toBeVisible();
 
     // Key form fields present (Labels lack htmlFor — use role-scoped locators)
-    const dialog = page.getByRole('dialog');
+    const dialog = sharedPage.getByRole('dialog');
     await expect(dialog.getByRole('textbox').first()).toBeVisible();
     await expect(dialog.getByRole('combobox')).toBeVisible();  // Booking mode select
 
     // Cancel closes it
-    await page.getByRole('button', { name: /cancel/i }).click();
-    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await sharedPage.getByRole('button', { name: CANCEL_BUTTON }).click();
+    await expect(sharedPage.getByRole('dialog')).not.toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors in New Service dialog:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('can open the New Resource dialog and it renders without errors', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('can open the New Resource dialog and it renders without errors', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/resources`, ownerCookies);
-    await page.getByRole('button', { name: /new resource/i }).click();
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings/resources`);
+    await sharedPage.getByRole('button', { name: NEW_RESOURCE_BUTTON }).click();
 
-    await expect(page.getByRole('dialog')).toBeVisible();
-    await expect(page.getByRole('heading', { name: /new resource/i })).toBeVisible();
+    await expect(sharedPage.getByRole('dialog')).toBeVisible();
+    await expect(sharedPage.getByRole('heading', { name: NEW_RESOURCE_BUTTON })).toBeVisible();
     // Key form fields present (Labels lack htmlFor — use role-scoped locators)
-    const dialog2 = page.getByRole('dialog');
+    const dialog2 = sharedPage.getByRole('dialog');
     await expect(dialog2.getByRole('textbox').first()).toBeVisible();
     await expect(dialog2.getByRole('combobox')).toBeVisible();  // Type select
 
-    await page.getByRole('button', { name: /cancel/i }).click();
-    await expect(page.getByRole('dialog')).not.toBeVisible();
+    await sharedPage.getByRole('button', { name: CANCEL_BUTTON }).click();
+    await expect(sharedPage.getByRole('dialog')).not.toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors in New Resource dialog:\n${formatIssues(issues)}`).toEqual([]);
   });
 
-  test('week/list view toggle switches the view on the bookings page', async ({ page, request }) => {
-    const issues = attachRuntimeGuards(page);
+  test('week/list view toggle switches the view on the bookings page', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerCookies);
+    await sharedPage.goto(`${tenantBaseUrl}/cms/bookings`);
 
     // Default is week view — week navigation arrows visible
-    const prevButton = page.getByRole('button', { name: '' }).first(); // ChevronLeft
-    await expect(page.getByRole('button', { name: /week/i })).toBeVisible();
+    const prevButton = sharedPage.getByRole('button', { name: '' }).first(); // ChevronLeft
+    await expect(sharedPage.getByRole('button', { name: WEEK_BUTTON })).toBeVisible();
 
     // Switch to list view
-    await page.getByRole('button', { name: /list/i }).click();
+    await sharedPage.getByRole('button', { name: LIST_BUTTON }).click();
 
     // Table header should appear
-    await expect(page.getByRole('columnheader', { name: /customer/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /service/i })).toBeVisible();
-    await expect(page.getByRole('columnheader', { name: /status/i })).toBeVisible();
+    await expect(sharedPage.getByRole('columnheader', { name: CUSTOMER_HEADER })).toBeVisible();
+    await expect(sharedPage.getByRole('columnheader', { name: SERVICE_HEADER })).toBeVisible();
+    await expect(sharedPage.getByRole('columnheader', { name: STATUS_HEADER })).toBeVisible();
 
+    const issues = runtimeIssues.slice(issueStart);
     expect(issues, `Runtime errors on week/list toggle:\n${formatIssues(issues)}`).toEqual([]);
   });
 });

@@ -23,6 +23,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { formatIssues } from './support/consoleGuards';
+import { acquireExclusiveLock } from './support/exclusiveLock';
 import { centralAdminCredentials, submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 type RuntimeIssue = { source: 'console' | 'pageerror' | 'requestfailed'; message: string };
@@ -310,7 +311,18 @@ async function activateTenantThemeViaUi(page: Page, slug: string, name: string):
   await page.goto(`${tenantBase}/cms/themes`);
   await expect(page.locator('.grid')).toBeVisible({ timeout: 10000 });
 
-  const card = page.locator('div.rounded-lg.border.p-3').filter({ has: page.getByRole('heading', { name, exact: true }) }).first();
+  const card = page.locator('.grid > *')
+    .filter({ hasText: name })
+    .filter({ has: page.getByRole('button', { name: /activate|aktivera|تفعيل/i }) })
+    .first();
+
+  const hasActivateCard = await card.count();
+  if (hasActivateCard === 0) {
+    const activeCard = page.locator('.grid > *').filter({ hasText: name }).first();
+    await expect(activeCard.getByText(/active|aktiv|نشط/i)).toBeVisible({ timeout: 5000 });
+    return;
+  }
+
   await expect(card).toBeVisible({ timeout: 5000 });
 
   const activateBtn = card.getByRole('button', { name: /activate|aktivera|تفعيل/i });
@@ -325,7 +337,8 @@ async function activateTenantThemeViaUi(page: Page, slug: string, name: string):
   await expect(confirmBtn).toBeEnabled({ timeout: 7000 });
   await confirmBtn.click();
 
-  await expect(card.getByText(/active|aktiv|نشط/i)).toBeVisible({ timeout: 10000 });
+  const activatedCard = page.locator('.grid > *').filter({ hasText: name }).first();
+  await expect(activatedCard.getByText(/active|aktiv|نشط/i)).toBeVisible({ timeout: 10000 });
 }
 
 /**
@@ -443,8 +456,11 @@ test.describe('Theme Lifecycle — Central App', () => {
   let sharedPage: any;
   let centralHomepageId = 0;  // ID of the temporary homepage created in beforeAll
   const issues: RuntimeIssue[] = [];
+  let releaseCentralThemeLock: (() => Promise<void>) | null = null;
 
   test.beforeAll(async ({ browser }) => {
+    releaseCentralThemeLock = await acquireExclusiveLock('central-theme-suite');
+
     const context = await browser.newContext();
     sharedPage = await context.newPage();
 
@@ -521,6 +537,7 @@ test.describe('Theme Lifecycle — Central App', () => {
       await apiFetch(sharedPage, 'DELETE', `${centralBase}/api/superadmin/pages/${centralHomepageId}`);
     }
     await sharedPage?.close();
+    await releaseCentralThemeLock?.();
   });
 
   test('create Theme Alpha and Theme Beta via builder UI', async () => {

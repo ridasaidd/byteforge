@@ -127,10 +127,13 @@ export interface BookingAvailabilityWindow {
 
 export interface BookingListParams {
   date?: string;
+  starts_from?: string;
+  starts_to?: string;
   status?: string;
   resource_id?: number;
   service_id?: number;
   page?: number;
+  per_page?: number;
 }
 
 export interface PaginatedBookings {
