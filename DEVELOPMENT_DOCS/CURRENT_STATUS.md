@@ -15,9 +15,10 @@ Primary branch: `main`
 - The HttpOnly auth migration is planned, but browser auth still uses the
   older token-storage model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md).
-- Shared input normalization across payments and auth is not implemented yet.
-  The only current normalization layer is booking-specific in
-  `app/Actions/Api/SanitizeBookingCustomerInputAction.php`.
+- Shared input normalization now exists via
+  `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
+  booking customer fields, payment human-text fields, and auth name/email
+  fields.
 - Booking dashboard localization and booking guest-input hardening were merged
   on 2026-04-19.
 
@@ -33,10 +34,10 @@ Primary branch: `main`
 ## Current Recommended Work Order
 
 1. Keep the documentation baseline accurate and authoritative.
-2. Introduce a shared, field-family input normalization layer on a dedicated
-   branch instead of expanding the booking-specific sanitizer ad hoc.
-3. Apply that shared normalization first to payment-adjacent customer display
-   fields and future auth-related ordinary text inputs.
+2. Continue the shared, field-family input normalization rollout without
+  expanding it into blanket middleware.
+3. Keep extending normalization only to suitable human-input fields while
+  leaving passwords, tokens, signatures, and provider payloads untouched.
 4. Continue with the HttpOnly auth migration groundwork.
 5. Build guest authentication after the auth/session foundation is ready.
 
@@ -69,7 +70,8 @@ These remain the main booking product gaps still worth tracking:
 ### Security and auth follow-ups
 
 - browser auth still uses the older persistent token storage model
-- shared normalization policy exists as a direction, not a shared abstraction
+- shared normalization rollout is still partial; it should stay explicit and
+  field-family scoped
 - guest authentication is still future work
 
 ## Verification Baseline

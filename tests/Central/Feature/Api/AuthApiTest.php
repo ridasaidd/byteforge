@@ -44,6 +44,18 @@ class AuthApiTest extends TestCase
     }
 
     #[Test]
+    public function central_api_login_normalizes_email_before_authentication(): void
+    {
+        $response = $this->postJson('/api/auth/login', [
+            'email' => "  superadmin@byteforge.se\t ",
+            'password' => 'password',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonStructure(['user', 'token']);
+    }
+
+    #[Test]
     public function central_api_logout_works_with_real_token(): void
     {
         // First login to get a real token
@@ -95,6 +107,23 @@ class AuthApiTest extends TestCase
 
         $user = User::query()->where('email', 'superadmin@byteforge.se')->firstOrFail();
         $this->assertSame('sv', $user->preferred_locale);
+    }
+
+    #[Test]
+    public function authenticated_user_can_update_profile_with_normalized_fields(): void
+    {
+        $response = $this->actingAsSuperadmin()
+            ->putJson('/api/auth/user', [
+                'name' => "  Super\n Admin  ",
+                'email' => "  superadmin@byteforge.se\t ",
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.name', 'Super Admin')
+            ->assertJsonPath('user.email', 'superadmin@byteforge.se');
+
+        $user = User::query()->where('email', 'superadmin@byteforge.se')->firstOrFail();
+        $this->assertSame('Super Admin', $user->name);
     }
 
     #[Test]

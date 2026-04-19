@@ -12,8 +12,9 @@ This is the fastest safe entry point for AI agents working in ByteForge.
 - implemented on `main`: Phases 9 through 14
 - not implemented yet: Phase 15 guest authentication
 - auth storage migration is still planned, not shipped
-- shared input normalization is not yet a cross-app abstraction
-- booking has a local sanitizer only: `app/Actions/Api/SanitizeBookingCustomerInputAction.php`
+- shared input normalization now exists via `app/Actions/Api/NormalizeInputFieldsAction.php`
+- current reuse points: booking customer fields, payment human-text fields, and auth name/email fields
+- the rollout is still partial and should remain field-family driven rather than global
 
 ## Read Order
 
@@ -78,6 +79,6 @@ local invariants.
 
 ## Next Likely Work
 
-The next logical engineering track after doc stabilization is a shared input
-normalization layer on a dedicated branch, followed by auth/session foundation
-work and then guest authentication.
+The shared input normalization layer now exists. The next likely work is to
+expand it deliberately to other suitable human-input fields, then continue with
+auth/session foundation work and guest authentication.

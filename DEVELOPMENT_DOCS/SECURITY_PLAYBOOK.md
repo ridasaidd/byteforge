@@ -46,10 +46,16 @@ Reference docs:
 - do not use one sanitizer globally across all input types
 - keep normalization behavior visible at the request or action boundary
 
-Current implemented example:
+Current implemented examples:
 
-- booking customer-field normalization in
+- shared normalization action in
+  `app/Actions/Api/NormalizeInputFieldsAction.php`
+- booking customer-field normalization via
   `app/Actions/Api/SanitizeBookingCustomerInputAction.php`
+- payment human-text normalization at the request boundary in
+  `app/Http/Controllers/Api/PaymentController.php`
+- auth name/email normalization at the request boundary in
+  `app/Http/Controllers/Api/AuthController.php`
 
 ## Output Handling
 

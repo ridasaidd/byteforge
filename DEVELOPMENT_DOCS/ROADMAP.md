@@ -16,12 +16,12 @@ This roadmap is intentionally future-facing. Completed work should live in
 
 ## Next Up
 
-### 1. Shared Input Normalization Layer
+### 1. Continue Shared Input Normalization Rollout
 
 Goal:
 
-- introduce one reusable normalization layer for ordinary text/contact fields
-  across booking, payment, and future auth flows
+- expand the reusable normalization layer for ordinary text/contact fields
+  across suitable booking, payment, and auth flows
 
 Key constraints:
 
@@ -30,11 +30,18 @@ Key constraints:
 - never mutate passwords, tokens, signatures, webhook payloads, CSS, or
   structured builder JSON with the same rules used for customer text
 
-Initial targets:
+Current implemented slice:
 
-- payment customer display fields
-- refund reasons and other human-entered short text
-- future auth-related name/email fields
+- booking customer-field normalization now delegates to the shared layer
+- payment customer display fields and refund reason now use the shared layer
+- auth name/email normalization now uses the shared layer without touching
+  passwords or tokens
+
+Next likely targets:
+
+- other suitable payment human-text fields with clear test surfaces
+- additional ordinary auth profile inputs as they are introduced
+- later guest-auth human-input fields once that track begins
 
 ## Planned Work Tracks
 

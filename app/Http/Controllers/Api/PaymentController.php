@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\DataObjects\PaymentData;
 use App\Http\Controllers\Controller;
 use App\Models\Payment;
@@ -27,6 +28,7 @@ class PaymentController extends Controller
         private readonly AnalyticsService $analyticsService,
         private readonly PaymentService $paymentService,
         private readonly RefundService $refundService,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -69,7 +71,10 @@ class PaymentController extends Controller
     {
         $tenant = $this->resolveCurrentTenant();
 
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['reason'],
+        ), [
             'amount' => ['required', 'integer', 'min:1'],
             'reason' => ['nullable', 'string', 'max:255'],
         ])->validate();
@@ -84,7 +89,10 @@ class PaymentController extends Controller
 
     public function createStripeIntent(Request $request): JsonResponse
     {
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['description', 'customer_email', 'customer_name'],
+        ), [
             'amount' => ['required', 'integer', 'min:1'],
             'currency' => ['required', 'string', 'size:3'],
             'description' => ['nullable', 'string', 'max:255'],
@@ -143,7 +151,10 @@ class PaymentController extends Controller
 
     public function createSwishPayment(Request $request): JsonResponse
     {
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['message'],
+        ), [
             'amount' => ['required', 'integer', 'min:1'],
             'currency' => ['required', 'string', 'size:3'],
             'payer_alias' => ['required', 'string', 'regex:/^\d{10,12}$/'],

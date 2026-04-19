@@ -159,4 +159,46 @@ class PaymentApiTest extends TestCase
             'status' => 'completed',
         ]);
     }
+
+    #[Test]
+    public function refund_normalizes_reason_before_storage(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+
+        TenantPaymentProvider::query()->updateOrCreate(
+            ['tenant_id' => (string) $tenant->id, 'provider' => 'stripe'],
+            [
+                'credentials' => [
+                    'publishable_key' => 'pk_test_1234567890abc',
+                    'secret_key' => 'sk_test_1234567890xyz',
+                    'webhook_secret' => 'whsec_123',
+                ],
+                'is_active' => true,
+                'mode' => 'test',
+            ]
+        );
+
+        $payment = Payment::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'provider' => 'stripe',
+            'provider_transaction_id' => 'pi_refund_api_norm_1',
+            'status' => Payment::STATUS_COMPLETED,
+            'amount' => 10000,
+            'currency' => 'SEK',
+            'metadata' => [],
+        ]);
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/payments/' . $payment->id . '/refund'), [
+                'amount' => 5000,
+                'reason' => "  <b>Partial\n refund</b> \x07 ",
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('refunds', [
+            'payment_id' => $payment->id,
+            'reason' => 'Partial refund',
+            'status' => 'completed',
+        ]);
+    }
 }

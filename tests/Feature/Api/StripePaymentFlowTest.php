@@ -76,6 +76,33 @@ class StripePaymentFlowTest extends TestCase
     }
 
     #[Test]
+    public function create_intent_normalizes_customer_fields_before_storage(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activatePaymentsAddonForTenant($tenant);
+        $this->upsertStripeProvider($tenant);
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/payments/stripe/create-intent'), [
+                'amount' => 29900,
+                'currency' => 'SEK',
+                'description' => "  <b>Stripe\n flow</b>  ",
+                'customer_name' => "  <b>Customer\t Name</b>  ",
+                'customer_email' => "  customer@example.com\t ",
+                'metadata' => ['booking_id' => 42],
+            ]);
+
+        $response->assertOk();
+
+        $this->assertDatabaseHas('payments', [
+            'id' => (int) $response->json('payment_id'),
+            'tenant_id' => (string) $tenant->id,
+            'customer_name' => 'Customer Name',
+            'customer_email' => 'customer@example.com',
+        ]);
+    }
+
+    #[Test]
     public function webhook_with_valid_signature_marks_payment_completed_and_records_analytics(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();

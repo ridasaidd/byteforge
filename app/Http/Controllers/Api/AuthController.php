@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Services\TenantRbacService;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -17,6 +19,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
     ) {}
 
     /**
@@ -53,13 +56,19 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $request->validate([
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['email'],
+        ), [
             'email' => 'required|email',
             'password' => 'required|string',
-        ]);
+        ])->validate();
 
         // Attempt authentication
-        if (! Auth::attempt($request->only('email', 'password'))) {
+        if (! Auth::attempt([
+            'email' => $validated['email'],
+            'password' => $validated['password'],
+        ])) {
             throw ValidationException::withMessages([
                 'email' => [__('auth.failed')],
             ]);
@@ -111,16 +120,19 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
-        $request->validate([
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name', 'email'],
+        ), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
             'password' => ['required', 'string', Password::min(8)->mixedCase()->numbers(), 'confirmed'],
-        ]);
+        ])->validate();
 
         $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
         ]);
 
         // Assign default role if needed
@@ -189,10 +201,13 @@ class AuthController extends Controller
     {
         $user = $this->authenticatedUser($request);
 
-        $validated = $request->validate([
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name', 'email'],
+        ), [
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255|unique:users,email,'.$user->id,
-        ]);
+        ])->validate();
 
         $user->update($validated);
 
