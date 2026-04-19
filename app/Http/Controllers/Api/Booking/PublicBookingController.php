@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Booking;
 
+use App\Actions\Api\SanitizeBookingCustomerInputAction;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Payment;
@@ -43,6 +44,7 @@ class PublicBookingController extends Controller
     public function __construct(
         private readonly BookingAvailabilityService $availability,
         private readonly BookingPaymentService $bookingPayment,
+        private readonly SanitizeBookingCustomerInputAction $sanitizeBookingCustomerInput,
     ) {}
 
     // ─── GET /api/public/booking/config ─────────────────────────────────────────
@@ -286,7 +288,7 @@ class PublicBookingController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->sanitizeBookingCustomerInput)($request->all()), [
             'service_id'    => ['required', 'integer', 'exists:booking_services,id'],
             'resource_id'   => ['required', 'integer', 'exists:booking_resources,id'],
             'starts_at'     => ['required_if:booking_mode,slot', 'nullable', 'date'],
@@ -430,7 +432,7 @@ class PublicBookingController extends Controller
 
     public function hold(Request $request): JsonResponse
     {
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->sanitizeBookingCustomerInput)($request->all()), [
             'service_id'     => ['required', 'integer', 'exists:booking_services,id'],
             'resource_id'    => ['required', 'integer', 'exists:booking_resources,id'],
             'starts_at'      => ['nullable', 'date'],

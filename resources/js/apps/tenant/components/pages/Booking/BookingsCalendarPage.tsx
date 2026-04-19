@@ -19,7 +19,9 @@ import {
   startOfDay,
   isSameMonth,
 } from 'date-fns';
+import { arSA, enUS, sv as svDateLocale } from 'date-fns/locale';
 import { ChevronLeft, ChevronRight, Calendar, CalendarDays, List } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cmsBookingApi } from '@/shared/services/api/booking';
 import type { CmsBooking, BookingStatus } from '@/shared/services/api/booking';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
@@ -84,6 +86,38 @@ function colorForService(serviceId: number | undefined) {
   return SERVICE_COLORS[Math.abs(serviceId) % SERVICE_COLORS.length];
 }
 
+function getDateLocale(language: string) {
+  switch (language.split('-')[0]) {
+    case 'sv':
+      return svDateLocale;
+    case 'ar':
+      return arSA;
+    default:
+      return enUS;
+  }
+}
+
+function getStatusLabel(status: BookingStatus, t: (key: string) => string) {
+  switch (status) {
+    case 'pending':
+      return t('status_pending');
+    case 'pending_hold':
+      return t('status_pending_hold');
+    case 'awaiting_payment':
+      return t('status_awaiting_payment');
+    case 'confirmed':
+      return t('status_confirmed');
+    case 'completed':
+      return t('status_completed');
+    case 'cancelled':
+      return t('status_cancelled');
+    case 'no_show':
+      return t('status_no_show');
+    default:
+      return status.replace(/_/g, ' ');
+  }
+}
+
 function dayNumberClass(day: Date): string {
   const today = startOfDay(new Date());
   if (isToday(day)) return 'font-bold text-foreground';
@@ -91,30 +125,34 @@ function dayNumberClass(day: Date): string {
   return 'text-foreground';
 }
 
-function StatusBadge({ status }: { status: BookingStatus }) {
+function StatusBadge({ status, label }: { status: BookingStatus; label: string }) {
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[status] ?? ''}`}>
-      {status.replace(/_/g, ' ')}
+      {label}
     </span>
   );
 }
 
-function formatTime(iso: string | null): string {
-  if (!iso) return '—';
-  try { return format(parseISO(iso), 'HH:mm'); } catch { return '—'; }
+function formatTime(iso: string | null, dateLocale: ReturnType<typeof getDateLocale>): string {
+  if (!iso) return '-';
+  try { return format(parseISO(iso), 'HH:mm', { locale: dateLocale }); } catch { return '-'; }
 }
 
-function formatDate(iso: string | null): string {
-  if (!iso) return '—';
-  try { return format(parseISO(iso), 'PP'); } catch { return '—'; }
+function formatDate(iso: string | null, dateLocale: ReturnType<typeof getDateLocale>): string {
+  if (!iso) return '-';
+  try { return format(parseISO(iso), 'PP', { locale: dateLocale }); } catch { return '-'; }
 }
 
 function BookingPill({
   booking,
   onBookingClick,
+  dateLocale,
+  serviceFallback,
 }: {
   booking: CmsBooking;
   onBookingClick: (id: number) => void;
+  dateLocale: ReturnType<typeof getDateLocale>;
+  serviceFallback: string;
 }) {
   const color = colorForService(booking.service_id);
 
@@ -123,9 +161,9 @@ function BookingPill({
       type="button"
       onClick={() => onBookingClick(booking.id)}
       className={`w-full text-left px-1.5 py-0.5 rounded border-l-2 truncate text-[10px] sm:text-xs ${color.softBg} ${color.border} ${color.text}`}
-      title={`${booking.service?.name ?? 'Service'} · ${booking.customer_name}`}
+      title={`${booking.service?.name ?? serviceFallback} · ${booking.customer_name}`}
     >
-      {formatTime(booking.starts_at)} {booking.customer_name}
+      {formatTime(booking.starts_at, dateLocale)} {booking.customer_name}
     </button>
   );
 }
@@ -137,11 +175,17 @@ function WeekView({
   bookings,
   onBookingClick,
   onOpenDay,
+  dateLocale,
+  moreLabel,
+  serviceFallback,
 }: {
   weekStart: Date;
   bookings: CmsBooking[];
   onBookingClick: (id: number) => void;
   onOpenDay: (day: Date, dayBookings: CmsBooking[]) => void;
+  dateLocale: ReturnType<typeof getDateLocale>;
+  moreLabel: (count: number) => string;
+  serviceFallback: string;
 }) {
   const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
   const days    = eachDayOfInterval({ start: weekStart, end: weekEnd });
@@ -160,12 +204,12 @@ function WeekView({
         return (
           <div key={day.toISOString()} className="border rounded-md p-1.5 bg-card min-h-24 text-xs">
             <div className="font-semibold text-muted-foreground mb-1">
-              {format(day, 'EEE')}<br />
+              {format(day, 'EEE', { locale: dateLocale })}<br />
               <span className={dayNumberClass(day)}>{format(day, 'd')}</span>
             </div>
             <div className="space-y-1">
               {dayBookings.slice(0, 4).map(b => (
-                <BookingPill key={b.id} booking={b} onBookingClick={onBookingClick} />
+                <BookingPill key={b.id} booking={b} onBookingClick={onBookingClick} dateLocale={dateLocale} serviceFallback={serviceFallback} />
               ))}
               {dayBookings.length > 4 && (
                 <button
@@ -173,7 +217,7 @@ function WeekView({
                   onClick={() => onOpenDay(day, dayBookings)}
                   className="text-muted-foreground text-[10px] sm:text-xs underline-offset-2 hover:underline"
                 >
-                  +{dayBookings.length - 4} more
+                  {moreLabel(dayBookings.length - 4)}
                 </button>
               )}
             </div>
@@ -189,11 +233,19 @@ function MonthView({
   bookings,
   onBookingClick,
   onOpenDay,
+  dateLocale,
+  moreLabel,
+  weekdayLabels,
+  serviceFallback,
 }: {
   monthDate: Date;
   bookings: CmsBooking[];
   onBookingClick: (id: number) => void;
   onOpenDay: (day: Date, dayBookings: CmsBooking[]) => void;
+  dateLocale: ReturnType<typeof getDateLocale>;
+  moreLabel: (count: number) => string;
+  weekdayLabels: { short: string; narrow: string }[];
+  serviceFallback: string;
 }) {
   const monthStart = startOfMonth(monthDate);
   const monthEnd = endOfMonth(monthDate);
@@ -230,13 +282,9 @@ function MonthView({
   return (
     <div className="space-y-1">
       <div className="grid grid-cols-7 gap-1 text-[10px] sm:text-xs text-muted-foreground px-1">
-        <span><span className="sm:hidden">M</span><span className="hidden sm:inline">Mon</span></span>
-        <span><span className="sm:hidden">T</span><span className="hidden sm:inline">Tue</span></span>
-        <span><span className="sm:hidden">W</span><span className="hidden sm:inline">Wed</span></span>
-        <span><span className="sm:hidden">T</span><span className="hidden sm:inline">Thu</span></span>
-        <span><span className="sm:hidden">F</span><span className="hidden sm:inline">Fri</span></span>
-        <span><span className="sm:hidden">S</span><span className="hidden sm:inline">Sat</span></span>
-        <span><span className="sm:hidden">S</span><span className="hidden sm:inline">Sun</span></span>
+        {weekdayLabels.map((label) => (
+          <span key={label.short}><span className="sm:hidden">{label.narrow}</span><span className="hidden sm:inline">{label.short}</span></span>
+        ))}
       </div>
 
       <div className="grid grid-cols-7 gap-1 min-h-64">
@@ -258,7 +306,7 @@ function MonthView({
               </div>
               <div className="space-y-1">
                 {dayBookings.slice(0, 2).map(b => (
-                  <BookingPill key={b.id} booking={b} onBookingClick={onBookingClick} />
+                  <BookingPill key={b.id} booking={b} onBookingClick={onBookingClick} dateLocale={dateLocale} serviceFallback={serviceFallback} />
                 ))}
                 {hiddenCount > 0 && (
                   <button
@@ -266,7 +314,7 @@ function MonthView({
                     onClick={() => onOpenDay(day, dayBookings)}
                     className="text-muted-foreground text-[10px] sm:text-xs underline-offset-2 hover:underline"
                   >
-                    +{hiddenCount} more
+                    {moreLabel(hiddenCount)}
                   </button>
                 )}
               </div>
@@ -283,26 +331,32 @@ function MonthView({
 function BookingListView({
   bookings,
   onBookingClick,
+  dateLocale,
+  statusLabel,
+  t,
 }: {
   bookings: CmsBooking[];
   onBookingClick: (id: number) => void;
+  dateLocale: ReturnType<typeof getDateLocale>;
+  statusLabel: (status: BookingStatus) => string;
+  t: (key: string) => string;
 }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Customer</TableHead>
-          <TableHead>Service</TableHead>
-          <TableHead>Resource</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Time</TableHead>
-          <TableHead>Status</TableHead>
+          <TableHead>{t('customer')}</TableHead>
+          <TableHead>{t('service')}</TableHead>
+          <TableHead>{t('resource')}</TableHead>
+          <TableHead>{t('date')}</TableHead>
+          <TableHead>{t('time')}</TableHead>
+          <TableHead>{t('status')}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {bookings.length === 0 && (
           <TableRow>
-            <TableCell colSpan={6} className="text-center text-muted-foreground">No bookings found.</TableCell>
+            <TableCell colSpan={6} className="text-center text-muted-foreground">{t('no_bookings_found')}</TableCell>
           </TableRow>
         )}
         {bookings.map(b => (
@@ -318,16 +372,16 @@ function BookingListView({
             <TableCell>
               <div className="inline-flex items-center gap-2">
                 <span className={`h-2 w-2 rounded-full ${colorForService(b.service_id).dot}`} />
-                <span>{b.service?.name ?? '—'}</span>
+                <span>{b.service?.name ?? '-'}</span>
               </div>
             </TableCell>
-            <TableCell>{b.resource?.name ?? '—'}</TableCell>
-            <TableCell>{formatDate(b.starts_at)}</TableCell>
+            <TableCell>{b.resource?.name ?? '-'}</TableCell>
+            <TableCell>{formatDate(b.starts_at, dateLocale)}</TableCell>
             <TableCell>
-              {formatTime(b.starts_at)}
-              {b.ends_at ? ` – ${formatTime(b.ends_at)}` : ''}
+              {formatTime(b.starts_at, dateLocale)}
+              {b.ends_at ? ` - ${formatTime(b.ends_at, dateLocale)}` : ''}
             </TableCell>
-            <TableCell><StatusBadge status={b.status} /></TableCell>
+            <TableCell><StatusBadge status={b.status} label={statusLabel(b.status)} /></TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -339,16 +393,8 @@ function BookingListView({
 
 type ViewMode = 'month' | 'week' | 'list';
 
-const statusOptions: Array<{ value: string; label: string }> = [
-  { value: '', label: 'All statuses' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'confirmed', label: 'Confirmed' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'no_show', label: 'No-show' },
-];
-
 export function BookingsCalendarPage() {
+  const { t, i18n } = useTranslation('booking');
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -358,6 +404,22 @@ export function BookingsCalendarPage() {
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [selectedDayLabel, setSelectedDayLabel] = useState('');
   const [selectedDayBookings, setSelectedDayBookings] = useState<CmsBooking[]>([]);
+  const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language]);
+  const statusOptions: Array<{ value: string; label: string }> = useMemo(() => [
+    { value: '', label: t('all_statuses') },
+    { value: 'pending', label: t('status_pending') },
+    { value: 'confirmed', label: t('status_confirmed') },
+    { value: 'cancelled', label: t('status_cancelled') },
+    { value: 'completed', label: t('status_completed') },
+    { value: 'no_show', label: t('status_no_show') },
+  ], [t]);
+  const weekdayLabels = useMemo(() => {
+    const start = startOfWeek(new Date(), { weekStartsOn: 1 });
+    return eachDayOfInterval({ start, end: endOfWeek(start, { weekStartsOn: 1 }) }).map((day) => ({
+      short: format(day, 'EEE', { locale: dateLocale }),
+      narrow: format(day, 'EEEEE', { locale: dateLocale }),
+    }));
+  }, [dateLocale]);
 
   // Fetch all bookings for current week (week view) or all (list view)
   const dateParam = viewMode === 'week' ? undefined : undefined;
@@ -425,7 +487,7 @@ export function BookingsCalendarPage() {
   }
 
   function openDayDialog(day: Date, dayBookings: CmsBooking[]) {
-    setSelectedDayLabel(format(day, 'EEEE, dd MMM yyyy'));
+    setSelectedDayLabel(format(day, 'EEEE, dd MMM yyyy', { locale: dateLocale }));
     setSelectedDayBookings([...dayBookings].sort((a, b) => {
       const aTime = a.starts_at ? parseISO(a.starts_at).getTime() : 0;
       const bTime = b.starts_at ? parseISO(b.starts_at).getTime() : 0;
@@ -434,11 +496,19 @@ export function BookingsCalendarPage() {
     setDayDialogOpen(true);
   }
 
+  function moreLabel(count: number) {
+    return t('more_count', { count });
+  }
+
+  function statusLabel(status: BookingStatus) {
+    return getStatusLabel(status, t);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Bookings"
-        description="View and manage all incoming bookings."
+        title={t('bookings_page_title')}
+        description={t('bookings_page_description')}
       />
 
       {/* Filters + view toggle */}
@@ -457,7 +527,7 @@ export function BookingsCalendarPage() {
           value={serviceFilter}
           onChange={e => setServiceFilter(e.target.value)}
         >
-          <option value="">All services</option>
+          <option value="">{t('all_services')}</option>
           {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
         <select
@@ -465,7 +535,7 @@ export function BookingsCalendarPage() {
           value={resourceFilter}
           onChange={e => setResourceFilter(e.target.value)}
         >
-          <option value="">All resources</option>
+          <option value="">{t('all_resources')}</option>
           {resources.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
 
@@ -475,21 +545,21 @@ export function BookingsCalendarPage() {
             variant={viewMode === 'month' ? 'default' : 'outline'}
             onClick={() => setViewMode('month')}
           >
-            <CalendarDays size={14} className="mr-1" /> Month
+            <CalendarDays size={14} className="mr-1" /> {t('month')}
           </Button>
           <Button
             size="sm"
             variant={viewMode === 'week' ? 'default' : 'outline'}
             onClick={() => setViewMode('week')}
           >
-            <Calendar size={14} className="mr-1" /> Week
+            <Calendar size={14} className="mr-1" /> {t('week')}
           </Button>
           <Button
             size="sm"
             variant={viewMode === 'list' ? 'default' : 'outline'}
             onClick={() => setViewMode('list')}
           >
-            <List size={14} className="mr-1" /> List
+            <List size={14} className="mr-1" /> {t('list')}
           </Button>
         </div>
       </div>
@@ -508,12 +578,12 @@ export function BookingsCalendarPage() {
               </Button>
               <span className="text-sm font-medium">
                 {viewMode === 'month'
-                  ? format(startOfMonth(currentDate), 'MMMM yyyy')
-                  : `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM')} – ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM yyyy')}`
+                  ? format(startOfMonth(currentDate), 'MMMM yyyy', { locale: dateLocale })
+                  : `${format(startOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM', { locale: dateLocale })} - ${format(endOfWeek(currentDate, { weekStartsOn: 1 }), 'dd MMM yyyy', { locale: dateLocale })}`
                 }
               </span>
               <div className="flex items-center gap-1">
-                <Button size="sm" variant="outline" onClick={() => setCurrentDate(new Date())}>Today</Button>
+                <Button size="sm" variant="outline" onClick={() => setCurrentDate(new Date())}>{t('today')}</Button>
                 <Button
                   size="sm"
                   variant="outline"
@@ -537,13 +607,17 @@ export function BookingsCalendarPage() {
           )}
 
           {isLoading
-            ? <p className="text-sm text-muted-foreground py-8 text-center">Loading…</p>
+            ? <p className="text-sm text-muted-foreground py-8 text-center">{t('loading')}</p>
             : viewMode === 'month'
               ? <MonthView
                   monthDate={currentDate}
                   bookings={visibleBookings}
                   onBookingClick={onBookingClick}
                   onOpenDay={openDayDialog}
+                  dateLocale={dateLocale}
+                  moreLabel={moreLabel}
+                  weekdayLabels={weekdayLabels}
+                  serviceFallback={t('service')}
                 />
               : viewMode === 'week'
                 ? <WeekView
@@ -551,8 +625,11 @@ export function BookingsCalendarPage() {
                     bookings={visibleBookings}
                     onBookingClick={onBookingClick}
                     onOpenDay={openDayDialog}
+                    dateLocale={dateLocale}
+                    moreLabel={moreLabel}
+                    serviceFallback={t('service')}
                   />
-              : <BookingListView bookings={allBookings} onBookingClick={onBookingClick} />
+              : <BookingListView bookings={allBookings} onBookingClick={onBookingClick} dateLocale={dateLocale} statusLabel={statusLabel} t={t} />
           }
         </CardContent>
       </Card>
@@ -560,7 +637,7 @@ export function BookingsCalendarPage() {
       {/* Pagination info for list view */}
       {viewMode === 'list' && data && (
         <p className="text-xs text-muted-foreground text-right">
-          Showing {allBookings.length} of {data.total} bookings (page {data.current_page}/{data.last_page})
+          {t('showing_bookings', { count: allBookings.length, total: data.total, page: data.current_page, lastPage: data.last_page })}
         </p>
       )}
 
@@ -571,7 +648,7 @@ export function BookingsCalendarPage() {
           </DialogHeader>
           <div className="space-y-1 max-h-[60vh] overflow-y-auto">
             {selectedDayBookings.length === 0 && (
-              <p className="text-sm text-muted-foreground">No bookings for this day.</p>
+              <p className="text-sm text-muted-foreground">{t('no_bookings_for_day')}</p>
             )}
             {selectedDayBookings.map(b => (
               <button
@@ -588,12 +665,12 @@ export function BookingsCalendarPage() {
                     <span className={`h-2 w-2 rounded-full ${colorForService(b.service_id).dot}`} />
                     <span className="text-sm font-medium">{b.customer_name}</span>
                   </div>
-                  <StatusBadge status={b.status} />
+                  <StatusBadge status={b.status} label={statusLabel(b.status)} />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {formatTime(b.starts_at)}{b.ends_at ? ` - ${formatTime(b.ends_at)}` : ''}
+                  {formatTime(b.starts_at, dateLocale)}{b.ends_at ? ` - ${formatTime(b.ends_at, dateLocale)}` : ''}
                   {' · '}
-                  {b.service?.name ?? 'Service'}
+                  {b.service?.name ?? t('service')}
                   {b.resource?.name ? ` · ${b.resource.name}` : ''}
                 </p>
               </button>

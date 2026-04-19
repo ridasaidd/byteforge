@@ -742,6 +742,49 @@ class BookingCmsApiTest extends TestCase
     }
 
     #[Test]
+    public function owner_manual_create_sanitizes_customer_and_internal_notes(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+
+        $date = now()->addDays(6)->format('Y-m-d');
+        BookingAvailability::create([
+            'resource_id'   => $resource->id,
+            'specific_date' => $date,
+            'starts_at'     => '08:00:00',
+            'ends_at'       => '20:00:00',
+        ]);
+
+        $startsAt = now()->addDays(6)->setTimeFromTimeString('10:00:00')->toIso8601String();
+        $endsAt   = now()->addDays(6)->setTimeFromTimeString('11:00:00')->toIso8601String();
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/booking/bookings'), [
+                'service_id'     => $service->id,
+                'resource_id'    => $resource->id,
+                'starts_at'      => $startsAt,
+                'ends_at'        => $endsAt,
+                'customer_name'  => " <b>VIP\t Client</b> ",
+                'customer_email' => " vip@example.com ",
+                'customer_notes' => "<b>Customer</b>\r\nnotes\x07",
+                'internal_notes' => "<b>Internal</b>\r\nnotes\x07",
+            ])
+            ->assertCreated();
+
+        $this->assertDatabaseHas('bookings', [
+            'tenant_id' => (string) $tenant->id,
+            'customer_name' => 'VIP Client',
+            'customer_email' => 'vip@example.com',
+            'customer_notes' => "Customer\nnotes",
+            'internal_notes' => "Internal\nnotes",
+        ]);
+    }
+
+    #[Test]
     public function booking_management_is_tenant_isolated(): void
     {
         $tenantOne = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();

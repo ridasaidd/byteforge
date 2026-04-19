@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Link2, Unlink, ChevronDown, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cmsBookingApi } from '@/shared/services/api/booking';
 import type { CmsBookingService, CmsBookingResource, CreateBookingServiceData } from '@/shared/services/api/booking';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
@@ -82,6 +83,7 @@ function ServiceDialog({
   onSave: (data: CreateBookingServiceData) => void;
   saving: boolean;
 }) {
+  const { t } = useTranslation('booking');
   const [form, setForm] = useState<FormData>(() => defaultForm(editing ?? undefined));
   const set = (k: keyof FormData, v: string | boolean) =>
     setForm(prev => ({ ...prev, [k]: v }));
@@ -97,82 +99,82 @@ function ServiceDialog({
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{editing ? 'Edit Service' : 'New Service'}</DialogTitle>
+          <DialogTitle>{editing ? t('edit_service_title') : t('new_service_title')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <Label>Name *</Label>
+            <Label>{t('name_required')}</Label>
             <Input required maxLength={120} value={form.name} onChange={e => set('name', e.target.value)} />
           </div>
           <div>
-            <Label>Description</Label>
+            <Label>{t('description')}</Label>
             <Input value={form.description} onChange={e => set('description', e.target.value)} />
           </div>
           <div>
-            <Label>Booking mode *</Label>
+            <Label>{t('booking_mode_required')}</Label>
             <select
               className="w-full border rounded-md px-3 py-2 text-sm"
               value={form.booking_mode}
               onChange={e => set('booking_mode', e.target.value as 'slot' | 'range')}
             >
-              <option value="slot">Slot (time-based)</option>
-              <option value="range">Range (check-in / check-out)</option>
+              <option value="slot">{t('booking_mode_slot')}</option>
+              <option value="range">{t('booking_mode_range')}</option>
             </select>
           </div>
           {isSlot ? (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label>Duration (min)</Label>
+                  <Label>{t('duration_minutes')}</Label>
                   <Input type="number" min={1} value={form.duration_minutes} onChange={e => set('duration_minutes', e.target.value)} />
                 </div>
                 <div>
-                  <Label>Slot interval (min)</Label>
+                  <Label>{t('slot_interval_minutes')}</Label>
                   <Input type="number" min={1} value={form.slot_interval_minutes} onChange={e => set('slot_interval_minutes', e.target.value)} />
                 </div>
               </div>
               <div>
-                <Label>Buffer between bookings (min)</Label>
+                <Label>{t('buffer_between_bookings')}</Label>
                 <Input type="number" min={0} value={form.buffer_minutes} onChange={e => set('buffer_minutes', e.target.value)} />
               </div>
             </>
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label>Min nights</Label>
+                <Label>{t('min_nights')}</Label>
                 <Input type="number" min={1} value={form.min_nights} onChange={e => set('min_nights', e.target.value)} />
               </div>
               <div>
-                <Label>Max nights</Label>
+                <Label>{t('max_nights')}</Label>
                 <Input type="number" min={1} value={form.max_nights} onChange={e => set('max_nights', e.target.value)} />
               </div>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label>Price</Label>
+              <Label>{t('price')}</Label>
               <Input type="number" min={0} step="0.01" value={form.price} onChange={e => set('price', e.target.value)} />
             </div>
             <div>
-              <Label>Currency</Label>
+              <Label>{t('currency')}</Label>
               <Input maxLength={3} value={form.currency} onChange={e => set('currency', e.target.value.toUpperCase())} />
             </div>
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" id="requires_payment" checked={form.requires_payment} onChange={e => set('requires_payment', e.target.checked)} />
-            <Label htmlFor="requires_payment">Require payment before booking confirmation</Label>
+            <Label htmlFor="requires_payment">{t('require_payment_before_confirmation')}</Label>
           </div>
           <div>
-            <Label>Advance notice required (hours)</Label>
+            <Label>{t('advance_notice_hours')}</Label>
             <Input type="number" min={0} value={form.advance_notice_hours} onChange={e => set('advance_notice_hours', e.target.value)} />
           </div>
           <div className="flex items-center gap-2">
             <input type="checkbox" id="is_active" checked={form.is_active} onChange={e => set('is_active', e.target.checked)} />
-            <Label htmlFor="is_active">Active</Label>
+            <Label htmlFor="is_active">{t('active')}</Label>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{t('cancel')}</Button>
+            <Button type="submit" disabled={saving}>{saving ? t('saving') : t('save')}</Button>
           </DialogFooter>
         </form>
       </DialogContent>
@@ -199,17 +201,18 @@ function AttachResourceDialog({
   onDetach: (resourceId: number) => void;
   saving: boolean;
 }) {
+  const { t } = useTranslation('booking');
   const attachedIds = new Set(service.resources?.map(r => r.id) ?? []);
 
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>Manage resources — {service.name}</DialogTitle>
+          <DialogTitle>{t('manage_resources_title', { name: service.name })}</DialogTitle>
         </DialogHeader>
         <div className="space-y-2 max-h-72 overflow-y-auto">
           {allResources.length === 0 && (
-            <p className="text-sm text-muted-foreground">No resources found. Create resources first.</p>
+            <p className="text-sm text-muted-foreground">{t('no_resources_found')}</p>
           )}
           {allResources.map(r => {
             const attached = attachedIds.has(r.id);
@@ -222,14 +225,14 @@ function AttachResourceDialog({
                   disabled={saving}
                   onClick={() => attached ? onDetach(r.id) : onAttach(r.id)}
                 >
-                  {attached ? <><Unlink size={14} className="mr-1" />Detach</> : <><Link2 size={14} className="mr-1" />Attach</>}
+                  {attached ? <><Unlink size={14} className="mr-1" />{t('detach')}</> : <><Link2 size={14} className="mr-1" />{t('attach')}</>}
                 </Button>
               </div>
             );
           })}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Done</Button>
+          <Button variant="outline" onClick={onClose}>{t('done')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -239,6 +242,7 @@ function AttachResourceDialog({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function ServiceManagerPage() {
+  const { t } = useTranslation('booking');
   const { toast } = useToast();
   const qc = useQueryClient();
   const { hasPermission } = usePermissions();
@@ -271,18 +275,18 @@ export function ServiceManagerPage() {
       qc.invalidateQueries({ queryKey: ['cms-booking-services'] });
       setDialogOpen(false);
       setEditing(null);
-      toast({ title: editing ? 'Service updated' : 'Service created' });
+      toast({ title: editing ? t('service_updated') : t('service_created') });
     },
-    onError: () => toast({ title: 'Save failed', variant: 'destructive' }),
+    onError: () => toast({ title: t('save_failed'), variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: number) => cmsBookingApi.deleteService(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-booking-services'] });
-      toast({ title: 'Service deleted' });
+      toast({ title: t('service_deleted') });
     },
-    onError: () => toast({ title: 'Delete failed', variant: 'destructive' }),
+    onError: () => toast({ title: t('delete_failed'), variant: 'destructive' }),
   });
 
   const attachMutation = useMutation({
@@ -291,7 +295,7 @@ export function ServiceManagerPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-booking-services'] });
     },
-    onError: () => toast({ title: 'Attach failed', variant: 'destructive' }),
+    onError: () => toast({ title: t('attach_failed'), variant: 'destructive' }),
   });
 
   const detachMutation = useMutation({
@@ -300,7 +304,7 @@ export function ServiceManagerPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-booking-services'] });
     },
-    onError: () => toast({ title: 'Detach failed', variant: 'destructive' }),
+    onError: () => toast({ title: t('detach_failed'), variant: 'destructive' }),
   });
 
   function openNew() { setEditing(null); setDialogOpen(true); }
@@ -321,17 +325,17 @@ export function ServiceManagerPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Booking Services"
-        description="Configure the services customers can book."
+        title={t('services_page_title')}
+        description={t('services_page_description')}
         actions={canManage ? (
           <Button onClick={openNew}>
-            <Plus size={16} className="mr-1" /> New service
+            <Plus size={16} className="mr-1" /> {t('new_service')}
           </Button>
         ) : undefined}
       />
 
       {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">{t('loading')}</p>
       )}
 
       <div className="space-y-3">
@@ -346,18 +350,18 @@ export function ServiceManagerPage() {
                   </button>
                   <CardTitle className="text-base flex-1">{svc.name}</CardTitle>
                   <Badge variant={svc.is_active ? 'default' : 'secondary'}>
-                    {svc.is_active ? 'Active' : 'Inactive'}
+                    {svc.is_active ? t('active') : t('inactive')}
                   </Badge>
-                  <Badge variant="outline">{svc.booking_mode}</Badge>
+                  <Badge variant="outline">{svc.booking_mode === 'slot' ? t('booking_mode_slot') : t('booking_mode_range')}</Badge>
                   {svc.requires_payment && (
-                    <Badge variant="outline">Paid</Badge>
+                    <Badge variant="outline">{t('paid')}</Badge>
                   )}
                   {svc.price != null && (
                     <span className="text-sm text-muted-foreground">{svc.price} {svc.currency}</span>
                   )}
                   {canManage && (
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => setAttachDialog(svc)} title="Manage resources">
+                      <Button size="icon" variant="ghost" onClick={() => setAttachDialog(svc)} title={t('manage_resources_action')}>
                         <Link2 size={15} />
                       </Button>
                       <Button size="icon" variant="ghost" onClick={() => openEdit(svc)}>
@@ -374,23 +378,23 @@ export function ServiceManagerPage() {
                 <CardContent className="pt-0 pb-3 px-4 text-sm text-muted-foreground space-y-1">
                   {svc.description && <p>{svc.description}</p>}
                   {svc.booking_mode === 'slot' && (
-                    <p>Duration: {svc.duration_minutes} min · Interval: {svc.slot_interval_minutes} min · Buffer: {svc.buffer_minutes} min</p>
+                    <p>{t('service_details_slot', { duration: svc.duration_minutes, interval: svc.slot_interval_minutes, buffer: svc.buffer_minutes })}</p>
                   )}
                   {svc.booking_mode === 'range' && (
                     <p>
-                      {svc.min_nights != null ? `Min ${svc.min_nights} nights` : ''}
+                      {svc.min_nights != null ? t('service_details_range_min', { count: svc.min_nights }) : ''}
                       {svc.min_nights != null && svc.max_nights != null ? ' · ' : ''}
-                      {svc.max_nights != null ? `Max ${svc.max_nights} nights` : ''}
+                      {svc.max_nights != null ? t('service_details_range_max', { count: svc.max_nights }) : ''}
                     </p>
                   )}
-                  <p>Resources: {svc.resources?.map(r => r.name).join(', ') || 'None'}</p>
+                  <p>{t('resources_label')}: {svc.resources?.map(r => r.name).join(', ') || t('none')}</p>
                 </CardContent>
               )}
             </Card>
           );
         })}
         {!isLoading && services.length === 0 && (
-          <p className="text-sm text-muted-foreground">No services yet. Create your first one.</p>
+          <p className="text-sm text-muted-foreground">{t('no_services_yet')}</p>
         )}
       </div>
 

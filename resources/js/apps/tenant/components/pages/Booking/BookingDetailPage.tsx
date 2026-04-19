@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
+import { arSA, enUS, sv as svDateLocale } from 'date-fns/locale';
 import { ArrowLeft, CheckCircle2, XCircle, Flag, Clock, AlertCircle, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cmsBookingApi } from '@/shared/services/api/booking';
 import { tenantSettings } from '@/shared/services/api';
 import type { BookingEvent } from '@/shared/services/api/booking';
@@ -41,10 +43,42 @@ function colorForService(serviceId: number | undefined) {
   return SERVICE_COLORS[Math.abs(serviceId) % SERVICE_COLORS.length];
 }
 
-function makeFormatter(dateFormat: string, timeFormat: string) {
+function getDateLocale(language: string) {
+  switch (language.split('-')[0]) {
+    case 'sv':
+      return svDateLocale;
+    case 'ar':
+      return arSA;
+    default:
+      return enUS;
+  }
+}
+
+function getStatusLabel(status: string, t: (key: string) => string) {
+  switch (status) {
+    case 'pending':
+      return t('status_pending');
+    case 'pending_hold':
+      return t('status_pending_hold');
+    case 'awaiting_payment':
+      return t('status_awaiting_payment');
+    case 'confirmed':
+      return t('status_confirmed');
+    case 'completed':
+      return t('status_completed');
+    case 'cancelled':
+      return t('status_cancelled');
+    case 'no_show':
+      return t('status_no_show');
+    default:
+      return status.replace(/_/g, ' ');
+  }
+}
+
+function makeFormatter(dateFormat: string, timeFormat: string, dateLocale: ReturnType<typeof getDateLocale>) {
   return function fmt(iso: string | null): string {
-    if (!iso) return '—';
-    try { return format(parseISO(iso), `${dateFormat} ${timeFormat}`); } catch { return '—'; }
+    if (!iso) return '-';
+    try { return format(parseISO(iso), `${dateFormat} ${timeFormat}`, { locale: dateLocale }); } catch { return '-'; }
   };
 }
 
@@ -64,7 +98,9 @@ function EventTimeline({
   serviceId?: number;
   serviceName?: string;
 }) {
-  if (!events.length) return <p className="text-sm text-muted-foreground">No events yet.</p>;
+  const { t } = useTranslation('booking');
+
+  if (!events.length) return <p className="text-sm text-muted-foreground">{t('no_events_yet')}</p>;
   const color = colorForService(serviceId);
 
   return (
@@ -82,12 +118,12 @@ function EventTimeline({
             )}
           </div>
           <div className="text-sm font-medium capitalize">
-            {ev.from_status ? `${ev.from_status.replace(/_/g, ' ')} → ` : ''}
-            {ev.to_status.replace(/_/g, ' ')}
+            {ev.from_status ? `${getStatusLabel(ev.from_status, t)} -> ` : ''}
+            {getStatusLabel(ev.to_status, t)}
           </div>
           {ev.note && <div className="text-xs text-muted-foreground mt-0.5">{ev.note}</div>}
           <div className="text-xs text-muted-foreground">
-            by {ev.actor_type}{ev.actor_id != null ? ` #${ev.actor_id}` : ''}
+            {t('by_actor', { actorType: ev.actor_type, actorId: ev.actor_id != null ? ` #${ev.actor_id}` : '' })}
           </div>
         </li>
       ))}
@@ -108,20 +144,21 @@ function DeleteDialog({
   onClose: () => void;
   isPending: boolean;
 }) {
+  const { t } = useTranslation('booking');
+
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Booking</DialogTitle>
+          <DialogTitle>{t('delete_booking_title')}</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          This will permanently remove the booking record. The time slot will
-          become available again. This action cannot be undone.
+          {t('delete_booking_message')}
         </p>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Back</Button>
+          <Button variant="outline" onClick={onClose}>{t('back')}</Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
-            Delete permanently
+            {t('delete_permanently')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -140,25 +177,26 @@ function CancelDialog({
   onConfirm: (note: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('booking');
   const [note, setNote] = useState('');
   return (
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Cancel Booking</DialogTitle>
+          <DialogTitle>{t('cancel_booking_title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
-          <Label htmlFor="cancel-note">Cancellation note (optional)</Label>
+          <Label htmlFor="cancel-note">{t('cancellation_note_optional')}</Label>
           <Input
             id="cancel-note"
             value={note}
             onChange={e => setNote(e.target.value)}
-            placeholder="Reason for cancellation…"
+            placeholder={t('cancellation_note_placeholder')}
           />
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Back</Button>
-          <Button variant="destructive" onClick={() => onConfirm(note)}>Cancel booking</Button>
+          <Button variant="outline" onClick={onClose}>{t('back')}</Button>
+          <Button variant="destructive" onClick={() => onConfirm(note)}>{t('cancel_booking')}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -180,6 +218,8 @@ function RescheduleDialog({
   onConfirm: (startsAt: string, endsAt: string) => void;
   onClose: () => void;
 }) {
+  const { t } = useTranslation('booking');
+
   function toInputValue(iso: string | null): string {
     if (!iso) return '';
     try { return format(parseISO(iso), "yyyy-MM-dd'T'HH:mm"); } catch { return ''; }
@@ -191,22 +231,22 @@ function RescheduleDialog({
     <Dialog open={open} onOpenChange={v => !v && onClose()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reschedule Booking</DialogTitle>
+          <DialogTitle>{t('reschedule_booking_title')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <Label htmlFor="r-starts">Start</Label>
+            <Label htmlFor="r-starts">{t('start')}</Label>
             <Input id="r-starts" type="datetime-local" value={startsAt} onChange={e => setStartsAt(e.target.value)} />
           </div>
           <div>
-            <Label htmlFor="r-ends">End</Label>
+            <Label htmlFor="r-ends">{t('end')}</Label>
             <Input id="r-ends" type="datetime-local" value={endsAt} onChange={e => setEndsAt(e.target.value)} />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
+          <Button variant="outline" onClick={onClose}>{t('cancel')}</Button>
           <Button onClick={() => onConfirm(startsAt, endsAt)} disabled={!startsAt || !endsAt}>
-            Reschedule
+            {t('reschedule')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -217,6 +257,7 @@ function RescheduleDialog({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function BookingDetailPage() {
+  const { t, i18n } = useTranslation('booking');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -243,9 +284,11 @@ export function BookingDetailPage() {
     },
     retry: false,
   });
+  const dateLocale = getDateLocale(i18n.language);
   const fmt = makeFormatter(
     settingsData?.date_format ?? DEFAULT_DATE_FORMAT,
     settingsData?.time_format ?? DEFAULT_TIME_FORMAT,
+    dateLocale,
   );
 
   const { data: rawBooking, isLoading, isError } = useQuery({
@@ -262,50 +305,50 @@ export function BookingDetailPage() {
 
   const confirmMutation = useMutation({
     mutationFn: () => cmsBookingApi.confirmBooking(numericId),
-    onSuccess: () => { invalidate(); toast({ title: 'Booking confirmed' }); },
-    onError:   () => toast({ title: 'Failed to confirm', variant: 'destructive' }),
+    onSuccess: () => { invalidate(); toast({ title: t('booking_confirmed') }); },
+    onError:   () => toast({ title: t('failed_to_confirm'), variant: 'destructive' }),
   });
 
   const completeMutation = useMutation({
     mutationFn: () => cmsBookingApi.completeBooking(numericId),
-    onSuccess: () => { invalidate(); toast({ title: 'Booking marked complete' }); },
-    onError:   () => toast({ title: 'Failed to complete', variant: 'destructive' }),
+    onSuccess: () => { invalidate(); toast({ title: t('booking_marked_complete') }); },
+    onError:   () => toast({ title: t('failed_to_complete'), variant: 'destructive' }),
   });
 
   const noShowMutation = useMutation({
     mutationFn: () => cmsBookingApi.noShowBooking(numericId),
-    onSuccess: () => { invalidate(); toast({ title: 'Marked as no-show' }); },
-    onError:   () => toast({ title: 'Failed to update', variant: 'destructive' }),
+    onSuccess: () => { invalidate(); toast({ title: t('booking_marked_no_show') }); },
+    onError:   () => toast({ title: t('failed_to_update'), variant: 'destructive' }),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (note: string) => cmsBookingApi.cancelBooking(numericId, note || undefined),
-    onSuccess: () => { setShowCancel(false); invalidate(); toast({ title: 'Booking cancelled' }); },
-    onError:   () => toast({ title: 'Failed to cancel', variant: 'destructive' }),
+    onSuccess: () => { setShowCancel(false); invalidate(); toast({ title: t('booking_cancelled') }); },
+    onError:   () => toast({ title: t('failed_to_cancel'), variant: 'destructive' }),
   });
 
   const rescheduleMutation = useMutation({
     mutationFn: ({ startsAt, endsAt }: { startsAt: string; endsAt: string }) =>
       cmsBookingApi.rescheduleBooking(numericId, startsAt, endsAt),
-    onSuccess: () => { setShowReschedule(false); invalidate(); toast({ title: 'Booking rescheduled' }); },
-    onError:   () => toast({ title: 'Failed to reschedule', variant: 'destructive' }),
+    onSuccess: () => { setShowReschedule(false); invalidate(); toast({ title: t('booking_rescheduled') }); },
+    onError:   () => toast({ title: t('failed_to_reschedule'), variant: 'destructive' }),
   });
 
   const deleteMutation = useMutation({
     mutationFn: () => cmsBookingApi.deleteBooking(numericId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['cms-bookings'] });
-      toast({ title: 'Booking deleted' });
+      toast({ title: t('booking_deleted') });
       navigate('/cms/bookings');
     },
-    onError: () => toast({ title: 'Failed to delete booking', variant: 'destructive' }),
+    onError: () => toast({ title: t('failed_to_delete_booking'), variant: 'destructive' }),
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground p-8 text-center">Loading booking…</p>;
+    return <p className="text-sm text-muted-foreground p-8 text-center">{t('loading_booking')}</p>;
   }
   if (isError || !booking) {
-    return <p className="text-sm text-red-500 p-8 text-center">Booking not found.</p>;
+    return <p className="text-sm text-red-500 p-8 text-center">{t('booking_not_found')}</p>;
   }
 
   const status = booking.status;
@@ -317,11 +360,11 @@ export function BookingDetailPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title={`Booking #${booking.id}`}
+        title={t('booking_title', { id: booking.id })}
         description={booking.customer_name}
         actions={
           <Button variant="outline" size="sm" onClick={() => navigate('/cms/bookings')}>
-            <ArrowLeft size={14} className="mr-1" /> Back
+            <ArrowLeft size={14} className="mr-1" /> {t('back')}
           </Button>
         }
       />
@@ -330,36 +373,36 @@ export function BookingDetailPage() {
       <Card>
         <CardContent className="pt-4 flex flex-wrap items-center gap-3">
           <span className={`inline-flex px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLORS[status] ?? ''}`}>
-            {status.replace(/_/g, ' ')}
+            {getStatusLabel(status, t)}
           </span>
           {!isDone && canManage && isPending && (
             <Button size="sm" onClick={() => confirmMutation.mutate()} disabled={confirmMutation.isPending}>
-              <CheckCircle2 size={14} className="mr-1" /> Confirm
+              <CheckCircle2 size={14} className="mr-1" /> {t('confirm')}
             </Button>
           )}
           {!isDone && canManage && isConfirmed && (
             <Button size="sm" variant="secondary" onClick={() => completeMutation.mutate()} disabled={completeMutation.isPending}>
-              <Flag size={14} className="mr-1" /> Mark Complete
+              <Flag size={14} className="mr-1" /> {t('mark_complete')}
             </Button>
           )}
           {!isDone && canManage && isConfirmed && (
             <Button size="sm" variant="ghost" onClick={() => noShowMutation.mutate()} disabled={noShowMutation.isPending}>
-              <AlertCircle size={14} className="mr-1" /> No-show
+              <AlertCircle size={14} className="mr-1" /> {t('mark_no_show')}
             </Button>
           )}
           {!isDone && canManage && !isPending && (
             <Button size="sm" variant="outline" onClick={() => setShowReschedule(true)}>
-              <Clock size={14} className="mr-1" /> Reschedule
+              <Clock size={14} className="mr-1" /> {t('reschedule')}
             </Button>
           )}
           {!isDone && canCancel && (
             <Button size="sm" variant="destructive" onClick={() => setShowCancel(true)}>
-              <XCircle size={14} className="mr-1" /> Cancel
+              <XCircle size={14} className="mr-1" /> {t('cancel_booking')}
             </Button>
           )}
           {isDone && canManage && (
             <Button size="sm" variant="destructive" onClick={() => setShowDelete(true)}>
-              <Trash2 size={14} className="mr-1" /> Delete
+              <Trash2 size={14} className="mr-1" /> {t('delete')}
             </Button>
           )}
         </CardContent>
@@ -368,16 +411,16 @@ export function BookingDetailPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Customer */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Customer</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('customer_title')}</CardTitle></CardHeader>
           <CardContent className="space-y-1.5 text-sm">
-            <div><span className="text-muted-foreground">Name</span> {booking.customer_name}</div>
-            <div><span className="text-muted-foreground">Email</span> {booking.customer_email}</div>
+            <div><span className="text-muted-foreground">{t('customer_name')}</span> {booking.customer_name}</div>
+            <div><span className="text-muted-foreground">{t('email')}</span> {booking.customer_email}</div>
             {booking.customer_phone && (
-              <div><span className="text-muted-foreground">Phone</span> {booking.customer_phone}</div>
+              <div><span className="text-muted-foreground">{t('phone')}</span> {booking.customer_phone}</div>
             )}
             {booking.customer_notes && (
               <div className="pt-2">
-                <span className="text-muted-foreground block mb-0.5">Notes</span>
+                <span className="text-muted-foreground block mb-0.5">{t('notes')}</span>
                 <p className="bg-muted rounded p-2 text-xs">{booking.customer_notes}</p>
               </div>
             )}
@@ -386,36 +429,36 @@ export function BookingDetailPage() {
 
         {/* Booking details */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Booking Details</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">{t('booking_details_title')}</CardTitle></CardHeader>
           <CardContent className="space-y-1.5 text-sm">
-            <div><span className="text-muted-foreground">Service</span> {booking.service?.name ?? '—'}</div>
+            <div><span className="text-muted-foreground">{t('service')}</span> {booking.service?.name ?? '-'}</div>
             {booking.service?.name && (
               <div>
-                <span className="text-muted-foreground">Service color</span>{' '}
+                <span className="text-muted-foreground">{t('service_color')}</span>{' '}
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-xs ${serviceColor.softBg} ${serviceColor.border} ${serviceColor.text}`}>
                   <span className={`h-2 w-2 rounded-full ${serviceColor.dot}`} />
                   {booking.service.name}
                 </span>
               </div>
             )}
-            <div><span className="text-muted-foreground">Resource</span> {booking.resource?.name ?? '—'}</div>
-            <div><span className="text-muted-foreground">Mode</span> {booking.service?.booking_mode ?? '—'}</div>
-            <div><span className="text-muted-foreground">Start</span> {fmt(booking.starts_at)}</div>
-            <div><span className="text-muted-foreground">End</span> {fmt(booking.ends_at)}</div>
+            <div><span className="text-muted-foreground">{t('resource')}</span> {booking.resource?.name ?? '-'}</div>
+            <div><span className="text-muted-foreground">{t('mode')}</span> {booking.service?.booking_mode === 'slot' ? t('booking_mode_slot') : booking.service?.booking_mode === 'range' ? t('booking_mode_range') : '-'}</div>
+            <div><span className="text-muted-foreground">{t('start')}</span> {fmt(booking.starts_at)}</div>
+            <div><span className="text-muted-foreground">{t('end')}</span> {fmt(booking.ends_at)}</div>
             {booking.cancelled_at && (
               <div>
-                <span className="text-muted-foreground">Cancelled</span> {fmt(booking.cancelled_at)}
+                <span className="text-muted-foreground">{t('cancelled')}</span> {fmt(booking.cancelled_at)}
                 {booking.cancelled_by && ` by ${booking.cancelled_by}`}
               </div>
             )}
-            <div><span className="text-muted-foreground">Created</span> {fmt(booking.created_at)}</div>
+            <div><span className="text-muted-foreground">{t('created')}</span> {fmt(booking.created_at)}</div>
           </CardContent>
         </Card>
       </div>
 
       {/* Event timeline */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Event Timeline</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">{t('event_timeline_title')}</CardTitle></CardHeader>
         <CardContent>
           <EventTimeline
             events={booking.events ?? []}
