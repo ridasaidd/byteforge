@@ -9,9 +9,9 @@ function isSupportedLocale(locale: string): locale is SupportedLocale {
 }
 
 export function AuthProvider({ children, initialUser = null }: { children: ReactNode; initialUser?: User | null }) {
-  const hasStoredToken = authService.isAuthenticated();
+  const hasSessionToken = authService.isAuthenticated();
   const [user, setUser] = useState<User | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(!initialUser && hasStoredToken);
+  const [isLoading, setIsLoading] = useState(!initialUser && hasSessionToken);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -38,12 +38,9 @@ export function AuthProvider({ children, initialUser = null }: { children: React
   }, []);
 
   useEffect(() => {
-    // Only fetch user if a token exists in storage. With Passport bearer tokens
-    // there is no valid server session without a token, so calling fetchUser()
-    // unconditionally would trigger a 401 on every public page (e.g. /login),
-    // causing an infinite redirect loop via the 401 interceptor.
-    // The Safari storage bug that motivated the unconditional call is now handled
-    // by the resilient tokenStorage.ts layer.
+    // Until the HttpOnly refresh-cookie migration lands, auth bootstrap still
+    // depends on a session-scoped bearer token surviving reloads within the tab.
+    // Fetching unconditionally would 401 on public pages and trigger redirects.
     if (!initialUser && authService.isAuthenticated()) {
       fetchUser();
     } else {

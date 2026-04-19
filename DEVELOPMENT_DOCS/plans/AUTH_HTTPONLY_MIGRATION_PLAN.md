@@ -52,16 +52,19 @@ Observed behavior:
 
 Current frontend behavior:
 
-- token is stored in browser storage via `tokenStorage.ts`
+- token is stored in session-scoped browser storage via `tokenStorage.ts`
 - token is sent as `Authorization: Bearer ...`
 - app boot decides whether to fetch user based on token presence in storage
-- tests currently assume localStorage-backed persistence
+- auth responses carrying tokens should be treated as `no-store`
 
 ### Current Risks
 
-The current model is operationally simple, but it has one clear downside:
+The current model is operationally simple, but it still has one clear downside:
 
-- a successful XSS can steal a persistent API token directly from browser storage
+- a successful XSS can steal a JavaScript-accessible API token from browser storage
+
+The recent hardening slice reduced persistence by removing `localStorage`
+backing for dashboard auth tokens, but it did not solve the core exposure.
 
 The goal of the migration is to remove that persistent credential from JavaScript-accessible storage.
 

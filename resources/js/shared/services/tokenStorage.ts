@@ -38,22 +38,17 @@ function clearFromStorage(storage: Storage | undefined): void {
   }
 }
 
-function getWebStorage(): { local: Storage | undefined; session: Storage | undefined } {
+function getSessionStorage(): Storage | undefined {
   if (typeof window === 'undefined') {
-    return { local: undefined, session: undefined };
+    return undefined;
   }
 
-  return {
-    local: window.localStorage,
-    session: window.sessionStorage,
-  };
+  return window.sessionStorage;
 }
 
 export function setAuthToken(token: string): void {
   inMemoryToken = token;
-  const { local, session } = getWebStorage();
-  writeToStorage(local, token);
-  writeToStorage(session, token);
+  writeToStorage(getSessionStorage(), token);
 }
 
 export function getAuthToken(): string | null {
@@ -61,8 +56,7 @@ export function getAuthToken(): string | null {
     return inMemoryToken;
   }
 
-  const { local, session } = getWebStorage();
-  const storedToken = readFromStorage(local) ?? readFromStorage(session);
+  const storedToken = readFromStorage(getSessionStorage());
 
   if (storedToken) {
     inMemoryToken = storedToken;
@@ -73,7 +67,5 @@ export function getAuthToken(): string | null {
 
 export function clearAuthToken(): void {
   inMemoryToken = null;
-  const { local, session } = getWebStorage();
-  clearFromStorage(local);
-  clearFromStorage(session);
+  clearFromStorage(getSessionStorage());
 }

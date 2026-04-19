@@ -9,7 +9,7 @@ import { authService } from '../services/auth.service';
  *
  * These tests verify the complete authentication flow for the central (superadmin) app:
  * - Login with valid/invalid credentials
- * - Token storage and retrieval
+ * - Session-scoped token storage and retrieval
  * - Authenticated API requests
  * - Logout and token revocation
  * - Unauthorized access handling
@@ -39,12 +39,14 @@ describe.skip('Central App Authentication Flow', () => {
   beforeEach(() => {
     // Clear any existing auth state
     localStorage.clear();
+    sessionStorage.clear();
     expect(authService.isAuthenticated()).toBe(false);
   });
 
   afterEach(() => {
     // Cleanup after each test
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   describe('Login Flow', () => {
@@ -66,7 +68,7 @@ describe.skip('Central App Authentication Flow', () => {
       expect(typeof response.token).toBe('string');
       expect(response.token.length).toBeGreaterThan(0);
 
-      // Verify token is stored in localStorage
+      // Verify token is stored in sessionStorage
       const storedToken = authService.getToken();
       expect(storedToken).toBe(response.token);
       expect(authService.isAuthenticated()).toBe(true);
@@ -165,7 +167,7 @@ describe.skip('Central App Authentication Flow', () => {
 
       expect(response).toHaveProperty('message');
 
-      // Verify token is cleared from localStorage
+      // Verify token is cleared from sessionStorage
       expect(authService.getToken()).toBeNull();
       expect(authService.isAuthenticated()).toBe(false);
     });
@@ -189,7 +191,7 @@ describe.skip('Central App Authentication Flow', () => {
 
     it('should reject requests with invalid token', async () => {
       // Set an invalid token
-      localStorage.setItem('auth_token', 'invalid-token-12345');
+      sessionStorage.setItem('auth_token', 'invalid-token-12345');
       expect(authService.isAuthenticated()).toBe(true); // Token exists
 
       // But request should fail due to invalid token
@@ -214,7 +216,7 @@ describe.skip('Central App Authentication Flow', () => {
       expect(authService.isAuthenticated()).toBe(true);
 
       // Manually set an expired/invalid token
-      localStorage.setItem('auth_token', 'expired-token');
+      sessionStorage.setItem('auth_token', 'expired-token');
 
       // Make a request that will fail with 401
       await expect(api.auth.user()).rejects.toThrow();
@@ -268,8 +270,8 @@ describe.skip('Central App Authentication Flow', () => {
       const loginResponse = await api.auth.login(TEST_CREDENTIALS);
       const originalToken = loginResponse.token;
 
-      // Simulate page reload by checking localStorage
-      const persistedToken = localStorage.getItem('auth_token');
+      // Simulate page reload by checking sessionStorage
+      const persistedToken = sessionStorage.getItem('auth_token');
       expect(persistedToken).toBe(originalToken);
 
       // Should still be able to make authenticated requests

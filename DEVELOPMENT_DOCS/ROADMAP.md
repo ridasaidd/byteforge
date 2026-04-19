@@ -56,6 +56,14 @@ Outcome:
 - replace persistent browser token storage with short-lived in-memory access
   tokens and host-scoped HttpOnly refresh sessions
 
+Current state before that migration:
+
+- the first hardening slice moved dashboard bearer tokens from persistent
+  `localStorage` to session-scoped `sessionStorage` plus memory
+- token-bearing auth responses now send `Cache-Control: no-store`
+- the full security target still requires server-side refresh sessions and an
+  HttpOnly refresh cookie
+
 ### 3. Guest Authentication System
 
 Primary doc:

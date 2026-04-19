@@ -17,6 +17,17 @@ use Tests\TestCase;
 #[Group('auth')]
 class AuthApiTest extends TestCase
 {
+    private function assertNoStoreHeaders(\Illuminate\Testing\TestResponse $response): void
+    {
+        $cacheControl = (string) $response->headers->get('Cache-Control', '');
+
+        $this->assertStringContainsString('no-store', $cacheControl);
+        $this->assertStringContainsString('no-cache', $cacheControl);
+        $this->assertStringContainsString('must-revalidate', $cacheControl);
+        $this->assertStringContainsString('max-age=0', $cacheControl);
+        $response->assertHeader('Pragma', 'no-cache');
+    }
+
     #[Test]
     public function central_api_login_works_with_seeded_user(): void
     {
@@ -28,6 +39,8 @@ class AuthApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure(['user', 'token']);
+
+        $this->assertNoStoreHeaders($response);
     }
 
     #[Test]
@@ -72,6 +85,18 @@ class AuthApiTest extends TestCase
 
         $response->assertOk()
             ->assertJson(['message' => 'Successfully logged out']);
+    }
+
+    #[Test]
+    public function central_api_refresh_returns_token_with_no_store_headers(): void
+    {
+        $response = $this->actingAsSuperadmin()
+            ->postJson('/api/auth/refresh');
+
+        $response->assertOk()
+            ->assertJsonStructure(['token']);
+
+        $this->assertNoStoreHeaders($response);
     }
 
     #[Test]

@@ -109,7 +109,7 @@ class AuthController extends Controller
         // Create access token
         $token = $user->createToken('web-token')->accessToken;
 
-        return response()->json([
+        return $this->tokenResponse([
             'user' => $this->userPayload($user),
             'token' => $token,
         ]);
@@ -140,7 +140,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('web-token')->accessToken;
 
-        return response()->json([
+        return $this->tokenResponse([
             'user' => $this->userPayload($user),
             'token' => $token,
         ], 201);
@@ -179,9 +179,23 @@ class AuthController extends Controller
         // Create new token
         $token = $user->createToken('web-token')->accessToken;
 
-        return response()->json([
+        return $this->tokenResponse([
             'token' => $token,
         ]);
+    }
+
+    /**
+     * Prevent token-bearing auth responses from being cached by browsers or intermediaries.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function tokenResponse(array $payload, int $status = 200)
+    {
+        return response()
+            ->json($payload, $status)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 
     /**

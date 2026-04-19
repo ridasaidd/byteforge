@@ -12,9 +12,12 @@ Primary branch: `main`
   payments, and booking.
 - Phases 9 through 14 are implemented on `main`.
 - Phase 15 guest authentication is not implemented yet.
-- The HttpOnly auth migration is planned, but browser auth still uses the
-  older token-storage model described in
+- The HttpOnly auth migration is planned, but browser auth still uses a
+  bearer-token storage model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md).
+- The first auth hardening slice is now in place: browser bearer tokens are
+  session-scoped in `sessionStorage` plus memory instead of persistent
+  `localStorage`.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
   booking customer fields, payment human-text fields, and auth name/email
@@ -69,7 +72,9 @@ These remain the main booking product gaps still worth tracking:
 
 ### Security and auth follow-ups
 
-- browser auth still uses the older persistent token storage model
+- browser auth still uses JavaScript-accessible bearer tokens; the current
+  reduction is session-scoped storage, not the full HttpOnly refresh-cookie
+  migration
 - shared normalization rollout is still partial; it should stay explicit and
   field-family scoped
 - guest authentication is still future work
