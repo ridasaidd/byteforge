@@ -2,6 +2,7 @@
 
 namespace Tests\Central\Feature\Api;
 
+use App\Models\WebRefreshSession;
 use App\Models\User;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
@@ -17,6 +18,22 @@ use Tests\TestCase;
 #[Group('auth')]
 class AuthApiTest extends TestCase
 {
+    private function centralHost(): string
+    {
+        return (string) (config('tenancy.central_domains')[0] ?? 'byteforge.se');
+    }
+
+    private function refreshCookieFromResponse(\Illuminate\Testing\TestResponse $response): ?\Symfony\Component\HttpFoundation\Cookie
+    {
+        foreach ($response->headers->getCookies() as $cookie) {
+            if ($cookie->getName() === config('auth_sessions.refresh_cookie_name')) {
+                return $cookie;
+            }
+        }
+
+        return null;
+    }
+
     private function assertNoStoreHeaders(\Illuminate\Testing\TestResponse $response): void
     {
         $cacheControl = (string) $response->headers->get('Cache-Control', '');
@@ -41,6 +58,17 @@ class AuthApiTest extends TestCase
             ->assertJsonStructure(['user', 'token']);
 
         $this->assertNoStoreHeaders($response);
+        $refreshCookie = $this->refreshCookieFromResponse($response);
+
+        $this->assertNotNull($refreshCookie);
+        $this->assertTrue($refreshCookie->isHttpOnly());
+        $this->assertSame('/api/auth', $refreshCookie->getPath());
+        $this->assertDatabaseHas('web_refresh_sessions', [
+            'user_id' => User::query()->where('email', 'superadmin@byteforge.se')->value('id'),
+            'host' => 'byteforge.se',
+            'tenant_id' => null,
+            'revoked_at' => null,
+        ]);
     }
 
     #[Test]
@@ -84,19 +112,155 @@ class AuthApiTest extends TestCase
             ->postJson('/api/auth/logout');
 
         $response->assertOk()
-            ->assertJson(['message' => 'Successfully logged out']);
+            ->assertJsonStructure(['message']);
+
+        $this->assertNotSame('', (string) $response->json('message'));
     }
 
     #[Test]
     public function central_api_refresh_returns_token_with_no_store_headers(): void
     {
-        $response = $this->actingAsSuperadmin()
-            ->postJson('/api/auth/refresh');
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'email' => 'superadmin@byteforge.se',
+            'password' => 'password',
+        ]);
+
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+
+        $this->assertNotNull($refreshCookie);
+
+        $response = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
 
         $response->assertOk()
             ->assertJsonStructure(['token']);
 
         $this->assertNoStoreHeaders($response);
+    }
+
+    #[Test]
+    public function central_api_refresh_rejects_bearer_only_requests_without_refresh_cookie(): void
+    {
+        $response = $this->actingAsSuperadmin()
+            ->postJson('/api/auth/refresh');
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
+    #[Test]
+    public function central_api_refresh_can_rotate_session_from_refresh_cookie_without_bearer(): void
+    {
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'email' => 'superadmin@byteforge.se',
+            'password' => 'password',
+        ]);
+
+        $loginResponse->assertOk();
+        $issuedCookie = $this->refreshCookieFromResponse($loginResponse);
+
+        $this->assertNotNull($issuedCookie);
+
+        $originalSession = WebRefreshSession::query()->latest('id')->firstOrFail();
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertOk()
+            ->assertJsonStructure(['token', 'user']);
+
+        $this->assertNoStoreHeaders($refreshResponse);
+
+        $rotatedCookie = $this->refreshCookieFromResponse($refreshResponse);
+
+        $this->assertNotNull($rotatedCookie);
+        $this->assertNotSame($issuedCookie->getValue(), $rotatedCookie->getValue());
+
+        $originalSession->refresh();
+        $this->assertNotNull($originalSession->revoked_at);
+
+        $rotatedSession = WebRefreshSession::query()->latest('id')->firstOrFail();
+        $this->assertSame($originalSession->id, $rotatedSession->rotated_from_id);
+        $this->assertNull($rotatedSession->revoked_at);
+    }
+
+    #[Test]
+    public function central_api_logout_revokes_refresh_session_and_clears_cookie(): void
+    {
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'email' => 'superadmin@byteforge.se',
+            'password' => 'password',
+        ]);
+
+        $token = (string) $loginResponse->json('token');
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+
+        $this->assertNotNull($refreshCookie);
+
+        $session = WebRefreshSession::query()->latest('id')->firstOrFail();
+
+        $logoutResponse = $this->call(
+            'POST',
+            '/api/auth/logout',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+                'HTTP_AUTHORIZATION' => "Bearer {$token}",
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $logoutResponse->assertOk();
+
+        $session->refresh();
+        $this->assertNotNull($session->revoked_at);
+
+        $expiredCookie = $this->refreshCookieFromResponse($logoutResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
+    public function central_api_refresh_rejects_invalid_refresh_cookie(): void
+    {
+        $response = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [config('auth_sessions.refresh_cookie_name') => 'invalid-cookie-token'],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
     }
 
     #[Test]

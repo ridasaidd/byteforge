@@ -2,6 +2,11 @@ import { http } from '../http';
 import type { User, LoginCredentials, LoginResponse, CreateUserData, UpdateProfileData, UpdatePasswordData } from './types';
 import { clearAuthToken, setAuthToken } from '../tokenStorage';
 
+type RefreshResponse = {
+  token: string;
+  user: User;
+};
+
 export const auth = {
   login: async (credentials: LoginCredentials) => {
     const response = await http.post<LoginResponse>('/auth/login', credentials);
@@ -10,14 +15,20 @@ export const auth = {
   },
   logout: async () => {
     try {
-      return await http.post<{ message: string }>('/auth/logout');
+      return await http.post<{ message: string }>('/auth/logout', undefined, {
+        skipAuthRedirect: true,
+      });
     } finally {
       clearAuthToken();
     }
   },
   user: () => http.get<User>('/auth/user'),
   refresh: async () => {
-    const response = await http.post<{ token: string }>('/auth/refresh');
+    const response = await http.post<RefreshResponse>('/auth/refresh', undefined, {
+      skipAuthRefresh: true,
+      skipAuthRedirect: true,
+      skipAuthToken: true,
+    });
     setAuthToken(response.token);
     return response;
   },

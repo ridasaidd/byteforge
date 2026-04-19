@@ -1,7 +1,7 @@
 # Auth HttpOnly Migration Plan
 
-Last updated: April 4, 2026
-Status: Planned, deferred until cookie consent implementation is complete
+Last updated: April 19, 2026
+Status: In progress by incremental slices
 Recommended branch later: `feature/auth-httponly-migration`
 
 ---
@@ -44,17 +44,17 @@ Current browser login flow uses Passport personal access tokens created directly
 
 Observed behavior:
 
-- `POST /auth/login` returns `{ user, token }`
-- `POST /auth/refresh` revokes current bearer token and returns a new access token
-- `POST /auth/logout` revokes current bearer token
+- `POST /auth/login` returns `{ user, token }` and now also issues a host-scoped HttpOnly refresh cookie
+- `POST /auth/refresh` can now rotate a server-side refresh session from the cookie and return a new access token
+- `POST /auth/logout` revokes current bearer token and clears the refresh cookie when present
 
 ### Frontend
 
 Current frontend behavior:
 
-- token is stored in session-scoped browser storage via `tokenStorage.ts`
+- token is kept in memory only via `tokenStorage.ts`
 - token is sent as `Authorization: Bearer ...`
-- app boot decides whether to fetch user based on token presence in storage
+- app boot restores auth by calling `/auth/refresh` against the HttpOnly cookie
 - auth responses carrying tokens should be treated as `no-store`
 
 ### Current Risks
@@ -65,6 +65,10 @@ The current model is operationally simple, but it still has one clear downside:
 
 The recent hardening slice reduced persistence by removing `localStorage`
 backing for dashboard auth tokens, but it did not solve the core exposure.
+
+The current backend groundwork also adds `web_refresh_sessions` persistence and
+cookie issuance, while the frontend now restores continuity through silent
+refresh rather than browser token storage.
 
 The goal of the migration is to remove that persistent credential from JavaScript-accessible storage.
 
@@ -83,6 +87,19 @@ Target browser auth model:
 3. frontend keeps the access token in memory only
 4. on reload or token expiry, frontend silently refreshes using the HttpOnly cookie
 5. logout revokes the refresh session, revokes the active access token, and clears the cookie
+
+Backend groundwork already completed:
+
+- `web_refresh_sessions` table and model
+- host-scoped refresh-session validation and rotation
+- HttpOnly refresh cookie issuance on login/register/refresh
+- cookie clearing on logout
+
+Remaining migration work:
+
+- document operational cookie/session settings and complete migration closeout
+- broaden manual QA around session expiry, multi-tab behavior, and logout/login
+  edge cases
 
 ### Why This Model Fits ByteForge
 
@@ -237,6 +254,11 @@ Target:
 - sets refresh cookie in response
 - returns `{ user, token }`
 
+Implemented increment so far:
+
+- login now issues the refresh cookie and persists a `web_refresh_sessions` row
+- frontend keeps the returned access token in memory only
+
 Note:
 
 - returning the access token in login response is acceptable because the SPA needs it immediately
@@ -256,6 +278,12 @@ Target:
 - validates and rotates refresh session
 - issues a new access token
 - returns `{ token, user? }`
+
+Implemented increment so far:
+
+- refresh now supports cookie-based rotation in the backend
+- frontend bootstrap now uses cookie-based refresh to restore the access token
+- refresh is now cookie-backed only; bearer-only refresh requests are rejected
 
 Recommendation:
 

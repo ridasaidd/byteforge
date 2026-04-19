@@ -5,6 +5,15 @@ export type Credentials = {
   password: string;
 };
 
+type LoginResponse = {
+  token?: string;
+};
+
+type AuthSession = {
+  token: string;
+  cookies: Awaited<ReturnType<Page['context']['cookies']>>;
+};
+
 const DEFAULT_PASSWORD = 'password';
 
 export const centralAdminCredentials: Credentials = {
@@ -26,6 +35,50 @@ export async function loginWithCredentials(page: Page, credentials: Credentials)
   await page.getByLabel(/email/i).fill(credentials.email);
   await page.getByLabel(/password/i).fill(credentials.password);
   await page.getByLabel(/password/i).press('Enter');
+}
+
+export async function submitLoginAndCaptureToken(page: Page, credentials: Credentials): Promise<string> {
+  const loginResponsePromise = page.waitForResponse((response) => {
+    try {
+      const url = new URL(response.url());
+
+      return response.request().method() === 'POST'
+        && url.pathname.endsWith('/api/auth/login');
+    } catch {
+      return false;
+    }
+  });
+
+  await loginWithCredentials(page, credentials);
+
+  const loginResponse = await loginResponsePromise;
+  const payload = await loginResponse.json() as LoginResponse;
+  const token = payload.token;
+
+  if (!loginResponse.ok() || !token) {
+    throw new Error(`Login did not return an access token. Status: ${loginResponse.status()}`);
+  }
+
+  return token;
+}
+
+export async function loginAndCaptureAuthSession(page: Page, credentials: Credentials): Promise<AuthSession> {
+  const token = await submitLoginAndCaptureToken(page, credentials);
+
+  return {
+    token,
+    cookies: await page.context().cookies(),
+  };
+}
+
+export async function gotoWithAuthCookies(
+  page: Page,
+  url: string,
+  cookies: Awaited<ReturnType<Page['context']['cookies']>>,
+): Promise<void> {
+  await page.context().clearCookies();
+  await page.context().addCookies(cookies);
+  await page.goto(url);
 }
 
 export async function openUserMenu(page: Page): Promise<void> {

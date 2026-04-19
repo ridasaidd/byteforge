@@ -1,15 +1,14 @@
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
-import { loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
 async function getAuthToken(page: import('@playwright/test').Page): Promise<string> {
   await page.goto(`${tenantBaseUrl}/login`);
-  await loginWithCredentials(page, tenantOwnerCredentials);
+  const token = await submitLoginAndCaptureToken(page, tenantOwnerCredentials);
   await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
-  const token = await page.evaluate(() => window.localStorage.getItem('auth_token'));
-  return token ?? '';
+  return token;
 }
 
 test('tenant settings save shows success toast', async ({ page }) => {

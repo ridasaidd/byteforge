@@ -2,7 +2,10 @@
 
 namespace Tests\Tenant\Feature\Api;
 
+use App\Models\WebRefreshSession;
+use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpFoundation\Cookie;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
 
@@ -11,11 +14,6 @@ use Tests\TestCase;
  *
  * Covers: POST /api/auth/login, POST /api/auth/logout, GET /api/auth/user
  * and cross-tenant access enforcement.
- *
- * NOTE: Tests that POST to /api/auth/login are skipped — Passport CryptKey
- * resolution in the test environment returns 500 instead of the expected
- * status. This is consistent with the behaviour documented in
- * TenantPaymentProviderApiTest.
  */
 class TenantAuthTest extends TestCase
 {
@@ -27,35 +25,68 @@ class TenantAuthTest extends TestCase
         return "http://{$domain}{$path}";
     }
 
-    // =========================================================================
-    // LOGIN (skipped — Passport CryptKey not available in test env)
-    // =========================================================================
+    private function tenantHost(string $tenantSlug = 'tenant-one'): string
+    {
+        $tenant = TestUsers::tenant($tenantSlug);
+
+        return $tenant->domains()->first()?->domain ?? "{$tenantSlug}.byteforge.se";
+    }
+
+    private function refreshCookieFromResponse(TestResponse $response): ?Cookie
+    {
+        foreach ($response->headers->getCookies() as $cookie) {
+            if ($cookie->getName() === config('auth_sessions.refresh_cookie_name')) {
+                return $cookie;
+            }
+        }
+
+        return null;
+    }
 
     #[Test]
     public function tenant_login_returns_token_for_valid_credentials(): void
     {
-        $this->markTestSkipped(
-            'Passport CryptKey resolution fails in the test environment (500 instead of 200). ' .
-            'Login token creation requires valid OAuth2 keys which are not present during PHPUnit runs.'
-        );
+        $tenant = TestUsers::tenant('tenant-one');
+
+        $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => 'owner@tenant-one.byteforge.se',
+            'password' => 'password',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonStructure(['user', 'token'])
+            ->assertJsonPath('user.email', 'owner@tenant-one.byteforge.se');
+
+        $refreshCookie = $this->refreshCookieFromResponse($response);
+
+        $this->assertNotNull($refreshCookie);
+        $this->assertTrue($refreshCookie->isHttpOnly());
+        $this->assertDatabaseHas('web_refresh_sessions', [
+            'user_id' => TestUsers::tenantOwner('tenant-one')->id,
+            'tenant_id' => (string) $tenant->id,
+            'host' => $this->tenantHost('tenant-one'),
+            'revoked_at' => null,
+        ]);
     }
 
     #[Test]
     public function tenant_login_returns_422_for_wrong_password(): void
     {
-        $this->markTestSkipped(
-            'Passport CryptKey resolution fails in the test environment before credential ' .
-            'validation (500 instead of 422).'
-        );
+        $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => 'owner@tenant-one.byteforge.se',
+            'password' => 'wrong-password',
+        ]);
+
+        $response->assertStatus(422);
     }
 
     #[Test]
     public function tenant_login_requires_email_and_password(): void
     {
-        $this->markTestSkipped(
-            'Passport CryptKey resolution fails in the test environment before validation runs ' .
-            '(500 instead of 422).'
-        );
+        $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), []);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors(['email', 'password']);
     }
 
     // =========================================================================
@@ -93,10 +124,89 @@ class TenantAuthTest extends TestCase
     #[Test]
     public function tenant_owner_can_logout(): void
     {
-        $response = $this->actingAsTenantOwner('tenant-one')
-            ->postJson($this->tenantUrl('/api/auth/logout', 'tenant-one'));
+        $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => 'owner@tenant-one.byteforge.se',
+            'password' => 'password',
+        ]);
+
+        $token = (string) $loginResponse->json('token');
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+
+        $this->assertNotNull($refreshCookie);
+
+        $session = WebRefreshSession::query()->latest('id')->firstOrFail();
+
+        $response = $this->call(
+            'POST',
+            '/api/auth/logout',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+                'HTTP_AUTHORIZATION' => "Bearer {$token}",
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
 
         $response->assertOk();
+
+        $session->refresh();
+        $this->assertNotNull($session->revoked_at);
+    }
+
+    #[Test]
+    public function tenant_refresh_can_rotate_session_from_refresh_cookie_without_bearer(): void
+    {
+        $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => 'owner@tenant-one.byteforge.se',
+            'password' => 'password',
+        ]);
+
+        $loginResponse->assertOk();
+
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $originalSession = WebRefreshSession::query()->latest('id')->firstOrFail();
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertOk()
+            ->assertJsonStructure(['token', 'user'])
+            ->assertJsonPath('user.email', 'owner@tenant-one.byteforge.se');
+
+        $rotatedCookie = $this->refreshCookieFromResponse($refreshResponse);
+        $this->assertNotNull($rotatedCookie);
+        $this->assertNotSame($refreshCookie->getValue(), $rotatedCookie->getValue());
+
+        $originalSession->refresh();
+        $this->assertNotNull($originalSession->revoked_at);
+
+        $rotatedSession = WebRefreshSession::query()->latest('id')->firstOrFail();
+        $this->assertSame($originalSession->id, $rotatedSession->rotated_from_id);
+    }
+
+    #[Test]
+    public function tenant_refresh_rejects_bearer_only_requests_without_refresh_cookie(): void
+    {
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/auth/refresh', 'tenant-one'));
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
     }
 
     // =========================================================================

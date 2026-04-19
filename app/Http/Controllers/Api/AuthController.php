@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Services\TenantRbacService;
+use App\Services\Auth\WebRefreshSessionService;
+use App\Models\WebRefreshSession;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -20,6 +22,7 @@ class AuthController extends Controller
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
         private readonly NormalizeInputFieldsAction $normalizeInputFields,
+        private readonly WebRefreshSessionService $webRefreshSessionService,
     ) {}
 
     /**
@@ -49,6 +52,73 @@ class AuthController extends Controller
         }
 
         return $user;
+    }
+
+    private function currentTenantId(): ?string
+    {
+        if (! tenancy()->initialized || ! tenancy()->tenant) {
+            return null;
+        }
+
+        return (string) tenancy()->tenant->id;
+    }
+
+    private function hasActiveTenantMembership(User $user, string $tenantId): bool
+    {
+        return $user->memberships()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->exists();
+    }
+
+    private function syncTenantRole(User $user, string $tenantId): void
+    {
+        $membershipRole = $user->memberships()
+            ->where('tenant_id', $tenantId)
+            ->where('status', 'active')
+            ->value('role');
+
+        $this->tenantRbac->ensureUserRoleSynced($user, $tenantId, $membershipRole);
+    }
+
+    private function resolveRefreshUser(Request $request, ?string $tenantId): array
+    {
+        $refreshSession = $this->webRefreshSessionService->resolveFromRequest($request, $tenantId);
+
+        if (! $refreshSession) {
+            return [null, null];
+        }
+
+        $user = $refreshSession->user;
+
+        if (! $user instanceof User) {
+            return [null, null];
+        }
+
+        if ($tenantId !== null) {
+            if (! $this->hasActiveTenantMembership($user, $tenantId)) {
+                $this->webRefreshSessionService->revoke($refreshSession);
+
+                return [null, null];
+            }
+
+            $this->syncTenantRole($user, $tenantId);
+        }
+
+        return [$user, $refreshSession];
+    }
+
+    private function revokeCurrentAccessToken(?User $user): void
+    {
+        if (! $user instanceof User) {
+            return;
+        }
+
+        $token = $user->token();
+
+        if ($token instanceof PassportToken) {
+            $token->revoke();
+        }
     }
 
     /**
@@ -82,15 +152,10 @@ class AuthController extends Controller
 
         // In tenant context, only active tenant members may login.
         // Return the same generic auth error to avoid account enumeration.
-        if (tenancy()->initialized && tenancy()->tenant) {
-            $tenantId = (string) tenancy()->tenant->id;
+        $tenantId = $this->currentTenantId();
 
-            $isActiveMember = $user->memberships()
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->exists();
-
-            if (! $isActiveMember) {
+        if ($tenantId !== null) {
+            if (! $this->hasActiveTenantMembership($user, $tenantId)) {
                 Auth::logout();
 
                 throw ValidationException::withMessages([
@@ -98,21 +163,17 @@ class AuthController extends Controller
                 ]);
             }
 
-            $membershipRole = $user->memberships()
-                ->where('tenant_id', $tenantId)
-                ->where('status', 'active')
-                ->value('role');
-
-            $this->tenantRbac->ensureUserRoleSynced($user, $tenantId, $membershipRole);
+            $this->syncTenantRole($user, $tenantId);
         }
 
         // Create access token
         $token = $user->createToken('web-token')->accessToken;
+        [, $refreshCookie] = $this->webRefreshSessionService->issue($user, $request, $tenantId);
 
         return $this->tokenResponse([
             'user' => $this->userPayload($user),
             'token' => $token,
-        ]);
+        ])->withCookie($refreshCookie);
     }
 
     /**
@@ -139,11 +200,12 @@ class AuthController extends Controller
         // $user->assignRole('user');
 
         $token = $user->createToken('web-token')->accessToken;
+        [, $refreshCookie] = $this->webRefreshSessionService->issue($user, $request, $this->currentTenantId());
 
         return $this->tokenResponse([
             'user' => $this->userPayload($user),
             'token' => $token,
-        ], 201);
+        ], 201)->withCookie($refreshCookie);
     }
 
     /**
@@ -152,15 +214,14 @@ class AuthController extends Controller
     public function logout(Request $request)
     {
         $user = $this->authenticatedUser($request);
-        $token = $user->token();
+        $this->revokeCurrentAccessToken($user);
 
-        if ($token instanceof PassportToken) {
-            $token->revoke();
-        }
+        $refreshSession = $this->webRefreshSessionService->resolveFromRequest($request, $this->currentTenantId());
+        $this->webRefreshSessionService->revoke($refreshSession);
 
         return response()->json([
             'message' => __('Successfully logged out'),
-        ]);
+        ])->withCookie($this->webRefreshSessionService->expireCookie($request));
     }
 
     /**
@@ -168,20 +229,22 @@ class AuthController extends Controller
      */
     public function refresh(Request $request)
     {
-        $user = $this->authenticatedUser($request);
+        $tenantId = $this->currentTenantId();
+        [$user, $refreshSession] = $this->resolveRefreshUser($request, $tenantId);
 
-        // Revoke old token
-        $token = $user->token();
-        if ($token instanceof PassportToken) {
-            $token->revoke();
+        if (! $user instanceof User) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+            ], 401)->withCookie($this->webRefreshSessionService->expireCookie($request));
         }
 
-        // Create new token
         $token = $user->createToken('web-token')->accessToken;
+        [, $refreshCookie] = $this->webRefreshSessionService->rotate($refreshSession, $request);
 
         return $this->tokenResponse([
             'token' => $token,
-        ]);
+            'user' => $this->userPayload($user),
+        ])->withCookie($refreshCookie);
     }
 
     /**

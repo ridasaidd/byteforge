@@ -12,6 +12,11 @@ interface LoginResponse {
   token: string;
 }
 
+interface RefreshResponse {
+  user: User;
+  token: string;
+}
+
 interface UpdateLocaleResponse {
   message: string;
   locale: 'en' | 'sv' | 'ar';
@@ -28,11 +33,35 @@ export const authService = {
 
   async logout(): Promise<void> {
     try {
-      await http.post('/auth/logout');
+      await http.post('/auth/logout', undefined, {
+        skipAuthRedirect: true,
+      });
     } finally {
       // Always clear auth token even if API call fails
       clearAuthToken();
       window.location.href = '/login';
+    }
+  },
+
+  async refresh(): Promise<RefreshResponse> {
+    const response = await http.post<RefreshResponse>('/auth/refresh', undefined, {
+      skipAuthRefresh: true,
+      skipAuthRedirect: true,
+      skipAuthToken: true,
+    });
+
+    setAuthToken(response.token);
+
+    return response;
+  },
+
+  async restoreSession(): Promise<User | null> {
+    try {
+      const response = await this.refresh();
+      return response.user;
+    } catch {
+      clearAuthToken();
+      return null;
     }
   },
 

@@ -19,7 +19,7 @@
 
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
-import { loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { gotoWithAuthCookies, loginAndCaptureAuthSession, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
@@ -42,20 +42,16 @@ async function isBookingAddonActive(
 }
 
 /**
- * Navigate to a CMS page as an authenticated user by injecting the auth
- * token into localStorage before page load. This avoids hitting the login
- * form for every test, preventing rate-limit "Too Many Attempts" errors
- * when many tests run in parallel.
+ * Navigate to a CMS page by reusing the authenticated refresh-cookie session.
+ * This avoids repeated form logins and matches the current cookie-backed
+ * session bootstrap model.
  */
 async function gotoWithAuth(
   page: import('@playwright/test').Page,
   url: string,
-  token: string,
+  cookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>>,
 ): Promise<void> {
-  await page.addInitScript((t: string) => {
-    window.localStorage.setItem('auth_token', t);
-  }, token);
-  await page.goto(url);
+  await gotoWithAuthCookies(page, url, cookies);
 }
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
@@ -67,6 +63,7 @@ test.describe('Booking CMS pages — smoke', () => {
 
   /** Auth token obtained once per suite and reused by all tests. */
   let ownerToken = '';
+  let ownerCookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>> = [];
 
   test.beforeAll(async ({ browser }) => {
     if (!tenantBaseUrl) return;
@@ -74,9 +71,10 @@ test.describe('Booking CMS pages — smoke', () => {
     const p = await ctx.newPage();
     try {
       await p.goto(`${tenantBaseUrl}/login`);
-      await loginWithCredentials(p, tenantOwnerCredentials);
+      const session = await loginAndCaptureAuthSession(p, tenantOwnerCredentials);
       await p.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
-      ownerToken = (await p.evaluate(() => window.localStorage.getItem('auth_token'))) ?? '';
+      ownerToken = session.token;
+      ownerCookies = session.cookies;
     } finally {
       await ctx.close();
     }
@@ -91,7 +89,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerCookies);
     await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings(/|$)`));
 
     // Page heading
@@ -109,7 +107,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerCookies);
     await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/services(/|$)`));
 
     await expect(page.getByRole('heading', { name: /booking services/i })).toBeVisible();
@@ -124,7 +122,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/resources`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/resources`, ownerCookies);
     await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/resources(/|$)`));
 
     await expect(page.getByRole('heading', { name: /booking resources/i })).toBeVisible();
@@ -138,7 +136,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/settings`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/settings`, ownerCookies);
     await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/bookings/settings(/|$)`));
 
     await expect(page.getByRole('heading', { name: /booking settings/i })).toBeVisible();
@@ -159,7 +157,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms`, ownerCookies);
 
     // Sidebar should contain booking nav entries
     await expect(page.getByRole('link', { name: /^bookings$/i })).toBeVisible();
@@ -175,7 +173,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerCookies);
     await page.getByRole('button', { name: /new service/i }).click();
 
     // Dialog appears
@@ -199,7 +197,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/resources`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/resources`, ownerCookies);
     await page.getByRole('button', { name: /new resource/i }).click();
 
     await expect(page.getByRole('dialog')).toBeVisible();
@@ -220,7 +218,7 @@ test.describe('Booking CMS pages — smoke', () => {
     const addonActive = await isBookingAddonActive(request, ownerToken);
     test.skip(!addonActive, 'booking addon is not active on this tenant — skipping.');
 
-    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerToken);
+    await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerCookies);
 
     // Default is week view — week navigation arrows visible
     const prevButton = page.getByRole('button', { name: '' }).first(); // ChevronLeft

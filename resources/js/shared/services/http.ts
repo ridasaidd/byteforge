@@ -1,9 +1,17 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { clearAuthToken, getAuthToken } from './tokenStorage';
+import { clearAuthToken, getAuthToken, setAuthToken } from './tokenStorage';
 import i18n from '@/i18n';
+
+type AuthRequestConfig = AxiosRequestConfig & {
+  skipAuthRedirect?: boolean;
+  skipAuthRefresh?: boolean;
+  skipAuthToken?: boolean;
+  _authRetried?: boolean;
+};
 
 class HttpService {
   private client: AxiosInstance;
+  private refreshPromise: Promise<string | null> | null = null;
 
   constructor() {
     // Use full URL for tests (set via global), relative path for production
@@ -23,8 +31,10 @@ class HttpService {
     // Request interceptor - add auth token
     this.client.interceptors.request.use(
       (config) => {
+        const authConfig = config as AuthRequestConfig;
         const token = getAuthToken();
-        if (token) {
+
+        if (token && !authConfig.skipAuthToken) {
           config.headers.Authorization = `Bearer ${token}`;
         }
 
@@ -41,12 +51,26 @@ class HttpService {
     // Response interceptor - handle errors
     this.client.interceptors.response.use(
       (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          // Unauthorized - clear token and redirect to login.
+      async (error) => {
+        const status = error.response?.status;
+        const authConfig = (error.config ?? {}) as AuthRequestConfig;
+
+        if (status === 401 && this.shouldAttemptSilentRefresh(authConfig)) {
+          const refreshedToken = await this.refreshAccessToken();
+
+          if (refreshedToken) {
+            authConfig._authRetried = true;
+            authConfig.headers = authConfig.headers ?? {};
+            authConfig.headers.Authorization = `Bearer ${refreshedToken}`;
+
+            return this.client(authConfig);
+          }
+        }
+
+        if (status === 401) {
           clearAuthToken();
 
-          if (typeof window !== 'undefined') {
+          if (!authConfig.skipAuthRedirect && typeof window !== 'undefined') {
             const loginUrl = '/login';
             const alreadyOnLogin = window.location.pathname === loginUrl;
 
@@ -55,9 +79,45 @@ class HttpService {
             }
           }
         }
+
         return Promise.reject(error);
       }
     );
+  }
+
+  private shouldAttemptSilentRefresh(config: AuthRequestConfig): boolean {
+    return !config.skipAuthRefresh
+      && !config._authRetried
+      && !this.isRefreshRequest(config.url);
+  }
+
+  private isRefreshRequest(url?: string): boolean {
+    return typeof url === 'string' && url.includes('/auth/refresh');
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.client.post<{ token: string }>('/auth/refresh', undefined, {
+      skipAuthRefresh: true,
+      skipAuthRedirect: true,
+      skipAuthToken: true,
+    } as AuthRequestConfig)
+      .then((response) => {
+        setAuthToken(response.data.token);
+        return response.data.token;
+      })
+      .catch(() => {
+        clearAuthToken();
+        return null;
+      })
+      .finally(() => {
+        this.refreshPromise = null;
+      });
+
+    return this.refreshPromise;
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {

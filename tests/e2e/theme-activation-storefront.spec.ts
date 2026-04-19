@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
-import { centralAdminCredentials, loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { centralAdminCredentials, submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
@@ -11,27 +11,20 @@ type ThemeInfo = {
   is_active?: boolean;
 };
 
-async function fetchThemesInBrowser(page: Page, endpoint: string): Promise<ThemeInfo[]> {
-  return await page.evaluate(async (path) => {
-    const token = window.localStorage.getItem('auth_token') || window.sessionStorage.getItem('auth_token');
-    if (!token) {
-      throw new Error('Missing auth token in browser storage');
-    }
+async function fetchThemesInBrowser(page: Page, endpoint: string, token: string): Promise<ThemeInfo[]> {
+  const response = await page.request.get(endpoint, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+    },
+  });
 
-    const response = await fetch(path, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
+  if (!response.ok()) {
+    throw new Error(`Theme fetch failed: ${response.status()}`);
+  }
 
-    if (!response.ok) {
-      throw new Error(`Theme fetch failed: ${response.status}`);
-    }
-
-    const payload = (await response.json()) as { data: ThemeInfo[] };
-    return payload.data;
-  }, endpoint);
+  const payload = await response.json() as { data: ThemeInfo[] };
+  return payload.data;
 }
 
 async function getThemeCssText(page: Page, storefrontUrl: string): Promise<{ href: string; cssText: string }> {
@@ -86,12 +79,12 @@ test('tenant theme activation and customize keep storefront CSS and rules intact
   const issues = attachRuntimeGuards(page);
 
   await page.goto(`${tenantBaseUrl}/login`);
-  await loginWithCredentials(page, tenantOwnerCredentials);
+  const tenantToken = await submitLoginAndCaptureToken(page, tenantOwnerCredentials);
   await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
 
   await page.goto(`${tenantBaseUrl}/cms/themes`);
 
-  const tenantThemes = await fetchThemesInBrowser(page, `${tenantBaseUrl}/api/themes`);
+  const tenantThemes = await fetchThemesInBrowser(page, `${tenantBaseUrl}/api/themes`, tenantToken);
   const originalTheme = tenantThemes.find((theme) => theme.is_active) ?? null;
   const targetTheme = tenantThemes.find((theme) => !theme.is_active) ?? null;
 
@@ -123,12 +116,12 @@ test('central theme activation and customize keep storefront CSS and rules intac
   const issues = attachRuntimeGuards(page);
 
   await page.goto('/login');
-  await loginWithCredentials(page, centralAdminCredentials);
+  const centralToken = await submitLoginAndCaptureToken(page, centralAdminCredentials);
   await expect(page).toHaveURL(/\/dashboard(\/|$)/);
 
   await page.goto('/dashboard/themes');
 
-  const centralThemes = await fetchThemesInBrowser(page, '/api/superadmin/themes');
+  const centralThemes = await fetchThemesInBrowser(page, '/api/superadmin/themes', centralToken);
   const originalTheme = centralThemes.find((theme) => theme.is_active) ?? null;
   const targetTheme = centralThemes.find((theme) => !theme.is_active) ?? null;
 

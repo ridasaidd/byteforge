@@ -9,7 +9,7 @@ import { authService } from '../services/auth.service';
  *
  * These tests verify the complete authentication flow for the central (superadmin) app:
  * - Login with valid/invalid credentials
- * - Session-scoped token storage and retrieval
+ * - In-memory token lifecycle and cookie-backed refresh
  * - Authenticated API requests
  * - Logout and token revocation
  * - Unauthorized access handling
@@ -68,7 +68,7 @@ describe.skip('Central App Authentication Flow', () => {
       expect(typeof response.token).toBe('string');
       expect(response.token.length).toBeGreaterThan(0);
 
-      // Verify token is stored in sessionStorage
+      // Verify token is available through the auth service in memory
       const storedToken = authService.getToken();
       expect(storedToken).toBe(response.token);
       expect(authService.isAuthenticated()).toBe(true);
@@ -270,9 +270,9 @@ describe.skip('Central App Authentication Flow', () => {
       const loginResponse = await api.auth.login(TEST_CREDENTIALS);
       const originalToken = loginResponse.token;
 
-      // Simulate page reload by checking sessionStorage
-      const persistedToken = sessionStorage.getItem('auth_token');
-      expect(persistedToken).toBe(originalToken);
+      // Session continuity now depends on the refresh cookie rather than browser token storage.
+      expect(sessionStorage.getItem('auth_token')).toBeNull();
+      expect(localStorage.getItem('auth_token')).toBeNull();
 
       // Should still be able to make authenticated requests
       const user = await api.auth.user();

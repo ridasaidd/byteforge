@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
-import { loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
@@ -11,11 +11,8 @@ test('tenant owner can create a page and open the Puck editor without runtime er
   const uniquePageTitle = `Playwright Puck Smoke ${Date.now()}`;
 
   await page.goto(`${tenantBaseUrl}/login`);
-  await loginWithCredentials(page, tenantOwnerCredentials);
+  const token = await submitLoginAndCaptureToken(page, tenantOwnerCredentials);
   await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
-
-  const token = await page.evaluate(() => window.localStorage.getItem('auth_token'));
-  expect(token, 'Missing auth token in localStorage after tenant login').toBeTruthy();
 
   const createResponse = await page.request.post(`${tenantBaseUrl}/api/pages`, {
     headers: {

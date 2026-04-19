@@ -8,10 +8,20 @@ function isSupportedLocale(locale: string): locale is SupportedLocale {
   return (SUPPORTED_LOCALES as readonly string[]).includes(locale);
 }
 
+function shouldBootstrapAuthSession(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const path = window.location.pathname;
+
+  return !['/login', '/register', '/forgot-password'].includes(path)
+    && !path.startsWith('/reset-password');
+}
+
 export function AuthProvider({ children, initialUser = null }: { children: ReactNode; initialUser?: User | null }) {
-  const hasSessionToken = authService.isAuthenticated();
   const [user, setUser] = useState<User | null>(initialUser);
-  const [isLoading, setIsLoading] = useState(!initialUser && hasSessionToken);
+  const [isLoading, setIsLoading] = useState(!initialUser);
 
   const fetchUser = useCallback(async () => {
     try {
@@ -26,11 +36,30 @@ export function AuthProvider({ children, initialUser = null }: { children: React
     }
   }, []);
 
+  const bootstrapAuth = useCallback(async () => {
+    if (initialUser) {
+      setIsLoading(false);
+      return;
+    }
+
+    if (!shouldBootstrapAuthSession()) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const restoredUser = await authService.restoreSession();
+      setUser(restoredUser);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [initialUser]);
+
   const login = useCallback(async (email: string, password: string) => {
-    await authService.login({ email, password });
-    // Fetch full user data with roles and permissions
-    await fetchUser();
-  }, [fetchUser]);
+    const response = await authService.login({ email, password });
+    setUser(response.user);
+  }, []);
 
   const logout = useCallback(async () => {
     await authService.logout();
@@ -38,15 +67,8 @@ export function AuthProvider({ children, initialUser = null }: { children: React
   }, []);
 
   useEffect(() => {
-    // Until the HttpOnly refresh-cookie migration lands, auth bootstrap still
-    // depends on a session-scoped bearer token surviving reloads within the tab.
-    // Fetching unconditionally would 401 on public pages and trigger redirects.
-    if (!initialUser && authService.isAuthenticated()) {
-      fetchUser();
-    } else {
-      setIsLoading(false);
-    }
-  }, [initialUser, fetchUser]);
+    void bootstrapAuth();
+  }, [bootstrapAuth]);
 
   useEffect(() => {
     const preferred = user?.preferred_locale;

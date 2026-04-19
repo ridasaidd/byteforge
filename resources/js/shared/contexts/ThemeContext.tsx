@@ -13,6 +13,17 @@ function isTenantDomainHost(hostname: string): boolean {
   return hostname.endsWith('.byteforge.se') && hostname !== 'byteforge.se';
 }
 
+function shouldLoadThemeOnClient(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  const path = window.location.pathname;
+
+  return !['/login', '/register', '/forgot-password'].includes(path)
+    && !path.startsWith('/reset-password');
+}
+
 export function ThemeProvider({ children, initialTheme, injectCss = false }: ThemeProviderProps) {
   const [theme, setTheme] = useState<Theme | null>(initialTheme || null);
   const [isLoading, setIsLoading] = useState(!initialTheme); // Skip loading if theme provided
@@ -22,8 +33,17 @@ export function ThemeProvider({ children, initialTheme, injectCss = false }: The
     try {
       setIsLoading(true);
       setError(null);
+      const isTenantCms = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
       const isTenantRuntime = typeof window !== 'undefined'
-        && (window.location.pathname.startsWith('/cms') || isTenantDomainHost(window.location.hostname));
+        && (isTenantCms || isTenantDomainHost(window.location.hostname));
+
+      if (isTenantCms) {
+        const response = await tenantThemes.list();
+        const activeTheme = response.data.find((candidate) => candidate.is_active) ?? null;
+        setTheme(activeTheme);
+        return;
+      }
+
       const response = isTenantRuntime ? await tenantThemes.active() : await themes.active();
       setTheme(response.data);
     } catch (err: unknown) {
@@ -44,8 +64,10 @@ export function ThemeProvider({ children, initialTheme, injectCss = false }: The
 
   useEffect(() => {
     // Only fetch theme if not provided via initialTheme (metadata)
-    if (!initialTheme) {
+    if (!initialTheme && shouldLoadThemeOnClient()) {
       loadActiveTheme();
+    } else if (!initialTheme) {
+      setIsLoading(false);
     }
   }, [initialTheme]);
 

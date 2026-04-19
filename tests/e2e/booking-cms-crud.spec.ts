@@ -15,22 +15,13 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
 // ─── Shared helpers ───────────────────────────────────────────────────────────
 
 type ApiContext = import('@playwright/test').APIRequestContext;
-
-async function getAuthToken(page: import('@playwright/test').Page): Promise<string> {
-  await page.goto(`${tenantBaseUrl}/login`);
-  await loginWithCredentials(page, tenantOwnerCredentials);
-  await page.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
-  const token = await page.evaluate(() => window.localStorage.getItem('auth_token'));
-  if (!token) throw new Error('auth_token not found in localStorage after login');
-  return token;
-}
 
 function authHeaders(token: string) {
   return {
@@ -66,9 +57,8 @@ test.describe('Booking CMS API — CRUD', () => {
     const p = await ctx.newPage();
     try {
       await p.goto(`${tenantBaseUrl}/login`);
-      await loginWithCredentials(p, tenantOwnerCredentials);
+      crudToken = await submitLoginAndCaptureToken(p, tenantOwnerCredentials);
       await p.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
-      crudToken = (await p.evaluate(() => window.localStorage.getItem('auth_token'))) ?? '';
     } finally {
       await ctx.close();
     }

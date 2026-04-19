@@ -157,7 +157,6 @@ Route::middleware([
 
         Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
-            Route::post('refresh', [AuthController::class, 'refresh']);
             Route::get('user', [AuthController::class, 'user']);
             Route::put('user', [AuthController::class, 'updateProfile']);
             Route::put('password', [AuthController::class, 'updatePassword']);
@@ -165,6 +164,8 @@ Route::middleware([
             Route::post('avatar', [AuthController::class, 'uploadAvatar']);
             Route::delete('avatar', [AuthController::class, 'deleteAvatar']);
         });
+
+        Route::post('refresh', [AuthController::class, 'refresh']);
     });
 
     // Protected tenant routes - require authentication

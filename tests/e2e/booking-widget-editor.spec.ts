@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
-import { loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { gotoWithAuthCookies, loginAndCaptureAuthSession, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
@@ -84,12 +84,9 @@ async function isBookingAddonActive(
 async function gotoWithAuth(
   page: import('@playwright/test').Page,
   url: string,
-  token: string,
+  cookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>>,
 ): Promise<void> {
-  await page.addInitScript((value: string) => {
-    window.localStorage.setItem('auth_token', value);
-  }, token);
-  await page.goto(url);
+  await gotoWithAuthCookies(page, url, cookies);
 }
 
 async function createBookingEditorPage(
@@ -127,10 +124,10 @@ async function createBookingEditorPage(
 async function openBookingEditor(
   page: import('@playwright/test').Page,
   pageId: number,
-  ownerToken: string,
   uniquePageTitle: string,
+  ownerCookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>>,
 ) {
-  await gotoWithAuth(page, `${tenantBaseUrl}/cms/pages/${pageId}/edit`, ownerToken);
+  await gotoWithAuth(page, `${tenantBaseUrl}/cms/pages/${pageId}/edit`, ownerCookies);
   await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms/pages/${pageId}/edit(/|$)`));
   await expect(page.getByText(uniquePageTitle, { exact: false })).toBeVisible();
 }
@@ -199,6 +196,7 @@ test.describe.skip('Booking widget editor sections', () => {
   test.describe.configure({ mode: 'serial' });
 
   let ownerToken = '';
+  let ownerCookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>> = [];
 
   test.beforeAll(async ({ browser }) => {
     if (!tenantBaseUrl) return;
@@ -207,9 +205,10 @@ test.describe.skip('Booking widget editor sections', () => {
 
     try {
       await page.goto(`${tenantBaseUrl}/login`);
-      await loginWithCredentials(page, tenantOwnerCredentials);
+      const session = await loginAndCaptureAuthSession(page, tenantOwnerCredentials);
       await page.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
-      ownerToken = (await page.evaluate(() => window.localStorage.getItem('auth_token'))) ?? '';
+      ownerToken = session.token;
+      ownerCookies = session.cookies;
     } finally {
       await ctx.close();
     }
@@ -225,7 +224,7 @@ test.describe.skip('Booking widget editor sections', () => {
     const seed = String(Date.now());
     const { pageId, uniquePageTitle } = await createBookingEditorPage(request, ownerToken, seed);
 
-    await openBookingEditor(page, pageId, ownerToken, uniquePageTitle);
+    await openBookingEditor(page, pageId, uniquePageTitle, ownerCookies);
 
     const previewFrame = page.frameLocator('iframe#preview-frame');
 
@@ -247,7 +246,7 @@ test.describe.skip('Booking widget editor sections', () => {
     const seed = `${Date.now()}-add`;
     const { pageId, uniquePageTitle } = await createBookingEditorPage(request, ownerToken, seed, ['BookingServiceSection']);
 
-    await openBookingEditor(page, pageId, ownerToken, uniquePageTitle);
+    await openBookingEditor(page, pageId, uniquePageTitle, ownerCookies);
     await openBookingSectionsDrawer(page);
 
     const previewFrame = page.frameLocator('iframe#preview-frame');
@@ -268,7 +267,7 @@ test.describe.skip('Booking widget editor sections', () => {
 
     await publishBookingEditorPage(page, pageId);
     await page.reload();
-    await openBookingEditor(page, pageId, ownerToken, uniquePageTitle);
+    await openBookingEditor(page, pageId, uniquePageTitle, ownerCookies);
 
     await expect(previewFrame.locator('[data-puck-component^="BookingDateSection-"]')).toHaveCount(1);
     await expect.poll(() => getOutlineSectionOrder(page)).toEqual([
@@ -294,7 +293,7 @@ test.describe.skip('Booking widget editor sections', () => {
     ];
     const { pageId, uniquePageTitle } = await createBookingEditorPage(request, ownerToken, seed, initialSections);
 
-    await openBookingEditor(page, pageId, ownerToken, uniquePageTitle);
+    await openBookingEditor(page, pageId, uniquePageTitle, ownerCookies);
 
     const previewFrame = page.frameLocator('iframe#preview-frame');
     const slotHintCard = previewFrame.locator('.bw-editor-card');
@@ -316,7 +315,7 @@ test.describe.skip('Booking widget editor sections', () => {
 
     await publishBookingEditorPage(page, pageId);
     await page.reload();
-    await openBookingEditor(page, pageId, ownerToken, uniquePageTitle);
+    await openBookingEditor(page, pageId, uniquePageTitle, ownerCookies);
 
     await expect.poll(() => getOutlineSectionOrder(page)).toEqual([
       'Booking Customer Step',

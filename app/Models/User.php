@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Laravel\Passport\Contracts\OAuthenticatable;
 use Laravel\Passport\HasApiTokens;
 use Spatie\Activitylog\LogOptions;
@@ -38,6 +39,11 @@ class User extends Authenticatable implements OAuthenticatable, HasMedia
     public function tenants()
     {
         return $this->belongsToMany(Tenant::class, 'memberships');
+    }
+
+    public function webRefreshSessions(): HasMany
+    {
+        return $this->hasMany(WebRefreshSession::class);
     }
 
     /**

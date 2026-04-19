@@ -1,5 +1,5 @@
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { loginWithCredentials } from './support/auth';
+import { submitLoginAndCaptureToken } from './support/auth';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
@@ -489,7 +489,7 @@ test.describe('Booking storefront appointment flow', () => {
 
     try {
       await page.goto(`${tenantBaseUrl}/login`);
-      await loginWithCredentials(page, getTenantOwnerCredentials());
+      ownerToken = await submitLoginAndCaptureToken(page, getTenantOwnerCredentials());
 
       const loginOutcome = await Promise.race([
         page.waitForURL(new RegExp(`${escapeRegExp(tenantBaseUrl)}/cms(/|$)`), { timeout: 10_000 }).then(() => 'success' as const),
@@ -500,12 +500,6 @@ test.describe('Booking storefront appointment flow', () => {
         throw new Error(
           'Tenant owner login failed for this tenant. Set PLAYWRIGHT_TENANT_OWNER_EMAIL and PLAYWRIGHT_TENANT_OWNER_PASSWORD to valid credentials for PLAYWRIGHT_TENANT_BASE_URL.',
         );
-      }
-
-      ownerToken = (await page.evaluate(() => window.localStorage.getItem('auth_token'))) ?? '';
-
-      if (!ownerToken) {
-        throw new Error('Tenant login completed without an auth token in localStorage.');
       }
     } finally {
       await context.close();

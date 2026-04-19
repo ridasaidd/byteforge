@@ -58,11 +58,16 @@ Outcome:
 
 Current state before that migration:
 
-- the first hardening slice moved dashboard bearer tokens from persistent
-  `localStorage` to session-scoped `sessionStorage` plus memory
+- dashboard bearer tokens now live in memory only on the frontend
 - token-bearing auth responses now send `Cache-Control: no-store`
-- the full security target still requires server-side refresh sessions and an
-  HttpOnly refresh cookie
+- server-side refresh sessions and host-scoped HttpOnly refresh cookie issuance
+  now exist in the backend
+- frontend bootstrap and silent refresh now use the HttpOnly cookie
+- central and tenant refresh flows are both verified against the cookie-backed
+  path
+- transitional bearer-refresh fallback has been removed
+- the remaining auth work is closeout and hardening: operational cookie/session
+  settings, broader manual QA, and guest-auth prep
 
 ### 3. Guest Authentication System
 

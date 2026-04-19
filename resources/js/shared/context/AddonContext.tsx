@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, ReactNode } from 'react';
 import { AddonContext } from './AddonContext';
 import { tenantAddonApi } from '../services/api/tenantAddons';
-import { authService } from '../services/auth.service';
+import { useAuth } from '../hooks/useAuth';
 
 /**
  * Provides the active add-on feature flags for the current tenant.
@@ -12,12 +12,13 @@ import { authService } from '../services/auth.service';
  * Only mount this provider in the tenant app, not the central superadmin app.
  */
 export function AddonProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [activeFlags, setActiveFlags] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const fetchFlags = useCallback(async () => {
-    // Only fetch when a token is present (user is logged in)
-    if (!authService.isAuthenticated()) {
+    if (!isAuthenticated) {
+      setActiveFlags([]);
       return;
     }
 
@@ -31,7 +32,7 @@ export function AddonProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     void fetchFlags();

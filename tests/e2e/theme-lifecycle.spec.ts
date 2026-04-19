@@ -23,7 +23,7 @@
  */
 import { test, expect, type Page } from '@playwright/test';
 import { formatIssues } from './support/consoleGuards';
-import { centralAdminCredentials, loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { centralAdminCredentials, submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 type RuntimeIssue = { source: 'console' | 'pageerror' | 'requestfailed'; message: string };
 
@@ -76,36 +76,32 @@ const HOMEPAGE_PUCK_DATA = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Call any protected JSON API endpoint using the Bearer token stored by the SPA. */
+let currentApiToken = '';
+
+/** Call any protected JSON API endpoint using the captured login response token. */
 async function apiFetch<T>(
   page: Page,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
 ): Promise<{ status: number; data: T }> {
-  return await page.evaluate(
-    async ({ method, path, body }) => {
-      const token =
-        window.localStorage.getItem('auth_token') ??
-        window.sessionStorage.getItem('auth_token');
+  if (!currentApiToken) {
+    throw new Error('No captured API token available for Playwright API helper');
+  }
 
-      if (!token) throw new Error('No auth_token in browser storage');
-
-      const res = await fetch(path, {
-        method,
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: body != null ? JSON.stringify(body) : undefined,
-      });
-
-      const data = await res.json();
-      return { status: res.status, data };
+  const res = await page.request.fetch(path, {
+    method,
+    headers: {
+      Authorization: `Bearer ${currentApiToken}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
-    { method, path, body },
-  );
+    data: body,
+  });
+
+  const data = await res.json() as T;
+
+  return { status: res.status(), data };
 }
 
 /**
@@ -434,7 +430,8 @@ async function ensureHomepage(
 }
 
 // ---------------------------------------------------------------------------
-// Tests — all run serially, sharing one browser page so auth token persists
+// Tests — all run serially, sharing one browser page so the refresh-cookie
+// session persists while API helpers reuse the captured access token.
 // ---------------------------------------------------------------------------
 
 test.describe.configure({ mode: 'serial' });
@@ -443,14 +440,11 @@ test.describe('Theme Lifecycle — Central App', () => {
   let themeAlpha: ThemeInfo;
   let themeBeta: ThemeInfo;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let sharedPage: any; // Page — kept across tests so localStorage auth token persists
+  let sharedPage: any;
   let centralHomepageId = 0;  // ID of the temporary homepage created in beforeAll
   const issues: RuntimeIssue[] = [];
 
   test.beforeAll(async ({ browser }) => {
-    // Create one persistent browser context + page for the entire describe block.
-    // This keeps the auth token (stored in localStorage by the SPA) alive so every
-    // subsequent apiFetch() call is authenticated without re-logging in.
     const context = await browser.newContext();
     sharedPage = await context.newPage();
 
@@ -467,7 +461,7 @@ test.describe('Theme Lifecycle — Central App', () => {
       issues.push({ source: 'pageerror', message: err.message });
     });
     await sharedPage.goto(`${centralBase}/login`);
-    await loginWithCredentials(sharedPage, centralAdminCredentials);
+    currentApiToken = await submitLoginAndCaptureToken(sharedPage, centralAdminCredentials);
     await expect(sharedPage).toHaveURL(/\/dashboard(\/|$)/, { timeout: 15000 });
 
     // Clean up all test themes (alpha/beta slugs) from previous runs.
@@ -687,7 +681,7 @@ test.describe('Theme Lifecycle — Tenant App', () => {
     });
 
     await sharedPage.goto(`${tenantBase}/login`);
-    await loginWithCredentials(sharedPage, tenantOwnerCredentials);
+    currentApiToken = await submitLoginAndCaptureToken(sharedPage, tenantOwnerCredentials);
     await expect(sharedPage).toHaveURL(new RegExp(`${tenantBase}/cms(/|$)`), { timeout: 15000 });
 
     // Create a published homepage so the tenant storefront SPA renders page content

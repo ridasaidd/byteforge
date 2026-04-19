@@ -12,12 +12,19 @@ Primary branch: `main`
   payments, and booking.
 - Phases 9 through 14 are implemented on `main`.
 - Phase 15 guest authentication is not implemented yet.
-- The HttpOnly auth migration is planned, but browser auth still uses a
-  bearer-token storage model described in
-  [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md).
-- The first auth hardening slice is now in place: browser bearer tokens are
-  session-scoped in `sessionStorage` plus memory instead of persistent
-  `localStorage`.
+- The HttpOnly auth migration is underway in slices and now uses the hybrid
+  browser model described in
+  [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
+  in-memory bearer access tokens plus a host-scoped HttpOnly refresh cookie.
+- The frontend auth cutover is now in place: dashboard bearer tokens are kept
+  in memory only, and session continuity is restored through the HttpOnly
+  refresh cookie.
+- Backend refresh-session groundwork now exists: `web_refresh_sessions`
+  persistence, host-scoped HttpOnly refresh cookie issuance, and cookie-based
+  refresh rotation are implemented server-side.
+- Central and tenant dashboard refresh flows are both verified against the
+  cookie-backed path, and the transitional bearer-based refresh fallback has
+  been removed.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
   booking customer fields, payment human-text fields, and auth name/email
@@ -41,7 +48,7 @@ Primary branch: `main`
   expanding it into blanket middleware.
 3. Keep extending normalization only to suitable human-input fields while
   leaving passwords, tokens, signatures, and provider payloads untouched.
-4. Continue with the HttpOnly auth migration groundwork.
+4. Continue with HttpOnly auth migration closeout and operational hardening.
 5. Build guest authentication after the auth/session foundation is ready.
 
 ## Current Reality Checks
@@ -72,9 +79,9 @@ These remain the main booking product gaps still worth tracking:
 
 ### Security and auth follow-ups
 
-- browser auth still uses JavaScript-accessible bearer tokens; the current
-  reduction is session-scoped storage, not the full HttpOnly refresh-cookie
-  migration
+- browser auth still uses JavaScript-accessible bearer access tokens in memory,
+  which is better than browser storage but still not equivalent to a fully
+  cookie-authenticated API model
 - shared normalization rollout is still partial; it should stay explicit and
   field-family scoped
 - guest authentication is still future work

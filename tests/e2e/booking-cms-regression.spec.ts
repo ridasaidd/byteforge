@@ -16,7 +16,7 @@
  */
 
 import { test, expect } from '@playwright/test';
-import { loginWithCredentials, tenantOwnerCredentials } from './support/auth';
+import { gotoWithAuthCookies, loginAndCaptureAuthSession, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
@@ -42,18 +42,15 @@ async function isBookingAddonActive(request: ApiContext, token: string): Promise
 }
 
 /**
- * Inject auth token into localStorage before navigating so we bypass the
- * login form (and avoid hitting the rate-limiter if tests run in parallel).
+ * Seed the authenticated refresh-cookie session into the browser context before
+ * navigating so CMS pages can bootstrap auth without repeated form logins.
  */
 async function gotoWithAuth(
   page: import('@playwright/test').Page,
   url: string,
-  token: string,
+  cookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>>,
 ): Promise<void> {
-  await page.addInitScript((t: string) => {
-    window.localStorage.setItem('auth_token', t);
-  }, token);
-  await page.goto(url);
+  await gotoWithAuthCookies(page, url, cookies);
 }
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
@@ -62,6 +59,7 @@ test.describe('Booking CMS — regression', () => {
   test.describe.configure({ mode: 'serial' });
 
   let ownerToken = '';
+  let ownerCookies: Awaited<ReturnType<import('@playwright/test').Page['context']['cookies']>> = [];
 
   test.beforeAll(async ({ browser }) => {
     if (!tenantBaseUrl) return;
@@ -69,9 +67,10 @@ test.describe('Booking CMS — regression', () => {
     const p = await ctx.newPage();
     try {
       await p.goto(`${tenantBaseUrl}/login`);
-      await loginWithCredentials(p, tenantOwnerCredentials);
+      const session = await loginAndCaptureAuthSession(p, tenantOwnerCredentials);
       await p.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
-      ownerToken = (await p.evaluate(() => window.localStorage.getItem('auth_token'))) ?? '';
+      ownerToken = session.token;
+      ownerCookies = session.cookies;
     } finally {
       await ctx.close();
     }
@@ -104,7 +103,7 @@ test.describe('Booking CMS — regression', () => {
 
     try {
       // Navigate to the service manager page
-      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerToken);
+      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/services`, ownerCookies);
 
       // Wait for the service card to appear
       await expect(page.getByText(uniqueName)).toBeVisible({ timeout: 15_000 });
@@ -250,7 +249,7 @@ test.describe('Booking CMS — regression', () => {
       });
       expect(setRes.ok()).toBeTruthy();
 
-      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/${booking.id}`, ownerToken);
+      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings/${booking.id}`, ownerCookies);
       await expect(page.getByRole('heading', { name: /booking #/i })).toBeVisible({ timeout: 10_000 });
       await expect(page.getByText('25/04/2026').first()).toBeVisible();
       await expect(page.getByText(/\b(AM|PM)\b/).first()).toBeVisible();
@@ -340,7 +339,7 @@ test.describe('Booking CMS — regression', () => {
         createdBookingIds.push(body.data.id);
       }
 
-      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerToken);
+      await gotoWithAuth(page, `${tenantBaseUrl}/cms/bookings`, ownerCookies);
       await expect(page.getByRole('button', { name: /month/i })).toBeVisible({ timeout: 10_000 });
 
       const visibleBooking = page.getByRole('button', { name: new RegExp(customers[0]) }).first();
