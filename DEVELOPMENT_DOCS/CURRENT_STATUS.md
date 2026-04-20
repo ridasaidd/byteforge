@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-04-19
+Last verified: 2026-04-20
 Primary branch: `main`
 
 ## Snapshot
@@ -31,6 +31,10 @@ Primary branch: `main`
   fields.
 - Booking dashboard localization and booking guest-input hardening were merged
   on 2026-04-19.
+- Phase 16 operator tooling is partially implemented on the current support
+  branch: tenant inspection, limited central theme activation, and temporary
+  read-only support access are in place; broader support remediation is
+  intentionally deferred.
 
 ## Implemented Milestones
 
@@ -50,6 +54,7 @@ Primary branch: `main`
   leaving passwords, tokens, signatures, and provider payloads untouched.
 4. Continue with HttpOnly auth migration closeout and operational hardening.
 5. Build guest authentication after the auth/session foundation is ready.
+6. Do not expand support beyond the current bounded read-only workflow before launch.
 
 ## Current Reality Checks
 
@@ -85,6 +90,13 @@ These remain the main booking product gaps still worth tracking:
 - shared normalization rollout is still partial; it should stay explicit and
   field-family scoped
 - guest authentication is still future work
+
+### Platform support follow-ups
+
+- temporary support access now exists as a bounded read-only workflow on the
+  active Phase 16 branch
+- enhanced support remediation is intentionally deferred to
+  [plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md](plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md)
 
 ## Verification Baseline
 

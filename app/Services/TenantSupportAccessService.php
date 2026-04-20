@@ -10,6 +10,7 @@ use App\Models\TenantActivity;
 use App\Models\TenantSupportAccessGrant;
 use App\Models\User;
 use App\Models\WebRefreshSession;
+use App\Notifications\TenantSupportAccessOwnerNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -74,6 +75,7 @@ class TenantSupportAccessService
             );
 
             $this->tenantRbac->syncUserRoleFromMembership($supportUser, $tenantId, self::MEMBERSHIP_ROLE);
+            $this->tenantRbac->refreshTenantPermissionCache($tenantId);
             $this->permissionRegistrar->setPermissionsTeamId(null);
 
             $grant = TenantSupportAccessGrant::query()->create([
@@ -90,7 +92,10 @@ class TenantSupportAccessService
             $this->logCentralGrant($tenant, $supportUser, $actor, $reason, $expiresAt);
             $this->logTenantGrant($tenantId, $supportUser, $actor, $reason, $expiresAt);
 
-            return $grant->load(['supportUser', 'grantedBy', 'membership']);
+            $grant = $grant->load(['supportUser', 'grantedBy', 'membership', 'tenant.domains']);
+            $this->notifyTenantOwner($tenant, $grant, TenantSupportAccessOwnerNotification::EVENT_GRANTED);
+
+            return $grant;
         });
     }
 
@@ -119,51 +124,37 @@ class TenantSupportAccessService
                 ])->save();
             }
 
+            $this->tenantRbac->refreshTenantPermissionCache($grant->tenant_id);
             $this->revokeRefreshSessions($grant->support_user_id, $grant->tenant_id, $now);
             $this->logCentralRevoke($grant, $actor, $reason);
             $this->logTenantRevoke($grant, $actor, $reason);
 
-            return $grant->fresh(['supportUser', 'grantedBy', 'revokedBy', 'membership']);
+            $grant = $grant->fresh(['supportUser', 'grantedBy', 'revokedBy', 'membership', 'tenant.domains']);
+
+            if ($grant->tenant) {
+                $this->notifyTenantOwner($grant->tenant, $grant, TenantSupportAccessOwnerNotification::EVENT_REVOKED);
+            }
+
+            return $grant;
         });
     }
 
     public function expireSupportAccessIfNeeded(User $user, string $tenantId): void
     {
-        $membership = Membership::query()
-            ->where('user_id', $user->id)
+        $expiredAt = now();
+
+        $grants = TenantSupportAccessGrant::query()
             ->where('tenant_id', $tenantId)
-            ->where('source', self::MEMBERSHIP_SOURCE)
+            ->where('support_user_id', $user->id)
             ->where('status', 'active')
-            ->whereNotNull('expires_at')
             ->where('expires_at', '<=', now())
-            ->first();
+            ->whereNull('revoked_at')
+            ->with(['membership', 'supportUser', 'grantedBy', 'tenant.domains'])
+            ->get();
 
-        if (! $membership) {
-            return;
+        foreach ($grants as $grant) {
+            $this->expireGrant($grant, $expiredAt);
         }
-
-        DB::transaction(function () use ($membership, $user, $tenantId): void {
-            $now = now();
-
-            $membership->forceFill([
-                'status' => 'expired',
-            ])->save();
-
-            $grants = TenantSupportAccessGrant::query()
-                ->where('tenant_id', $tenantId)
-                ->where('support_user_id', $user->id)
-                ->where('status', 'active')
-                ->whereNull('revoked_at')
-                ->where('expires_at', '<=', $now)
-                ->get();
-
-            foreach ($grants as $grant) {
-                $grant->forceFill(['status' => 'expired'])->save();
-                $this->logTenantExpiry($grant);
-            }
-
-            $this->revokeRefreshSessions($user->id, $tenantId, $now);
-        });
     }
 
     public function isSupportAccessMembership(Membership $membership): bool
@@ -171,11 +162,43 @@ class TenantSupportAccessService
         return $membership->source === self::MEMBERSHIP_SOURCE;
     }
 
+    public function expireActiveGrants(?Carbon $expiredAt = null): int
+    {
+        $expiredAt ??= now();
+
+        $grants = TenantSupportAccessGrant::query()
+            ->where('status', 'active')
+            ->whereNull('revoked_at')
+            ->where('expires_at', '<=', $expiredAt)
+            ->with(['membership', 'supportUser', 'grantedBy', 'tenant.domains'])
+            ->get();
+
+        $expiredCount = 0;
+
+        foreach ($grants as $grant) {
+            if ($this->expireGrant($grant, $expiredAt)) {
+                $expiredCount++;
+            }
+        }
+
+        return $expiredCount;
+    }
+
     private function assertEligibleSupportUser(User $supportUser): void
     {
-        if (! $supportUser->hasAnyRole(['support', 'admin'])) {
+        $hasCentralSupportRole = DB::table('model_has_roles')
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('model_has_roles.model_type', $supportUser->getMorphClass())
+            ->where('model_has_roles.model_id', $supportUser->getKey())
+            ->whereNull('model_has_roles.team_id')
+            ->where('roles.guard_name', 'api')
+            ->whereNull('roles.team_id')
+            ->where('roles.name', 'support')
+            ->exists();
+
+        if (! $hasCentralSupportRole) {
             throw ValidationException::withMessages([
-                'support_user_id' => ['Only central support or admin users may receive temporary support access.'],
+                'support_user_id' => ['Only central support users may receive temporary support access.'],
             ]);
         }
     }
@@ -262,6 +285,26 @@ class TenantSupportAccessService
             ));
     }
 
+    private function logCentralExpiry(TenantSupportAccessGrant $grant): void
+    {
+        $tenant = $grant->tenant;
+        $tenantLabel = $tenant?->slug ?? $grant->tenant_id;
+
+        activity('central')
+            ->performedOn($tenant)
+            ->event('expired')
+            ->withProperties([
+                'tenant_id' => $grant->tenant_id,
+                'support_user_id' => $grant->support_user_id,
+                'expires_at' => $grant->expires_at?->toISOString(),
+            ])
+            ->log(sprintf(
+                'Temporary support access for %s on tenant %s expired',
+                $grant->supportUser?->email ?? ('user#' . $grant->support_user_id),
+                $tenantLabel,
+            ));
+    }
+
     private function logTenantRevoke(TenantSupportAccessGrant $grant, User $actor, ?string $reason): void
     {
         TenantActivity::query()->create([
@@ -301,5 +344,70 @@ class TenantSupportAccessService
                 'expires_at' => $grant->expires_at?->toISOString(),
             ],
         ]);
+    }
+
+    private function expireGrant(TenantSupportAccessGrant $grant, Carbon $expiredAt): bool
+    {
+        if ($grant->status !== 'active' || $grant->revoked_at !== null) {
+            return false;
+        }
+
+        DB::transaction(function () use ($grant, $expiredAt): void {
+            $grant->forceFill([
+                'status' => 'expired',
+            ])->save();
+
+            $membership = $grant->membership
+                ?? Membership::query()
+                    ->where('user_id', $grant->support_user_id)
+                    ->where('tenant_id', $grant->tenant_id)
+                    ->where('source', self::MEMBERSHIP_SOURCE)
+                    ->first();
+
+            if ($membership && $membership->source === self::MEMBERSHIP_SOURCE && $membership->status === 'active') {
+                $membership->forceFill([
+                    'status' => 'expired',
+                    'expires_at' => $expiredAt,
+                ])->save();
+            }
+
+            $this->tenantRbac->refreshTenantPermissionCache($grant->tenant_id);
+            $this->revokeRefreshSessions($grant->support_user_id, $grant->tenant_id, $expiredAt);
+            $this->logCentralExpiry($grant);
+            $this->logTenantExpiry($grant);
+        });
+
+        $grant = $grant->fresh(['supportUser', 'grantedBy', 'membership', 'tenant.domains']);
+
+        if ($grant->tenant) {
+            $this->notifyTenantOwner($grant->tenant, $grant, TenantSupportAccessOwnerNotification::EVENT_EXPIRED);
+        }
+
+        return true;
+    }
+
+    private function notifyTenantOwner(Tenant $tenant, TenantSupportAccessGrant $grant, string $event): void
+    {
+        $owner = $this->tenantOwner($tenant);
+
+        if (! $owner) {
+            return;
+        }
+
+        $tenant->loadMissing('domains');
+        $grant->loadMissing(['supportUser', 'grantedBy', 'revokedBy']);
+
+        $owner->notify(new TenantSupportAccessOwnerNotification($tenant, $grant, $event));
+    }
+
+    private function tenantOwner(Tenant $tenant): ?User
+    {
+        $membership = $tenant->memberships()
+            ->where('role', 'owner')
+            ->where('status', 'active')
+            ->with('user')
+            ->first();
+
+        return $membership?->user;
     }
 }

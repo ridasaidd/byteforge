@@ -13,6 +13,7 @@ use App\Services\TenantSupportAccessService;
 use App\Services\ThemeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Validator;
 
 class CentralTenantOperationsController extends Controller
@@ -218,15 +219,9 @@ class CentralTenantOperationsController extends Controller
 
     public function supportAccess(Tenant $tenant): JsonResponse
     {
-        $grants = TenantSupportAccessGrant::query()
-            ->where('tenant_id', (string) $tenant->id)
-            ->with(['supportUser:id,name,email', 'grantedBy:id,name,email', 'revokedBy:id,name,email'])
-            ->orderByDesc('created_at')
-            ->get()
-            ->map(fn (TenantSupportAccessGrant $grant) => $this->formatSupportGrant($grant))
-            ->values();
-
-        return response()->json(['data' => $grants]);
+        return response()->json([
+            'data' => $this->buildSupportAccessOverview($tenant),
+        ]);
     }
 
     public function grantSupportAccess(Request $request, Tenant $tenant): JsonResponse
@@ -260,7 +255,10 @@ class CentralTenantOperationsController extends Controller
         );
 
         return response()->json([
-            'data' => $this->formatSupportGrant($grant),
+            'data' => $this->formatSupportGrant(
+                $grant,
+                $this->buildOtherActiveGrantMap(collect([$supportUser->id]), (string) $tenant->id)->get($supportUser->id, collect())
+            ),
             'message' => 'Temporary support access granted successfully',
         ], 201);
     }
@@ -300,8 +298,56 @@ class CentralTenantOperationsController extends Controller
         ]);
     }
 
-    private function formatSupportGrant(TenantSupportAccessGrant $grant): array
+    private function buildSupportAccessOverview(Tenant $tenant): array
     {
+        $tenantId = (string) $tenant->id;
+
+        $grants = TenantSupportAccessGrant::query()
+            ->where('tenant_id', $tenantId)
+            ->with(['supportUser:id,name,email', 'grantedBy:id,name,email', 'revokedBy:id,name,email'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $grantOtherActiveMap = $this->buildOtherActiveGrantMap(
+            $grants->pluck('support_user_id')->filter()->unique()->values(),
+            $tenantId,
+        );
+
+        $eligibleUsers = User::query()
+            ->whereHas('roles', function ($query) {
+                $query->where('roles.guard_name', 'api')
+                    ->whereNull('roles.team_id')
+                    ->where('roles.name', 'support');
+            })
+            ->with(['roles:id,name'])
+            ->orderBy('name')
+            ->get();
+
+        $eligibleUserOtherActiveMap = $this->buildOtherActiveGrantMap(
+            $eligibleUsers->pluck('id')->values(),
+            $tenantId,
+        );
+
+        return [
+            'grants' => $grants
+                ->map(fn (TenantSupportAccessGrant $grant) => $this->formatSupportGrant(
+                    $grant,
+                    $grantOtherActiveMap->get($grant->support_user_id, collect())
+                ))
+                ->values(),
+            'eligible_users' => $eligibleUsers
+                ->map(fn (User $user) => $this->formatEligibleSupportUser(
+                    $user,
+                    $eligibleUserOtherActiveMap->get($user->id, collect())
+                ))
+                ->values(),
+        ];
+    }
+
+    private function formatSupportGrant(TenantSupportAccessGrant $grant, ?Collection $otherActiveGrants = null): array
+    {
+        $otherActiveGrants ??= collect();
+
         $isEffective = $grant->status === 'active'
             && $grant->revoked_at === null
             && $grant->starts_at !== null
@@ -335,8 +381,59 @@ class CentralTenantOperationsController extends Controller
                 'name' => $grant->revokedBy->name,
                 'email' => $grant->revokedBy->email,
             ] : null,
+            'other_active_grants_count' => $otherActiveGrants->count(),
+            'other_active_grants' => $otherActiveGrants->values()->all(),
             'created_at' => $grant->created_at?->toISOString(),
             'updated_at' => $grant->updated_at?->toISOString(),
+        ];
+    }
+
+    private function formatEligibleSupportUser(User $user, Collection $otherActiveGrants): array
+    {
+        return [
+            'id' => $user->id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'roles' => $user->roles->pluck('name')->values()->all(),
+            'other_active_grants_count' => $otherActiveGrants->count(),
+            'other_active_grants' => $otherActiveGrants->values()->all(),
+        ];
+    }
+
+    private function buildOtherActiveGrantMap(Collection $supportUserIds, string $currentTenantId): Collection
+    {
+        $supportUserIds = $supportUserIds->filter()->unique()->values();
+
+        if ($supportUserIds->isEmpty()) {
+            return collect();
+        }
+
+        return TenantSupportAccessGrant::query()
+            ->effective()
+            ->whereIn('support_user_id', $supportUserIds)
+            ->where('tenant_id', '!=', $currentTenantId)
+            ->with(['tenant.domains'])
+            ->orderBy('expires_at')
+            ->get()
+            ->groupBy('support_user_id')
+            ->map(function (Collection $grants) {
+                return $grants
+                    ->unique('tenant_id')
+                    ->values()
+                    ->map(fn (TenantSupportAccessGrant $grant) => $this->formatOtherActiveGrant($grant));
+            });
+    }
+
+    private function formatOtherActiveGrant(TenantSupportAccessGrant $grant): array
+    {
+        $tenant = $grant->tenant;
+
+        return [
+            'tenant_id' => $grant->tenant_id,
+            'tenant_name' => $tenant?->name ?? $grant->tenant_id,
+            'tenant_slug' => $tenant?->slug,
+            'tenant_domain' => $tenant?->domains->first()?->domain,
+            'expires_at' => $grant->expires_at?->toISOString(),
         ];
     }
 }

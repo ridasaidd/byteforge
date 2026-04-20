@@ -11,6 +11,7 @@ import type {
   TenantInspectionSummary,
   TenantInspectionTheme,
   TenantSupportAccessGrant,
+  TenantSupportAccessOverview,
   RevokeTenantSupportAccessData,
   UpdateTenantData,
 } from './types';
@@ -37,7 +38,7 @@ export const tenants = {
   activateTheme: (id: string, data: ActivateThemeData) =>
     http.post<{ data: TenantInspectionTheme; message: string }>(`/superadmin/tenants/${id}/themes/activate`, data),
   supportAccess: (id: string) =>
-    http.get<ApiResponse<TenantSupportAccessGrant[]>>(`/superadmin/tenants/${id}/support-access`),
+    http.get<ApiResponse<TenantSupportAccessOverview>>(`/superadmin/tenants/${id}/support-access`),
   grantSupportAccess: (id: string, data: GrantTenantSupportAccessData) =>
     http.post<{ data: TenantSupportAccessGrant; message: string }>(`/superadmin/tenants/${id}/support-access`, data),
   revokeSupportAccess: (id: string, grantId: number, data?: RevokeTenantSupportAccessData) =>

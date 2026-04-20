@@ -2,8 +2,10 @@
 
 namespace Tests\Tenant\Feature\Api;
 
+use App\Models\TenantSupportAccessGrant;
 use App\Services\TenantSupportAccessService;
 use App\Models\WebRefreshSession;
+use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -42,6 +44,24 @@ class TenantAuthTest extends TestCase
         }
 
         return null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function userPermissionNames(TestResponse $response): array
+    {
+        $roles = collect($response->json('user.roles', []));
+        $rolePermissions = $roles
+            ->flatMap(fn (array $role) => $role['permissions'] ?? [])
+            ->pluck('name');
+        $directPermissions = collect($response->json('user.permissions', []))->pluck('name');
+
+        return $rolePermissions
+            ->merge($directPermissions)
+            ->unique()
+            ->values()
+            ->all();
     }
 
     #[Test]
@@ -256,12 +276,75 @@ class TenantAuthTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('user.email', $supportUser->email);
 
+        $roles = collect($response->json('user.roles', []))->pluck('name')->all();
+        $permissions = $this->userPermissionNames($response);
+
+        $this->assertSame(['platform_support'], $roles);
+        $this->assertContains('pages.view', $permissions);
+        $this->assertContains('navigation.view', $permissions);
+        $this->assertContains('themes.view', $permissions);
+        $this->assertContains('bookings.view', $permissions);
+        $this->assertNotContains('users.view', $permissions);
+        $this->assertNotContains('payments.view', $permissions);
+        $this->assertNotContains('pages.edit', $permissions);
+        $this->assertNotContains('navigation.edit', $permissions);
+        $this->assertNotContains('roles.manage', $permissions);
+
         $this->assertDatabaseHas('web_refresh_sessions', [
             'user_id' => $supportUser->id,
             'tenant_id' => (string) $tenant->id,
             'host' => $this->tenantHost('tenant-one'),
             'revoked_at' => null,
         ]);
+    }
+
+    #[Test]
+    public function central_support_user_has_read_only_tenant_api_access_with_active_support_grant(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $supportUser = TestUsers::centralSupport();
+
+        app(TenantSupportAccessService::class)->grant(
+            $tenant,
+            $supportUser,
+            TestUsers::centralAdmin(),
+            'Read-only support inspection',
+            24,
+        );
+
+        $this->actingAs($supportUser, 'api')
+            ->getJson($this->tenantUrl('/api/pages', 'tenant-one'))
+            ->assertOk();
+
+        $this->actingAs($supportUser, 'api')
+            ->getJson($this->tenantUrl('/api/navigations', 'tenant-one'))
+            ->assertOk();
+
+        $this->actingAs($supportUser, 'api')
+            ->getJson($this->tenantUrl('/api/themes', 'tenant-one'))
+            ->assertOk();
+
+        $this->actingAs($supportUser, 'api')
+            ->getJson($this->tenantUrl('/api/booking/services', 'tenant-one'))
+            ->assertOk();
+
+        $this->actingAs($supportUser, 'api')
+            ->getJson($this->tenantUrl('/api/users', 'tenant-one'))
+            ->assertForbidden();
+
+        $this->actingAs($supportUser, 'api')
+            ->getJson($this->tenantUrl('/api/payment-providers', 'tenant-one'))
+            ->assertForbidden();
+
+        $this->actingAs($supportUser, 'api')
+            ->postJson($this->tenantUrl('/api/pages', 'tenant-one'), [
+                'title' => 'Support Access Should Not Create',
+                'slug' => 'support-access-should-not-create',
+                'page_type' => 'general',
+                'status' => 'draft',
+                'puck_data' => [],
+            ])
+            ->assertForbidden();
     }
 
     #[Test]

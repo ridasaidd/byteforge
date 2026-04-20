@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { users as usersApi } from '@/shared/services/api/users';
 import { tenants } from '@/shared/services/api/tenants';
-import type { ActivityLog, TenantInspectionPage as TenantInspectionPageRow, TenantInspectionTheme, TenantSupportAccessGrant, User } from '@/shared/services/api/types';
+import type { ActivityLog, TenantInspectionPage as TenantInspectionPageRow, TenantInspectionTheme, TenantSupportAccessGrant, TenantSupportAccessRelatedTenant } from '@/shared/services/api/types';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { Badge } from '@/shared/components/ui/badge';
@@ -26,10 +25,12 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return firstFieldError || apiError.response?.data?.message || fallback;
 }
 
-function getRoleNames(user: User): string[] {
-  return user.roles
-    .map((role) => typeof role === 'string' ? role : role.name)
-    .filter((role): role is string => Boolean(role));
+function formatOtherActiveGrantLabel(grant: TenantSupportAccessRelatedTenant): string {
+  if (grant.tenant_domain) {
+    return `${grant.tenant_name} (${grant.tenant_domain})`;
+  }
+
+  return grant.tenant_name;
 }
 
 export function TenantInspectionPage() {
@@ -75,12 +76,6 @@ export function TenantInspectionPage() {
   const supportAccess = useQuery({
     queryKey: ['tenant-inspection', id, 'support-access'],
     queryFn: () => tenants.supportAccess(id!),
-    enabled: Boolean(id),
-  });
-
-  const supportUsers = useQuery({
-    queryKey: ['central-support-users'],
-    queryFn: () => usersApi.list({ per_page: 200 }),
     enabled: Boolean(id),
   });
 
@@ -142,12 +137,10 @@ export function TenantInspectionPage() {
     return { label: t('inspection_support_status_active'), variant: 'secondary' as const };
   };
 
-  const supportGrants = supportAccess.data?.data ?? [];
-  const eligibleSupportUsers = (supportUsers.data?.data ?? []).filter((user) => {
-    const roles = getRoleNames(user);
-
-    return roles.includes('support') || roles.includes('admin');
-  });
+  const supportOverview = supportAccess.data?.data;
+  const supportGrants = supportOverview?.grants ?? [];
+  const eligibleSupportUsers = supportOverview?.eligible_users ?? [];
+  const selectedSupportUser = eligibleSupportUsers.find((user) => String(user.id) === selectedSupportUserId) ?? null;
   const activeSupportCount = supportGrants.filter((grant) => grant.is_effective).length;
 
   const handleActivateTheme = async () => {
@@ -315,6 +308,18 @@ export function TenantInspectionPage() {
         <div>
           <div className="font-medium">{grant.support_user?.name ?? '-'}</div>
           <div className="text-xs text-muted-foreground">{grant.support_user?.email ?? '-'}</div>
+          {grant.other_active_grants_count > 0 ? (
+            <div className="mt-2 space-y-1">
+              <Badge variant="outline">
+                {t('inspection_support_other_active_count', { count: grant.other_active_grants_count })}
+              </Badge>
+              {grant.other_active_grants.slice(0, 3).map((otherGrant) => (
+                <div key={`${grant.id}-${otherGrant.tenant_id}`} className="text-xs text-muted-foreground">
+                  {formatOtherActiveGrantLabel(otherGrant)}
+                </div>
+              ))}
+            </div>
+          ) : null}
           <div className="mt-1 text-xs text-muted-foreground">
             {t('inspection_support_reason')}: {grant.reason}
           </div>
@@ -412,6 +417,28 @@ export function TenantInspectionPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedSupportUser && selectedSupportUser.other_active_grants_count > 0 ? (
+              <div className="rounded-lg border p-3 text-sm">
+                <div className="font-medium">{t('inspection_support_selected_other_grants')}</div>
+                <p className="mt-1 text-muted-foreground">
+                  {t('inspection_support_selected_other_grants_description', {
+                    name: selectedSupportUser.name,
+                    count: selectedSupportUser.other_active_grants_count,
+                  })}
+                </p>
+                <div className="mt-3 space-y-2">
+                  {selectedSupportUser.other_active_grants.map((otherGrant) => (
+                    <div key={`${selectedSupportUser.id}-${otherGrant.tenant_id}`} className="rounded-md bg-muted/40 px-3 py-2 text-xs">
+                      <div className="font-medium text-foreground">{formatOtherActiveGrantLabel(otherGrant)}</div>
+                      <div className="text-muted-foreground">
+                        {t('inspection_support_expires')}: {formatDateTime(otherGrant.expires_at)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <Label htmlFor="support_duration_hours">{t('inspection_support_grant_duration')}</Label>
@@ -588,7 +615,7 @@ export function TenantInspectionPage() {
                 <CardTitle>{t('inspection_support_title')}</CardTitle>
                 <CardDescription>{t('inspection_support_description')}</CardDescription>
               </div>
-              <Button onClick={openGrantDialog} disabled={eligibleSupportUsers.length === 0 || supportUsers.isLoading}>
+              <Button onClick={openGrantDialog} disabled={eligibleSupportUsers.length === 0 || supportAccess.isLoading}>
                 {t('inspection_support_grant_submit')}
               </Button>
             </CardHeader>
@@ -600,7 +627,7 @@ export function TenantInspectionPage() {
               </div>
               <div className="rounded-lg border p-4">
                 <div className="text-sm text-muted-foreground">{t('inspection_support_eligible_users')}</div>
-                <div className="mt-2 text-2xl font-semibold">{supportUsers.isLoading ? '-' : eligibleSupportUsers.length}</div>
+                <div className="mt-2 text-2xl font-semibold">{supportAccess.isLoading ? '-' : eligibleSupportUsers.length}</div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {eligibleSupportUsers.length > 0 ? t('inspection_support_eligible_description') : t('inspection_support_no_eligible_users')}
                 </p>
@@ -612,14 +639,6 @@ export function TenantInspectionPage() {
             <Card>
               <CardContent className="pt-6 text-sm text-destructive">
                 {t('inspection_support_load_failed')}
-              </CardContent>
-            </Card>
-          ) : null}
-
-          {supportUsers.isError ? (
-            <Card>
-              <CardContent className="pt-6 text-sm text-destructive">
-                {t('inspection_support_users_failed')}
               </CardContent>
             </Card>
           ) : null}

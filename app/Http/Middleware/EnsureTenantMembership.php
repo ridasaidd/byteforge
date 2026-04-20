@@ -51,6 +51,10 @@ class EnsureTenantMembership
 
         $this->tenantRbac->ensureUserRoleSynced($user, $tenantId, $membershipRole);
 
+        if ($membershipRole === TenantSupportAccessService::MEMBERSHIP_ROLE) {
+            $this->tenantRbac->refreshTenantPermissionCache($tenantId);
+        }
+
         return $next($request);
     }
 }

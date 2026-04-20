@@ -52,6 +52,11 @@ class TenantSupportAccessGrant extends Model
         return $this->belongsTo(Membership::class);
     }
 
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class, 'tenant_id', 'id');
+    }
+
     public function scopeEffective($query)
     {
         return $query

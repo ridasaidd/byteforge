@@ -114,6 +114,14 @@ export interface TenantSupportAccessActor extends Record<string, unknown> {
   email: string;
 }
 
+export interface TenantSupportAccessRelatedTenant extends Record<string, unknown> {
+  tenant_id: string;
+  tenant_name: string;
+  tenant_slug: string | null;
+  tenant_domain: string | null;
+  expires_at: string | null;
+}
+
 export interface TenantSupportAccessGrant extends Record<string, unknown> {
   id: number;
   tenant_id: string;
@@ -128,8 +136,21 @@ export interface TenantSupportAccessGrant extends Record<string, unknown> {
   support_user: TenantSupportAccessActor | null;
   granted_by: TenantSupportAccessActor | null;
   revoked_by: TenantSupportAccessActor | null;
+  other_active_grants_count: number;
+  other_active_grants: TenantSupportAccessRelatedTenant[];
   created_at: string | null;
   updated_at: string | null;
+}
+
+export interface TenantSupportAccessEligibleUser extends TenantSupportAccessActor {
+  roles: string[];
+  other_active_grants_count: number;
+  other_active_grants: TenantSupportAccessRelatedTenant[];
+}
+
+export interface TenantSupportAccessOverview extends Record<string, unknown> {
+  grants: TenantSupportAccessGrant[];
+  eligible_users: TenantSupportAccessEligibleUser[];
 }
 
 export interface GrantTenantSupportAccessData {

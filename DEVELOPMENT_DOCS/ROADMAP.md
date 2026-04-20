@@ -99,7 +99,7 @@ Likely focus areas:
 Examples:
 
 - tenant dashboard access refinements
-- narrow central support tooling such as temporary tenant support access for named support staff
+- post-launch follow-up for enhanced support remediation after real demand is known
 - usage tracking and quotas
 - content/version history
 - navigation drag-and-drop tree UI
@@ -108,6 +108,7 @@ Examples:
 Guidance:
 
 - prefer inspection and bounded support workflows over broad central cross-tenant CRUD
+- temporary read-only tenant support access is a good pre-launch stopping point; defer broader support remediation until usage pressure exists
 - do not expand central into a second full tenant CMS unless repeated operational needs justify it
 
 ## Out Of Scope For This Roadmap

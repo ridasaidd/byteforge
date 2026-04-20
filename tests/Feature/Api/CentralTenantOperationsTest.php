@@ -5,6 +5,8 @@ namespace Tests\Feature\Api;
 use App\Models\Page;
 use App\Models\TenantActivity;
 use App\Models\Theme;
+use App\Notifications\TenantSupportAccessOwnerNotification;
+use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
@@ -214,8 +216,11 @@ class CentralTenantOperationsTest extends TestCase
     #[Test]
     public function central_admin_can_grant_list_and_revoke_tenant_support_access(): void
     {
+        Notification::fake();
+
         $tenant = TestUsers::tenant('tenant-one');
         $supportUser = TestUsers::centralSupport();
+        $owner = TestUsers::tenantOwner('tenant-one');
 
         $create = $this->actingAsCentralAdmin()
             ->withServerVariables($this->central())
@@ -228,6 +233,13 @@ class CentralTenantOperationsTest extends TestCase
         $create->assertCreated()
             ->assertJsonPath('data.support_user.email', $supportUser->email)
             ->assertJsonPath('data.status', 'active');
+
+        Notification::assertSentTo(
+            $owner,
+            TenantSupportAccessOwnerNotification::class,
+            fn (TenantSupportAccessOwnerNotification $notification) => $notification->event === TenantSupportAccessOwnerNotification::EVENT_GRANTED
+                && $notification->grant->support_user_id === $supportUser->id
+        );
 
         $grantId = (int) $create->json('data.id');
 
@@ -250,7 +262,8 @@ class CentralTenantOperationsTest extends TestCase
             ->withServerVariables($this->central())
             ->getJson("/api/superadmin/tenants/{$tenant->id}/support-access")
             ->assertOk()
-            ->assertJsonFragment(['email' => $supportUser->email]);
+            ->assertJsonFragment(['email' => $supportUser->email])
+            ->assertJsonPath('data.grants.0.other_active_grants_count', 0);
 
         $revoke = $this->actingAsCentralAdmin()
             ->withServerVariables($this->central())
@@ -260,6 +273,13 @@ class CentralTenantOperationsTest extends TestCase
 
         $revoke->assertOk()
             ->assertJsonPath('data.status', 'revoked');
+
+        Notification::assertSentTo(
+            $owner,
+            TenantSupportAccessOwnerNotification::class,
+            fn (TenantSupportAccessOwnerNotification $notification) => $notification->event === TenantSupportAccessOwnerNotification::EVENT_REVOKED
+                && $notification->grant->support_user_id === $supportUser->id
+        );
 
         $this->assertDatabaseHas('memberships', [
             'user_id' => $supportUser->id,
@@ -281,6 +301,52 @@ class CentralTenantOperationsTest extends TestCase
                 ->whereIn('event', ['granted', 'revoked'])
                 ->count() >= 2
         );
+    }
+
+    #[Test]
+    public function central_admin_can_grant_same_support_user_to_multiple_tenants_concurrently(): void
+    {
+        $tenantOne = TestUsers::tenant('tenant-one');
+        $tenantTwo = TestUsers::tenant('tenant-two');
+        $supportUser = TestUsers::centralSupport();
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenantOne->id}/support-access", [
+                'support_user_id' => $supportUser->id,
+                'reason' => 'Investigate tenant one issue',
+                'duration_hours' => 24,
+            ])
+            ->assertCreated();
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenantTwo->id}/support-access", [
+                'support_user_id' => $supportUser->id,
+                'reason' => 'Investigate tenant two issue',
+                'duration_hours' => 24,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.support_user.email', $supportUser->email);
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'tenant_id' => $tenantOne->id,
+            'support_user_id' => $supportUser->id,
+            'status' => 'active',
+        ]);
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'tenant_id' => $tenantTwo->id,
+            'support_user_id' => $supportUser->id,
+            'status' => 'active',
+        ]);
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenantTwo->id}/support-access")
+            ->assertOk()
+            ->assertJsonPath('data.grants.0.other_active_grants_count', 1)
+            ->assertJsonFragment(['tenant_slug' => 'tenant-one']);
     }
 
     #[Test]

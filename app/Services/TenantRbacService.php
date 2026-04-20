@@ -13,6 +13,8 @@ use Spatie\Permission\Models\Role;
 
 class TenantRbacService
 {
+    private const TENANT_PERMISSION_CACHE_PREFIX = 'spatie.permission.cache.tenant.';
+
     public const TENANT_ROLE_NAMES = ['admin', 'support', 'viewer', 'platform_support'];
 
     /**
@@ -222,8 +224,7 @@ class TenantRbacService
         $role = $this->findTenantScopedRole($tenantRole, $tenantId, $guardName);
 
         $user->syncPermissions([]);
-        $user->syncRoles([$role]);
-        $this->removeGlobalTenantRoleNames($user, $guardName);
+        $this->syncTenantScopedRoleAssignment($user, $role);
 
         return $tenantRole;
     }
@@ -249,17 +250,10 @@ class TenantRbacService
             ->where('roles.id', '!=', $role->id)
             ->exists();
 
-        $hasGlobalTenantRoleName = $user->roles()
-            ->where('roles.guard_name', $guardName)
-            ->whereNull('roles.team_id')
-            ->whereIn('roles.name', self::TENANT_ROLE_NAMES)
-            ->exists();
-
-        $needsRoleSync = ! $hasScopedRole || $hasUnexpectedTenantRole || $hasGlobalTenantRoleName;
+        $needsRoleSync = ! $hasScopedRole || $hasUnexpectedTenantRole;
 
         if ($needsRoleSync) {
-            $user->syncRoles([$role]);
-            $this->removeGlobalTenantRoleNames($user, $guardName);
+            $this->syncTenantScopedRoleAssignment($user, $role);
         }
 
         if ($user->getDirectPermissions()->isNotEmpty()) {
@@ -267,6 +261,19 @@ class TenantRbacService
         }
 
         return $tenantRole;
+    }
+
+    public function refreshTenantPermissionCache(string $tenantId): void
+    {
+        $permissionRegistrar = app(PermissionRegistrar::class);
+        $originalCacheKey = $permissionRegistrar->cacheKey;
+
+        try {
+            $permissionRegistrar->cacheKey = self::TENANT_PERMISSION_CACHE_PREFIX.$tenantId;
+            $permissionRegistrar->forgetCachedPermissions();
+        } finally {
+            $permissionRegistrar->cacheKey = $originalCacheKey;
+        }
     }
 
     private function findTenantScopedRole(string $roleName, string $tenantId, string $guardName): Role
@@ -278,23 +285,30 @@ class TenantRbacService
             ->firstOrFail();
     }
 
-    private function removeGlobalTenantRoleNames(User $user, string $guardName): void
+    private function syncTenantScopedRoleAssignment(User $user, Role $role): void
     {
-        $globalRoleIds = Role::query()
-            ->where('guard_name', $guardName)
-            ->whereNull('team_id')
+        $tenantRoleIds = Role::query()
+            ->where('guard_name', $role->guard_name)
+            ->where('team_id', $role->team_id)
             ->whereIn('name', self::TENANT_ROLE_NAMES)
             ->pluck('id');
-
-        if ($globalRoleIds->isEmpty()) {
-            return;
-        }
 
         DB::table('model_has_roles')
             ->where('model_type', $user->getMorphClass())
             ->where('model_id', $user->getKey())
-            ->whereIn('role_id', $globalRoleIds->all())
+            ->where('team_id', $role->team_id)
+            ->whereIn('role_id', $tenantRoleIds->all())
+            ->where('role_id', '!=', $role->id)
             ->delete();
+
+        DB::table('model_has_roles')->insertOrIgnore([
+            'role_id' => (int) $role->id,
+            'model_type' => $user->getMorphClass(),
+            'model_id' => $user->getKey(),
+            'team_id' => $role->team_id,
+        ]);
+
+        $user->unsetRelation('roles');
     }
 
     /**
