@@ -42,6 +42,16 @@ const STATUS_COLORS: Record<BookingStatus, string> = {
   no_show:          'bg-orange-100 text-orange-800',
 };
 
+const STATUS_LABEL_KEYS: Record<BookingStatus, string> = {
+  pending: 'status_pending',
+  pending_hold: 'status_pending_hold',
+  awaiting_payment: 'status_awaiting_payment',
+  confirmed: 'status_confirmed',
+  completed: 'status_completed',
+  cancelled: 'status_cancelled',
+  no_show: 'status_no_show',
+};
+
 const SERVICE_COLORS = [
   {
     dot: 'bg-blue-500',
@@ -97,25 +107,12 @@ function getDateLocale(language: string) {
   }
 }
 
-function getStatusLabel(status: BookingStatus, t: (key: string) => string) {
-  switch (status) {
-    case 'pending':
-      return t('status_pending');
-    case 'pending_hold':
-      return t('status_pending_hold');
-    case 'awaiting_payment':
-      return t('status_awaiting_payment');
-    case 'confirmed':
-      return t('status_confirmed');
-    case 'completed':
-      return t('status_completed');
-    case 'cancelled':
-      return t('status_cancelled');
-    case 'no_show':
-      return t('status_no_show');
-    default:
-      return status.replace(/_/g, ' ');
+function getStatusLabel(status: string, t: (key: string) => string) {
+  if (status in STATUS_LABEL_KEYS) {
+    return t(STATUS_LABEL_KEYS[status as BookingStatus]);
   }
+
+  return status.replace(/_/g, ' ');
 }
 
 function dayNumberClass(day: Date): string {
