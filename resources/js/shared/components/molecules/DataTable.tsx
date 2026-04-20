@@ -61,32 +61,34 @@ export function DataTable<T extends Record<string, unknown>>({
     return (
       <div className={cn('space-y-4', className)}>
         <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {columns.map((column) => (
-                  <TableHead key={column.key}>{column.label}</TableHead>
-                ))}
-                {actions && <TableHead className="w-[100px]">{t('actions')}</TableHead>}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <TableRow key={index}>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
                   {columns.map((column) => (
-                    <TableCell key={column.key}>
-                      <Skeleton className="h-4 w-full" />
-                    </TableCell>
+                    <TableHead key={column.key}>{column.label}</TableHead>
                   ))}
-                  {actions && (
-                    <TableCell>
-                      <Skeleton className="h-8 w-16" />
-                    </TableCell>
-                  )}
+                  {actions && <TableHead className="w-[100px]">{t('actions')}</TableHead>}
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <TableRow key={index}>
+                    {columns.map((column) => (
+                      <TableCell key={column.key}>
+                        <Skeleton className="h-4 w-full" />
+                      </TableCell>
+                    ))}
+                    {actions && (
+                      <TableCell>
+                        <Skeleton className="h-8 w-16" />
+                      </TableCell>
+                    )}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </div>
       </div>
     );
@@ -114,55 +116,57 @@ export function DataTable<T extends Record<string, unknown>>({
   return (
     <div className={cn('space-y-4', className)}>
       <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              {columns.map((column) => (
-                <TableHead key={column.key}>
-                  {column.sortable ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="-ms-3 h-8 data-[state=open]:bg-accent"
-                      onClick={() => handleSort(column.key)}
-                    >
-                      <span>{column.label}</span>
-                      <ArrowUpDown
-                        className={cn(
-                          'ms-2 h-4 w-4',
-                          sortBy === column.key ? 'text-primary' : 'text-muted-foreground'
-                        )}
-                      />
-                    </Button>
-                  ) : (
-                    column.label
-                  )}
-                </TableHead>
-              ))}
-              {actions && <TableHead className="w-[100px]">{t('actions')}</TableHead>}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {data.map((item, index) => (
-              <TableRow
-                key={index}
-                className={cn(onRowClick && 'cursor-pointer hover:bg-muted/50')}
-                onClick={() => onRowClick?.(item)}
-              >
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
                 {columns.map((column) => (
-                  <TableCell key={column.key}>
-                    {column.render ? column.render(item) : String(item[column.key] ?? '-')}
-                  </TableCell>
+                  <TableHead key={column.key}>
+                    {column.sortable ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="-ms-3 h-8 data-[state=open]:bg-accent"
+                        onClick={() => handleSort(column.key)}
+                      >
+                        <span>{column.label}</span>
+                        <ArrowUpDown
+                          className={cn(
+                            'ms-2 h-4 w-4',
+                            sortBy === column.key ? 'text-primary' : 'text-muted-foreground'
+                          )}
+                        />
+                      </Button>
+                    ) : (
+                      column.label
+                    )}
+                  </TableHead>
                 ))}
-                {actions && (
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    {actions(item)}
-                  </TableCell>
-                )}
+                {actions && <TableHead className="w-[100px]">{t('actions')}</TableHead>}
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {data.map((item, index) => (
+                <TableRow
+                  key={index}
+                  className={cn(onRowClick && 'cursor-pointer hover:bg-muted/50')}
+                  onClick={() => onRowClick?.(item)}
+                >
+                  {columns.map((column) => (
+                    <TableCell key={column.key}>
+                      {column.render ? column.render(item) : String(item[column.key] ?? '-')}
+                    </TableCell>
+                  ))}
+                  {actions && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      {actions(item)}
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       {/* Pagination */}

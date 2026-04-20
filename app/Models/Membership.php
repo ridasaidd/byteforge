@@ -19,6 +19,12 @@ class Membership extends Model
         'tenant_id',
         'role',
         'status',
+        'source',
+        'expires_at',
+    ];
+
+    protected $casts = [
+        'expires_at' => 'datetime',
     ];
 
     /**

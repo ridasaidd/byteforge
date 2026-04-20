@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Models\Membership;
+use App\Services\TenantSupportAccessService;
 use App\Services\TenantRbacService;
 use Closure;
 use Illuminate\Http\Request;
@@ -13,6 +15,7 @@ class EnsureTenantMembership
 {
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
+        private readonly TenantSupportAccessService $tenantSupportAccess,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -29,21 +32,28 @@ class EnsureTenantMembership
 
         $tenantId = (string) tenancy()->tenant->id;
 
-        $isActiveMember = $user->memberships()
+        $this->tenantSupportAccess->expireSupportAccessIfNeeded($user, $tenantId);
+
+        $membership = $user->memberships()
             ->where('tenant_id', $tenantId)
             ->where('status', 'active')
-            ->exists();
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
+            ->first();
 
-        if (! $isActiveMember) {
+        if (! $membership instanceof Membership) {
             abort(403, 'You do not have access to this tenant.');
         }
 
-        $membershipRole = $user->memberships()
-            ->where('tenant_id', $tenantId)
-            ->where('status', 'active')
-            ->value('role');
+        $membershipRole = $membership->role;
 
         $this->tenantRbac->ensureUserRoleSynced($user, $tenantId, $membershipRole);
+
+        if ($membershipRole === TenantSupportAccessService::MEMBERSHIP_ROLE) {
+            $this->tenantRbac->refreshTenantPermissionCache($tenantId);
+        }
 
         return $next($request);
     }

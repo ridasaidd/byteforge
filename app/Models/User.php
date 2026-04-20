@@ -46,6 +46,16 @@ class User extends Authenticatable implements OAuthenticatable, HasMedia
         return $this->hasMany(WebRefreshSession::class);
     }
 
+    public function supportAccessGrants(): HasMany
+    {
+        return $this->hasMany(TenantSupportAccessGrant::class, 'support_user_id');
+    }
+
+    public function grantedSupportAccesses(): HasMany
+    {
+        return $this->hasMany(TenantSupportAccessGrant::class, 'granted_by_user_id');
+    }
+
     /**
      * The attributes that are mass assignable.
      *

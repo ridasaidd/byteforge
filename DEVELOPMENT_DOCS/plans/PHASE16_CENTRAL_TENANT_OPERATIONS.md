@@ -1,7 +1,7 @@
 # Phase 16: Central Tenant Operations
 
 Last updated: April 19, 2026
-Status: Re-scoped plan — inspection shipped, broader expansion deferred
+Status: Re-scoped plan — inspection and temporary support shipped; broader support expansion deferred
 Depends on: Phase 12 tenant runtime hardening, Phase 13 booking system stabilization
 Recommended branch later: feature/phase16-central-tenant-operations
 
@@ -122,7 +122,7 @@ This is the safest first write-capable slice because it is operationally valuabl
 ### 16.3 Temporary Support Access
 
 Add central-managed support access for a tenant by granting an existing central
-support or admin user a restricted, time-bounded tenant membership.
+support user a restricted, time-bounded tenant membership.
 
 Detailed implementation plan:
 
@@ -138,6 +138,11 @@ Recommended characteristics:
 
 This is the preferred next write-capable slice because it solves the real
 support problem without duplicating the tenant app inside central.
+
+Status update:
+
+- temporary read-only support access is implemented on the current Phase 16 branch
+- enhanced remediation support is deferred to [PHASE16_ENHANCED_SUPPORT_REMEDIATION.md](PHASE16_ENHANCED_SUPPORT_REMEDIATION.md)
 
 ### 16.4 Re-evaluate Broader Central Operations Only If Proven Necessary
 

@@ -4,11 +4,13 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
+use App\Services\TenantSupportAccessService;
 use App\Services\TenantRbacService;
 use App\Services\Auth\WebRefreshSessionService;
 use App\Models\WebRefreshSession;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -21,6 +23,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
+        private readonly TenantSupportAccessService $tenantSupportAccess,
         private readonly NormalizeInputFieldsAction $normalizeInputFields,
         private readonly WebRefreshSessionService $webRefreshSessionService,
     ) {}
@@ -32,9 +35,65 @@ class AuthController extends Controller
      */
     private function userPayload(User $user): array
     {
+        $tenantId = $this->currentTenantId();
+
+        if ($tenantId !== null) {
+            return $this->tenantUserPayload($user, $tenantId);
+        }
+
         $user->load('roles.permissions', 'permissions');
 
         $payload = $user->toArray();
+        $payload['avatar'] = $user->avatar_url;
+
+        return $payload;
+    }
+
+    /**
+     * Build a tenant-scoped user payload so the tenant app only sees
+     * permissions and roles for the current tenant team context.
+     *
+     * @return array<string, mixed>
+     */
+    private function tenantUserPayload(User $user, string $tenantId): array
+    {
+        $roles = $user->roles()
+            ->where('roles.guard_name', 'api')
+            ->where('roles.team_id', $tenantId)
+            ->with(['permissions' => function ($query) {
+                $query->select('permissions.id', 'permissions.name', 'permissions.guard_name');
+            }])
+            ->get();
+
+        $directPermissions = $user->getDirectPermissions()
+            ->map(fn ($permission) => [
+                'id' => $permission->id,
+                'name' => $permission->name,
+                'guard_name' => $permission->guard_name,
+            ])
+            ->values()
+            ->all();
+
+        $payload = $user->toArray();
+        $payload['roles'] = $roles
+            ->map(function ($role) {
+                return [
+                    'id' => $role->id,
+                    'name' => $role->name,
+                    'guard_name' => $role->guard_name,
+                    'permissions' => $role->permissions
+                        ->map(fn ($permission) => [
+                            'id' => $permission->id,
+                            'name' => $permission->name,
+                            'guard_name' => $permission->guard_name,
+                        ])
+                        ->values()
+                        ->all(),
+                ];
+            })
+            ->values()
+            ->all();
+        $payload['permissions'] = $directPermissions;
         $payload['avatar'] = $user->avatar_url;
 
         return $payload;
@@ -65,9 +124,15 @@ class AuthController extends Controller
 
     private function hasActiveTenantMembership(User $user, string $tenantId): bool
     {
+        $this->tenantSupportAccess->expireSupportAccessIfNeeded($user, $tenantId);
+
         return $user->memberships()
             ->where('tenant_id', $tenantId)
             ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
             ->exists();
     }
 
@@ -304,7 +369,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => __('Profile updated successfully'),
-            'user' => $user->load('roles', 'permissions'),
+            'user' => $this->userPayload($user),
         ]);
     }
 
@@ -391,12 +456,9 @@ class AuthController extends Controller
             ->withProperties(['attributes' => ['avatar' => $media->file_name]])
             ->log('Avatar uploaded');
 
-        $user->load('roles.permissions', 'permissions');
-        $user->avatar = $user->avatar_url;
-
         return response()->json([
             'message' => __('Avatar uploaded successfully'),
-            'user' => $user,
+            'user' => $this->userPayload($user),
             'avatar_url' => $user->avatar_url,
         ]);
     }
@@ -418,12 +480,9 @@ class AuthController extends Controller
             ->event('updated')
             ->log('Avatar deleted');
 
-        $user->load('roles.permissions', 'permissions');
-        $user->avatar = null;
-
         return response()->json([
             'message' => __('Avatar deleted successfully'),
-            'user' => $user,
+            'user' => $this->userPayload($user),
         ]);
     }
 }

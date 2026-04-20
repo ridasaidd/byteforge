@@ -155,7 +155,7 @@ Route::middleware([
     Route::prefix('auth')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
 
-        Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
+        Route::middleware(['auth:api', 'tenant.membership', 'permission.team'])->group(function () {
             Route::post('logout', [AuthController::class, 'logout']);
             Route::get('user', [AuthController::class, 'user']);
             Route::put('user', [AuthController::class, 'updateProfile']);
@@ -169,7 +169,7 @@ Route::middleware([
     });
 
     // Protected tenant routes - require authentication
-    Route::middleware(['auth:api', 'tenant.membership'])->group(function () {
+    Route::middleware(['auth:api', 'tenant.membership', 'permission.team'])->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
 
         // Active add-ons for this tenant (used by frontend to gate add-on UI)

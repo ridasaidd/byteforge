@@ -1,7 +1,7 @@
 # Phase 16.3: Temporary Support Access Implementation Plan
 
 Last updated: April 19, 2026
-Status: Planned — implementation-ready
+Status: Implemented as bounded read-only support on the current Phase 16 branch
 Depends on: Phase 16 inspection and limited theme activation already on `main`
 Primary parent doc: [PHASE16_CENTRAL_TENANT_OPERATIONS.md](PHASE16_CENTRAL_TENANT_OPERATIONS.md)
 
@@ -10,13 +10,20 @@ Primary parent doc: [PHASE16_CENTRAL_TENANT_OPERATIONS.md](PHASE16_CENTRAL_TENAN
 ## Goal
 
 Allow a central admin or support operator to grant temporary, bounded tenant
-access to an existing named central support or admin user without asking the
+access to an existing named central support user without asking the
 tenant for credentials and without turning the central app into a second full
 tenant CMS.
 
 The granted user should then be able to log in directly on the tenant host
 using their own identity, with a restricted tenant-scoped role and automatic
 expiry.
+
+Current implementation note:
+
+1. the shipped role is intentionally read-only,
+2. expiry and revoke flows are implemented,
+3. owner notification and scheduled expiry cleanup are implemented,
+4. broader elevated remediation is deferred to [PHASE16_ENHANCED_SUPPORT_REMEDIATION.md](PHASE16_ENHANCED_SUPPORT_REMEDIATION.md).
 
 ---
 
@@ -501,7 +508,7 @@ Recommended cleanup behavior:
 
 Recommended answers for first implementation:
 
-1. allow `support` and `admin`, exclude `superadmin` unless explicitly needed,
+  1. current implementation is narrowed to `support` grantees only; revisit `admin` support access later only if it becomes operationally necessary,
 2. grant email is enough for first slice,
 3. fixed hidden role,
 4. immediate start only,
