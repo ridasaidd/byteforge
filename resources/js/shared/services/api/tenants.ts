@@ -4,11 +4,14 @@ import type {
   ActivateThemeData,
   ApiResponse,
   CreateTenantData,
+  GrantTenantSupportAccessData,
   PaginatedResponse,
   Tenant,
   TenantInspectionPage,
   TenantInspectionSummary,
   TenantInspectionTheme,
+  TenantSupportAccessGrant,
+  RevokeTenantSupportAccessData,
   UpdateTenantData,
 } from './types';
 
@@ -33,4 +36,10 @@ export const tenants = {
     http.get<PaginatedResponse<ActivityLog>>(`/superadmin/tenants/${id}/activity-logs`, { params }),
   activateTheme: (id: string, data: ActivateThemeData) =>
     http.post<{ data: TenantInspectionTheme; message: string }>(`/superadmin/tenants/${id}/themes/activate`, data),
+  supportAccess: (id: string) =>
+    http.get<ApiResponse<TenantSupportAccessGrant[]>>(`/superadmin/tenants/${id}/support-access`),
+  grantSupportAccess: (id: string, data: GrantTenantSupportAccessData) =>
+    http.post<{ data: TenantSupportAccessGrant; message: string }>(`/superadmin/tenants/${id}/support-access`, data),
+  revokeSupportAccess: (id: string, grantId: number, data?: RevokeTenantSupportAccessData) =>
+    http.post<{ data: TenantSupportAccessGrant; message: string }>(`/superadmin/tenants/${id}/support-access/${grantId}/revoke`, data ?? {}),
 };
