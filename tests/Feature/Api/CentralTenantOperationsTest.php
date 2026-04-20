@@ -210,4 +210,97 @@ class CentralTenantOperationsTest extends TestCase
             Theme::query()->where('tenant_id', $tenant->id)->where('slug', 'tenant-activation-system-theme')->where('is_active', true)->count(),
         );
     }
+
+    #[Test]
+    public function central_admin_can_grant_list_and_revoke_tenant_support_access(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $supportUser = TestUsers::centralSupport();
+
+        $create = $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenant->id}/support-access", [
+                'support_user_id' => $supportUser->id,
+                'reason' => 'Investigate booking issue',
+                'duration_hours' => 24,
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.support_user.email', $supportUser->email)
+            ->assertJsonPath('data.status', 'active');
+
+        $grantId = (int) $create->json('data.id');
+
+        $this->assertDatabaseHas('memberships', [
+            'user_id' => $supportUser->id,
+            'tenant_id' => $tenant->id,
+            'role' => 'support_access',
+            'status' => 'active',
+            'source' => 'support_access',
+        ]);
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'id' => $grantId,
+            'tenant_id' => $tenant->id,
+            'support_user_id' => $supportUser->id,
+            'status' => 'active',
+        ]);
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/support-access")
+            ->assertOk()
+            ->assertJsonFragment(['email' => $supportUser->email]);
+
+        $revoke = $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenant->id}/support-access/{$grantId}/revoke", [
+                'reason' => 'Issue resolved',
+            ]);
+
+        $revoke->assertOk()
+            ->assertJsonPath('data.status', 'revoked');
+
+        $this->assertDatabaseHas('memberships', [
+            'user_id' => $supportUser->id,
+            'tenant_id' => $tenant->id,
+            'status' => 'revoked',
+            'source' => 'support_access',
+        ]);
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'id' => $grantId,
+            'status' => 'revoked',
+        ]);
+
+        $this->assertTrue(
+            TenantActivity::query()
+                ->where('tenant_id', $tenant->id)
+                ->where('subject_type', \App\Models\User::class)
+                ->where('subject_id', (string) $supportUser->id)
+                ->whereIn('event', ['granted', 'revoked'])
+                ->count() >= 2
+        );
+    }
+
+    #[Test]
+    public function support_and_viewer_cannot_manage_tenant_support_access(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $supportUser = TestUsers::centralSupport();
+
+        $this->actingAsCentralSupport()
+            ->withServerVariables($this->central())
+            ->getJson("/api/superadmin/tenants/{$tenant->id}/support-access")
+            ->assertForbidden();
+
+        $this->actingAsCentralViewer()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenant->id}/support-access", [
+                'support_user_id' => $supportUser->id,
+                'reason' => 'Blocked',
+                'duration_hours' => 4,
+            ])
+            ->assertForbidden();
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
+use App\Services\TenantSupportAccessService;
 use App\Services\TenantRbacService;
 use App\Services\Auth\WebRefreshSessionService;
 use App\Models\WebRefreshSession;
@@ -21,6 +22,7 @@ class AuthController extends Controller
 {
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
+        private readonly TenantSupportAccessService $tenantSupportAccess,
         private readonly NormalizeInputFieldsAction $normalizeInputFields,
         private readonly WebRefreshSessionService $webRefreshSessionService,
     ) {}
@@ -65,9 +67,15 @@ class AuthController extends Controller
 
     private function hasActiveTenantMembership(User $user, string $tenantId): bool
     {
+        $this->tenantSupportAccess->expireSupportAccessIfNeeded($user, $tenantId);
+
         return $user->memberships()
             ->where('tenant_id', $tenantId)
             ->where('status', 'active')
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>', now());
+            })
             ->exists();
     }
 

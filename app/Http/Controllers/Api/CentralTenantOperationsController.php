@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\Tenant;
 use App\Models\TenantActivity;
+use App\Models\TenantSupportAccessGrant;
 use App\Models\Theme;
+use App\Models\User;
+use App\Services\TenantSupportAccessService;
 use App\Services\ThemeService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -16,6 +19,7 @@ class CentralTenantOperationsController extends Controller
 {
     public function __construct(
         private readonly ThemeService $themeService,
+        private readonly TenantSupportAccessService $tenantSupportAccess,
     ) {}
 
     public function summary(Tenant $tenant): JsonResponse
@@ -210,5 +214,129 @@ class CentralTenantOperationsController extends Controller
             'data' => $theme,
             'message' => 'Tenant theme activated successfully',
         ]);
+    }
+
+    public function supportAccess(Tenant $tenant): JsonResponse
+    {
+        $grants = TenantSupportAccessGrant::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->with(['supportUser:id,name,email', 'grantedBy:id,name,email', 'revokedBy:id,name,email'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (TenantSupportAccessGrant $grant) => $this->formatSupportGrant($grant))
+            ->values();
+
+        return response()->json(['data' => $grants]);
+    }
+
+    public function grantSupportAccess(Request $request, Tenant $tenant): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'support_user_id' => 'required|integer|exists:users,id',
+            'reason' => 'required|string|max:1000',
+            'duration_hours' => 'required|integer|min:1|max:168',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $supportUser = User::query()->findOrFail((int) $request->integer('support_user_id'));
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $grant = $this->tenantSupportAccess->grant(
+            $tenant,
+            $supportUser,
+            $actor,
+            (string) $request->input('reason'),
+            (int) $request->integer('duration_hours'),
+        );
+
+        return response()->json([
+            'data' => $this->formatSupportGrant($grant),
+            'message' => 'Temporary support access granted successfully',
+        ], 201);
+    }
+
+    public function revokeSupportAccess(Request $request, Tenant $tenant, TenantSupportAccessGrant $grant): JsonResponse
+    {
+        if ((string) $grant->tenant_id !== (string) $tenant->id) {
+            return response()->json(['message' => 'Support grant not found'], 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'reason' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'Validation failed',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $grant = $this->tenantSupportAccess->revoke(
+            $grant,
+            $actor,
+            $request->filled('reason') ? (string) $request->input('reason') : null,
+        );
+
+        return response()->json([
+            'data' => $this->formatSupportGrant($grant),
+            'message' => 'Temporary support access revoked successfully',
+        ]);
+    }
+
+    private function formatSupportGrant(TenantSupportAccessGrant $grant): array
+    {
+        $isEffective = $grant->status === 'active'
+            && $grant->revoked_at === null
+            && $grant->starts_at !== null
+            && $grant->starts_at->lte(now())
+            && $grant->expires_at !== null
+            && $grant->expires_at->gt(now());
+
+        return [
+            'id' => $grant->id,
+            'tenant_id' => $grant->tenant_id,
+            'status' => $grant->status,
+            'is_effective' => $isEffective,
+            'reason' => $grant->reason,
+            'revoke_reason' => $grant->revoke_reason,
+            'starts_at' => $grant->starts_at?->toISOString(),
+            'expires_at' => $grant->expires_at?->toISOString(),
+            'revoked_at' => $grant->revoked_at?->toISOString(),
+            'last_used_at' => $grant->last_used_at?->toISOString(),
+            'support_user' => $grant->supportUser ? [
+                'id' => $grant->supportUser->id,
+                'name' => $grant->supportUser->name,
+                'email' => $grant->supportUser->email,
+            ] : null,
+            'granted_by' => $grant->grantedBy ? [
+                'id' => $grant->grantedBy->id,
+                'name' => $grant->grantedBy->name,
+                'email' => $grant->grantedBy->email,
+            ] : null,
+            'revoked_by' => $grant->revokedBy ? [
+                'id' => $grant->revokedBy->id,
+                'name' => $grant->revokedBy->name,
+                'email' => $grant->revokedBy->email,
+            ] : null,
+            'created_at' => $grant->created_at?->toISOString(),
+            'updated_at' => $grant->updated_at?->toISOString(),
+        ];
     }
 }

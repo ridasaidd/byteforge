@@ -53,6 +53,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::post('tenants/{tenant}/themes/activate', [CentralTenantOperationsController::class, 'activateTheme'])->middleware('permission:tenants.themes.manage|tenants.manage');
             Route::get('tenants/{tenant}/pages', [CentralTenantOperationsController::class, 'pages'])->middleware('permission:tenants.pages.view|tenants.manage');
             Route::get('tenants/{tenant}/activity-logs', [CentralTenantOperationsController::class, 'activity'])->middleware('permission:tenants.activity.view|tenants.manage');
+            Route::get('tenants/{tenant}/support-access', [CentralTenantOperationsController::class, 'supportAccess'])->middleware('permission:tenants.support.view|tenants.manage');
+            Route::post('tenants/{tenant}/support-access', [CentralTenantOperationsController::class, 'grantSupportAccess'])->middleware('permission:tenants.support.grant|tenants.manage');
+            Route::post('tenants/{tenant}/support-access/{grant}/revoke', [CentralTenantOperationsController::class, 'revokeSupportAccess'])->middleware('permission:tenants.support.revoke|tenants.manage');
 
             // Users management
             Route::get('users', [SuperadminController::class, 'indexUsers'])->middleware('permission:users.view');

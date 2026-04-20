@@ -13,7 +13,7 @@ use Spatie\Permission\Models\Role;
 
 class TenantRbacService
 {
-    public const TENANT_ROLE_NAMES = ['admin', 'support', 'viewer'];
+    public const TENANT_ROLE_NAMES = ['admin', 'support', 'viewer', 'platform_support'];
 
     /**
      * @var array<string, array<int, string>>
@@ -47,6 +47,15 @@ class TenantRbacService
             'templates.view',
             'media.view',
         ],
+        'platform_support' => [
+            'pages.view',
+            'navigation.view',
+            'themes.view',
+            'layouts.view',
+            'templates.view',
+            'media.view',
+            'analytics.view',
+        ],
     ];
 
     /**
@@ -57,6 +66,7 @@ class TenantRbacService
             'admin' => ['bookings.view', 'bookings.manage', 'bookings.cancel'],
             'support' => ['bookings.view'],
             'viewer' => ['bookings.view'],
+            'platform_support' => ['bookings.view'],
         ],
         'payments' => [
             'admin' => ['payments.view', 'payments.manage', 'payments.refund'],
@@ -120,6 +130,7 @@ class TenantRbacService
         return match ($membershipRole) {
             'owner', 'admin' => 'admin',
             'editor', 'support' => 'support',
+            'support_access' => 'platform_support',
             'viewer' => 'viewer',
             null, '' => 'viewer',
             default => $membershipRole,
@@ -131,6 +142,7 @@ class TenantRbacService
         return match ($tenantRole) {
             'admin' => 'owner',
             'support' => 'editor',
+            'platform_support' => 'support_access',
             'viewer' => 'viewer',
             default => $tenantRole,
         };

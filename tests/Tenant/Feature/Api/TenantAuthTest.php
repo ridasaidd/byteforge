@@ -2,6 +2,7 @@
 
 namespace Tests\Tenant\Feature\Api;
 
+use App\Services\TenantSupportAccessService;
 use App\Models\WebRefreshSession;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\Test;
@@ -231,5 +232,72 @@ class TenantAuthTest extends TestCase
             ->getJson($this->tenantUrl('/api/auth/user', 'tenant-one'));
 
         $response->assertForbidden();
+    }
+
+    #[Test]
+    public function central_support_user_can_log_in_to_tenant_with_active_support_access(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $supportUser = TestUsers::centralSupport();
+
+        app(TenantSupportAccessService::class)->grant(
+            $tenant,
+            $supportUser,
+            TestUsers::centralAdmin(),
+            'Investigate tenant issue',
+            24,
+        );
+
+        $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => $supportUser->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('user.email', $supportUser->email);
+
+        $this->assertDatabaseHas('web_refresh_sessions', [
+            'user_id' => $supportUser->id,
+            'tenant_id' => (string) $tenant->id,
+            'host' => $this->tenantHost('tenant-one'),
+            'revoked_at' => null,
+        ]);
+    }
+
+    #[Test]
+    public function central_support_user_cannot_log_in_after_support_access_expires(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $supportUser = TestUsers::centralSupport();
+
+        $grant = app(TenantSupportAccessService::class)->grant(
+            $tenant,
+            $supportUser,
+            TestUsers::centralAdmin(),
+            'Temporary investigation',
+            1,
+        );
+
+        $grant->membership()->update(['expires_at' => now()->subMinute()]);
+        $grant->update(['expires_at' => now()->subMinute()]);
+
+        $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => $supportUser->email,
+            'password' => 'password',
+        ]);
+
+        $response->assertStatus(422);
+
+        $this->assertDatabaseHas('memberships', [
+            'user_id' => $supportUser->id,
+            'tenant_id' => $tenant->id,
+            'status' => 'expired',
+            'source' => 'support_access',
+        ]);
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'id' => $grant->id,
+            'status' => 'expired',
+        ]);
     }
 }
