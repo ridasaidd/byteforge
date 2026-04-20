@@ -23,6 +23,11 @@ class AuthApiTest extends TestCase
         return (string) (config('tenancy.central_domains')[0] ?? 'byteforge.se');
     }
 
+    private function centralUrl(string $path): string
+    {
+        return 'http://'.$this->centralHost().$path;
+    }
+
     private function refreshCookieFromResponse(\Illuminate\Testing\TestResponse $response): ?\Symfony\Component\HttpFoundation\Cookie
     {
         foreach ($response->headers->getCookies() as $cookie) {
@@ -49,7 +54,7 @@ class AuthApiTest extends TestCase
     public function central_api_login_works_with_seeded_user(): void
     {
         // Use the seeded superadmin user (password is 'password')
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson($this->centralUrl('/api/auth/login'), [
             'email' => 'superadmin@byteforge.se',
             'password' => 'password',
         ]);
@@ -65,7 +70,7 @@ class AuthApiTest extends TestCase
         $this->assertSame('/api/auth', $refreshCookie->getPath());
         $this->assertDatabaseHas('web_refresh_sessions', [
             'user_id' => User::query()->where('email', 'superadmin@byteforge.se')->value('id'),
-            'host' => 'byteforge.se',
+            'host' => $this->centralHost(),
             'tenant_id' => null,
             'revoked_at' => null,
         ]);
@@ -74,7 +79,7 @@ class AuthApiTest extends TestCase
     #[Test]
     public function central_api_login_fails_with_invalid_credentials(): void
     {
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson($this->centralUrl('/api/auth/login'), [
             'email' => 'superadmin@byteforge.se',
             'password' => 'wrong-password',
         ]);
@@ -87,7 +92,7 @@ class AuthApiTest extends TestCase
     #[Test]
     public function central_api_login_normalizes_email_before_authentication(): void
     {
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson($this->centralUrl('/api/auth/login'), [
             'email' => "  superadmin@byteforge.se\t ",
             'password' => 'password',
         ]);
@@ -100,7 +105,7 @@ class AuthApiTest extends TestCase
     public function central_api_logout_works_with_real_token(): void
     {
         // First login to get a real token
-        $loginResponse = $this->postJson('/api/auth/login', [
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
             'email' => 'superadmin@byteforge.se',
             'password' => 'password',
         ]);
@@ -120,7 +125,7 @@ class AuthApiTest extends TestCase
     #[Test]
     public function central_api_refresh_returns_token_with_no_store_headers(): void
     {
-        $loginResponse = $this->postJson('/api/auth/login', [
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
             'email' => 'superadmin@byteforge.se',
             'password' => 'password',
         ]);
@@ -161,7 +166,7 @@ class AuthApiTest extends TestCase
     #[Test]
     public function central_api_refresh_can_rotate_session_from_refresh_cookie_without_bearer(): void
     {
-        $loginResponse = $this->postJson('/api/auth/login', [
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
             'email' => 'superadmin@byteforge.se',
             'password' => 'password',
         ]);

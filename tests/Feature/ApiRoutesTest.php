@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
+use Tests\Support\TestUsers;
 
 /**
  * API Routes & RBAC Pilot Test
@@ -168,9 +169,11 @@ class ApiRoutesTest extends TestCase
     public function support_cannot_delete_users(): void
     {
         // support does NOT have 'manage users'
+        $targetUser = TestUsers::centralAdmin();
+
         $this->actingAsCentralSupport()
             ->withServerVariables($this->central())
-            ->deleteJson('/api/superadmin/users/1')
+            ->deleteJson("/api/superadmin/users/{$targetUser->id}")
             ->assertForbidden();
     }
 

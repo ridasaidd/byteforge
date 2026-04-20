@@ -25,15 +25,9 @@ class UserController extends Controller
         return $user->memberships->firstWhere('tenant_id', $tenantId)?->role;
     }
 
-    private function tenantUiRoleFor(User $user): string
+    private function tenantUiRoleFor(?string $membershipRole): string
     {
-        $role = $user->roles->first();
-
-        if ($role && is_string($role->name) && $role->name !== '') {
-            return $role->name;
-        }
-
-        return 'viewer';
+        return $this->tenantRbac->membershipRoleToTenantRole($membershipRole);
     }
 
     /**
@@ -457,7 +451,7 @@ class UserController extends Controller
     private function formatUser(User $user, string $tenantId): array
     {
         $membershipRole = $this->tenantMembershipRoleFor($user, $tenantId);
-        $uiRole = $this->tenantUiRoleFor($user);
+        $uiRole = $this->tenantUiRoleFor($membershipRole);
 
         return [
             'id'         => $user->id,

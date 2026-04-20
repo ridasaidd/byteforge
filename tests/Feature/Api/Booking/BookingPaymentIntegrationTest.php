@@ -73,6 +73,17 @@ class BookingPaymentIntegrationTest extends TestCase
         tenancy()->end();
     }
 
+    private function setBookingPaymentPage(Tenant $tenant, ?int $pageId): void
+    {
+        tenancy()->initialize($tenant);
+
+        $settings = app(TenantSettings::class);
+        $settings->booking_payment_page_id = $pageId;
+        $settings->save();
+
+        tenancy()->end();
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -80,6 +91,7 @@ class BookingPaymentIntegrationTest extends TestCase
         $this->tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
         $this->activateBookingAddon($this->tenant);
         $this->setBookingAutoConfirm($this->tenant, false);
+        $this->setBookingPaymentPage($this->tenant, null);
 
         TenantPaymentProvider::query()
             ->where('tenant_id', (string) $this->tenant->id)

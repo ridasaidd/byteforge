@@ -18,6 +18,9 @@ class PaymentProviderServiceTest extends TestCase
     {
         parent::setUp();
         $this->service = app(PaymentProviderService::class);
+
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->resetProvidersForTenant($tenant);
     }
 
     #[Test]
@@ -117,5 +120,12 @@ class PaymentProviderServiceTest extends TestCase
                 'deactivated_at' => null,
             ]
         );
+    }
+
+    private function resetProvidersForTenant(Tenant $tenant): void
+    {
+        \App\Models\TenantPaymentProvider::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->delete();
     }
 }

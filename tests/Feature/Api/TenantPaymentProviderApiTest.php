@@ -11,6 +11,20 @@ use Tests\TestCase;
 
 class TenantPaymentProviderApiTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Tenant::query()
+            ->whereIn('slug', ['tenant-one', 'tenant-two'])
+            ->get()
+            ->each(function (Tenant $tenant): void {
+                DB::table('tenant_payment_providers')
+                    ->where('tenant_id', (string) $tenant->id)
+                    ->delete();
+            });
+    }
+
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
         return "http://{$slug}.byteforge.se{$path}";

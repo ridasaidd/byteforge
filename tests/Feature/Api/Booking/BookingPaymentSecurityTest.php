@@ -13,6 +13,7 @@ use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
 use App\Models\TenantPaymentProvider;
+use App\Settings\TenantSettings;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -46,6 +47,8 @@ class BookingPaymentSecurityTest extends TestCase
 
         $this->activateBookingAddon($this->tenantOne);
         $this->activateBookingAddon($this->tenantTwo);
+        $this->resetPaymentState($this->tenantOne);
+        $this->resetPaymentState($this->tenantTwo);
     }
 
     private function activateBookingAddon(Tenant $tenant): void
@@ -121,6 +124,21 @@ class BookingPaymentSecurityTest extends TestCase
                 'mode' => 'test',
             ]
         );
+    }
+
+    private function resetPaymentState(Tenant $tenant): void
+    {
+        TenantPaymentProvider::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->delete();
+
+        tenancy()->initialize($tenant);
+
+        $settings = app(TenantSettings::class);
+        $settings->booking_payment_page_id = null;
+        $settings->save();
+
+        tenancy()->end();
     }
 
     private function stripeSignatureHeader(string $payload, string $secret): string

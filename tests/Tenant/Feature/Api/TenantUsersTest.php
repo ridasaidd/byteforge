@@ -25,12 +25,22 @@ class TenantUsersTest extends TestCase
             ->getJson($this->tenantUrl('/api/users', 'tenant-one'));
 
         $response->assertOk();
-        $response->assertJsonPath('data.0.email', 'editor@tenant-one.byteforge.se');
+
+        $editorRow = collect($response->json('data'))->firstWhere('email', 'editor@tenant-one.byteforge.se');
+
+        $this->assertNotNull($editorRow);
+        $this->assertSame('support', $editorRow['roles'][0]['name'] ?? null);
 
         $ownerRow = collect($response->json('data'))->firstWhere('email', 'owner@tenant-one.byteforge.se');
 
         $this->assertNotNull($ownerRow);
         $this->assertSame('admin', $ownerRow['roles'][0]['name'] ?? null);
+
+        $supportAccessRow = collect($response->json('data'))->firstWhere('email', 'admin@byteforge.se');
+
+        if ($supportAccessRow !== null) {
+            $this->assertSame('platform_support', $supportAccessRow['roles'][0]['name'] ?? null);
+        }
     }
 
     #[Test]

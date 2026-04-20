@@ -49,6 +49,11 @@ class PaymentServiceTest extends TestCase
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
 
+        TenantPaymentProvider::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('provider', 'stripe')
+            ->delete();
+
         $this->expectException(\Illuminate\Database\Eloquent\ModelNotFoundException::class);
 
         $this->service->resolveGateway((string) $tenant->id, 'stripe');

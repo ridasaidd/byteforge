@@ -56,8 +56,10 @@ abstract class TestCase extends BaseTestCase
         // (tenant IDs are strings but activity_log.subject_id is bigint)
         \Spatie\Activitylog\Facades\Activity::disableLogging();
 
-        // Clear permission cache to avoid stale data between tests
-        $this->app->make(PermissionRegistrar::class)->forgetCachedPermissions();
+        // Reset permission-team context and clear cached permissions between tests.
+        $permissionRegistrar = $this->app->make(PermissionRegistrar::class);
+        $permissionRegistrar->setPermissionsTeamId(null);
+        $permissionRegistrar->forgetCachedPermissions();
     }
 
     protected function tearDown(): void
@@ -66,6 +68,8 @@ abstract class TestCase extends BaseTestCase
         if (tenancy()->tenant) {
             tenancy()->end();
         }
+
+        $this->app->make(PermissionRegistrar::class)->setPermissionsTeamId(null);
 
         parent::tearDown();
 
