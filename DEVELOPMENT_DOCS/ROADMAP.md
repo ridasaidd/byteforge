@@ -100,6 +100,7 @@ Examples:
 
 - tenant dashboard access refinements
 - post-launch follow-up for enhanced support remediation after real demand is known
+- estimates and quotations add-on for request-first service businesses
 - usage tracking and quotas
 - content/version history
 - navigation drag-and-drop tree UI
@@ -110,6 +111,28 @@ Guidance:
 - prefer inspection and bounded support workflows over broad central cross-tenant CRUD
 - temporary read-only tenant support access is a good pre-launch stopping point; defer broader support remediation until usage pressure exists
 - do not expand central into a second full tenant CMS unless repeated operational needs justify it
+
+### 6. Estimates and Quotes Add-on
+
+Primary doc:
+
+- [plans/PHASE17_ESTIMATES_AND_QUOTES_ADDON.md](plans/PHASE17_ESTIMATES_AND_QUOTES_ADDON.md)
+
+Outcome:
+
+- optional tenant add-on for request-first service estimation workflows
+- guest quote requests, tenant-authored quotes, and later quote-to-booking or quote-to-payment conversions
+
+### 7. Service Aggregator Platform
+
+Primary doc:
+
+- [plans/PHASE18_SERVICE_AGGREGATOR_PLATFORM.md](plans/PHASE18_SERVICE_AGGREGATOR_PLATFORM.md)
+
+Outcome:
+
+- separate cross-tenant discovery product for public service-provider listings
+- consumes curated SaaS data through explicit public APIs or a read model rather than acting as a tenant add-on
 
 ## Out Of Scope For This Roadmap
 
