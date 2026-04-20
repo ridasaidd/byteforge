@@ -9,6 +9,8 @@ use App\Services\TenantSupportAccessService;
 use App\Services\TenantRbacService;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Spatie\Permission\PermissionRegistrar;
 use Symfony\Component\HttpFoundation\Response;
 
 class EnsureTenantMembership
@@ -16,6 +18,7 @@ class EnsureTenantMembership
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
         private readonly TenantSupportAccessService $tenantSupportAccess,
+        private readonly PermissionRegistrar $permissionRegistrar,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
@@ -31,6 +34,7 @@ class EnsureTenantMembership
         }
 
         $tenantId = (string) tenancy()->tenant->id;
+        $this->permissionRegistrar->setPermissionsTeamId($tenantId);
 
         $this->tenantSupportAccess->expireSupportAccessIfNeeded($user, $tenantId);
 
@@ -53,6 +57,13 @@ class EnsureTenantMembership
 
         if ($membershipRole === TenantSupportAccessService::MEMBERSHIP_ROLE) {
             $this->tenantRbac->refreshTenantPermissionCache($tenantId);
+        }
+
+        $refreshedUser = $user->fresh();
+
+        if ($refreshedUser !== null) {
+            Auth::guard('api')->setUser($refreshedUser);
+            $request->setUserResolver(static fn () => $refreshedUser);
         }
 
         return $next($request);

@@ -309,6 +309,7 @@ class TenantRbacService
         ]);
 
         $user->unsetRelation('roles');
+        $user->unsetRelation('permissions');
     }
 
     /**
