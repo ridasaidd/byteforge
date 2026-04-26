@@ -1,7 +1,8 @@
 import { ComponentConfig, FieldLabel } from '@puckeditor/core';
-import { useQuery } from '@tanstack/react-query';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
-import { pages } from '@/shared/services/api/pages';
+import { PagesSelector } from './PagesSelector';
+import { shouldUseSpaNavigation, toRelativePath } from '@/shared/utils/routerNavigation';
 import {
   type BorderValue,
   type BorderRadiusValue,
@@ -71,43 +72,6 @@ export interface ButtonProps {
   hoverBackgroundColor?: ColorValue;
   hoverTextColor?: ColorValue;
   hoverTransform?: string;
-}
-
-// Custom field for page selection
-// eslint-disable-next-line react-refresh/only-export-components
-function PageSelectorField({ field, value, onChange }: { field: { label?: string }; value: string | undefined; onChange: (value: string | undefined) => void }) {
-  const { data: pagesResponse } = useQuery({
-    queryKey: ['pages', 'published'],
-    queryFn: async () => {
-      const response = await pages.list();
-      return response;
-    },
-  });
-
-  const publishedPages = pagesResponse?.data?.filter((p: { status: string }) => p.status === 'published') || [];
-
-  return (
-    <FieldLabel label={field.label || 'Select Page'}>
-      <select
-        value={value || ''}
-        onChange={(e) => onChange(e.target.value)}
-        style={{
-          width: '100%',
-          padding: '8px',
-          border: '1px solid #e5e7eb',
-          borderRadius: '4px',
-          fontSize: '14px',
-        }}
-      >
-        <option value="">-- Select a page --</option>
-        {publishedPages.map((page: { id: number; title: string; slug: string }) => (
-          <option key={page.id} value={`/${page.slug}`}>
-            {page.title} (/{page.slug})
-          </option>
-        ))}
-      </select>
-    </FieldLabel>
-  );
 }
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -279,7 +243,22 @@ function ButtonComponent(props: ButtonProps & { puck?: { dragRef: ((element: Ele
   return (
     <>
       {isEditing && buttonCss && <style>{buttonCss}</style>}
-      {finalHref ? (
+      {isEditing ? (
+        <span
+          ref={puck?.dragRef}
+          className={className}
+        >
+          {text}
+        </span>
+      ) : finalHref && linkType === 'internal' && !openInNewTab && shouldUseSpaNavigation(finalHref) ? (
+        <RouterLink
+          ref={puck?.dragRef}
+          className={className}
+          to={toRelativePath(finalHref)}
+        >
+          {text}
+        </RouterLink>
+      ) : finalHref ? (
         <a
           ref={puck?.dragRef}
           className={className}
@@ -352,7 +331,11 @@ const buttonLinkFields = {
   internalPage: {
     type: 'custom' as const,
     label: 'Select Page',
-    render: PageSelectorField,
+    render: ({ field, value, onChange }: { field: { label?: string }; value: string | undefined; onChange: (value: string | undefined) => void }) => (
+      <FieldLabel label={field.label || 'Select Page'}>
+        <PagesSelector value={value} onChange={(nextValue) => onChange(nextValue || undefined)} />
+      </FieldLabel>
+    ),
   },
   href: {
     type: 'text' as const,

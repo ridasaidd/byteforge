@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\TenantAddonController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\GuestAuthController;
 use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\NavigationController;
@@ -13,6 +14,7 @@ use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\SystemSurfaceController;
 use App\Http\Controllers\Api\TenantPaymentProviderController;
 use App\Http\Controllers\Api\Tenant\MediaFolderController;
 use App\Http\Controllers\Api\TenantController;
@@ -87,6 +89,26 @@ Route::middleware([
         return $renderPublicTenantView();
     });
 
+    Route::get('/guest-portal', function () use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    });
+
+    Route::get('/guest-portal/{bookingId}', function (int $bookingId) use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    })->whereNumber('bookingId');
+
+    Route::get('/my-bookings', function () use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    });
+
+    Route::get('/my-bookings/{bookingId}', function (int $bookingId) use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    })->whereNumber('bookingId');
+
+    Route::get('/guest/magic/{token}', function (string $token) use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    });
+
     Route::get('/pages/{slug}', function (string $slug) use ($renderPublicTenantView) {
         return $renderPublicTenantView($slug);
     })->where('slug', '[a-z0-9\-]+');
@@ -151,6 +173,19 @@ Route::middleware([
         Route::patch('{token}/cancel', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'cancel'])->middleware('throttle:10,1');
     });
 
+    Route::prefix('guest-auth')->middleware('addon:booking')->group(function () {
+        Route::post('request-link', [GuestAuthController::class, 'requestLink'])->middleware('throttle:10,1');
+        Route::post('verify', [GuestAuthController::class, 'verify'])->middleware('throttle:10,1');
+        Route::get('session', [GuestAuthController::class, 'session']);
+        Route::post('logout', [GuestAuthController::class, 'logout'])->middleware('auth.guest');
+
+        Route::middleware('auth.guest')->group(function () {
+            Route::get('bookings', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'index']);
+            Route::get('bookings/{id}', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'show'])->whereNumber('id');
+            Route::patch('bookings/{id}/cancel', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'cancel'])->whereNumber('id');
+        });
+    });
+
     // Tenant auth routes
     Route::prefix('auth')->group(function () {
         Route::post('login', [AuthController::class, 'login'])->middleware('throttle:login');
@@ -168,6 +203,8 @@ Route::middleware([
         Route::post('refresh', [AuthController::class, 'refresh']);
     });
 
+    Route::get('system-surfaces/public/{surfaceKey}', [SystemSurfaceController::class, 'publicShow']);
+
     // Protected tenant routes - require authentication
     Route::middleware(['auth:api', 'tenant.membership', 'permission.team'])->group(function () {
         Route::get('dashboard', [TenantController::class, 'dashboard']);
@@ -182,6 +219,12 @@ Route::middleware([
         Route::put('pages/{page}',    [PageController::class, 'update'])->middleware('permission:pages.edit');
         Route::patch('pages/{page}',  [PageController::class, 'update'])->middleware('permission:pages.edit');
         Route::delete('pages/{page}', [PageController::class, 'destroy'])->middleware('permission:pages.delete');
+
+        Route::get('system-surfaces', [SystemSurfaceController::class, 'index'])->middleware('permission:pages.view');
+        Route::get('system-surfaces/{surfaceKey}', [SystemSurfaceController::class, 'show'])->middleware('permission:pages.view');
+        Route::put('system-surfaces/{surfaceKey}', [SystemSurfaceController::class, 'update'])->middleware('permission:pages.edit');
+        Route::patch('system-surfaces/{surfaceKey}', [SystemSurfaceController::class, 'update'])->middleware('permission:pages.edit');
+        Route::post('system-surfaces/{surfaceKey}/reset', [SystemSurfaceController::class, 'reset'])->middleware('permission:pages.edit');
 
         Route::get('navigations', [NavigationController::class, 'index'])->middleware('permission:navigation.view');
         Route::post('navigations', [NavigationController::class, 'store'])->middleware('permission:navigation.create');

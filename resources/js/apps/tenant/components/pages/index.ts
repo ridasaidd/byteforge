@@ -3,6 +3,8 @@ export { AccessDeniedPage } from './AccessDeniedPage';
 export { LoginPage } from './LoginPage';
 export { ThemesPage } from './ThemesPage';
 export { PagesPage } from './PagesPage';
+export { SystemPagesPage } from './SystemPagesPage';
+export { SystemSurfaceEditorPage } from './SystemSurfaceEditorPage';
 export { PageEditorPage } from './PageEditorPage';
 export { AnalyticsPage } from './AnalyticsPage';
 export { SettingsPage } from './SettingsPage';

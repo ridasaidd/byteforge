@@ -42,11 +42,22 @@ export interface TransitionValue {
   properties: string;
 }
 
+export interface UtilityNavItem {
+  id?: string;
+  label: string;
+  linkType?: 'internal' | 'external';
+  to?: string;
+  href?: string;
+  target?: '_blank' | '_self';
+  order?: number;
+}
+
 export interface NavigationMenuProps {
   id?: string;
 
   navigationId?: number;
   placeholderItems?: MenuItem[];
+  utilityItems?: UtilityNavItem[];
 
   customClassName?: string;
   customId?: string;

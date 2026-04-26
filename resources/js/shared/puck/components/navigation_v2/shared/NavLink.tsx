@@ -1,35 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-
-/**
- * Determines whether a URL points outside the current origin.
- * Anchors (#), mailto:, tel:, and cross-origin http(s) URLs all count as external.
- */
-function isExternalUrl(url: string): boolean {
-  if (!url) return false;
-  if (url.startsWith('#') || url.startsWith('mailto:') || url.startsWith('tel:')) return true;
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    try {
-      return new URL(url).origin !== window.location.origin;
-    } catch {
-      return true;
-    }
-  }
-  return false;
-}
-
-/**
- * Converts an absolute same-origin URL into a relative path+search+hash string
- * so react-router's <Link to="…"> gets the path it needs.
- */
-function toRelativePath(url: string): string {
-  try {
-    const parsed = new URL(url, window.location.origin);
-    return parsed.pathname + parsed.search + parsed.hash;
-  } catch {
-    return url;
-  }
-}
+import { isExternalUrl, shouldUseSpaNavigation, toRelativePath } from '@/shared/utils/routerNavigation';
 
 interface NavLinkProps {
   href?: string;
@@ -60,7 +31,7 @@ export function NavLink({ href, target, rel, className, isEditing, onClick, chil
   const url = href || '#';
 
   // External link or explicit new-tab: full browser navigation
-  if (!href || isExternalUrl(url) || target === '_blank') {
+  if (!href || isExternalUrl(url) || target === '_blank' || !shouldUseSpaNavigation(url)) {
     return (
       <a href={url} target={target} rel={rel} className={className} onClick={onClick}>
         {children}
@@ -70,7 +41,7 @@ export function NavLink({ href, target, rel, className, isEditing, onClick, chil
 
   // Internal link: SPA navigation via react-router — no page reload
   return (
-    <Link to={toRelativePath(url)} className={className}>
+    <Link to={toRelativePath(url)} className={className} onClick={onClick}>
       {children}
     </Link>
   );

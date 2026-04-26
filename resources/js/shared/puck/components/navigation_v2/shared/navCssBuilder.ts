@@ -372,6 +372,7 @@ export function buildNavCss(options: NavCssOptions): string {
   }
 
   parts.push(`.${className} .nav-items { list-style: none; margin: 0; padding: 0; display: contents; }`);
+  parts.push(`.${className} .nav-utility-items { list-style: none; margin: 0 0 0 auto; padding: 0; display: flex; align-items: center; gap: 0.5rem; }`);
   parts.push(`.${className} .nav-item { position: relative; }`);
   parts.push(`.${className} .nav-item-row { display: flex; align-items: center; gap: 0.25rem; }`);
   parts.push(`.${className} .nav-submenu { display: none; position: absolute; top: 100%; left: 0; z-index: 100; list-style: none; margin: 0; padding: 0; }`);
@@ -398,6 +399,7 @@ export function buildNavCss(options: NavCssOptions): string {
 
   appendResponsiveProperty(parts, `.${className} .nav-link`, 'color', options.itemColor);
   appendResponsiveProperty(parts, `.${className} .nav-link`, 'background-color', options.itemBackgroundColor);
+  appendRule(parts, `.${className} .nav-utility-items .nav-link`, [['flex', '0 0 auto']]);
 
   if (options.itemPadding) {
     const paddingCss = generatePaddingCSS(`${className} .nav-link`, options.itemPadding);
@@ -473,7 +475,7 @@ export function buildNavCss(options: NavCssOptions): string {
 
   const mobileCssParts: string[] = [];
   mobileCssParts.push(`.${className} .nav-toggle { display: inline-flex; color: currentColor; background-color: transparent; }`);
-  mobileCssParts.push(`.${className} > .nav-items { display: none !important; }`);
+  mobileCssParts.push(`.${className} > .nav-items, .${className} > .nav-utility-items { display: none !important; }`);
 
   const closeButtonSize = widthValueToCss(options.closeButtonSize) || '36px';
   const closeButtonTop = positionOffsetSideToCss(options.closeButtonOffset, 'top', '12px');
@@ -484,6 +486,7 @@ export function buildNavCss(options: NavCssOptions): string {
     mobileCssParts.push(`.${className} .nav-mobile-drawer { position: fixed; top: 0; left: 0; height: 100dvh; width: ${widthValueToCss(options.drawerWidth) || '280px'}; box-sizing: border-box; transform: translate3d(calc(-100% - 2px), 0, 0); transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.34s; z-index: 1001; overflow-y: auto; background-color: inherit; visibility: hidden; pointer-events: none; will-change: transform; backface-visibility: hidden; contain: layout paint; }`);
     mobileCssParts.push(`.${className} .nav-mobile-drawer.is-open { transform: translate3d(0, 0, 0); visibility: visible; pointer-events: auto; }`);
     mobileCssParts.push(`.${className} .nav-mobile-drawer .nav-items { display: flex; flex-direction: column; padding-top: ${closeButtonClearance}; box-sizing: border-box; }`);
+    mobileCssParts.push(`.${className} .nav-mobile-drawer .nav-utility-items { display: flex; flex-direction: column; margin: 1rem 0 0; padding: 1rem 0 0; list-style: none; }`);
     mobileCssParts.push(`.${className} .nav-mobile-drawer .nav-item { width: 100%; }`);
     mobileCssParts.push(`.${className} .nav-mobile-drawer .nav-close { position: absolute; top: ${closeButtonTop}; right: ${closeButtonRight}; width: ${closeButtonSize}; height: ${closeButtonSize}; border: none; background: transparent; color: inherit; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; }`);
     mobileCssParts.push(`.${className} .nav-backdrop { position: fixed; inset: 0; z-index: 998; display: none; background-color: rgb(0 0 0); opacity: ${options.drawerOverlayOpacity ?? 0.5}; }`);
@@ -493,6 +496,7 @@ export function buildNavCss(options: NavCssOptions): string {
     mobileCssParts.push(`.${className} .nav-mobile-fullscreen { display: none; position: fixed; top: 0; right: 0; bottom: 0; left: 0; width: 100vw; height: 100dvh; z-index: 1001; overflow-y: auto; background-color: inherit; }`);
     mobileCssParts.push(`.${className} .nav-mobile-fullscreen.is-open { display: flex; flex-direction: column; }`);
     mobileCssParts.push(`.${className} .nav-mobile-fullscreen .nav-items { display: flex; flex-direction: column; padding-top: ${closeButtonClearance}; box-sizing: border-box; }`);
+    mobileCssParts.push(`.${className} .nav-mobile-fullscreen .nav-utility-items { display: flex; flex-direction: column; margin: 1rem 0 0; padding: 1rem 0 0; list-style: none; }`);
     mobileCssParts.push(`.${className} .nav-mobile-fullscreen .nav-close { position: absolute; top: ${closeButtonTop}; right: ${closeButtonRight}; width: ${closeButtonSize}; height: ${closeButtonSize}; border: none; background: transparent; color: inherit; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2; }`);
     mobileCssParts.push(`.${className} .nav-backdrop { position: fixed; inset: 0; z-index: 998; display: none; background-color: rgb(0 0 0); opacity: ${options.drawerOverlayOpacity ?? 0.5}; }`);
     mobileCssParts.push(`.${className} .nav-backdrop.is-open { display: block; }`);
@@ -501,6 +505,7 @@ export function buildNavCss(options: NavCssOptions): string {
     mobileCssParts.push(`.${className} .nav-mobile-dropdown { display: none; position: absolute; top: calc(100% + 0.25rem); left: calc(50% - 50vw); z-index: 1000; box-sizing: border-box; background-color: inherit; }`);
     mobileCssParts.push(`.${className} .nav-mobile-dropdown.is-open { display: block; }`);
     mobileCssParts.push(`.${className} .nav-mobile-dropdown .nav-items { display: flex; flex-direction: column; box-sizing: border-box; }`);
+    mobileCssParts.push(`.${className} .nav-mobile-dropdown .nav-utility-items { display: flex; flex-direction: column; margin: 1rem 0 0; padding: 1rem 0 0; list-style: none; }`);
     mobileCssParts.push(`.${className} .nav-mobile-dropdown .nav-submenu { position: static; }`);
 
     appendRule(parts, `.${className} .nav-mobile-dropdown`, [

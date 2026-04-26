@@ -27,6 +27,7 @@ import {
   typographyAdvancedFields,
 } from '../../fields';
 import { NavigationMenuRenderer } from './NavigationMenuRenderer';
+import { PagesSelector } from '../content/PagesSelector';
 import type { MobileVariant, NavigationMenuProps } from './shared/navTypes';
 
 const responsiveColorField = (label: string) => ({
@@ -222,6 +223,7 @@ const baseConditionalResolver = createConditionalResolver(
   [
     'navigationId',
     'placeholderItems',
+    'utilityItems',
     'customClassName',
     'customId',
     'display',
@@ -409,6 +411,40 @@ export const NavigationMenuBlock: ComponentConfig<NavigationMenuProps> = {
             order: { type: 'number', label: 'Order' },
           },
         },
+      },
+    },
+    utilityItems: {
+      type: 'array',
+      label: 'Utility Items',
+      getItemSummary: (item) => item.label || 'Utility Link',
+      arrayFields: {
+        label: { type: 'text', label: 'Label' },
+        linkType: {
+          type: 'select',
+          label: 'Link Type',
+          options: [
+            { label: 'Internal', value: 'internal' },
+            { label: 'External', value: 'external' },
+          ],
+        },
+        to: {
+          type: 'custom',
+          label: 'Internal Route',
+          render: ({ value, onChange }: { value?: string; onChange: (value: string) => void }) => (
+            <PagesSelector value={value} onChange={onChange} />
+          ),
+        },
+        href: { type: 'text', label: 'External URL' },
+        target: {
+          type: 'select',
+          label: 'Target',
+          options: [
+            { label: 'Same Tab', value: '_self' },
+            { label: 'New Tab', value: '_blank' },
+          ],
+        },
+        id: { type: 'text', label: 'ID (Optional)' },
+        order: { type: 'number', label: 'Order' },
       },
     },
 

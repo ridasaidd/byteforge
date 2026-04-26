@@ -4,6 +4,7 @@ import { DesktopNavItem } from './DesktopNavItem';
 interface DesktopNavProps {
   className?: string;
   items: MenuItem[];
+  utilityItems?: MenuItem[];
   isEditing: boolean;
 }
 
@@ -17,12 +18,22 @@ function getItemKey(item: MenuItem, index: number): string {
   return `${base}-${order}-${index}`;
 }
 
-export function DesktopNav({ className, items, isEditing }: DesktopNavProps) {
+export function DesktopNav({ className, items, utilityItems = [], isEditing }: DesktopNavProps) {
   return (
-    <ul className={['nav-items', className || ''].filter(Boolean).join(' ')}>
-      {items.slice().sort(byOrder).map((item, index) => (
-        <DesktopNavItem key={getItemKey(item, index)} item={item} depth={0} isEditing={isEditing} />
-      ))}
-    </ul>
+    <>
+      <ul className={['nav-items', className || ''].filter(Boolean).join(' ')}>
+        {items.slice().sort(byOrder).map((item, index) => (
+          <DesktopNavItem key={getItemKey(item, index)} item={item} depth={0} isEditing={isEditing} />
+        ))}
+      </ul>
+
+      {utilityItems.length > 0 && (
+        <ul className="nav-utility-items" aria-label="Navigation utility links">
+          {utilityItems.slice().sort(byOrder).map((item, index) => (
+            <DesktopNavItem key={getItemKey(item, index)} item={item} depth={0} isEditing={isEditing} />
+          ))}
+        </ul>
+      )}
+    </>
   );
 }

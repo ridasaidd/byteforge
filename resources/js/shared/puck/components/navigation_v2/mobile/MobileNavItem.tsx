@@ -9,6 +9,7 @@ interface MobileNavItemProps {
   item: MenuItem;
   depth: number;
   isEditing: boolean;
+  onNavigate?: () => void;
 }
 
 function byOrder(a: MenuItem, b: MenuItem): number {
@@ -21,7 +22,7 @@ function getItemKey(item: MenuItem, index: number): string {
   return `${base}-${order}-${index}`;
 }
 
-export function MobileNavItem({ item, depth, isEditing }: MobileNavItemProps) {
+export function MobileNavItem({ item, depth, isEditing, onNavigate }: MobileNavItemProps) {
   const [isExpanded, setExpanded] = useState(false);
   const hasChildren = !!(item.children && item.children.length > 0);
   const isExternal = item.target === '_blank';
@@ -60,6 +61,11 @@ export function MobileNavItem({ item, depth, isEditing }: MobileNavItemProps) {
             if (hasChildren && !item.url) {
               event.preventDefault();
               setExpanded((prev) => !prev);
+              return;
+            }
+
+            if (!isEditing && item.url) {
+              onNavigate?.();
             }
           }}
         >
@@ -90,6 +96,7 @@ export function MobileNavItem({ item, depth, isEditing }: MobileNavItemProps) {
               item={child}
               depth={depth + 1}
               isEditing={isEditing}
+              onNavigate={onNavigate}
             />
           ))}
         </ul>

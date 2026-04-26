@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BillingController;
 use App\Http\Controllers\Api\CentralTenantOperationsController;
+use App\Http\Controllers\Api\GuestIdentityController;
 use App\Http\Controllers\Api\PlatformAnalyticsController;
 use App\Http\Controllers\Api\SuperadminController;
 use App\Http\Controllers\Api\ThemeCssController;
@@ -26,6 +27,11 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::patch('locale', [AuthController::class, 'updateLocale'])->middleware('auth:api');
             Route::post('avatar', [AuthController::class, 'uploadAvatar'])->middleware('auth:api');
             Route::delete('avatar', [AuthController::class, 'deleteAvatar'])->middleware('auth:api');
+        });
+
+        Route::prefix('guest')->middleware('service.token')->group(function () {
+            Route::post('issue-magic-link', [GuestIdentityController::class, 'issueMagicLink']);
+            Route::post('verify-magic-token', [GuestIdentityController::class, 'verifyMagicToken']);
         });
 
         // Theme Customization - Central (dogfooding - central uses same theme system as tenants)

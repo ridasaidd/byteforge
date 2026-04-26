@@ -15,6 +15,7 @@ class WebRefreshSession extends Model
      */
     protected $fillable = [
         'user_id',
+        'guest_user_id',
         'tenant_id',
         'host',
         'token_hash',
@@ -38,6 +39,11 @@ class WebRefreshSession extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function guestUser(): BelongsTo
+    {
+        return $this->belongsTo(GuestUser::class);
     }
 
     public function rotatedFrom(): BelongsTo

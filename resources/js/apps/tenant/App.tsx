@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage, BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage } from './components/pages';
+import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, SystemPagesPage, SystemSurfaceEditorPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage, BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { ProfilePage } from '@/apps/central/components/pages/ProfilePage';
 import { AccountSettingsPage } from '@/apps/central/components/pages/AccountSettingsPage';
@@ -65,6 +65,14 @@ function ProtectedRoutes() {
             </PermissionGate>
           )}
         />
+        <Route
+          path="/cms/system-pages/:surfaceKey/edit"
+          element={(
+            <PermissionGate permission="pages.edit">
+              <SystemSurfaceEditorPage />
+            </PermissionGate>
+          )}
+        />
 
         {/* All other routes with Dashboard Layout */}
         <Route
@@ -90,6 +98,14 @@ function ProtectedRoutes() {
                   element={(
                     <PermissionGate permission="pages.view">
                       <PagesPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/system-pages"
+                  element={(
+                    <PermissionGate permission="pages.view">
+                      <SystemPagesPage />
                     </PermissionGate>
                   )}
                 />

@@ -19,7 +19,7 @@ import {
   DialogFooter,
 } from '@/shared/components/ui/dialog';
 import { navigations, type Navigation, type MenuItem, type CreateNavigationData } from '@/shared/services/api/navigations';
-import { pages } from '@/shared/services/api/pages';
+import { pages, tenantPages } from '@/shared/services/api/pages';
 import type { Page } from '@/shared/services/api/types';
 import { toast } from 'sonner';
 import {
@@ -50,6 +50,10 @@ interface NavigationEditorProps {
   navigation: Navigation | null;
   onSave: () => void;
   onCancel: () => void;
+}
+
+function isTenantCmsContext(): boolean {
+  return typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
 }
 
 interface SortableMenuItemProps {
@@ -243,7 +247,9 @@ export function NavigationEditor({ navigation, onSave, onCancel }: NavigationEdi
     const fetchPages = async () => {
       try {
         setIsLoadingPages(true);
-        const response = await pages.list({ status: 'published' });
+        const response = isTenantCmsContext()
+          ? await tenantPages.list({ status: 'published' })
+          : await pages.list({ status: 'published' });
         setPublishedPages(response.data);
       } catch (error) {
         console.error('Failed to fetch pages:', error);

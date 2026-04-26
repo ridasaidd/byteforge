@@ -1,9 +1,32 @@
 # Phase 15: Guest Authentication System
 
-Last updated: April 7, 2026
-Status: Planned — not yet started
+Last updated: April 26, 2026
+Status: Implemented on `feature/phase15-guest-auth` — merge pending
 Depends on: Phase 13 (Booking), `plans/AUTH_HTTPONLY_MIGRATION_PLAN.md` migration shipped
-Recommended branch later: `feature/phase15-guest-auth`
+Recommended branch: `feature/phase15-guest-auth`
+
+---
+
+## Current Branch Status
+
+This document started as the Phase 15 design spec. The guest-auth stack it
+describes is now substantially implemented on the current branch.
+
+Implemented on `feature/phase15-guest-auth`:
+
+- central `guest_users` identity and magic-link issuance/verification
+- tenant guest session creation, bootstrap rotation, and logout
+- booking linkage by email and direct `guest_user_id` attachment for matching authenticated bookings
+- public guest portal UI and magic-link handoff
+- canonical guest portal route at `/guest-portal` with `/my-bookings` kept as a compatibility alias
+- focused backend, frontend, and Playwright coverage
+
+Still intentionally out of scope for Phase 15:
+
+- passwords
+- customer registration
+- forgot/reset password flows
+- cross-tenant customer SSO or customer-account architecture
 
 ---
 
@@ -192,7 +215,7 @@ Tenant then:
 
 ### App Bootstrap
 
-On guest portal load (`/my-bookings`):
+On guest portal load (`/guest-portal`, with `/my-bookings` kept as an alias):
 
 ```
 GET /guest-auth/session
@@ -200,7 +223,9 @@ GET /guest-auth/session
 
 Reads `byteforge_guest_refresh` cookie. Validates the refresh session (not expired, not revoked, host matches, tenant matches). Rotates refresh session and cookie. Returns `{ guest, token }`.
 
-If no cookie or invalid: returns 401. Guest portal shows a "view your bookings" email prompt.
+If no cookie or the refresh session is invalid: returns `{ guest: null, token: null }`.
+The guest portal then shows the email prompt without treating the public empty
+state as a runtime error.
 
 ### Logout
 
@@ -226,7 +251,7 @@ This is a one-time migration per email address. It is idempotent — re-running 
 
 ---
 
-## Guest Portal — `/my-bookings`
+## Guest Portal — `/guest-portal` (compatibility alias `/my-bookings`)
 
 A fixed system route on each tenant, not a Puck page type.
 
@@ -252,7 +277,10 @@ POST  /guest-auth/request-link        (public, throttled)
 POST  /guest-auth/verify              (public, throttled)
 GET   /guest-auth/session             (public, reads guest refresh cookie)
 POST  /guest-auth/logout              (auth:guest)
-GET   /my-bookings                    (served as SPA shell, guest auth enforced client-side)
+GET   /guest-portal                   (served as SPA shell, guest auth enforced client-side)
+GET   /guest-portal/:bookingId        (served as SPA shell, guest auth enforced client-side)
+GET   /my-bookings                    (compatibility alias)
+GET   /my-bookings/:bookingId         (compatibility alias)
 GET   /guest/magic/{token}            (SPA shell route, handled client-side)
 ```
 
@@ -288,6 +316,10 @@ This does not use the Passport guard. It is a dedicated lightweight middleware.
 ---
 
 ## Implementation Phases
+
+Historical note: the checklist below was the original planned breakdown. The
+current branch now contains substantial implementation across 15.1 through
+15.7, with customer-account work still explicitly deferred.
 
 ### Phase 15.1 — Central Guest Identity
 
@@ -345,6 +377,13 @@ Playwright:
 - Reload persists session via refresh cookie
 - Logout clears session
 - Anonymous booking → "save to account" flow → linked booking appears in portal
+
+Current branch focused validation includes:
+
+- `php artisan test tests/Tenant/Feature/Api/TenantGuestAuthTest.php`
+- `php artisan test tests/Tenant/Feature/Api/TenantGuestBookingsTest.php`
+- `npm run test:run -- resources/js/apps/public/components/__tests__/guestPortal.service.test.ts resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx`
+- `PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.byteforge.se npm run test:e2e -- tests/e2e/public-navigation-utility-links.spec.ts`
 
 ---
 

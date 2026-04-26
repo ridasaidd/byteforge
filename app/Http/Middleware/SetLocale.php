@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Symfony\Component\HttpFoundation\Response;
+use Throwable;
 
 class SetLocale
 {
@@ -17,9 +18,14 @@ class SetLocale
         $locale = 'en';
 
         $user = null;
+        $bearerToken = (string) $request->bearerToken();
 
-        if ($request->bearerToken()) {
-            $user = $request->user('api');
+        if ($bearerToken !== '' && substr_count($bearerToken, '.') === 2) {
+            try {
+                $user = $request->user('api');
+            } catch (Throwable) {
+                $user = null;
+            }
         }
 
         if ($user && ! empty($user->preferred_locale)) {

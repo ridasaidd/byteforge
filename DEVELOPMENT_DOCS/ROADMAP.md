@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-04-19
+Last verified: 2026-04-26
 
 This roadmap is intentionally future-facing. Completed work should live in
 [CURRENT_STATUS.md](CURRENT_STATUS.md) and archived phase documents, not here.
@@ -11,8 +11,8 @@ This roadmap is intentionally future-facing. Completed work should live in
 
 - `main` already contains Phases 9 through 14.
 - Booking and payment-booking integration are implemented.
-- Guest authentication is still future work.
-- Auth storage migration is still future work.
+- The active `feature/phase15-guest-auth` branch contains implemented Phase 15 work and early Phase 19 guest-portal/system-surface slices pending merge.
+- Customer accounts, password recovery, and cross-tenant SSO remain future work.
 
 ## Next Up
 
@@ -81,6 +81,12 @@ Outcome:
 - retroactive linking of anonymous bookings by email identity
 - guest session model aligned with the HttpOnly auth migration
 
+Current branch state:
+
+- implemented on `feature/phase15-guest-auth` and pending merge into `main`
+- canonical customer-facing route is `/guest-portal`, with `/my-bookings` kept as a compatibility alias
+- no passwords, registration, forgot-password, reset-password, or cross-tenant customer accounts in this phase
+
 ### 4. Booking Product Follow-Ups
 
 Primary docs:
@@ -133,6 +139,24 @@ Outcome:
 
 - separate cross-tenant discovery product for public service-provider listings
 - consumes curated SaaS data through explicit public APIs or a read model rather than acting as a tenant add-on
+
+### 8. System Pages / System Surfaces
+
+Primary doc:
+
+- [plans/PHASE19_SYSTEM_SURFACES.md](plans/PHASE19_SYSTEM_SURFACES.md)
+
+Outcome:
+
+- dedicated tenant CMS area for route-bound system pages such as login, forgot password, reset password, and guest portal
+- fixed application logic with Puck-backed presentation editing and generated storefront-safe CSS
+- widget-capable authenticated guest portal shell for bookings and future add-ons
+
+Current branch state:
+
+- system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on the active Phase 15 branch
+- `register`, `forgot_password`, and `reset_password` remain deferred implementation work
+- customer-account pages are not part of the delivered Phase 15 guest-auth slice
 
 ## Out Of Scope For This Roadmap
 

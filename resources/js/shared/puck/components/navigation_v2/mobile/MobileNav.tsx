@@ -7,6 +7,7 @@ import { DropdownNav } from './DropdownNav';
 interface MobileNavProps {
   className?: string;
   items: MenuItem[];
+  utilityItems?: MenuItem[];
   isEditing: boolean;
   isOpen: boolean;
   onClose: () => void;

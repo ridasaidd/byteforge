@@ -20,6 +20,12 @@ export function useTenantMenuItems(): MenuItem[] {
       permission: 'pages.view',
     },
     {
+      label: t('menu_system_pages'),
+      path: '/cms/system-pages',
+      icon: FileText,
+      permission: 'pages.view',
+    },
+    {
       label: t('menu_analytics'),
       path: '/cms/analytics',
       icon: BarChart2,

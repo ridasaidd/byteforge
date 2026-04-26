@@ -36,6 +36,7 @@ class Booking extends Model
         'tenant_id',
         'service_id',
         'resource_id',
+        'guest_user_id',
         'customer_name',
         'customer_email',
         'customer_phone',
@@ -100,6 +101,11 @@ class Booking extends Model
         return $this->belongsTo(Payment::class, 'payment_id');
     }
 
+    public function guestUser(): BelongsTo
+    {
+        return $this->belongsTo(GuestUser::class, 'guest_user_id');
+    }
+
     public function parentBooking(): BelongsTo
     {
         return $this->belongsTo(self::class, 'parent_booking_id');
@@ -138,5 +144,10 @@ class Booking extends Model
     public function scopeConfirmed(Builder $query): Builder
     {
         return $query->where('status', self::STATUS_CONFIRMED);
+    }
+
+    public function scopeForGuest(Builder $query, int $guestUserId): Builder
+    {
+        return $query->where('guest_user_id', $guestUserId);
     }
 }

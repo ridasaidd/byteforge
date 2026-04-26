@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\Booking;
 use App\Actions\Api\SanitizeBookingCustomerInputAction;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\GuestUser;
 use App\Models\Payment;
 use App\Models\Page;
 use App\Models\BookingResource;
@@ -14,6 +15,8 @@ use App\Models\BookingService;
 use App\Models\TenantPaymentProvider;
 use App\Services\BookingAvailabilityService;
 use App\Services\BookingPaymentService;
+use App\Services\Guest\BookingGuestLinkingService;
+use App\Services\Guest\GuestSessionResolver;
 use App\Settings\TenantSettings;
 use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -45,6 +48,8 @@ class PublicBookingController extends Controller
         private readonly BookingAvailabilityService $availability,
         private readonly BookingPaymentService $bookingPayment,
         private readonly SanitizeBookingCustomerInputAction $sanitizeBookingCustomerInput,
+        private readonly BookingGuestLinkingService $bookingGuestLinkingService,
+        private readonly GuestSessionResolver $guestSessionResolver,
     ) {}
 
     // ─── GET /api/public/booking/config ─────────────────────────────────────────
@@ -306,6 +311,7 @@ class PublicBookingController extends Controller
         $resource = BookingResource::forTenant($tenantId)->findOrFail((int) $validated['resource_id']);
         $tz       = $this->tenantTimezone();
         $settings = $this->tenantSettings();
+        $guestUser = $this->resolveAuthenticatedGuest($request);
 
         // Resolve starts_at / ends_at depending on mode
         if ($service->booking_mode === BookingService::MODE_SLOT) {
@@ -328,7 +334,7 @@ class PublicBookingController extends Controller
         try {
             $booking = DB::transaction(function () use (
                 $resource, $service, $startsAt, $endsAt,
-                $validated, $tenantId, $tz, $settings,
+                $validated, $tenantId, $tz, $settings, $guestUser,
             ) {
                 // Lock resource row to prevent concurrent double-booking
                 BookingResource::where('id', $resource->id)->lockForUpdate()->first();
@@ -366,6 +372,7 @@ class PublicBookingController extends Controller
                     'tenant_id'       => $tenantId,
                     'service_id'      => $service->id,
                     'resource_id'     => $resource->id,
+                    'guest_user_id'   => $this->bookingGuestLinkingService->guestUserIdForCustomerEmail($guestUser, $validated['customer_email']),
                     'customer_name'   => $validated['customer_name'],
                     'customer_email'  => $validated['customer_email'],
                     'customer_phone'  => $validated['customer_phone'] ?? null,
@@ -449,6 +456,7 @@ class PublicBookingController extends Controller
         $service  = BookingService::forTenant($tenantId)->findOrFail((int) $validated['service_id']);
         $resource = BookingResource::forTenant($tenantId)->findOrFail((int) $validated['resource_id']);
         $tz       = $this->tenantTimezone();
+        $guestUser = $this->resolveAuthenticatedGuest($request);
 
         if ($service->booking_mode === BookingService::MODE_SLOT) {
             if (empty($validated['starts_at'])) {
@@ -468,7 +476,7 @@ class PublicBookingController extends Controller
 
         try {
             $booking = DB::transaction(function () use (
-                $resource, $service, $startsAt, $endsAt, $validated, $tenantId, $tz,
+                $resource, $service, $startsAt, $endsAt, $validated, $tenantId, $tz, $guestUser,
             ) {
                 BookingResource::where('id', $resource->id)->lockForUpdate()->first();
 
@@ -497,6 +505,7 @@ class PublicBookingController extends Controller
                     'tenant_id'        => $tenantId,
                     'service_id'       => $service->id,
                     'resource_id'      => $resource->id,
+                    'guest_user_id'    => $this->bookingGuestLinkingService->guestUserIdForCustomerEmail($guestUser, $validated['customer_email']),
                     'customer_name'    => $validated['customer_name'],
                     'customer_email'   => $validated['customer_email'],
                     'customer_phone'   => $validated['customer_phone'] ?? null,
@@ -748,6 +757,13 @@ class PublicBookingController extends Controller
         }
 
         return url($path) . '#token=' . $token;
+    }
+
+    private function resolveAuthenticatedGuest(Request $request): ?GuestUser
+    {
+        $resolved = $this->guestSessionResolver->resolve($request);
+
+        return $resolved['guestUser'] ?? null;
     }
 
     private function tenantDomain(): string

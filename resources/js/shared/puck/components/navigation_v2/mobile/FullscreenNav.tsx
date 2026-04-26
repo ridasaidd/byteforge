@@ -7,6 +7,7 @@ import { MobileNavItem } from './MobileNavItem';
 interface FullscreenNavProps {
   className?: string;
   items: MenuItem[];
+  utilityItems?: MenuItem[];
   isEditing: boolean;
   isOpen: boolean;
   onClose: () => void;
@@ -23,7 +24,7 @@ function getItemKey(item: MenuItem, index: number): string {
   return `${base}-${order}-${index}`;
 }
 
-export function FullscreenNav({ className, items, isEditing, isOpen, onClose, closeButtonIconSize = 20 }: FullscreenNavProps) {
+export function FullscreenNav({ className, items, utilityItems = [], isEditing, isOpen, onClose, closeButtonIconSize = 20 }: FullscreenNavProps) {
   const registerCloseButton = useCallback((element: HTMLButtonElement | null) => {
     if (!isEditing || !element) return;
     registerOverlayPortal(element);
@@ -41,9 +42,17 @@ export function FullscreenNav({ className, items, isEditing, isOpen, onClose, cl
 
       <ul className="nav-items">
         {items.slice().sort(byOrder).map((item, index) => (
-          <MobileNavItem key={getItemKey(item, index)} item={item} depth={0} isEditing={isEditing} />
+          <MobileNavItem key={getItemKey(item, index)} item={item} depth={0} isEditing={isEditing} onNavigate={onClose} />
         ))}
       </ul>
+
+      {utilityItems.length > 0 && (
+        <ul className="nav-utility-items" aria-label="Navigation utility links">
+          {utilityItems.slice().sort(byOrder).map((item, index) => (
+            <MobileNavItem key={getItemKey(item, index)} item={item} depth={0} isEditing={isEditing} onNavigate={onClose} />
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

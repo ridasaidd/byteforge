@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'tenant.membership' => \App\Http\Middleware\EnsureTenantMembership::class,
             'permission.team' => \App\Http\Middleware\SetPermissionsTeamContext::class,
             'addon' => \App\Http\Middleware\EnsureAddon::class,
+            'service.token' => \App\Http\Middleware\EnsureServiceToken::class,
+            'auth.guest' => \App\Http\Middleware\AuthenticateGuest::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

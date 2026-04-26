@@ -6,7 +6,7 @@ import { usePuckEditMode, useTheme, useWindowWidth } from '@/shared/hooks';
 import { DesktopNav } from './desktop/DesktopNav';
 import { MobileNav } from './mobile/MobileNav';
 import { buildNavCss } from './shared/navCssBuilder';
-import { MOBILE_BREAKPOINTS, type NavigationMenuProps } from './shared/navTypes';
+import { MOBILE_BREAKPOINTS, type NavigationMenuProps, type UtilityNavItem } from './shared/navTypes';
 import { useNavData } from './shared/useNavData';
 
 interface PuckContext {
@@ -145,6 +145,29 @@ function resolveResponsiveFontSize(
   return resolved as ResponsiveFontSizeValue;
 }
 
+function normalizeUtilityItems(items: UtilityNavItem[] | undefined) {
+  if (!items || items.length === 0) return [];
+
+  return items
+    .filter((item) => item.label && (item.to || item.href))
+    .flatMap((item, index) => {
+      const linkType = item.linkType === 'external' ? 'external' : 'internal';
+      const url = linkType === 'external' ? item.href : (item.to ?? item.href);
+
+      if (!url) {
+        return [];
+      }
+
+      return [{
+        id: item.id || `utility-item-${index}`,
+        label: item.label,
+        url,
+        target: item.target,
+        order: item.order ?? index,
+      }];
+    });
+}
+
 // eslint-disable-next-line react-refresh/only-export-components
 export function NavigationMenuRenderer(props: NavigationMenuProps & { puck?: PuckContext }) {
   const {
@@ -172,6 +195,7 @@ export function NavigationMenuRenderer(props: NavigationMenuProps & { puck?: Puc
 
   const normalizedNavigationId = normalizeNavigationId(navigationId);
   const { items, loading } = useNavData(normalizedNavigationId, placeholderItems, puck?.metadata);
+  const utilityItems = useMemo(() => normalizeUtilityItems(props.utilityItems), [props.utilityItems]);
 
   const breakpointWidth = MOBILE_BREAKPOINTS[mobileBreakpoint] ?? MOBILE_BREAKPOINTS.md;
   const isMobile = width < breakpointWidth;
@@ -332,7 +356,7 @@ export function NavigationMenuRenderer(props: NavigationMenuProps & { puck?: Puc
     return <div ref={puck?.dragRef} className="text-gray-400">Loading menu…</div>;
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && utilityItems.length === 0) {
     return (
       <div ref={puck?.dragRef} className="p-2 border border-dashed text-gray-400 text-sm">
         Select a navigation menu
@@ -367,11 +391,12 @@ export function NavigationMenuRenderer(props: NavigationMenuProps & { puck?: Puc
         />
       )}
 
-      <DesktopNav items={items} isEditing={isEditing} />
+      <DesktopNav items={items} utilityItems={utilityItems} isEditing={isEditing} />
 
       <MobileNav
         mobileVariant={mobileVariant}
         items={items}
+        utilityItems={utilityItems}
         isEditing={isEditing}
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}

@@ -20,6 +20,7 @@ class BookingFactory extends Factory
             'tenant_id' => null,
             'service_id' => BookingService::factory(),
             'resource_id' => BookingResource::factory(),
+            'guest_user_id' => null,
             'customer_name' => fake()->name(),
             'customer_email' => fake()->safeEmail(),
             'customer_phone' => fake()->optional()->phoneNumber(),

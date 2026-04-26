@@ -2,8 +2,12 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-04-20
+Last verified: 2026-04-26
 Primary branch: `main`
+
+Active feature branch:
+
+- `feature/phase15-guest-auth` contains implemented Phase 15 work and early Phase 19 guest-portal/system-surface slices pending merge
 
 ## Snapshot
 
@@ -11,7 +15,8 @@ Primary branch: `main`
   tenant dashboards, a Puck-based page builder, themes, media, analytics,
   payments, and booking.
 - Phases 9 through 14 are implemented on `main`.
-- Phase 15 guest authentication is not implemented yet.
+- Phase 15 guest authentication is implemented on `feature/phase15-guest-auth` and pending merge into `main`.
+- Phase 19 system-surface foundations are partially implemented on `feature/phase15-guest-auth`, specifically tenant login and guest-portal runtime slices.
 - The HttpOnly auth migration is underway in slices and now uses the hybrid
   browser model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
@@ -44,16 +49,18 @@ Primary branch: `main`
 - Phase 12 Tenant Runtime Readiness: complete on `main`
 - Phase 13 Booking System: implemented on `main`
 - Phase 14 Payment x Booking Integration: implemented on `main`
+- Phase 15 Guest Authentication: implemented on `feature/phase15-guest-auth`, merge pending
+- Phase 19 System Surfaces: partially implemented on `feature/phase15-guest-auth` (guest portal + tenant login slices)
 
 ## Current Recommended Work Order
 
-1. Keep the documentation baseline accurate and authoritative.
+1. Finalize doc sync for the current Phase 15 branch, then commit, push, and merge it before starting the next phase.
 2. Continue the shared, field-family input normalization rollout without
   expanding it into blanket middleware.
 3. Keep extending normalization only to suitable human-input fields while
   leaving passwords, tokens, signatures, and provider payloads untouched.
 4. Continue with HttpOnly auth migration closeout and operational hardening.
-5. Build guest authentication after the auth/session foundation is ready.
+5. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
 6. Do not expand support beyond the current bounded read-only workflow before launch.
 
 ## Current Reality Checks
@@ -64,8 +71,13 @@ These are the main state corrections that matter for future work.
 - Payment x booking integration is not future design only; it already exists in
   production code, including booking payment creation, webhook confirmation,
   and refund-aware cancellation flows.
-- Guest authentication does not yet exist in routes, middleware, or backend
-  domain code.
+- Guest authentication exists on the active Phase 15 branch across routes,
+  middleware, backend domain code, public UI, and focused tests.
+- The current guest-auth implementation is passwordless. It does not imply
+  customer registration, forgot-password, reset-password, or cross-tenant SSO.
+- System-surface keys for `register`, `forgot_password`, and `reset_password`
+  are present as future route-owned surface types, but those runtime flows are
+  not implemented on the current branch.
 - The docs previously drifted on these points, so agents should trust this file
   over older phase headers unless a newer canonical document says otherwise.
 
@@ -89,7 +101,7 @@ These remain the main booking product gaps still worth tracking:
   cookie-authenticated API model
 - shared normalization rollout is still partial; it should stay explicit and
   field-family scoped
-- guest authentication is still future work
+- customer-account and SSO work is still future work
 
 ### Platform support follow-ups
 
@@ -110,6 +122,20 @@ npm run test:run -- resources/js/apps/tenant/config/__tests__/menu.test.tsx reso
 
 ```bash
 php artisan test tests/Feature/Api/Booking/PublicBookingApiTest.php tests/Feature/Api/Booking/BookingHoldTest.php tests/Feature/Api/Booking/BookingCmsApiTest.php
+```
+
+Recent guest-auth/system-surface verification on the active Phase 15 branch:
+
+```bash
+php artisan test tests/Tenant/Feature/Api/TenantGuestAuthTest.php tests/Tenant/Feature/Api/TenantGuestBookingsTest.php tests/Tenant/Feature/Api/TenantSystemSurfaceApiTest.php
+```
+
+```bash
+npm run test:run -- resources/js/apps/public/components/__tests__/guestPortal.service.test.ts resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx resources/js/shared/utils/__tests__/routerNavigation.test.ts
+```
+
+```bash
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.byteforge.se npm run test:e2e -- tests/e2e/public-navigation-utility-links.spec.ts
 ```
 
 ## Read Next

@@ -2,6 +2,7 @@ import { ComponentConfig } from '@puckeditor/core';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import { PagesSelector } from './PagesSelector';
+import { shouldUseSpaNavigation } from '@/shared/utils/routerNavigation';
 import {
   ColorValue,
   BorderValue,
@@ -215,7 +216,7 @@ function LinkComponent({
         >
           {label}
         </a>
-      ) : (
+      ) : shouldUseSpaNavigation(destination) ? (
         // Storefront: internal link with React Router
         <RouterLink
           className={className}
@@ -224,6 +225,16 @@ function LinkComponent({
         >
           {label}
         </RouterLink>
+      ) : (
+        <a
+          className={className}
+          {...(elementId && { id: elementId })}
+          href={destination}
+          target={target}
+          rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+        >
+          {label}
+        </a>
       )}
       {customCss && <style>{customCss}</style>}
     </>

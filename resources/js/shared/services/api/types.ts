@@ -402,6 +402,30 @@ export interface UpdatePageData {
   is_homepage?: boolean;
   sort_order?: number;
 }
+
+export interface SystemSurface extends Record<string, unknown> {
+  id: number;
+  tenant_id: string | null;
+  surface_key: 'tenant_login' | 'register' | 'forgot_password' | 'reset_password' | 'guest_portal';
+  title: string;
+  route_path: string;
+  surface_type: 'auth' | 'guest_portal';
+  puck_data: Record<string, unknown> | null;
+  settings: Record<string, unknown> | null;
+  is_enabled: boolean;
+  sort_order: number;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UpdateSystemSurfaceData {
+  puck_data?: Record<string, unknown> | null;
+  settings?: Record<string, unknown> | null;
+  is_enabled?: boolean;
+  published_at?: string | null;
+}
+
 export interface ThemeData {
   name?: string;
   version?: string;
