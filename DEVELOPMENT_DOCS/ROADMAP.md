@@ -9,9 +9,9 @@ This roadmap is intentionally future-facing. Completed work should live in
 
 ## Planning Assumptions
 
-- `main` already contains Phases 9 through 14.
+- `main` already contains Phases 9 through 15.
 - Booking and payment-booking integration are implemented.
-- The active `feature/phase15-guest-auth` branch contains implemented Phase 15 work and early Phase 19 guest-portal/system-surface slices pending merge.
+- `main` now also contains the implemented Phase 15 guest-auth stack and early Phase 19 guest-portal/system-surface slices.
 - Customer accounts, password recovery, and cross-tenant SSO remain future work.
 
 ## Next Up
@@ -81,9 +81,9 @@ Outcome:
 - retroactive linking of anonymous bookings by email identity
 - guest session model aligned with the HttpOnly auth migration
 
-Current branch state:
+Current state on `main`:
 
-- implemented on `feature/phase15-guest-auth` and pending merge into `main`
+- implemented on `main`
 - canonical customer-facing route is `/guest-portal`, with `/my-bookings` kept as a compatibility alias
 - no passwords, registration, forgot-password, reset-password, or cross-tenant customer accounts in this phase
 
@@ -100,7 +100,34 @@ Likely focus areas:
 - notification consistency improvements
 - ongoing security hardening and focused regression coverage
 
-### 5. Platform and CMS Enhancements
+### 5. Environment Hardening and Production-Like Staging
+
+Primary doc:
+
+- [DEV_STAGING_READINESS.md](DEV_STAGING_READINESS.md)
+
+Supporting docs:
+
+- [ENVIRONMENT_MATRIX.md](ENVIRONMENT_MATRIX.md)
+- [STAGING_DEPLOYMENT_PLAN.md](STAGING_DEPLOYMENT_PLAN.md)
+
+Outcome:
+
+- shared development and staging environments with explicit domains,
+  production-like security posture, and repeatable deployment/testing flow
+
+Likely focus areas:
+
+- remove hardcoded environment-domain assumptions from runtime and tooling
+- align env examples with the actual MySQL-backed shared development setup
+- introduce MailHog or equivalent QA-visible mail handling for development
+- make queue worker and scheduler expectations explicit per environment
+- stand up a Tailscale-restricted, HTTPS-enabled staging environment on VPS-like
+  infrastructure
+- add controlled deployment from tested `main` commits into staging with a
+  post-deploy smoke pass
+
+### 6. Platform and CMS Enhancements
 
 Examples:
 
@@ -118,7 +145,7 @@ Guidance:
 - temporary read-only tenant support access is a good pre-launch stopping point; defer broader support remediation until usage pressure exists
 - do not expand central into a second full tenant CMS unless repeated operational needs justify it
 
-### 6. Estimates and Quotes Add-on
+### 7. Estimates and Quotes Add-on
 
 Primary doc:
 
@@ -129,7 +156,7 @@ Outcome:
 - optional tenant add-on for request-first service estimation workflows
 - guest quote requests, tenant-authored quotes, and later quote-to-booking or quote-to-payment conversions
 
-### 7. Service Aggregator Platform
+### 8. Service Aggregator Platform
 
 Primary doc:
 
@@ -140,7 +167,7 @@ Outcome:
 - separate cross-tenant discovery product for public service-provider listings
 - consumes curated SaaS data through explicit public APIs or a read model rather than acting as a tenant add-on
 
-### 8. System Pages / System Surfaces
+### 9. System Pages / System Surfaces
 
 Primary doc:
 
@@ -152,11 +179,23 @@ Outcome:
 - fixed application logic with Puck-backed presentation editing and generated storefront-safe CSS
 - widget-capable authenticated guest portal shell for bookings and future add-ons
 
-Current branch state:
+Current state on `main`:
 
-- system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on the active Phase 15 branch
+- system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on `main`
 - `register`, `forgot_password`, and `reset_password` remain deferred implementation work
 - customer-account pages are not part of the delivered Phase 15 guest-auth slice
+
+### 10. Customer Accounts and Cross-Tenant SSO
+
+Primary doc:
+
+- [plans/PHASE20_CUSTOMER_ACCOUNTS_AND_SSO_ARCHITECTURE.md](plans/PHASE20_CUSTOMER_ACCOUNTS_AND_SSO_ARCHITECTURE.md)
+
+Outcome:
+
+- durable customer accounts distinct from `guest_users`
+- real register, forgot-password, reset-password, and account-management flows
+- cross-tenant customer identity with first-party SSO and explicit tenant linkage
 
 ## Out Of Scope For This Roadmap
 

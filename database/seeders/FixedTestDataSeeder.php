@@ -34,8 +34,8 @@ class FixedTestDataSeeder extends Seeder
             [
                 'name' => 'Tenant One',
                 'slug' => 'tenant-one',
-                'domain' => 'tenant-one.byteforge.se',
-                'email' => 'contact@tenant-one.byteforge.se',
+                'domain' => $this->tenantDomain('tenant-one'),
+                'email' => $this->tenantContactEmail('tenant-one'),
                 'phone' => '+46701234567',
                 'status' => 'active',
             ]
@@ -46,8 +46,8 @@ class FixedTestDataSeeder extends Seeder
             [
                 'name' => 'Tenant Two',
                 'slug' => 'tenant-two',
-                'domain' => 'tenant-two.byteforge.se',
-                'email' => 'contact@tenant-two.byteforge.se',
+                'domain' => $this->tenantDomain('tenant-two'),
+                'email' => $this->tenantContactEmail('tenant-two'),
                 'phone' => '+46701234568',
                 'status' => 'active',
             ]
@@ -58,8 +58,8 @@ class FixedTestDataSeeder extends Seeder
             [
                 'name' => 'Tenant Three',
                 'slug' => 'tenant-three',
-                'domain' => 'tenant-three.byteforge.se',
-                'email' => 'contact@tenant-three.byteforge.se',
+                'domain' => $this->tenantDomain('tenant-three'),
+                'email' => $this->tenantContactEmail('tenant-three'),
                 'phone' => '+46701234569',
                 'status' => 'active',
             ]
@@ -69,17 +69,17 @@ class FixedTestDataSeeder extends Seeder
 
         // Create domains for fixed tenants (idempotent)
         Domain::firstOrCreate(
-            ['domain' => 'tenant-one.byteforge.se'],
+            ['domain' => $this->tenantDomain('tenant-one')],
             ['tenant_id' => $tenantOne->id]
         );
 
         Domain::firstOrCreate(
-            ['domain' => 'tenant-two.byteforge.se'],
+            ['domain' => $this->tenantDomain('tenant-two')],
             ['tenant_id' => $tenantTwo->id]
         );
 
         Domain::firstOrCreate(
-            ['domain' => 'tenant-three.byteforge.se'],
+            ['domain' => $this->tenantDomain('tenant-three')],
             ['tenant_id' => $tenantThree->id]
         );
 
@@ -161,5 +161,43 @@ class FixedTestDataSeeder extends Seeder
 
         // Re-enable activity logging
         activity()->enableLogging();
+    }
+
+    private function tenantContactEmail(string $tenantSlug): string
+    {
+        return sprintf('contact@%s', $this->tenantDomain($tenantSlug));
+    }
+
+    private function tenantDomain(string $tenantSlug): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.byteforge.se');
+        $resolved = str_replace(':tenant', $tenantSlug, $template);
+        $normalized = strtolower($resolved);
+
+        if ($normalized === '' || str_contains($normalized, 'localhost') || str_contains($normalized, '127.0.0.1')) {
+            return sprintf('%s.%s', $tenantSlug, $this->centralDomain());
+        }
+
+        return $resolved;
+    }
+
+    private function centralDomain(): string
+    {
+        $domains = config('tenancy.central_domains', []);
+
+        if (is_string($domains)) {
+            $domains = explode(',', $domains);
+        }
+
+        foreach ((array) $domains as $domain) {
+            $candidate = trim((string) $domain);
+            if ($candidate === '' || in_array($candidate, ['localhost', '127.0.0.1'], true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return 'byteforge.se';
     }
 }

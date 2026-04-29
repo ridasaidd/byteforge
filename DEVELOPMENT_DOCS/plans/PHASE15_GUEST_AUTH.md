@@ -1,18 +1,18 @@
 # Phase 15: Guest Authentication System
 
 Last updated: April 26, 2026
-Status: Implemented on `feature/phase15-guest-auth` — merge pending
+Status: Implemented on `main`
 Depends on: Phase 13 (Booking), `plans/AUTH_HTTPONLY_MIGRATION_PLAN.md` migration shipped
-Recommended branch: `feature/phase15-guest-auth`
+Recommended branch: n/a — shipped on `main`
 
 ---
 
-## Current Branch Status
+## Current Status
 
 This document started as the Phase 15 design spec. The guest-auth stack it
-describes is now substantially implemented on the current branch.
+describes is now implemented on `main`.
 
-Implemented on `feature/phase15-guest-auth`:
+Implemented on `main`:
 
 - central `guest_users` identity and magic-link issuance/verification
 - tenant guest session creation, bootstrap rotation, and logout
@@ -318,8 +318,8 @@ This does not use the Passport guard. It is a dedicated lightweight middleware.
 ## Implementation Phases
 
 Historical note: the checklist below was the original planned breakdown. The
-current branch now contains substantial implementation across 15.1 through
-15.7, with customer-account work still explicitly deferred.
+current mainline state now contains substantial implementation across 15.1
+through 15.7, with customer-account work still explicitly deferred.
 
 ### Phase 15.1 — Central Guest Identity
 
@@ -378,7 +378,7 @@ Playwright:
 - Logout clears session
 - Anonymous booking → "save to account" flow → linked booking appears in portal
 
-Current branch focused validation includes:
+Current focused validation includes:
 
 - `php artisan test tests/Tenant/Feature/Api/TenantGuestAuthTest.php`
 - `php artisan test tests/Tenant/Feature/Api/TenantGuestBookingsTest.php`

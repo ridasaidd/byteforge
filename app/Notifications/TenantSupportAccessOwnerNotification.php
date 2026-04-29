@@ -85,7 +85,40 @@ class TenantSupportAccessOwnerNotification extends Notification implements Shoul
     {
         return $this->tenant->domains->first()?->domain
             ?? $this->tenant->domains()->first()?->domain
-            ?? "{$this->tenant->slug}.byteforge.se";
+            ?? $this->fallbackTenantDomain();
+    }
+
+    private function fallbackTenantDomain(): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.byteforge.se');
+        $resolved = str_replace(':tenant', $this->tenant->slug, $template);
+        $normalized = strtolower($resolved);
+
+        if ($normalized === '' || str_contains($normalized, 'localhost') || str_contains($normalized, '127.0.0.1')) {
+            return sprintf('%s.%s', $this->tenant->slug, $this->centralDomain());
+        }
+
+        return $resolved;
+    }
+
+    private function centralDomain(): string
+    {
+        $domains = config('tenancy.central_domains', []);
+
+        if (is_string($domains)) {
+            $domains = explode(',', $domains);
+        }
+
+        foreach ((array) $domains as $domain) {
+            $candidate = trim((string) $domain);
+            if ($candidate === '' || in_array($candidate, ['localhost', '127.0.0.1'], true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return 'byteforge.se';
     }
 
     private function formatDate(?string $value): string

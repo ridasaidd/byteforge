@@ -17,12 +17,14 @@ class PassportTestSeeder extends Seeder
         $exists = Client::where('grant_types', 'like', '%personal_access%')->exists();
 
         if (! $exists) {
+            $redirectUri = (string) config('app.url', 'http://byteforge.se');
+
             // Create personal access client
             // The Client model will automatically handle JSON encoding for grant_types and redirect_uris
             Client::create([
                 'name' => 'Test Personal Access Client',
                 'secret' => \Illuminate\Support\Str::random(40),
-                'redirect_uris' => ['http://byteforge.se'],
+                'redirect_uris' => [$redirectUri],
                 'grant_types' => ['personal_access'],
                 'revoked' => false,
                 'provider' => 'users',

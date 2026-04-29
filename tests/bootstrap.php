@@ -22,7 +22,24 @@ $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
 // Ensure test fixtures exist (users, tenants, roles)
 // This runs outside of any test transaction, so it persists!
-$superadminExists = \App\Models\User::where('email', 'superadmin@byteforge.se')->exists();
+$domains = config('tenancy.central_domains', []);
+if (is_string($domains)) {
+    $domains = explode(',', $domains);
+}
+
+$centralDomain = null;
+foreach ((array) $domains as $domain) {
+    $candidate = trim((string) $domain);
+    if ($candidate === '' || in_array($candidate, ['localhost', '127.0.0.1'], true)) {
+        continue;
+    }
+
+    $centralDomain = $candidate;
+    break;
+}
+
+$centralDomain = $centralDomain ?: 'byteforge.se';
+$superadminExists = \App\Models\User::where('email', 'superadmin@' . $centralDomain)->exists();
 
 if (!$superadminExists) {
     echo "\n🌱 Seeding test fixtures (users, tenants, roles)...\n";

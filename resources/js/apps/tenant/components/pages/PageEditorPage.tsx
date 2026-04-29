@@ -15,6 +15,7 @@ import { PageEditorPreview } from '@/shared/components/organisms/PageEditorPrevi
 import { extractCssFromPuckData } from '@/shared/puck/services/PuckCssAggregator';
 import type { ThemeData } from '@/shared/puck/services/PuckCssAggregator';
 import { useAddon } from '@/shared/hooks/useAddon';
+import { isCentralDomainHost } from '@/shared/utils/environmentDomains';
 
 export function PageEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,7 +32,8 @@ export function PageEditorPage() {
   const [themeId, setThemeId] = useState<number | null>(null);
   const [themeData, setThemeData] = useState<ThemeData | null>(null);
 
-  const canLoadThemeCssFromStorage = typeof window !== 'undefined' && window.location.hostname === 'byteforge.se';
+  const canLoadThemeCssFromStorage = typeof window !== 'undefined'
+    && isCentralDomainHost(window.location.hostname);
 
   const puckDataRef = useRef<Data>({ content: [], root: {} });
   const hasLoadedRef = useRef(false);

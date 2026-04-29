@@ -2,15 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { ThemeContext } from './theme-context';
 import { themes, tenantThemes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
+import { isTenantDomainHost } from '@/shared/utils/environmentDomains';
 
 interface ThemeProviderProps {
   children: React.ReactNode;
   initialTheme?: Theme | null; // Accept pre-loaded theme from metadata
   injectCss?: boolean; // Whether to inject CSS dynamically (for editor/builder only)
-}
-
-function isTenantDomainHost(hostname: string): boolean {
-  return hostname.endsWith('.byteforge.se') && hostname !== 'byteforge.se';
 }
 
 function shouldLoadThemeOnClient(): boolean {

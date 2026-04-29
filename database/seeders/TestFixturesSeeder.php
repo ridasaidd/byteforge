@@ -48,8 +48,9 @@ class TestFixturesSeeder extends Seeder
         $this->seedBillingDefaults();
         $this->createTenants();
         $this->createCentralUsers();
+        $this->createFixedMultiTenantUsers();
         $this->createTenantUsers();
-    $this->createTenantMemberships();
+        $this->createTenantMemberships();
 
         activity()->enableLogging();
 
@@ -220,18 +221,19 @@ class TestFixturesSeeder extends Seeder
                 [
                     'name' => $t['name'],
                     'slug' => $t['slug'],
-                    'email' => "contact@{$t['slug']}.byteforge.se",
+                    'domain' => $this->tenantDomain($t['slug']),
+                    'email' => $this->tenantContactEmail($t['slug']),
                     'phone' => '+46701234567',
                     'status' => 'active',
                 ]
             );
 
             Domain::firstOrCreate(
-                ['domain' => "{$t['slug']}.byteforge.se"],
+                ['domain' => $this->tenantDomain($t['slug'])],
                 ['tenant_id' => $tenant->id]
             );
 
-            $this->command->info("  ✓ {$t['name']} ({$t['slug']}.byteforge.se)");
+            $this->command->info("  ✓ {$t['name']} ({$this->tenantDomain($t['slug'])})");
         }
     }
 
@@ -240,10 +242,10 @@ class TestFixturesSeeder extends Seeder
         $this->command->info("\n👤 Creating central users...");
 
         $users = [
-            ['email' => 'superadmin@byteforge.se', 'name' => 'Super Admin', 'role' => 'superadmin'],
-            ['email' => 'admin@byteforge.se', 'name' => 'Central Admin', 'role' => 'admin'],
-            ['email' => 'support@byteforge.se', 'name' => 'Support Staff', 'role' => 'support'],
-            ['email' => 'viewer@byteforge.se', 'name' => 'Central Viewer', 'role' => 'viewer'],
+            ['email' => 'superadmin@' . $this->centralDomain(), 'name' => 'Super Admin', 'role' => 'superadmin'],
+            ['email' => 'admin@' . $this->centralDomain(), 'name' => 'Central Admin', 'role' => 'admin'],
+            ['email' => 'support@' . $this->centralDomain(), 'name' => 'Support Staff', 'role' => 'support'],
+            ['email' => 'viewer@' . $this->centralDomain(), 'name' => 'Central Viewer', 'role' => 'viewer'],
         ];
 
         foreach ($users as $u) {
@@ -283,7 +285,7 @@ class TestFixturesSeeder extends Seeder
             $tenantRbac->ensureTenantRoles($tenantId);
 
             foreach ($userTypes as $type) {
-                $email = "{$type}@{$slug}.byteforge.se";
+                $email = "{$type}@{$this->tenantDomain($slug)}";
                 $name = ucfirst($type) . ' - ' . ucwords(str_replace('-', ' ', $slug));
 
                 $user = User::firstOrCreate(
@@ -304,40 +306,90 @@ class TestFixturesSeeder extends Seeder
         setPermissionsTeamId(null);
     }
 
-        private function createTenantMemberships(): void
-        {
-            $this->command->info("\n🔗 Creating tenant memberships...");
+    private function createTenantMemberships(): void
+    {
+        $this->command->info("\n🔗 Creating tenant memberships...");
 
-            $tenantSlugs = ['tenant-one', 'tenant-two', 'tenant-three'];
-            $userTypes   = ['owner', 'editor', 'viewer'];
+        $tenantSlugs = ['tenant-one', 'tenant-two', 'tenant-three'];
+        $userTypes = ['owner', 'editor', 'viewer'];
 
-            foreach ($tenantSlugs as $slug) {
-                $tenantId = str_replace('-', '_', $slug);
-                $tenant   = Tenant::find($tenantId);
+        foreach ($tenantSlugs as $slug) {
+            $tenantId = str_replace('-', '_', $slug);
+            $tenant = Tenant::find($tenantId);
 
-                if (! $tenant) {
-                    $this->command->warn("  ⚠ Tenant {$tenantId} not found, skipping memberships");
+            if (! $tenant) {
+                $this->command->warn("  ⚠ Tenant {$tenantId} not found, skipping memberships");
+                continue;
+            }
+
+            foreach ($userTypes as $type) {
+                $email = "{$type}@{$this->tenantDomain($slug)}";
+                $user = User::where('email', $email)->first();
+
+                if (! $user) {
+                    $this->command->warn("  ⚠ User {$email} not found, skipping membership");
                     continue;
                 }
 
-                foreach ($userTypes as $type) {
-                    $email = "{$type}@{$slug}.byteforge.se";
-                    $user  = User::where('email', $email)->first();
+                Membership::firstOrCreate(
+                    ['user_id' => $user->id, 'tenant_id' => $tenantId],
+                    ['role' => $type, 'status' => 'active']
+                );
 
-                    if (! $user) {
-                        $this->command->warn("  ⚠ User {$email} not found, skipping membership");
-                        continue;
-                    }
-
-                    Membership::firstOrCreate(
-                        ['user_id' => $user->id, 'tenant_id' => $tenantId],
-                        ['role' => $type, 'status' => 'active']
-                    );
-
-                    $this->command->info("  ✓ {$email} → {$tenantId} ({$type})");
-                }
+                $this->command->info("  ✓ {$email} → {$tenantId} ({$type})");
             }
         }
+    }
+
+    private function createFixedMultiTenantUsers(): void
+    {
+        $this->command->info("\n🧩 Creating fixed multi-tenant users...");
+
+        $tenantRbac = app(TenantRbacService::class);
+
+        $userMultiple = User::firstOrCreate(
+            ['email' => 'user.multiple@byteforge.test'],
+            [
+                'name' => 'User With Multiple Tenants',
+                'password' => Hash::make(self::PASSWORD),
+                'type' => 'tenant_user',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        $userSingle = User::firstOrCreate(
+            ['email' => 'user.single@byteforge.test'],
+            [
+                'name' => 'User With One Tenant',
+                'password' => Hash::make(self::PASSWORD),
+                'type' => 'tenant_user',
+                'email_verified_at' => now(),
+            ]
+        );
+
+        Membership::firstOrCreate(
+            ['user_id' => $userMultiple->id, 'tenant_id' => 'tenant_one'],
+            ['role' => 'owner', 'status' => 'active']
+        );
+        Membership::firstOrCreate(
+            ['user_id' => $userMultiple->id, 'tenant_id' => 'tenant_two'],
+            ['role' => 'owner', 'status' => 'active']
+        );
+        Membership::firstOrCreate(
+            ['user_id' => $userSingle->id, 'tenant_id' => 'tenant_three'],
+            ['role' => 'owner', 'status' => 'active']
+        );
+
+        $tenantRbac->ensureTenantRoles('tenant_one');
+        $tenantRbac->ensureTenantRoles('tenant_two');
+        $tenantRbac->ensureTenantRoles('tenant_three');
+        $tenantRbac->syncUserRoleFromMembership($userMultiple, 'tenant_one', 'owner');
+        $tenantRbac->syncUserRoleFromMembership($userMultiple, 'tenant_two', 'owner');
+        $tenantRbac->syncUserRoleFromMembership($userSingle, 'tenant_three', 'owner');
+
+        $this->command->info('  ✓ user.multiple@byteforge.test linked to tenant_one + tenant_two');
+        $this->command->info('  ✓ user.single@byteforge.test linked to tenant_three');
+    }
 
     private function printSummary(): void
     {
@@ -346,17 +398,58 @@ class TestFixturesSeeder extends Seeder
         $this->command->info(str_repeat('═', 60));
         $this->command->info("\n🔑 All passwords: 'password'");
         $this->command->info("\n📋 Central Users:");
-        $this->command->info("   superadmin@byteforge.se  → Full access");
-        $this->command->info("   admin@byteforge.se       → Admin role");
-        $this->command->info("   support@byteforge.se     → Support role");
-        $this->command->info("   viewer@byteforge.se      → View only");
+        $this->command->info("   superadmin@{$this->centralDomain()}  → Full access");
+        $this->command->info("   admin@{$this->centralDomain()}       → Admin role");
+        $this->command->info("   support@{$this->centralDomain()}     → Support role");
+        $this->command->info("   viewer@{$this->centralDomain()}      → View only");
         $this->command->info("\n📋 Tenant Users (×3 tenants):");
-        $this->command->info("   owner@tenant-X.byteforge.se   → Full permissions");
-        $this->command->info("   editor@tenant-X.byteforge.se  → Edit permissions");
-        $this->command->info("   viewer@tenant-X.byteforge.se  → View only");
+        $this->command->info("   owner@tenant-X.<tenant-domain>   → Full permissions");
+        $this->command->info("   editor@tenant-X.<tenant-domain>  → Edit permissions");
+        $this->command->info("   viewer@tenant-X.<tenant-domain>  → View only");
+        $this->command->info("\n📋 Fixed Tenant-Linked Users:");
+        $this->command->info("   user.multiple@byteforge.test  → tenant_one + tenant_two");
+        $this->command->info("   user.single@byteforge.test    → tenant_three");
         $this->command->info("\n📋 Tenants:");
-        $this->command->info("   tenant-one.byteforge.se");
-        $this->command->info("   tenant-two.byteforge.se");
-        $this->command->info("   tenant-three.byteforge.se\n");
+        $this->command->info("   {$this->tenantDomain('tenant-one')}");
+        $this->command->info("   {$this->tenantDomain('tenant-two')}");
+        $this->command->info("   {$this->tenantDomain('tenant-three')}\n");
+    }
+
+    private function tenantContactEmail(string $tenantSlug): string
+    {
+        return sprintf('contact@%s', $this->tenantDomain($tenantSlug));
+    }
+
+    private function tenantDomain(string $tenantSlug): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.byteforge.se');
+        $resolved = str_replace(':tenant', $tenantSlug, $template);
+        $normalized = strtolower($resolved);
+
+        if ($normalized === '' || str_contains($normalized, 'localhost') || str_contains($normalized, '127.0.0.1')) {
+            return sprintf('%s.%s', $tenantSlug, $this->centralDomain());
+        }
+
+        return $resolved;
+    }
+
+    private function centralDomain(): string
+    {
+        $domains = config('tenancy.central_domains', []);
+
+        if (is_string($domains)) {
+            $domains = explode(',', $domains);
+        }
+
+        foreach ((array) $domains as $domain) {
+            $candidate = trim((string) $domain);
+            if ($candidate === '' || in_array($candidate, ['localhost', '127.0.0.1'], true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return 'byteforge.se';
     }
 }
