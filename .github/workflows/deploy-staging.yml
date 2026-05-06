@@ -48,17 +48,89 @@ jobs:
             # Run migrations
             php artisan migrate --force
 
-            # Seed database (if needed)
-            # php artisan db:seed --class=FixedTestDataSeeder --force
+            # Ensure Passport OAuth keys exist (required for auth:api endpoints)
+            if [ ! -f storage/oauth-private.key ] || [ ! -f storage/oauth-public.key ]; then
+              php artisan passport:keys --force
+            fi
+
+            # Harden OAuth key permissions and keep web-server readability.
+            # Use sudo when available; otherwise best-effort local chmod/chgrp.
+            if getent group www-data >/dev/null 2>&1; then
+              if sudo -n true >/dev/null 2>&1; then
+                sudo chown "$USER":www-data storage/oauth-private.key storage/oauth-public.key || true
+              else
+                chgrp www-data storage/oauth-private.key storage/oauth-public.key || true
+              fi
+            fi
+            chmod 660 storage/oauth-private.key storage/oauth-public.key || true
+
+            # Ensure storage symlink exists
+            php artisan storage:link --force 2>/dev/null || true
 
             # Clear caches
             php artisan optimize:clear
+            php artisan config:cache
 
-            # Restart queue worker (if applicable)
-            # php artisan queue:restart
+            # Restart queue worker
+            php artisan queue:restart
 
             echo "✓ Deployment to staging complete"
           ENDSSH
+
+      - name: Post-deploy smoke checks
+        env:
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
+          STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+        run: |
+          BASE_URL="${STAGING_BASE_URL:-https://stage.byteforge.se}"
+          EMAIL="${STAGING_SMOKE_EMAIL:-admin@byteforge.se}"
+          PASSWORD="${STAGING_SMOKE_PASSWORD:-password}"
+
+          echo "Using smoke test base URL: $BASE_URL"
+
+          TOKEN=$(curl -sS -X POST "$BASE_URL/api/auth/login" \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}" \
+            | sed -n 's/.*"token":"\([^"]*\)".*/\1/p')
+
+          if [ -z "$TOKEN" ]; then
+            echo "Smoke login failed: token not issued"
+            exit 1
+          fi
+
+          check_endpoint() {
+            local label="$1"
+            local url="$2"
+            local expected_code="$3"
+            local auth_mode="${4:-auth}"
+            local code
+
+            if [ "$auth_mode" = "noauth" ]; then
+              code=$(curl -sS -o /tmp/smoke.out -w '%{http_code}' "$url" -H 'Accept: application/json')
+            else
+              code=$(curl -sS -o /tmp/smoke.out -w '%{http_code}' "$url" -H "Authorization: Bearer $TOKEN" -H 'Accept: application/json')
+            fi
+
+            if [ "$code" != "$expected_code" ]; then
+              echo "[$label] Expected HTTP $expected_code, got $code"
+              head -c 500 /tmp/smoke.out || true
+              echo
+              exit 1
+            fi
+
+            echo "[$label] OK ($code)"
+          }
+
+          # Central endpoints should be healthy.
+          check_endpoint "superadmin dashboard" "$BASE_URL/api/superadmin/dashboard/stats" "200"
+          check_endpoint "superadmin active theme" "$BASE_URL/api/superadmin/themes/active" "200"
+
+          # Central domain should NOT use tenant-scoped endpoint.
+          check_endpoint "tenant active theme blocked on central" "$BASE_URL/api/themes/active" "404" "noauth"
+
+          echo "✓ Post-deploy smoke checks passed"
 
       - name: Deployment successful
         run: echo "✓ Staging deployment completed successfully"
