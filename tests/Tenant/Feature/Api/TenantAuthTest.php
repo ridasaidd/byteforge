@@ -7,6 +7,7 @@ use App\Services\TenantSupportAccessService;
 use App\Models\WebRefreshSession;
 use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
+use Laravel\Pennant\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Cookie;
 use Tests\Support\TestUsers;
@@ -311,6 +312,9 @@ class TenantAuthTest extends TestCase
             'Read-only support inspection',
             24,
         );
+
+        // Enable booking addon for this test
+        Feature::for($tenant)->activate('booking');
 
         $this->actingAs($supportUser, 'api')
             ->getJson($this->tenantUrl('/api/pages', 'tenant-one'))

@@ -88,6 +88,18 @@ class RolePermissionSeeder extends Seeder
                 'users.view', 'tenants.view',
                 'analytics.view', 'analytics.dashboard',
             ],
+            // Tenant support access role (temporary read-only access for support staff)
+            'support_access' => [
+                'pages.view',
+                'navigation.view',
+                'themes.view',
+                'layouts.view',
+                'templates.view',
+                'media.view',
+                'bookings.view',
+                'analytics.view',
+                'activity.view',
+            ],
         ];
 
         // Create roles for both web and api guards
