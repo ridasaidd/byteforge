@@ -5,18 +5,13 @@ Audience: human + AI agent
 Last verified: 2026-04-26
 Primary branch: `main`
 
-Active feature branch:
-
-- `feature/phase15-guest-auth` contains implemented Phase 15 work and early Phase 19 guest-portal/system-surface slices pending merge
-
 ## Snapshot
 
 - ByteForge is a multi-tenant CMS and storefront platform with central and
   tenant dashboards, a Puck-based page builder, themes, media, analytics,
   payments, and booking.
-- Phases 9 through 14 are implemented on `main`.
-- Phase 15 guest authentication is implemented on `feature/phase15-guest-auth` and pending merge into `main`.
-- Phase 19 system-surface foundations are partially implemented on `feature/phase15-guest-auth`, specifically tenant login and guest-portal runtime slices.
+- Phases 9 through 15 are implemented on `main`.
+- Phase 19 system-surface foundations are partially implemented on `main`, specifically tenant login and guest-portal runtime slices.
 - The HttpOnly auth migration is underway in slices and now uses the hybrid
   browser model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
@@ -49,12 +44,12 @@ Active feature branch:
 - Phase 12 Tenant Runtime Readiness: complete on `main`
 - Phase 13 Booking System: implemented on `main`
 - Phase 14 Payment x Booking Integration: implemented on `main`
-- Phase 15 Guest Authentication: implemented on `feature/phase15-guest-auth`, merge pending
-- Phase 19 System Surfaces: partially implemented on `feature/phase15-guest-auth` (guest portal + tenant login slices)
+- Phase 15 Guest Authentication: implemented on `main`
+- Phase 19 System Surfaces: partially implemented on `main` (guest portal + tenant login slices)
 
 ## Current Recommended Work Order
 
-1. Finalize doc sync for the current Phase 15 branch, then commit, push, and merge it before starting the next phase.
+1. Keep the post-merge documentation baseline accurate and authoritative.
 2. Continue the shared, field-family input normalization rollout without
   expanding it into blanket middleware.
 3. Keep extending normalization only to suitable human-input fields while
@@ -72,7 +67,8 @@ These are the main state corrections that matter for future work.
   production code, including booking payment creation, webhook confirmation,
   and refund-aware cancellation flows.
 - Guest authentication exists on the active Phase 15 branch across routes,
-  middleware, backend domain code, public UI, and focused tests.
+  middleware, backend domain code, public UI, and focused tests now merged on
+  `main`.
 - The current guest-auth implementation is passwordless. It does not imply
   customer registration, forgot-password, reset-password, or cross-tenant SSO.
 - System-surface keys for `register`, `forgot_password`, and `reset_password`
@@ -124,7 +120,7 @@ npm run test:run -- resources/js/apps/tenant/config/__tests__/menu.test.tsx reso
 php artisan test tests/Feature/Api/Booking/PublicBookingApiTest.php tests/Feature/Api/Booking/BookingHoldTest.php tests/Feature/Api/Booking/BookingCmsApiTest.php
 ```
 
-Recent guest-auth/system-surface verification on the active Phase 15 branch:
+Recent guest-auth/system-surface verification on `main`:
 
 ```bash
 php artisan test tests/Tenant/Feature/Api/TenantGuestAuthTest.php tests/Tenant/Feature/Api/TenantGuestBookingsTest.php tests/Tenant/Feature/Api/TenantSystemSurfaceApiTest.php

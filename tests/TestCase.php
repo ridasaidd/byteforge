@@ -20,15 +20,19 @@ use Tests\Support\WithTenancy;
  * SEEDED TEST USERS (available in all tests):
  *
  * Central Users:
- *   - superadmin@byteforge.se (superadmin role) → $this->actingAsSuperadmin()
- *   - admin@byteforge.se      (admin role)       → $this->actingAsCentralAdmin()
- *   - support@byteforge.se    (support role)     → $this->actingAsCentralSupport()
- *   - viewer@byteforge.se     (viewer role)      → $this->actingAsCentralViewer()
+ *   - superadmin@<central-domain> (superadmin role) → $this->actingAsSuperadmin()
+ *   - admin@<central-domain>      (admin role)       → $this->actingAsCentralAdmin()
+ *   - support@<central-domain>    (support role)     → $this->actingAsCentralSupport()
+ *   - viewer@<central-domain>     (viewer role)      → $this->actingAsCentralViewer()
  *
  * Tenant Users (per tenant: tenant-one, tenant-two, tenant-three):
- *   - owner@tenant-X.byteforge.se  → $this->actingAsTenantOwner('tenant-one')
- *   - editor@tenant-X.byteforge.se → $this->actingAsTenantEditor('tenant-one')
- *   - viewer@tenant-X.byteforge.se → $this->actingAsTenantViewer('tenant-one')
+ *   - owner@<tenant-domain>  → $this->actingAsTenantOwner('tenant-one')
+ *   - editor@<tenant-domain> → $this->actingAsTenantEditor('tenant-one')
+ *   - viewer@<tenant-domain> → $this->actingAsTenantViewer('tenant-one')
+ *
+ * Fixed tenant-linked users:
+ *   - user.multiple@byteforge.test (tenant_one + tenant_two)
+ *   - user.single@byteforge.test (tenant_three)
  */
 abstract class TestCase extends BaseTestCase
 {
@@ -170,8 +174,10 @@ abstract class TestCase extends BaseTestCase
      */
     protected function getTenantUser(string $tenantSlug): ?\App\Models\User
     {
-        return \App\Models\User::where('email', "user.{$tenantSlug}@byteforge.se")->first()
-            ?? \App\Models\User::where('email', "owner.{$tenantSlug}@byteforge.se")->first();
+        $tenantDomain = str_replace(':tenant', $tenantSlug, (string) config('tenancy.fallback_tenant_domain_template', ':tenant.byteforge.se'));
+
+        return \App\Models\User::where('email', "user.{$tenantSlug}@" . $this->centralDomain())->first()
+            ?? \App\Models\User::where('email', "owner@{$tenantDomain}")->first();
     }
 
     /**
@@ -180,6 +186,26 @@ abstract class TestCase extends BaseTestCase
     protected function getSeededTenant(string $slug): ?\App\Models\Tenant
     {
         return \App\Models\Tenant::where('slug', $slug)->first();
+    }
+
+    private function centralDomain(): string
+    {
+        $domains = config('tenancy.central_domains', []);
+
+        if (is_string($domains)) {
+            $domains = explode(',', $domains);
+        }
+
+        foreach ((array) $domains as $domain) {
+            $candidate = trim((string) $domain);
+            if ($candidate === '' || in_array($candidate, ['localhost', '127.0.0.1'], true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return 'byteforge.se';
     }
 }
 

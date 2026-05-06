@@ -81,29 +81,42 @@ Tests use **`DatabaseTransactions`** with **pre-seeded data** (not `RefreshDatab
 
 All seeded users have the password `password`.
 
+Primary fixture source: `TestFixturesSeeder`.
+
+Email/domain shape is environment-driven:
+- central users use `<role>@<central-domain>` where central domain is derived from `TENANCY_CENTRAL_DOMAINS` (fallback: `byteforge.se`)
+- tenant users use `<role>@<tenant-domain>` where tenant domain is derived from `TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE` (fallback: `:tenant.byteforge.se`)
+
 **Central Users (platform admins):**
 
-| Email | Role | Helper |
+| Email Pattern | Role | Helper |
 |-------|------|--------|
-| `superadmin@byteforge.se` | superadmin | `$this->actingAsSuperadmin()` |
-| `admin@byteforge.se` | admin | `$this->actingAsCentralAdmin()` |
-| `support@byteforge.se` | support | `$this->actingAsCentralSupport()` |
-| `viewer@byteforge.se` | viewer | `$this->actingAsCentralViewer()` |
+| `superadmin@<central-domain>` | superadmin | `$this->actingAsSuperadmin()` |
+| `admin@<central-domain>` | admin | `$this->actingAsCentralAdmin()` |
+| `support@<central-domain>` | support | `$this->actingAsCentralSupport()` |
+| `viewer@<central-domain>` | viewer | `$this->actingAsCentralViewer()` |
 
 **Tenant Users (per tenant):**
 
 | Pattern | Permissions | Helper |
 |---------|-------------|--------|
-| `owner@tenant-X.byteforge.se` | Full | `$this->actingAsTenantOwner('tenant-one')` |
-| `editor@tenant-X.byteforge.se` | Edit | `$this->actingAsTenantEditor('tenant-one')` |
-| `viewer@tenant-X.byteforge.se` | View only | `$this->actingAsTenantViewer('tenant-one')` |
+| `owner@<tenant-domain>` | Full | `$this->actingAsTenantOwner('tenant-one')` |
+| `editor@<tenant-domain>` | Edit | `$this->actingAsTenantEditor('tenant-one')` |
+| `viewer@<tenant-domain>` | View only | `$this->actingAsTenantViewer('tenant-one')` |
+
+**Fixed tenant-linked users (always seeded):**
+
+| Email | Linked tenants |
+|-------|----------------|
+| `user.multiple@byteforge.test` | `tenant_one`, `tenant_two` |
+| `user.single@byteforge.test` | `tenant_three` |
 
 You can also use the generic role helper: `$this->actingAsCentralRole('admin')`
 
 **Seeded Tenants:**
-- `tenant-one` → `tenant-one.byteforge.se`
-- `tenant-two` → `tenant-two.byteforge.se`
-- `tenant-three` → `tenant-three.byteforge.se`
+- `tenant-one`
+- `tenant-two`
+- `tenant-three`
 
 **Direct user lookup (for assertions):**
 ```php

@@ -389,8 +389,11 @@ class BookingManagementController extends Controller
     {
         /** @var Tenant $tenant */
         $tenant = tenancy()->tenant;
+
+        $fallbackTemplate = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.localhost');
+
         return $tenant->domains()->first()?->domain
-            ?? "{$tenant->slug}.byteforge.se";
+            ?? str_replace(':tenant', $tenant->slug, $fallbackTemplate);
     }
 
     private function resolveBooking(int $id): Booking

@@ -19,8 +19,13 @@ return [
      */
     'central_domains' => array_values(array_filter(array_map(
         static fn (string $domain): string => trim($domain),
-        explode(',', (string) env('TENANCY_CENTRAL_DOMAINS', 'byteforge.se'))
+        explode(',', (string) env('TENANCY_CENTRAL_DOMAINS', 'localhost,127.0.0.1'))
     ))),
+
+    'fallback_tenant_domain_template' => (string) env(
+        'TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE',
+        ':tenant.localhost'
+    ),
 
     /**
      * Tenancy bootstrappers are executed when tenancy is initialized.

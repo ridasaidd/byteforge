@@ -45,8 +45,10 @@ class SendBookingReminders extends Command
             tenancy()->initialize($tenant);
 
             try {
+                $fallbackTemplate = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.localhost');
+
                 $domain = $tenant->domains()->first()?->domain
-                    ?? "{$tenant->slug}.byteforge.se";
+                    ?? str_replace(':tenant', $tenant->slug, $fallbackTemplate);
 
                 $this->sendRemindersForWindow($domain, '24h', now()->addHours(24), now()->addHours(23));
                 $this->sendRemindersForWindow($domain, '1h', now()->addHour(), now()->addMinutes(45));

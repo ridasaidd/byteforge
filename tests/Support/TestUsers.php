@@ -13,15 +13,19 @@ use Spatie\Permission\Models\Permission;
  * SEEDED USERS (from TestFixturesSeeder):
  *
  * Central Users (all passwords: 'password'):
- *   - superadmin@byteforge.se (superadmin role)
- *   - admin@byteforge.se (admin role)
- *   - support@byteforge.se (support role)
- *   - viewer@byteforge.se (viewer role)
+ *   - superadmin@<central-domain> (superadmin role)
+ *   - admin@<central-domain> (admin role)
+ *   - support@<central-domain> (support role)
+ *   - viewer@<central-domain> (viewer role)
  *
  * Tenant Users (for each tenant-one, tenant-two, tenant-three):
- *   - owner@tenant-X.byteforge.se (full permissions)
- *   - editor@tenant-X.byteforge.se (edit permissions)
- *   - viewer@tenant-X.byteforge.se (view only)
+ *   - owner@<tenant-domain> (full permissions)
+ *   - editor@<tenant-domain> (edit permissions)
+ *   - viewer@<tenant-domain> (view only)
+ *
+ * Fixed tenant-linked users:
+ *   - user.multiple@byteforge.test (tenant_one + tenant_two)
+ *   - user.single@byteforge.test (tenant_three)
  *
  * Usage:
  *   $superadmin = TestUsers::centralSuperadmin();
@@ -36,22 +40,22 @@ class TestUsers
 
     public static function centralSuperadmin(): User
     {
-        return User::where('email', 'superadmin@byteforge.se')->firstOrFail();
+        return User::where('email', 'superadmin@' . self::centralDomain())->firstOrFail();
     }
 
     public static function centralAdmin(): User
     {
-        return User::where('email', 'admin@byteforge.se')->firstOrFail();
+        return User::where('email', 'admin@' . self::centralDomain())->firstOrFail();
     }
 
     public static function centralSupport(): User
     {
-        return User::where('email', 'support@byteforge.se')->firstOrFail();
+        return User::where('email', 'support@' . self::centralDomain())->firstOrFail();
     }
 
     public static function centralViewer(): User
     {
-        return User::where('email', 'viewer@byteforge.se')->firstOrFail();
+        return User::where('email', 'viewer@' . self::centralDomain())->firstOrFail();
     }
 
     public static function centralByRole(string $role): User
@@ -76,7 +80,7 @@ class TestUsers
      */
     public static function tenantOwner(string $tenantSlug = 'tenant-one'): User
     {
-        return User::where('email', "owner@{$tenantSlug}.byteforge.se")->firstOrFail();
+        return User::where('email', sprintf('owner@%s', self::tenantDomain($tenantSlug)))->firstOrFail();
     }
 
     /**
@@ -86,7 +90,7 @@ class TestUsers
      */
     public static function tenantEditor(string $tenantSlug = 'tenant-one'): User
     {
-        return User::where('email', "editor@{$tenantSlug}.byteforge.se")->firstOrFail();
+        return User::where('email', sprintf('editor@%s', self::tenantDomain($tenantSlug)))->firstOrFail();
     }
 
     /**
@@ -96,7 +100,7 @@ class TestUsers
      */
     public static function tenantViewer(string $tenantSlug = 'tenant-one'): User
     {
-        return User::where('email', "viewer@{$tenantSlug}.byteforge.se")->firstOrFail();
+        return User::where('email', sprintf('viewer@%s', self::tenantDomain($tenantSlug)))->firstOrFail();
     }
 
     /**
@@ -154,5 +158,38 @@ class TestUsers
         }
 
         return $user;
+    }
+
+    private static function tenantDomain(string $tenantSlug): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.byteforge.se');
+        $resolved = str_replace(':tenant', $tenantSlug, $template);
+        $normalized = strtolower($resolved);
+
+        if ($normalized === '' || str_contains($normalized, 'localhost') || str_contains($normalized, '127.0.0.1')) {
+            return sprintf('%s.%s', $tenantSlug, self::centralDomain());
+        }
+
+        return $resolved;
+    }
+
+    private static function centralDomain(): string
+    {
+        $domains = config('tenancy.central_domains', []);
+
+        if (is_string($domains)) {
+            $domains = explode(',', $domains);
+        }
+
+        foreach ((array) $domains as $domain) {
+            $candidate = trim((string) $domain);
+            if ($candidate === '' || in_array($candidate, ['localhost', '127.0.0.1'], true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return 'byteforge.se';
     }
 }

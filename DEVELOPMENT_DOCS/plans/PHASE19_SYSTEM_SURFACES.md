@@ -1,8 +1,8 @@
 # Phase 19: System Surfaces
 
 Last updated: April 26, 2026
-Status: Partially implemented on `feature/phase15-guest-auth`
-Recommended branch: may begin as follow-on work on `feature/phase15-guest-auth`, but should be treated as its own implementation track
+Status: Partially implemented on `main`
+Recommended branch: branch follow-on work from `main`; treat it as its own implementation track
 Depends on:
 
 - Phase 8 page-system refactor
@@ -12,12 +12,12 @@ Depends on:
 
 ---
 
-## Current Branch Status
+## Current Status
 
-The current branch implements the guest-portal slice of this phase and part of
-the broader system-surface foundation.
+`main` currently contains the guest-portal slice of this phase and part of the
+broader system-surface foundation.
 
-Implemented on `feature/phase15-guest-auth`:
+Implemented on `main`:
 
 - `system_surfaces` migration, model, provisioning, and API
 - tenant CMS list, reset, and editor flow for system pages
