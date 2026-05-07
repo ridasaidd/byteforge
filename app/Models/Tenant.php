@@ -62,6 +62,14 @@ class Tenant extends BaseTenant
     }
 
     /**
+     * Get the mechanic profile for this tenant (if it is a mechanic workshop).
+     */
+    public function mechanicProfile()
+    {
+        return $this->hasOne(MechanicProfile::class, 'tenant_id', 'id');
+    }
+
+    /**
      * Configure activity logging
      */
     public function getActivitylogOptions(): LogOptions
