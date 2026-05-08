@@ -1,10 +1,11 @@
 import '@testing-library/jest-dom';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
+import { getCentralApiBaseUrl } from '../../tests/support/runtimeTestConfig';
 
-// Configure API base URL for integration tests
+// Configure API base URL for integration tests.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-(globalThis as any).__API_BASE_URL__ = 'http://byteforge.se/api';
+(globalThis as any).__API_BASE_URL__ = getCentralApiBaseUrl();
 
 // Cleanup after each test
 afterEach(() => {

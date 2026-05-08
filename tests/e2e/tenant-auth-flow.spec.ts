@@ -1,11 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 import { loginWithCredentials, logoutFromUserMenu, tenantOwnerCredentials } from './support/auth';
+import { canResolveHostname, hostnameFromUrl } from './support/network';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
 test('tenant owner can login and logout without runtime errors', async ({ page }) => {
   test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable tenant-domain auth flow test.');
+  const tenantHostname = hostnameFromUrl(tenantBaseUrl!);
+  const isTenantHostResolvable = await canResolveHostname(tenantHostname);
+  test.skip(
+    !isTenantHostResolvable,
+    `Tenant hostname ${tenantHostname} is not resolvable from this environment.`,
+  );
 
   const issues = attachRuntimeGuards(page);
 

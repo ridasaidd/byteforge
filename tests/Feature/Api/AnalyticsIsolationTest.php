@@ -31,6 +31,14 @@ class AnalyticsIsolationTest extends TestCase
         AnalyticsEvent::query()->delete();
     }
 
+    private function tenantUrl(string $path, string $slug = 'tenant-one'): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
+    }
+
     // =========================================================================
     // Platform Analytics — central domain (these WORK)
     // =========================================================================
@@ -86,19 +94,32 @@ class AnalyticsIsolationTest extends TestCase
         $response->assertForbidden();
     }
 
-    // =========================================================================
-    // Cross-Tenant Isolation (skipped — tenant-domain URL constraint)
-    // Covered at the query level by AnalyticsQueryServiceTest::
-    //   tenant_summary_excludes_other_tenant_events()
-    //   platform_summary_excludes_tenant_scoped_events()
-    // =========================================================================
-
     #[Test]
     public function cross_tenant_isolation_is_enforced_at_query_level(): void
     {
-        $this->markTestSkipped(
-            'Tenant-domain HTTP isolation tests skipped: covered by AnalyticsQueryServiceTest ' .
-            'unit tests which verify forTenant() and platformLevel() scope isolation directly.'
-        );
+        AnalyticsEvent::create([
+            'tenant_id' => 'tenant_one',
+            'event_type' => AnalyticsEvent::TYPE_PAGE_CREATED,
+            'properties' => [],
+            'occurred_at' => now(),
+        ]);
+        AnalyticsEvent::create([
+            'tenant_id' => 'tenant_two',
+            'event_type' => AnalyticsEvent::TYPE_THEME_ACTIVATED,
+            'properties' => [],
+            'occurred_at' => now(),
+        ]);
+
+        $tenantOne = $this->actingAsTenantOwner('tenant-one')
+            ->getJson($this->tenantUrl('/api/analytics/overview', 'tenant-one'));
+
+        $tenantTwo = $this->actingAsTenantOwner('tenant-two')
+            ->getJson($this->tenantUrl('/api/analytics/overview', 'tenant-two'));
+
+        $tenantOne->assertOk();
+        $tenantTwo->assertOk();
+
+        $this->assertSame(1, (int) $tenantOne->json('data.total_events'));
+        $this->assertSame(1, (int) $tenantTwo->json('data.total_events'));
     }
 }

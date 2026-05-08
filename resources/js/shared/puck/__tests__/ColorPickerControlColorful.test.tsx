@@ -80,7 +80,7 @@ describe('ColorPickerControlColorful', () => {
 
     fireEvent.click(screen.getByTitle('Primary 500 (#13315c)'));
 
-    expect(onChange).toHaveBeenCalledWith({ type: 'theme', value: 'colors.primary.500' });
+    expect(onChange).toHaveBeenCalledWith({ type: 'custom', value: '#13315c' });
     expect(screen.getByDisplayValue('#13315c')).toBeInTheDocument();
   });
 

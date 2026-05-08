@@ -16,10 +16,6 @@ require __DIR__.'/../vendor/autoload.php';
 $app = require __DIR__.'/../bootstrap/app.php';
 $app->make(\Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 
-// Disable activity logging in tests to avoid UUID/bigint column mismatch
-// (tenant IDs are UUIDs but activity_log.subject_id is bigint)
-\Spatie\Activitylog\Facades\Activity::disableLogging();
-
 // Ensure test fixtures exist (users, tenants, roles)
 // This runs outside of any test transaction, so it persists!
 $domains = config('tenancy.central_domains', []);

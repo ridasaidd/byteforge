@@ -20,6 +20,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
+  usePuckEditMode: () => false,
 }));
 
 // Mock matchMedia

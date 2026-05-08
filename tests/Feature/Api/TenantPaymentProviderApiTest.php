@@ -27,16 +27,18 @@ class TenantPaymentProviderApiTest extends TestCase
 
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
     }
 
     #[Test]
     public function index_returns_401_for_unauthenticated_requests(): void
     {
-        $this->markTestSkipped(
-            'Tenant-domain unauthenticated requests currently fail with Passport key resolution ' .
-            'in test environment (returns 500 instead of 401).'
-        );
+        $response = $this->getJson($this->tenantUrl('/api/payment-providers', 'tenant-one'));
+
+        $response->assertUnauthorized();
     }
 
     #[Test]

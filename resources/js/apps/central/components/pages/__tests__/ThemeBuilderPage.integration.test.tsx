@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { BrowserRouter, useParams } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeBuilderPage } from '@/shared/components/organisms/ThemeBuilderPage';
 import { themes } from '@/shared/services/api/themes';
 import { themeParts } from '@/shared/services/api/themeParts';
@@ -66,6 +67,21 @@ vi.mock('@/shared/hooks', () => ({
     },
   }),
 }));
+
+function renderPage(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>
+  );
+}
 
 describe('ThemeBuilderPage - CSS Integration', () => {
   const mockThemeId = '123';
@@ -136,7 +152,7 @@ describe('ThemeBuilderPage - CSS Integration', () => {
 
   describe('Theme Save - CSS Section Generation', () => {
     it('should save variables CSS when theme settings are saved', async () => {
-      render(
+      renderPage(
         <BrowserRouter>
           <ThemeBuilderPage />
         </BrowserRouter>
@@ -170,7 +186,7 @@ describe('ThemeBuilderPage - CSS Integration', () => {
         new Error('CSS save failed')
       );
 
-      render(
+      renderPage(
         <BrowserRouter>
           <ThemeBuilderPage />
         </BrowserRouter>
@@ -192,7 +208,7 @@ describe('ThemeBuilderPage - CSS Integration', () => {
     });
 
     it('should not save empty header/footer CSS sections', async () => {
-      render(
+      renderPage(
         <BrowserRouter>
           <ThemeBuilderPage />
         </BrowserRouter>
@@ -234,7 +250,7 @@ describe('ThemeBuilderPage - CSS Integration', () => {
         return Promise.resolve({});
       });
 
-      render(
+      renderPage(
         <BrowserRouter>
           <ThemeBuilderPage />
         </BrowserRouter>
@@ -262,7 +278,7 @@ describe('ThemeBuilderPage - CSS Integration', () => {
         new Error('CSS generation failed')
       );
 
-      render(
+      renderPage(
         <BrowserRouter>
           <ThemeBuilderPage />
         </BrowserRouter>
@@ -283,7 +299,7 @@ describe('ThemeBuilderPage - CSS Integration', () => {
 
   describe('Section-specific CSS Generation', () => {
     it('should generate CSS variables from theme settings', async () => {
-      render(
+      renderPage(
         <BrowserRouter>
           <ThemeBuilderPage />
         </BrowserRouter>

@@ -25,14 +25,15 @@ import { test, expect, type Page } from '@playwright/test';
 import { formatIssues } from './support/consoleGuards';
 import { acquireExclusiveLock } from './support/exclusiveLock';
 import { centralAdminCredentials, submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
+import { getCentralBaseUrl, getTenantBaseUrl } from '../support/runtimeTestConfig';
 
 type RuntimeIssue = { source: 'console' | 'pageerror' | 'requestfailed'; message: string };
 
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
-const centralBase = process.env.PLAYWRIGHT_BASE_URL ?? 'http://byteforge.se';
-const tenantBase = process.env.PLAYWRIGHT_TENANT_BASE_URL ?? '';
+const centralBase = getCentralBaseUrl();
+const tenantBase = getTenantBaseUrl();
 
 // Minimum CSS file size we consider valid (bytes)
 const MIN_CSS_BYTES = 200;

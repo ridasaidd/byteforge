@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use Spatie\Permission\PermissionRegistrar;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
 
@@ -39,7 +40,16 @@ class PassportAuthenticationTest extends TestCase
      */
     public function test_tenant_user_can_login_in_tenant_context_and_has_scoped_permissions()
     {
-        $this->markTestSkipped('Spatie Permission team_id schema mismatch with string tenant IDs');
+        $tenant = TestUsers::tenant('tenant-one');
+        $owner = TestUsers::tenantOwner('tenant-one');
+
+        tenancy()->initialize($tenant);
+        app(PermissionRegistrar::class)->setPermissionsTeamId((string) $tenant->id);
+
+        $this->assertTrue($owner->hasPermissionTo('pages.view', 'api'));
+        $this->assertTrue($owner->hasPermissionTo('pages.create', 'api'));
+
+        tenancy()->end();
     }
 
     /**
@@ -47,6 +57,15 @@ class PassportAuthenticationTest extends TestCase
      */
     public function test_tenant_user_cannot_access_global_permissions_in_tenant_context()
     {
-        $this->markTestSkipped('Spatie Permission team_id schema mismatch with string tenant IDs');
+        $tenant = TestUsers::tenant('tenant-one');
+        $owner = TestUsers::tenantOwner('tenant-one');
+
+        tenancy()->initialize($tenant);
+        app(PermissionRegistrar::class)->setPermissionsTeamId((string) $tenant->id);
+
+        $this->assertFalse($owner->hasPermissionTo('tenants.manage', 'api'));
+        $this->assertTrue($owner->hasPermissionTo('users.manage', 'api'));
+
+        tenancy()->end();
     }
 }

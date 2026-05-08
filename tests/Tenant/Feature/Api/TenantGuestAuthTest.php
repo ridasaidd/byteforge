@@ -31,14 +31,14 @@ class TenantGuestAuthTest extends TestCase
 
     private function tenantUrl(string $path): string
     {
-        $domain = $this->tenant->domains()->first()?->domain ?? 'tenant-one.byteforge.se';
+        $domain = $this->tenant->domains()->first()?->domain ?? 'tenant-one.dev.byteforge.se';
 
         return "http://{$domain}{$path}";
     }
 
     private function tenantHost(): string
     {
-        return $this->tenant->domains()->first()?->domain ?? 'tenant-one.byteforge.se';
+        return $this->tenant->domains()->first()?->domain ?? 'tenant-one.dev.byteforge.se';
     }
 
     private function activateBookingAddon(): void

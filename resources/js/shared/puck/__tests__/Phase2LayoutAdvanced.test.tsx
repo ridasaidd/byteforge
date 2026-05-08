@@ -21,6 +21,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
+  usePuckEditMode: () => true,
 }));
 
 // Mock MediaPickerModal

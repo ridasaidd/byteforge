@@ -70,7 +70,7 @@ defineBlockTestSuite({
 
       it('should apply border-radius', () => {
         const { css } = renderWithDefaults({
-          borderRadius: { value: '8', unit: 'px' }
+          borderRadiusPreset: 'md'
         });
         expect(css).toContain('border-radius');
       });

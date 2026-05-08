@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios, { AxiosInstance } from 'axios';
+import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
 
-describe('Authentication API Integration', () => {
+const describeHttpIntegration = process.env.RUN_HTTP_INTEGRATION === '1' ? describe : describe.skip;
+
+describeHttpIntegration('Authentication API Integration', () => {
   let client: AxiosInstance;
   let testToken: string;
-  const BASE_URL = 'http://byteforge.se';
+  const BASE_URL = getCentralBaseUrl();
 
   const testUser = {
-    email: 'testadmin@byteforge.se',
+    email: getCentralSuperadminEmail(),
     password: 'password',
   };
 

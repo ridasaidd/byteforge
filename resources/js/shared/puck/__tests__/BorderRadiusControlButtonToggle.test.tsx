@@ -1,7 +1,18 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import { BorderRadiusControl, type BorderRadiusValue } from '../fields/BorderRadiusControl';
+
+function renderWithTheme(ui: React.ReactElement) {
+  return render(
+    <ThemeProvider
+      initialTheme={{ id: 1, name: 'Test Theme', slug: 'test-theme', theme_data: {}, is_active: true, tenant_id: null } as any}
+    >
+      {ui}
+    </ThemeProvider>
+  );
+}
 
 describe('BorderRadiusControl (Button Toggle Pattern)', () => {
   const defaultValue: BorderRadiusValue = {
@@ -16,7 +27,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
   it('renders unit as button toggles instead of dropdown', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={defaultValue}
@@ -35,7 +46,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={defaultValue}
@@ -55,7 +66,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
     const onChange = vi.fn();
     const value: BorderRadiusValue = { ...defaultValue, unit: '%' };
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={value}
@@ -73,7 +84,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
     const onChange = vi.fn();
     const units = ['px', 'em', 'rem', '%'];
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={defaultValue}
@@ -93,7 +104,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
   it('updates value in linked mode', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={defaultValue}
@@ -113,7 +124,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
     const onChange = vi.fn();
     const value: BorderRadiusValue = { ...defaultValue, unit: 'rem' };
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={value}
@@ -141,7 +152,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
       linked: true,
     };
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={value}
@@ -170,7 +181,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
       bottomLeft: '16',
     };
 
-    render(
+    renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={value}
@@ -186,7 +197,7 @@ describe('BorderRadiusControl (Button Toggle Pattern)', () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
 
-    const { rerender } = render(
+    const { rerender } = renderWithTheme(
       <BorderRadiusControl
         field={{ label: 'Border Radius' }}
         value={defaultValue}

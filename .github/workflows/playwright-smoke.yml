@@ -76,11 +76,11 @@ jobs:
           cat /tmp/laravel.log || true
           exit 1
 
-      - name: Run central Playwright smoke test
+      - name: Run central Playwright auth smoke test
         env:
           CI: '1'
           PLAYWRIGHT_BASE_URL: http://byteforge.se:8000
-        run: npx playwright test tests/e2e/central-login-shell.spec.ts --project=chromium
+        run: npm run test:e2e:auth:central
 
       - name: Upload Playwright report
         if: always()

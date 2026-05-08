@@ -28,6 +28,11 @@ class AuthApiTest extends TestCase
         return 'http://'.$this->centralHost().$path;
     }
 
+    private function centralEmail(string $localPart): string
+    {
+        return sprintf('%s@%s', $localPart, $this->centralHost());
+    }
+
     private function refreshCookieFromResponse(\Illuminate\Testing\TestResponse $response): ?\Symfony\Component\HttpFoundation\Cookie
     {
         foreach ($response->headers->getCookies() as $cookie) {
@@ -55,7 +60,7 @@ class AuthApiTest extends TestCase
     {
         // Use the seeded superadmin user (password is 'password')
         $response = $this->postJson($this->centralUrl('/api/auth/login'), [
-            'email' => 'superadmin@byteforge.se',
+            'email' => $this->centralEmail('superadmin'),
             'password' => 'password',
         ]);
 
@@ -69,7 +74,7 @@ class AuthApiTest extends TestCase
         $this->assertTrue($refreshCookie->isHttpOnly());
         $this->assertSame('/api/auth', $refreshCookie->getPath());
         $this->assertDatabaseHas('web_refresh_sessions', [
-            'user_id' => User::query()->where('email', 'superadmin@byteforge.se')->value('id'),
+            'user_id' => User::query()->where('email', $this->centralEmail('superadmin'))->value('id'),
             'host' => $this->centralHost(),
             'tenant_id' => null,
             'revoked_at' => null,
@@ -80,7 +85,7 @@ class AuthApiTest extends TestCase
     public function central_api_login_fails_with_invalid_credentials(): void
     {
         $response = $this->postJson($this->centralUrl('/api/auth/login'), [
-            'email' => 'superadmin@byteforge.se',
+            'email' => $this->centralEmail('superadmin'),
             'password' => 'wrong-password',
         ]);
 
@@ -93,7 +98,7 @@ class AuthApiTest extends TestCase
     public function central_api_login_normalizes_email_before_authentication(): void
     {
         $response = $this->postJson($this->centralUrl('/api/auth/login'), [
-            'email' => "  superadmin@byteforge.se\t ",
+            'email' => sprintf("  %s\t ", $this->centralEmail('superadmin')),
             'password' => 'password',
         ]);
 
@@ -106,7 +111,7 @@ class AuthApiTest extends TestCase
     {
         // First login to get a real token
         $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
-            'email' => 'superadmin@byteforge.se',
+            'email' => $this->centralEmail('superadmin'),
             'password' => 'password',
         ]);
 
@@ -126,7 +131,7 @@ class AuthApiTest extends TestCase
     public function central_api_refresh_returns_token_with_no_store_headers(): void
     {
         $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
-            'email' => 'superadmin@byteforge.se',
+            'email' => $this->centralEmail('superadmin'),
             'password' => 'password',
         ]);
 
@@ -167,7 +172,7 @@ class AuthApiTest extends TestCase
     public function central_api_refresh_can_rotate_session_from_refresh_cookie_without_bearer(): void
     {
         $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
-            'email' => 'superadmin@byteforge.se',
+            'email' => $this->centralEmail('superadmin'),
             'password' => 'password',
         ]);
 
@@ -213,7 +218,7 @@ class AuthApiTest extends TestCase
     public function central_api_logout_revokes_refresh_session_and_clears_cookie(): void
     {
         $loginResponse = $this->postJson('/api/auth/login', [
-            'email' => 'superadmin@byteforge.se',
+            'email' => $this->centralEmail('superadmin'),
             'password' => 'password',
         ]);
 
@@ -284,7 +289,7 @@ class AuthApiTest extends TestCase
 
         $response->assertOk()
             ->assertJsonStructure(['id', 'name', 'email'])
-            ->assertJsonFragment(['email' => 'superadmin@byteforge.se']);
+            ->assertJsonFragment(['email' => $this->centralEmail('superadmin')]);
     }
 
     #[Test]
@@ -299,7 +304,7 @@ class AuthApiTest extends TestCase
             ->assertJsonPath('locale', 'sv')
             ->assertJsonPath('message', trans('Locale updated successfully'));
 
-        $user = User::query()->where('email', 'superadmin@byteforge.se')->firstOrFail();
+        $user = User::query()->where('email', $this->centralEmail('superadmin'))->firstOrFail();
         $this->assertSame('sv', $user->preferred_locale);
     }
 
@@ -309,14 +314,14 @@ class AuthApiTest extends TestCase
         $response = $this->actingAsSuperadmin()
             ->putJson('/api/auth/user', [
                 'name' => "  Super\n Admin  ",
-                'email' => "  superadmin@byteforge.se\t ",
+                'email' => sprintf("  %s\t ", $this->centralEmail('superadmin')),
             ]);
 
         $response->assertOk()
             ->assertJsonPath('user.name', 'Super Admin')
-            ->assertJsonPath('user.email', 'superadmin@byteforge.se');
+            ->assertJsonPath('user.email', $this->centralEmail('superadmin'));
 
-        $user = User::query()->where('email', 'superadmin@byteforge.se')->firstOrFail();
+        $user = User::query()->where('email', $this->centralEmail('superadmin'))->firstOrFail();
         $this->assertSame('Super Admin', $user->name);
     }
 

@@ -2,55 +2,78 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\AnalyticsEvent;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
-/**
- * Tenant Analytics API tests.
- *
- * NOTE: Tenant-domain HTTP tests are skipped in the test environment due to
- * two known architectural constraints:
- *
- * 1. FilesystemTenancyBootstrapper suffixes storage_path() with the tenant ID
- *    when InitializeTenancyByDomain runs. This makes Passport's oauth-private.key
- *    unresolvable, causing 500s on unauthenticated requests.
- *
- * 2. TenancyTeamResolver::getPermissionsTeamId() returns string tenant IDs
- *    (e.g. 'tenant_one') but model_has_permissions.team_id is bigint — MySQL
- *    silently casts the string to 0, so no permissions match and all
- *    authenticated tenant-domain requests return 403.
- *
- * These constraints affect only the HTTP layer in tests. Business logic is
- * fully covered by:
- *   - AnalyticsQueryServiceTest (unit) — all aggregation logic
- *   - AnalyticsEventScopesTest (unit)  — tenant isolation at the query level
- *   - AnalyticsIsolationTest (feature) — central-domain isolation boundary
- *   - CentralAnalyticsApiTest (feature) — full HTTP coverage on central domain
- *
- * To fix the tenant-domain HTTP tests, the team_id column would need to be
- * migrated to varchar(255) to match string tenant IDs.
- */
 class TenantAnalyticsApiTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        AnalyticsEvent::query()->delete();
+    }
+
+    private function tenantUrl(string $path, string $slug = 'tenant-one'): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
+    }
+
     #[Test]
     public function tenant_owner_can_access_tenant_analytics(): void
     {
-        $this->markTestSkipped(
-            'Tenant-domain HTTP tests skipped: TenancyTeamResolver returns string tenant IDs ' .
-            'incompatible with bigint model_has_permissions.team_id column. ' .
-            'Business logic fully covered by AnalyticsQueryServiceTest and AnalyticsEventScopesTest.'
-        );
+        AnalyticsEvent::create([
+            'tenant_id' => 'tenant_one',
+            'event_type' => AnalyticsEvent::TYPE_PAGE_CREATED,
+            'properties' => [],
+            'occurred_at' => now(),
+        ]);
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->getJson($this->tenantUrl('/api/analytics/overview', 'tenant-one'));
+
+        $response->assertOk();
+        $this->assertGreaterThanOrEqual(1, (int) $response->json('data.total_events'));
     }
 
     #[Test]
     public function tenant_viewer_cannot_access_tenant_analytics(): void
     {
-        $this->markTestSkipped('See class docblock — tenant-domain HTTP tests skipped.');
+        $response = $this->actingAsTenantViewer('tenant-one')
+            ->getJson($this->tenantUrl('/api/analytics/overview', 'tenant-one'));
+
+        $response->assertForbidden();
     }
 
     #[Test]
     public function tenant_events_are_isolated_per_tenant(): void
     {
-        $this->markTestSkipped('See class docblock — tenant-domain HTTP tests skipped.');
+        AnalyticsEvent::create([
+            'tenant_id' => 'tenant_one',
+            'event_type' => AnalyticsEvent::TYPE_PAGE_CREATED,
+            'properties' => [],
+            'occurred_at' => now(),
+        ]);
+        AnalyticsEvent::create([
+            'tenant_id' => 'tenant_two',
+            'event_type' => AnalyticsEvent::TYPE_PAGE_CREATED,
+            'properties' => [],
+            'occurred_at' => now(),
+        ]);
+
+        $tenantOne = $this->actingAsTenantOwner('tenant-one')
+            ->getJson($this->tenantUrl('/api/analytics/overview', 'tenant-one'));
+
+        $tenantTwo = $this->actingAsTenantOwner('tenant-two')
+            ->getJson($this->tenantUrl('/api/analytics/overview', 'tenant-two'));
+
+        $tenantOne->assertOk();
+        $tenantTwo->assertOk();
+        $this->assertSame(1, (int) $tenantOne->json('data.total_events'));
+        $this->assertSame(1, (int) $tenantTwo->json('data.total_events'));
     }
 }

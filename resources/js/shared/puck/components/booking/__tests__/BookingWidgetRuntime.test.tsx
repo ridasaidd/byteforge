@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookingWidgetRender } from '../BookingWidget';
+import { getTenantBaseUrl } from '../../../../../../../tests/support/runtimeTestConfig';
 
 vi.mock('@/shared/hooks', async () => {
   const actual = await vi.importActual('../../../../hooks');
@@ -661,7 +662,7 @@ describe('BookingWidget runtime flows', () => {
             booking_id: 88,
             status: 'awaiting_payment',
             next_action: 'payment_required',
-            payment_url: 'http://tenant-one.byteforge.se/booking/payment#token=hold-1',
+            payment_url: `${getTenantBaseUrl() || 'http://tenant-one.byteforge.se'}/booking/payment#token=hold-1`,
           },
         });
       }

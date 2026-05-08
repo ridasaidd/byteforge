@@ -1,7 +1,11 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { screen } from '@testing-library/react';
 import { defineBlockTestSuite } from '../../blockTestFactory';
 import { mockThemeResolver } from '../../testUtils';
+
+const { mockUsePuckEditMode } = vi.hoisted(() => ({
+  mockUsePuckEditMode: vi.fn(() => true),
+}));
 
 // Mock useTheme and usePuckEditMode hooks
 vi.mock('@/shared/hooks', () => ({
@@ -9,7 +13,7 @@ vi.mock('@/shared/hooks', () => ({
     theme: {},
     resolve: mockThemeResolver()
   }),
-  usePuckEditMode: () => true,
+  usePuckEditMode: mockUsePuckEditMode,
   useQuery: vi.fn(() => ({ data: null }))
 }));
 
@@ -35,7 +39,7 @@ defineBlockTestSuite({
   },
   defaultProps,
   className: 'button-test-button',
-  rootTag: 'button',
+  rootTag: 'span',
   allowedHardcodedValues: ['0px', 'none', 'transparent', '0.2s', 'all', '#3b82f6', '#ffffff'],
   supportsPadding: true,
   supportsMargin: true,
@@ -86,6 +90,14 @@ defineBlockTestSuite({
     });
 
     describe('Link Functionality', () => {
+      beforeEach(() => {
+        mockUsePuckEditMode.mockReturnValue(false);
+      });
+
+      afterEach(() => {
+        mockUsePuckEditMode.mockReturnValue(true);
+      });
+
       it('renders as link when linkType is internal', () => {
         renderWithDefaults({ linkType: 'internal', internalPage: '/about' });
         const link = screen.getByText('Click me').closest('a');
@@ -113,8 +125,8 @@ defineBlockTestSuite({
         const { container } = renderWithDefaults({});
         const containerDiv = container.querySelector('.button-test-button-container');
         expect(containerDiv).not.toBeInTheDocument();
-        const button = container.querySelector('button');
-        expect(button).toBeInTheDocument();
+        const inlineRoot = container.querySelector('span.button-test-button');
+        expect(inlineRoot).toBeInTheDocument();
       });
 
       it('applies display property from layout CSS', () => {

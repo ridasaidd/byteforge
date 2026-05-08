@@ -12,7 +12,7 @@ class PaymentApiTest extends TestCase
 {
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        return "http://{$slug}.dev.byteforge.se{$path}";
     }
 
     #[Test]

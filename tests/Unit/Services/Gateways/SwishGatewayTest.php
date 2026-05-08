@@ -18,7 +18,7 @@ class SwishGatewayTest extends TestCase
         $gateway = new SwishGateway(
             credentials: [
                 'merchant_swish_number' => '1231234567',
-                'callback_url' => 'https://tenant-one.byteforge.se/api/payments/swish/callback',
+                'callback_url' => 'https://tenant-one.dev.byteforge.se/api/payments/swish/callback',
             ],
             createPaymentHandler: function (array $payload) use (&$called): array {
                 $called = true;
@@ -51,7 +51,7 @@ class SwishGatewayTest extends TestCase
     {
         $gateway = new SwishGateway([
             'merchant_swish_number' => '1231234567',
-            'callback_url' => 'https://tenant-one.byteforge.se/api/payments/swish/callback',
+            'callback_url' => 'https://tenant-one.dev.byteforge.se/api/payments/swish/callback',
         ]);
 
         $result = $gateway->createPayment(new PaymentData(

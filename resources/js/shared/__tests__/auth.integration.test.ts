@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { api } from '../services/api';
 import { authService } from '../services/auth.service';
+import { getCentralSuperadminEmail } from '../../../../tests/support/runtimeTestConfig';
 
 /**
  * E2E Tests for Central App Authentication
@@ -15,8 +16,8 @@ import { authService } from '../services/auth.service';
  * - Unauthorized access handling
  *
  * Requirements:
- * - Live backend at http://byteforge.se
- * - Test superadmin user: testadmin@byteforge.se / password (already seeded)
+ * - Live backend at the configured central base URL
+ * - Test superadmin user matching the configured central domain / password
  *
  * NOTE: These tests fail in JSDOM due to CORS restrictions when making real HTTP requests.
  * They are skipped in CI. Run them manually with Playwright/Cypress for true E2E testing.
@@ -27,12 +28,12 @@ import { authService } from '../services/auth.service';
 
 describe.skip('Central App Authentication Flow', () => {
   const TEST_CREDENTIALS = {
-    email: 'testadmin@byteforge.se',
+    email: getCentralSuperadminEmail(),
     password: 'password',
   };
 
   const INVALID_CREDENTIALS = {
-    email: 'invalid@byteforge.se',
+    email: `invalid-${Date.now()}@example.com`,
     password: 'wrongpassword',
   };
 

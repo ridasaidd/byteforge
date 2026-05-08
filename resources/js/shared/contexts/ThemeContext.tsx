@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ThemeContext } from './theme-context';
 import { themes, tenantThemes } from '@/shared/services/api/themes';
 import type { Theme } from '@/shared/services/api/types';
@@ -22,12 +22,23 @@ function shouldLoadThemeOnClient(): boolean {
 }
 
 export function ThemeProvider({ children, initialTheme, injectCss = false }: ThemeProviderProps) {
+  const isMountedRef = useRef(true);
   const [theme, setTheme] = useState<Theme | null>(initialTheme || null);
   const [isLoading, setIsLoading] = useState(!initialTheme); // Skip loading if theme provided
   const [error, setError] = useState<Error | null>(null);
 
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const loadActiveTheme = async () => {
     try {
+      if (!isMountedRef.current) {
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       const isTenantCms = typeof window !== 'undefined' && window.location.pathname.startsWith('/cms');
@@ -37,13 +48,21 @@ export function ThemeProvider({ children, initialTheme, injectCss = false }: The
       if (isTenantCms) {
         const response = await tenantThemes.list();
         const activeTheme = response.data.find((candidate) => candidate.is_active) ?? null;
-        setTheme(activeTheme);
+        if (isMountedRef.current) {
+          setTheme(activeTheme);
+        }
         return;
       }
 
       const response = isTenantRuntime ? await tenantThemes.active() : await themes.active();
-      setTheme(response.data);
+      if (isMountedRef.current) {
+        setTheme(response.data);
+      }
     } catch (err: unknown) {
+      if (!isMountedRef.current) {
+        return;
+      }
+
       const status = (err as { response?: { status?: number } })?.response?.status;
 
       // No active theme yet is a valid runtime state for new tenants.
@@ -55,7 +74,9 @@ export function ThemeProvider({ children, initialTheme, injectCss = false }: The
         console.error('Failed to load active theme:', err);
       }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 

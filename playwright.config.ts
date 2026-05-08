@@ -1,6 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { getCentralBaseUrl } from './tests/support/runtimeTestConfig';
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? 'http://byteforge.se';
+const baseURL = getCentralBaseUrl();
 const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND;
 
 export default defineConfig({

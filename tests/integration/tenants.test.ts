@@ -1,11 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios, { AxiosInstance } from 'axios';
+import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
 
-describe('Tenants API Integration', () => {
+const describeHttpIntegration = process.env.RUN_HTTP_INTEGRATION === '1' ? describe : describe.skip;
+
+describeHttpIntegration('Tenants API Integration', () => {
   let client: AxiosInstance;
   let authToken: string;
   let createdTenantId: string;
-  const BASE_URL = 'http://byteforge.se';
+  const BASE_URL = getCentralBaseUrl();
 
   beforeAll(async () => {
     client = axios.create({
@@ -19,7 +22,7 @@ describe('Tenants API Integration', () => {
 
     // Login once and reuse token (like a real user would)
     const loginResponse = await client.post('/api/auth/login', {
-      email: 'testadmin@byteforge.se',
+      email: getCentralSuperadminEmail(),
       password: 'password',
     });
     authToken = loginResponse.data.token;

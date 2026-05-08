@@ -75,7 +75,10 @@ class BookingPaymentSecurityTest extends TestCase
 
     private function url(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
     }
 
     private function makeResourceForTenant(Tenant $tenant): BookingResource
@@ -428,7 +431,7 @@ class BookingPaymentSecurityTest extends TestCase
             [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
                 'HTTP_STRIPE_SIGNATURE' => $this->stripeSignatureHeader(
                     $payload,
                     (string) data_get($provider->credentials, 'webhook_secret')

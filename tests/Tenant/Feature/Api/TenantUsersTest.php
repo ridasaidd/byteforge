@@ -26,12 +26,12 @@ class TenantUsersTest extends TestCase
 
         $response->assertOk();
 
-        $editorRow = collect($response->json('data'))->firstWhere('email', 'editor@tenant-one.byteforge.se');
+        $editorRow = collect($response->json('data'))->firstWhere('email', 'editor@tenant-one.dev.byteforge.se');
 
         $this->assertNotNull($editorRow);
         $this->assertSame('support', $editorRow['roles'][0]['name'] ?? null);
 
-        $ownerRow = collect($response->json('data'))->firstWhere('email', 'owner@tenant-one.byteforge.se');
+        $ownerRow = collect($response->json('data'))->firstWhere('email', 'owner@tenant-one.dev.byteforge.se');
 
         $this->assertNotNull($ownerRow);
         $this->assertSame('admin', $ownerRow['roles'][0]['name'] ?? null);
@@ -91,17 +91,17 @@ class TenantUsersTest extends TestCase
         $response = $this->actingAsTenantOwner('tenant-one')
             ->postJson($this->tenantUrl('/api/users', 'tenant-one'), [
                 'name' => 'Tenant Staff',
-                'email' => 'staff-created@tenant-one.byteforge.se',
+                'email' => 'staff-created@tenant-one.dev.byteforge.se',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'role' => 'support',
             ]);
 
         $response->assertCreated();
-        $response->assertJsonPath('data.email', 'staff-created@tenant-one.byteforge.se');
+        $response->assertJsonPath('data.email', 'staff-created@tenant-one.dev.byteforge.se');
         $response->assertJsonPath('data.roles.0.name', 'support');
 
-        $created = User::where('email', 'staff-created@tenant-one.byteforge.se')->first();
+        $created = User::where('email', 'staff-created@tenant-one.dev.byteforge.se')->first();
         $this->assertNotNull($created);
         $this->assertDatabaseHas('memberships', [
             'user_id' => $created->id,
@@ -116,7 +116,7 @@ class TenantUsersTest extends TestCase
         $response = $this->actingAsTenantEditor('tenant-one')
             ->postJson($this->tenantUrl('/api/users', 'tenant-one'), [
                 'name' => 'Blocked Staff',
-                'email' => 'blocked-staff@tenant-one.byteforge.se',
+                'email' => 'blocked-staff@tenant-one.dev.byteforge.se',
                 'password' => 'password123',
                 'password_confirmation' => 'password123',
                 'role' => 'viewer',
