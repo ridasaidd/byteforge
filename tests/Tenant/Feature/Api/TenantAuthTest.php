@@ -71,13 +71,13 @@ class TenantAuthTest extends TestCase
         $tenant = TestUsers::tenant('tenant-one');
 
         $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
-            'email' => 'owner@tenant-one.byteforge.se',
+            'email' => 'owner@tenant-one.dev.byteforge.se',
             'password' => 'password',
         ]);
 
         $response->assertOk()
             ->assertJsonStructure(['user', 'token'])
-            ->assertJsonPath('user.email', 'owner@tenant-one.byteforge.se');
+            ->assertJsonPath('user.email', 'owner@tenant-one.dev.byteforge.se');
 
         $refreshCookie = $this->refreshCookieFromResponse($response);
 
@@ -95,7 +95,7 @@ class TenantAuthTest extends TestCase
     public function tenant_login_returns_422_for_wrong_password(): void
     {
         $response = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
-            'email' => 'owner@tenant-one.byteforge.se',
+            'email' => 'owner@tenant-one.dev.byteforge.se',
             'password' => 'wrong-password',
         ]);
 
@@ -147,7 +147,7 @@ class TenantAuthTest extends TestCase
     public function tenant_owner_can_logout(): void
     {
         $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
-            'email' => 'owner@tenant-one.byteforge.se',
+            'email' => 'owner@tenant-one.dev.byteforge.se',
             'password' => 'password',
         ]);
 
@@ -182,7 +182,7 @@ class TenantAuthTest extends TestCase
     public function tenant_refresh_can_rotate_session_from_refresh_cookie_without_bearer(): void
     {
         $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
-            'email' => 'owner@tenant-one.byteforge.se',
+            'email' => 'owner@tenant-one.dev.byteforge.se',
             'password' => 'password',
         ]);
 
@@ -208,7 +208,7 @@ class TenantAuthTest extends TestCase
 
         $refreshResponse->assertOk()
             ->assertJsonStructure(['token', 'user'])
-            ->assertJsonPath('user.email', 'owner@tenant-one.byteforge.se');
+            ->assertJsonPath('user.email', 'owner@tenant-one.dev.byteforge.se');
 
         $rotatedCookie = $this->refreshCookieFromResponse($refreshResponse);
         $this->assertNotNull($rotatedCookie);

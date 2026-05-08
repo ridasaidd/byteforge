@@ -24,7 +24,6 @@ class TenantSupportAccessOwnerNotification extends Notification implements Shoul
         public readonly TenantSupportAccessGrant $grant,
         public readonly string $event,
     ) {
-        $this->afterCommit();
     }
 
     public function via(object $notifiable): array

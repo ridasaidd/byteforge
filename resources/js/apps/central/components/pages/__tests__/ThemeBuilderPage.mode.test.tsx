@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeBuilderPage } from '@/shared/components/organisms/ThemeBuilderPage';
 
 // Mock all dependencies to focus on tab visibility logic
@@ -70,6 +71,21 @@ vi.mock('@/shared/hooks/useThemeCssSectionSave', () => ({
   useThemeCssSectionSave: () => ({ saveSection: vi.fn() }),
 }));
 
+function renderPage(ui: React.ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false },
+      mutations: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>
+  );
+}
+
 describe('ThemeBuilderPage - Mode Prop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -77,7 +93,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
 
   describe('Create Mode (default)', () => {
     it('should show all tabs in create mode', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="create" />
         </MemoryRouter>
@@ -91,7 +107,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
     });
 
     it('should start on info tab in create mode', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="create" />
         </MemoryRouter>
@@ -102,7 +118,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
     });
 
     it('should default to create mode when no mode prop provided', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage />
         </MemoryRouter>
@@ -115,7 +131,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
 
   describe('Customize Mode', () => {
     it('should hide info tab in customize mode', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="customize" />
         </MemoryRouter>
@@ -125,7 +141,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
     });
 
     it('should hide pages tab in customize mode', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="customize" />
         </MemoryRouter>
@@ -135,7 +151,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
     });
 
     it('should show settings, header, and footer tabs in customize mode', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="customize" />
         </MemoryRouter>
@@ -147,7 +163,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
     });
 
     it('should start on settings tab in customize mode', () => {
-      render(
+      renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="customize" />
         </MemoryRouter>
@@ -160,7 +176,7 @@ describe('ThemeBuilderPage - Mode Prop', () => {
 
   describe('Mode Persistence', () => {
     it('should maintain customize mode when switching tabs', () => {
-      const { rerender } = render(
+      const { rerender } = renderPage(
         <MemoryRouter>
           <ThemeBuilderPage mode="customize" />
         </MemoryRouter>
@@ -170,9 +186,16 @@ describe('ThemeBuilderPage - Mode Prop', () => {
 
       // After rerender, tabs should still respect customize mode
       rerender(
-        <MemoryRouter>
-          <ThemeBuilderPage mode="customize" />
-        </MemoryRouter>
+        <QueryClientProvider client={new QueryClient({
+          defaultOptions: {
+            queries: { retry: false },
+            mutations: { retry: false },
+          },
+        })}>
+          <MemoryRouter>
+            <ThemeBuilderPage mode="customize" />
+          </MemoryRouter>
+        </QueryClientProvider>
       );
 
       expect(screen.queryByRole('tab', { name: /info/i })).not.toBeInTheDocument();

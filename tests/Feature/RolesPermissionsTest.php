@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\TenantRbacService;
+use Spatie\Permission\PermissionRegistrar;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -22,9 +24,19 @@ class RolesPermissionsTest extends TestCase
 
     public function test_tenant_user_role_assignment_and_scoping()
     {
-        // SKIPPED: Spatie Permission's team_id column is bigint but tenant IDs are strings (UUIDs)
-        // This is a known schema mismatch that requires migration changes to fix
-        $this->markTestSkipped('Spatie Permission team_id schema mismatch with string tenant IDs');
+        $tenant = Tenant::where('slug', 'tenant-one')->firstOrFail();
+        $user = User::factory()->create(['type' => 'tenant_user']);
+
+        tenancy()->initialize($tenant);
+        app(PermissionRegistrar::class)->setPermissionsTeamId((string) $tenant->id);
+
+        app(TenantRbacService::class)->ensureTenantRoles((string) $tenant->id);
+        app(TenantRbacService::class)->syncUserRoleFromMembership($user, (string) $tenant->id, 'owner');
+
+        $this->assertTrue($user->hasRole('admin', 'api'));
+        $this->assertTrue($user->hasPermissionTo('pages.view', 'api'));
+
+        tenancy()->end();
     }
 
     public function test_global_role_assignment_in_central_context()
@@ -40,9 +52,20 @@ class RolesPermissionsTest extends TestCase
 
     public function test_tenant_role_assignment_in_tenant_context()
     {
-        // SKIPPED: Spatie Permission's team_id column is bigint but tenant IDs are strings (UUIDs)
-        // This is a known schema mismatch that requires migration changes to fix
-        $this->markTestSkipped('Spatie Permission team_id schema mismatch with string tenant IDs');
+        $tenant = Tenant::where('slug', 'tenant-two')->firstOrFail();
+        $user = User::factory()->create(['type' => 'tenant_user']);
+
+        tenancy()->initialize($tenant);
+        app(PermissionRegistrar::class)->setPermissionsTeamId((string) $tenant->id);
+
+        app(TenantRbacService::class)->ensureTenantRoles((string) $tenant->id);
+        app(TenantRbacService::class)->syncUserRoleFromMembership($user, (string) $tenant->id, 'editor');
+
+        $this->assertTrue($user->hasRole('support', 'api'));
+        $this->assertTrue($user->hasPermissionTo('pages.edit', 'api'));
+        $this->assertFalse($user->hasPermissionTo('users.manage', 'api'));
+
+        tenancy()->end();
     }
 
     public function test_tenant_user_cannot_assign_global_role()

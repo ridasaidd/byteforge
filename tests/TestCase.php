@@ -56,10 +56,6 @@ abstract class TestCase extends BaseTestCase
 
         parent::setUp();
 
-        // Disable activity logging to avoid UUID/bigint column mismatch
-        // (tenant IDs are strings but activity_log.subject_id is bigint)
-        \Spatie\Activitylog\Facades\Activity::disableLogging();
-
         // Reset permission-team context and clear cached permissions between tests.
         $permissionRegistrar = $this->app->make(PermissionRegistrar::class);
         $permissionRegistrar->setPermissionsTeamId(null);
@@ -174,7 +170,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function getTenantUser(string $tenantSlug): ?\App\Models\User
     {
-        $tenantDomain = str_replace(':tenant', $tenantSlug, (string) config('tenancy.fallback_tenant_domain_template', ':tenant.byteforge.se'));
+        $tenantDomain = str_replace(':tenant', $tenantSlug, (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se'));
 
         return \App\Models\User::where('email', "user.{$tenantSlug}@" . $this->centralDomain())->first()
             ?? \App\Models\User::where('email', "owner@{$tenantDomain}")->first();

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios, { AxiosInstance } from 'axios';
+import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
 
-// E2E Test - Requires live backend at http://byteforge.se
+// E2E Test - Requires a live backend at the configured central base URL.
 // Run with: npx vitest run tests/integration/authorization.test.ts --no-coverage
 // Backend is tested via PHPUnit
 describe.skip('Authorization & Permissions Integration', () => {
@@ -9,7 +10,7 @@ describe.skip('Authorization & Permissions Integration', () => {
   let superadminToken: string;
   let regularUserToken: string;
   let regularUserId: string;
-  const BASE_URL = 'http://byteforge.se';
+  const BASE_URL = getCentralBaseUrl();
 
   beforeAll(async () => {
     client = axios.create({
@@ -23,7 +24,7 @@ describe.skip('Authorization & Permissions Integration', () => {
 
     // Login as superadmin - use this token throughout tests
     const superadminLogin = await client.post('/api/auth/login', {
-      email: 'testadmin@byteforge.se',
+      email: getCentralSuperadminEmail(),
       password: 'password',
     });
     superadminToken = superadminLogin.data.token;

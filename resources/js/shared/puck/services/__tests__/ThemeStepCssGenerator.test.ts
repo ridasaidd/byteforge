@@ -46,7 +46,7 @@ describe('ThemeStepCssGenerator', () => {
 
       const css = generateThemeStepCss('header', { puckData: headerData });
 
-      expect(extractCssFromPuckData).toHaveBeenCalledWith(headerData, undefined);
+      expect(extractCssFromPuckData).toHaveBeenCalledWith(headerData, undefined, false);
       expect(css).toBe('.hero { padding: 40px 20px 40px 20px; }');
     });
 
@@ -66,7 +66,7 @@ describe('ThemeStepCssGenerator', () => {
 
       const css = generateThemeStepCss('footer', { puckData: footerData });
 
-      expect(extractCssFromPuckData).toHaveBeenCalledWith(footerData, undefined);
+      expect(extractCssFromPuckData).toHaveBeenCalledWith(footerData, undefined, false);
       expect(css).toBe('.footer { padding: 20px 10px 20px 10px; }');
     });
 
@@ -83,7 +83,7 @@ describe('ThemeStepCssGenerator', () => {
         themeData,
       });
 
-      expect(extractCssFromPuckData).toHaveBeenCalledWith(templateData, themeData);
+      expect(extractCssFromPuckData).toHaveBeenCalledWith(templateData, themeData, false);
       expect(css).toBe(':root { --colors-primary-500: #3b82f6; } .template { }');
     });
 

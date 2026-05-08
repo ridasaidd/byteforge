@@ -116,11 +116,14 @@ jobs:
       - name: Seed test fixtures
         run: php artisan db:seed --class=TestFixturesSeeder --force
 
-      - name: Run PHPUnit Feature suite first
-        run: ./vendor/bin/phpunit --testsuite=Feature --do-not-fail-on-warning --do-not-fail-on-skipped --do-not-fail-on-phpunit-warning
+      - name: Run backend Feature suite first
+        run: php artisan test --testsuite=Feature
 
-      - name: Run remaining PHPUnit suites
-        run: ./vendor/bin/phpunit --testsuite=Central,Tenant,Unit --do-not-fail-on-warning --do-not-fail-on-skipped --do-not-fail-on-phpunit-warning
+      - name: Run remaining backend suites
+        run: php artisan test --testsuite=Central,Tenant,Unit
+
+      - name: Run frontend Vitest suite
+        run: npm run test:run
 
       - name: Upload Laravel log on failure
         if: failure()
@@ -223,8 +226,8 @@ jobs:
       - name: Seed test fixtures
         run: php artisan db:seed --class=TestFixturesSeeder --force
 
-      - name: Run PHPUnit Integration suite
-        run: ./vendor/bin/phpunit --testsuite=Integration --do-not-fail-on-warning --do-not-fail-on-skipped --do-not-fail-on-phpunit-warning
+      - name: Run backend Integration suite
+        run: php artisan test --testsuite=Integration
 
       - name: Upload Laravel log on failure
         if: failure()

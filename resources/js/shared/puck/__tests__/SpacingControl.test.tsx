@@ -1,9 +1,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { ThemeProvider } from '@/shared/contexts/ThemeContext';
 import {
   SpacingControl,
   type SpacingValue
 } from '../fields/SpacingControl';
+
+function renderWithTheme(ui: React.ReactElement) {
+  return render(
+    <ThemeProvider
+      initialTheme={{ id: 1, name: 'Test Theme', slug: 'test-theme', theme_data: {}, is_active: true, tenant_id: null } as any}
+    >
+      {ui}
+    </ThemeProvider>
+  );
+}
 
 describe('SpacingControl', () => {
   const defaultValue: SpacingValue = {
@@ -18,7 +29,7 @@ describe('SpacingControl', () => {
   it('renders with default values', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <SpacingControl
         field={{ label: 'Padding' }}
         value={defaultValue}
@@ -34,7 +45,7 @@ describe('SpacingControl', () => {
   it('displays the label', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <SpacingControl
         field={{ label: 'Margin' }}
         value={defaultValue}
@@ -48,7 +59,7 @@ describe('SpacingControl', () => {
   it('updates top value on change', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <SpacingControl
         field={{ label: 'Padding' }}
         value={defaultValue}
@@ -75,7 +86,7 @@ describe('SpacingControl', () => {
       left: '10',
     };
 
-    render(
+    renderWithTheme(
       <SpacingControl
         field={{ label: 'Padding' }}
         value={linkedValue}
@@ -101,7 +112,7 @@ describe('SpacingControl', () => {
   it('toggles linked state', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <SpacingControl
         field={{ label: 'Padding' }}
         value={defaultValue}
@@ -119,7 +130,7 @@ describe('SpacingControl', () => {
   it('changes unit', () => {
     const onChange = vi.fn();
 
-    render(
+    renderWithTheme(
       <SpacingControl
         field={{ label: 'Padding' }}
         value={defaultValue}

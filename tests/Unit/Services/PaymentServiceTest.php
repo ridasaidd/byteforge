@@ -72,7 +72,7 @@ class PaymentServiceTest extends TestCase
                     'certificate' => '/tmp/client.pem',
                     'private_key' => '/tmp/private.key',
                     'ca_certificate' => '/tmp/ca.pem',
-                    'callback_url' => 'https://tenant-one.byteforge.se/api/payments/swish/callback',
+                    'callback_url' => 'https://tenant-one.dev.byteforge.se/api/payments/swish/callback',
                 ],
                 'is_active' => true,
                 'mode' => 'test',

@@ -17,7 +17,7 @@ class TenantDashboardTest extends TestCase
     private function tenantUrl(string $path, string $tenantSlug = 'tenant-one'): string
     {
         $tenant = TestUsers::tenant($tenantSlug);
-        $domain = $tenant->domains()->first()?->domain ?? "{$tenantSlug}.byteforge.se";
+        $domain = $tenant->domains()->first()?->domain ?? "{$tenantSlug}.dev.byteforge.se";
 
         return "http://{$domain}{$path}";
     }

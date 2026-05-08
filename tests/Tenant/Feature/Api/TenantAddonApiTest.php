@@ -97,7 +97,7 @@ class TenantAddonApiTest extends TestCase
     public function endpoint_requires_authentication(): void
     {
         $tenant = TestUsers::tenant('tenant-one');
-        $domain = $tenant->domains()->first()?->domain ?? 'tenant-one.byteforge.se';
+        $domain = $tenant->domains()->first()?->domain ?? 'tenant-one.dev.byteforge.se';
 
         $response = $this->getJson("http://{$domain}/api/addons");
 

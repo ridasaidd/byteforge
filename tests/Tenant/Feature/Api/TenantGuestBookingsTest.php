@@ -30,7 +30,10 @@ class TenantGuestBookingsTest extends TestCase
 
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
     }
 
     private function activateBookingAddon(Tenant $tenant): void

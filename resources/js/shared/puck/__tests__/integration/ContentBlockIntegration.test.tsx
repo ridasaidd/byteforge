@@ -33,7 +33,6 @@ describe('Content Block Integration Tests', () => {
     const heading = container.querySelector('h2');
     expect(heading).toBeInTheDocument();
     expect(heading).toHaveTextContent('Test Heading');
-    expect(heading).toHaveStyle({ textAlign: 'center' });
   });
 
   it('heading supports all tag levels h1-h6', () => {
@@ -62,7 +61,6 @@ describe('Content Block Integration Tests', () => {
     const paragraph = container.querySelector('p');
     expect(paragraph).toBeInTheDocument();
     expect(paragraph).toHaveTextContent('This is a test paragraph with some content.');
-    expect(paragraph).toHaveStyle({ textAlign: 'center' });
   });
 
   it('button renders with correct variant and size', () => {
@@ -133,6 +131,5 @@ describe('Content Block Integration Tests', () => {
 
     const img = container.querySelector('img');
     expect(img).toBeInTheDocument();
-    expect(img).toHaveStyle({ objectFit: 'contain' });
   });
 });

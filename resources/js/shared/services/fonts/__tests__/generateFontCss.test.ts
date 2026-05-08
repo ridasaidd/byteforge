@@ -143,12 +143,16 @@ describe('Font CSS Generator', () => {
   describe('generateFontCSSFromThemeData', () => {
     it('should handle FontConfig object format', () => {
       const themeData = {
-        sans: {
-          name: 'Inter',
-          source: 'bundled',
-          file: 'Inter-Variable.woff2',
-          weights: [100, 900],
-          isVariable: true,
+        typography: {
+          fontFamily: {
+            sans: {
+              name: 'Inter',
+              source: 'bundled',
+              file: 'Inter-Variable.woff2',
+              weights: [100, 900],
+              isVariable: true,
+            },
+          },
         },
       };
 
@@ -160,7 +164,11 @@ describe('Font CSS Generator', () => {
 
     it('should handle legacy string format', () => {
       const themeData = {
-        sans: 'Inter',
+        typography: {
+          fontFamily: {
+            sans: 'Inter',
+          },
+        },
       };
 
       const css = generateFontCSSFromThemeData(themeData);
@@ -170,13 +178,17 @@ describe('Font CSS Generator', () => {
 
     it('should handle mixed formats', () => {
       const themeData = {
-        sans: 'Inter', // legacy string
-        serif: {
-          // FontConfig object
-          name: 'Playfair Display',
-          source: 'bundled',
+        typography: {
+          fontFamily: {
+            sans: 'Inter', // legacy string
+            serif: {
+              // FontConfig object
+              name: 'Playfair Display',
+              source: 'bundled',
+            },
+            mono: '', // empty
+          },
         },
-        mono: '', // empty
       };
 
       const css = generateFontCSSFromThemeData(themeData);
@@ -187,9 +199,13 @@ describe('Font CSS Generator', () => {
 
     it('should skip missing name fields', () => {
       const themeData = {
-        sans: {
-          source: 'bundled',
-          // missing 'name' field - will be skipped
+        typography: {
+          fontFamily: {
+            sans: {
+              source: 'bundled',
+              // missing 'name' field - will be skipped
+            },
+          },
         },
       };
 

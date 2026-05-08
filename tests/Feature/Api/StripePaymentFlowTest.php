@@ -15,7 +15,10 @@ class StripePaymentFlowTest extends TestCase
 {
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
     }
 
     #[Test]
@@ -143,7 +146,7 @@ class StripePaymentFlowTest extends TestCase
             [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
                 'HTTP_STRIPE_SIGNATURE' => sprintf('t=%d,v1=%s', $timestamp, $signature),
             ],
             $payload,
@@ -192,7 +195,7 @@ class StripePaymentFlowTest extends TestCase
             [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
                 'HTTP_STRIPE_SIGNATURE' => 't=1,v1=invalid',
             ],
             $payload,

@@ -15,7 +15,10 @@ class SwishPaymentFlowTest extends TestCase
 {
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
     }
 
     #[Test]
@@ -119,7 +122,7 @@ class SwishPaymentFlowTest extends TestCase
             [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
             ],
             $payload,
         );
@@ -200,7 +203,7 @@ class SwishPaymentFlowTest extends TestCase
                     'certificate' => '/tmp/swish-client.pem',
                     'private_key' => '/tmp/swish-private.key',
                     'ca_certificate' => '/tmp/swish-ca.pem',
-                    'callback_url' => 'https://tenant-one.byteforge.se/api/payments/swish/callback',
+                    'callback_url' => 'https://tenant-one.dev.byteforge.se/api/payments/swish/callback',
                 ],
                 'is_active' => true,
                 'mode' => 'test',

@@ -30,14 +30,26 @@ class ApiRoutesTest extends TestCase
     // DatabaseTransactions is inherited from TestCase — no need to re-declare it.
 
     // Shorthand server variables for central and tenant domains.
+    private function centralHost(): string
+    {
+        return (string) (config('tenancy.central_domains')[0] ?? 'localhost');
+    }
+
+    private function tenantHost(string $slug = 'tenant-one'): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+
+        return str_replace(':tenant', $slug, $template);
+    }
+
     private function central(): array
     {
-        return ['HTTP_HOST' => 'localhost'];
+        return ['HTTP_HOST' => $this->centralHost()];
     }
 
     private function tenant(string $slug = 'tenant-one'): array
     {
-        return ['HTTP_HOST' => "{$slug}.byteforge.se"];
+        return ['HTTP_HOST' => $this->tenantHost($slug)];
     }
 
     /**
@@ -47,7 +59,7 @@ class ApiRoutesTest extends TestCase
      */
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        return sprintf('http://%s%s', $this->tenantHost($slug), $path);
     }
 
     // =========================================================================
@@ -59,7 +71,7 @@ class ApiRoutesTest extends TestCase
     {
         $this->withServerVariables($this->central())
             ->postJson('/api/auth/login', [
-                'email'    => 'superadmin@byteforge.se',
+                'email'    => TestUsers::centralSuperadmin()->email,
                 'password' => 'password',
             ])
             ->assertOk()
@@ -71,7 +83,7 @@ class ApiRoutesTest extends TestCase
     {
         $this->withServerVariables($this->central())
             ->postJson('/api/auth/login', [
-                'email'    => 'superadmin@byteforge.se',
+                'email'    => TestUsers::centralSuperadmin()->email,
                 'password' => 'wrong-password',
             ])
             ->assertUnprocessable();

@@ -1,11 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 import { loginWithCredentials, tenantViewerCredentials } from './support/auth';
+import { canResolveHostname, hostnameFromUrl } from './support/network';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
 test('tenant viewer sees Access Denied on restricted settings route', async ({ page }) => {
   test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable tenant-domain permission tests.');
+  const tenantHostname = hostnameFromUrl(tenantBaseUrl!);
+  const isTenantHostResolvable = await canResolveHostname(tenantHostname);
+  test.skip(
+    !isTenantHostResolvable,
+    `Tenant hostname ${tenantHostname} is not resolvable from this environment.`,
+  );
 
   const issues = attachRuntimeGuards(page);
 

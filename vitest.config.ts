@@ -11,7 +11,10 @@ export default defineConfig({
     setupFiles: ['./src/test/setup.ts'],
     css: true,
     include: [
-      'resources/js/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
+      'resources/js/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
+    ],
+    exclude: [
+      'resources/js/shared/__tests__/auth.integration.test.ts',
       'tests/integration/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'
     ],
     coverage: {

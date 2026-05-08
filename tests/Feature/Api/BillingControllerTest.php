@@ -12,6 +12,16 @@ use Tests\TestCase;
 
 class BillingControllerTest extends TestCase
 {
+    private function centralHost(): string
+    {
+        return (string) (config('tenancy.central_domains')[0] ?? 'byteforge.se');
+    }
+
+    private function centralHttpsUrl(string $path): string
+    {
+        return sprintf('https://%s%s', $this->centralHost(), $path);
+    }
+
     #[Test]
     public function plans_requires_authentication(): void
     {
@@ -109,8 +119,8 @@ class BillingControllerTest extends TestCase
         $response = $this->actingAsCentralViewer()->postJson('/api/superadmin/billing/checkout', [
             'tenant_id' => 'tenant_one',
             'plan_slug' => 'starter',
-            'success_url' => 'https://byteforge.se/success',
-            'cancel_url' => 'https://byteforge.se/cancel',
+            'success_url' => $this->centralHttpsUrl('/success'),
+            'cancel_url' => $this->centralHttpsUrl('/cancel'),
         ]);
 
         $response->assertForbidden();
@@ -186,8 +196,8 @@ class BillingControllerTest extends TestCase
         $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/billing/checkout', [
             'tenant_id' => (string) $tenant->id,
             'plan_slug' => 'checkout-plan',
-            'success_url' => 'https://byteforge.se/success',
-            'cancel_url' => 'https://byteforge.se/cancel',
+            'success_url' => $this->centralHttpsUrl('/success'),
+            'cancel_url' => $this->centralHttpsUrl('/cancel'),
         ]);
 
         $response->assertOk()->assertJson([
@@ -200,7 +210,7 @@ class BillingControllerTest extends TestCase
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
 
-        $response = $this->actingAsCentralViewer()->getJson('/api/superadmin/billing/portal?tenant_id=' . $tenant->id . '&return_url=https://byteforge.se/back');
+        $response = $this->actingAsCentralViewer()->getJson('/api/superadmin/billing/portal?tenant_id=' . $tenant->id . '&return_url=' . urlencode($this->centralHttpsUrl('/back')));
 
         $response->assertForbidden();
     }
@@ -221,7 +231,7 @@ class BillingControllerTest extends TestCase
             $mock->shouldReceive('createCheckout')->andReturn(['checkout_url' => 'https://checkout.stripe.test/cs_123']);
         });
 
-        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/billing/portal?tenant_id=' . $tenant->id . '&return_url=https://byteforge.se/back');
+        $response = $this->actingAsSuperadmin()->getJson('/api/superadmin/billing/portal?tenant_id=' . $tenant->id . '&return_url=' . urlencode($this->centralHttpsUrl('/back')));
 
         $response->assertOk()->assertJson([
             'portal_url' => 'https://billing.test/portal',

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios, { AxiosInstance } from 'axios';
+import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
 
 /**
  * E2E Tests for Users API
@@ -17,7 +18,7 @@ describe.skip('Users API Integration', () => {
   let client: AxiosInstance;
   let authToken: string;
   let createdUserId: string;
-  const BASE_URL = 'http://byteforge.se';
+  const BASE_URL = getCentralBaseUrl();
 
   beforeAll(async () => {
     client = axios.create({
@@ -31,7 +32,7 @@ describe.skip('Users API Integration', () => {
 
     // Login as superadmin
     const loginResponse = await client.post('/api/auth/login', {
-      email: 'testadmin@byteforge.se',
+      email: getCentralSuperadminEmail(),
       password: 'password',
     });
 

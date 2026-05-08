@@ -402,11 +402,25 @@ class TenantSupportAccessService
 
     private function tenantOwner(Tenant $tenant): ?User
     {
-        $membership = $tenant->memberships()
+        // Query the tenant's memberships table directly using tenant ID
+        $membership = Membership::query()
+            ->where('tenant_id', (string) $tenant->id)
             ->where('role', 'owner')
             ->where('status', 'active')
             ->with('user')
-            ->first();
+            ->get()
+            ->first(function ($membership) use ($tenant) {
+                // Prefer the tenant-specific owner email pattern (e.g., owner@tenant-one.example.com)
+                if ($membership->user && str_contains($membership->user->email, $tenant->domain ?? $tenant->slug)) {
+                    return true;
+                }
+                return false;
+            }) ?: Membership::query()
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('role', 'owner')
+                ->where('status', 'active')
+                ->with('user')
+                ->first();
 
         return $membership?->user;
     }

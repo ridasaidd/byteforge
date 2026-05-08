@@ -30,6 +30,8 @@ describe('routerNavigation', () => {
   });
 
   it('normalizes same-origin URLs to relative router paths', () => {
-    expect(toRelativePath('http://tenant-one.byteforge.se/guest-portal?foo=bar#details')).toBe('/guest-portal?foo=bar#details');
+    const origin = window.location.origin || 'http://localhost';
+
+    expect(toRelativePath(`${origin}/guest-portal?foo=bar#details`)).toBe('/guest-portal?foo=bar#details');
   });
 });

@@ -47,7 +47,7 @@ class ExpireTenantSupportAccessCommandTest extends TestCase
         $session = WebRefreshSession::query()->create([
             'user_id' => $supportUser->id,
             'tenant_id' => (string) $tenant->id,
-            'host' => 'tenant-one.byteforge.se',
+            'host' => 'tenant-one.dev.byteforge.se',
             'token_hash' => hash('sha256', 'expired-support-session'),
             'user_agent' => 'PHPUnit',
             'ip_address' => '127.0.0.1',

@@ -34,7 +34,7 @@ class GuestMagicLinkServiceTest extends TestCase
         $result = $this->service->issue(
             'guest.one@example.com',
             (string) $tenant->id,
-            'http://tenant-one.byteforge.se/guest/magic',
+            'http://tenant-one.dev.byteforge.se/guest/magic',
         );
 
         $this->assertDatabaseHas('guest_users', [
@@ -63,7 +63,7 @@ class GuestMagicLinkServiceTest extends TestCase
         $result = $this->service->issue(
             'guest.two@example.com',
             (string) $tenant->id,
-            'http://tenant-one.byteforge.se/guest/magic',
+            'http://tenant-one.dev.byteforge.se/guest/magic',
         );
 
         $guestUser = $this->service->verify($result['plainToken'], (string) $tenant->id);
@@ -80,7 +80,7 @@ class GuestMagicLinkServiceTest extends TestCase
         $result = $this->service->issue(
             'guest.three@example.com',
             (string) $tenant->id,
-            'http://tenant-one.byteforge.se/guest/magic',
+            'http://tenant-one.dev.byteforge.se/guest/magic',
         );
 
         $this->service->verify($result['plainToken'], (string) $tenant->id);

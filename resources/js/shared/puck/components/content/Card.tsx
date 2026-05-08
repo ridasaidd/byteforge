@@ -281,7 +281,12 @@ export const Card: ComponentConfig<CardProps> = {
     ...advancedFields,
   },
 
-  resolveFields: (data, { fields }) => {
+  resolveFields: (data, params) => {
+    const fields = params?.fields;
+    if (!fields) {
+      return [];
+    }
+
     if (!hasNonStaticPositionInAnyBreakpoint(data.props.position)) {
       const { positionOffset: _, ...rest } = fields;
       return rest;

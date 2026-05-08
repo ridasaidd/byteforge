@@ -38,7 +38,7 @@ class GuestIdentityApiTest extends TestCase
         $this->postJson($this->centralUrl('/api/guest/issue-magic-link'), [
             'email' => 'guest.api@example.com',
             'tenant_id' => (string) $tenant->id,
-            'redirect_url' => 'http://tenant-one.byteforge.se/guest/magic',
+            'redirect_url' => 'http://tenant-one.dev.byteforge.se/guest/magic',
         ])->assertUnauthorized();
     }
 
@@ -53,7 +53,7 @@ class GuestIdentityApiTest extends TestCase
             ->postJson($this->centralUrl('/api/guest/issue-magic-link'), [
                 'email' => "  guest.api@example.com\t ",
                 'tenant_id' => (string) $tenant->id,
-                'redirect_url' => 'http://tenant-one.byteforge.se/guest/magic',
+                'redirect_url' => 'http://tenant-one.dev.byteforge.se/guest/magic',
             ]);
 
         $response->assertOk()
@@ -77,7 +77,7 @@ class GuestIdentityApiTest extends TestCase
         $result = app(GuestMagicLinkService::class)->issue(
             'guest.verify@example.com',
             (string) $tenant->id,
-            'http://tenant-one.byteforge.se/guest/magic',
+            'http://tenant-one.dev.byteforge.se/guest/magic',
         );
 
         $response = $this->withHeader('X-Service-Token', 'test-central-service-token')
@@ -100,7 +100,7 @@ class GuestIdentityApiTest extends TestCase
         $result = app(GuestMagicLinkService::class)->issue(
             'guest.invalid@example.com',
             (string) $tenantOne->id,
-            'http://tenant-one.byteforge.se/guest/magic',
+            'http://tenant-one.dev.byteforge.se/guest/magic',
         );
 
         $this->withHeader('X-Service-Token', 'test-central-service-token')

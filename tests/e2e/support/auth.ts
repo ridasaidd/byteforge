@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { getCentralAdminEmail, getTenantRoleEmail } from '../../support/runtimeTestConfig';
 
 export type Credentials = {
   email: string;
@@ -17,17 +18,17 @@ type AuthSession = {
 const DEFAULT_PASSWORD = 'password';
 
 export const centralAdminCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_CENTRAL_EMAIL ?? 'admin@byteforge.se',
+  email: process.env.PLAYWRIGHT_CENTRAL_EMAIL ?? getCentralAdminEmail(),
   password: process.env.PLAYWRIGHT_CENTRAL_PASSWORD ?? DEFAULT_PASSWORD,
 };
 
 export const tenantOwnerCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_TENANT_OWNER_EMAIL ?? 'user.multiple@byteforge.test',
+  email: process.env.PLAYWRIGHT_TENANT_OWNER_EMAIL ?? getTenantRoleEmail('owner'),
   password: process.env.PLAYWRIGHT_TENANT_OWNER_PASSWORD ?? DEFAULT_PASSWORD,
 };
 
 export const tenantViewerCredentials: Credentials = {
-  email: process.env.PLAYWRIGHT_TENANT_VIEWER_EMAIL ?? 'viewer@tenant-one.byteforge.se',
+  email: process.env.PLAYWRIGHT_TENANT_VIEWER_EMAIL ?? getTenantRoleEmail('viewer'),
   password: process.env.PLAYWRIGHT_TENANT_VIEWER_PASSWORD ?? DEFAULT_PASSWORD,
 };
 

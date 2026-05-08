@@ -40,7 +40,7 @@ class PaymentSecurityTest extends TestCase
             [], [], [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
                 'HTTP_KLARNA_IDEMPOTENCY_KEY' => 'totally-fake-signature',
             ],
             $fakePayload,
@@ -68,7 +68,7 @@ class PaymentSecurityTest extends TestCase
             [], [], [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
             ],
             $fakePayload,
         );
@@ -101,7 +101,7 @@ class PaymentSecurityTest extends TestCase
             [], [], [],
             [
                 'CONTENT_TYPE' => 'application/json',
-                'HTTP_HOST' => 'tenant-one.byteforge.se',
+                'HTTP_HOST' => 'tenant-one.dev.byteforge.se',
             ],
             $fakePayload,
         );
@@ -230,8 +230,8 @@ class PaymentSecurityTest extends TestCase
             ->postJson('/api/superadmin/billing/checkout', [
                 'tenant_id' => (string) $tenant->id,
                 'plan_slug' => 'sec-test-plan',
-                'success_url' => 'https://tenant-one.byteforge.se/billing/success',
-                'cancel_url' => 'https://admin.byteforge.se/billing/cancel',
+                'success_url' => $this->tenantHttpsUrl('/billing/success', 'tenant-one'),
+                'cancel_url' => $this->centralSubdomainUrl('admin', '/billing/cancel'),
             ]);
 
         $response->assertOk();
@@ -371,7 +371,28 @@ class PaymentSecurityTest extends TestCase
 
     private function tenantUrl(string $path, string $slug = 'tenant-one'): string
     {
-        return "http://{$slug}.byteforge.se{$path}";
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "http://{$domain}{$path}";
+    }
+
+    private function tenantHttpsUrl(string $path, string $slug = 'tenant-one'): string
+    {
+        $template = (string) config('tenancy.fallback_tenant_domain_template', ':tenant.dev.byteforge.se');
+        $domain = str_replace(':tenant', $slug, $template);
+
+        return "https://{$domain}{$path}";
+    }
+
+    private function centralHost(): string
+    {
+        return (string) (config('tenancy.central_domains')[0] ?? 'byteforge.se');
+    }
+
+    private function centralSubdomainUrl(string $subdomain, string $path): string
+    {
+        return sprintf('https://%s.%s%s', $subdomain, $this->centralHost(), $path);
     }
 
     private function activatePaymentsAddonForTenant(Tenant $tenant): void
@@ -416,7 +437,7 @@ class PaymentSecurityTest extends TestCase
                     'certificate' => '/tmp/swish-client.pem',
                     'private_key' => '/tmp/swish-private.key',
                     'ca_certificate' => '/tmp/swish-ca.pem',
-                    'callback_url' => 'https://tenant-one.byteforge.se/api/payments/swish/callback',
+                    'callback_url' => 'https://tenant-one.dev.byteforge.se/api/payments/swish/callback',
                 ],
                 'is_active' => true,
                 'mode' => 'test',
