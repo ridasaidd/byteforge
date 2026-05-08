@@ -282,12 +282,10 @@ export const Card: ComponentConfig<CardProps> = {
   },
 
   resolveFields: (data, params) => {
-    const fields = params?.fields;
-    if (!fields) {
-      return [];
-    }
+    const fields = params.fields;
 
     if (!hasNonStaticPositionInAnyBreakpoint(data.props.position)) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { positionOffset: _, ...rest } = fields;
       return rest;
     }
