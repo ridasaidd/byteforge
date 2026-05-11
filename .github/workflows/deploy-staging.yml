@@ -193,18 +193,33 @@ jobs:
       - name: Post-deploy Playwright browser smoke
         env:
           STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_TENANT_BASE_URL: ${{ secrets.STAGING_TENANT_BASE_URL }}
           STAGING_SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
           STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+          STAGING_TENANT_OWNER_EMAIL: ${{ secrets.STAGING_TENANT_OWNER_EMAIL }}
+          STAGING_TENANT_OWNER_PASSWORD: ${{ secrets.STAGING_TENANT_OWNER_PASSWORD }}
+          STAGING_TENANT_VIEWER_EMAIL: ${{ secrets.STAGING_TENANT_VIEWER_EMAIL }}
+          STAGING_TENANT_VIEWER_PASSWORD: ${{ secrets.STAGING_TENANT_VIEWER_PASSWORD }}
           CI: '1'
         run: |
           BASE_URL="${STAGING_BASE_URL:-https://stage.byteforge.se}"
+          TENANT_BASE_URL="${STAGING_TENANT_BASE_URL:-}"
           EMAIL="${STAGING_SMOKE_EMAIL:-admin@byteforge.se}"
           PASSWORD="${STAGING_SMOKE_PASSWORD:-password}"
+          TENANT_OWNER_EMAIL="${STAGING_TENANT_OWNER_EMAIL:-}"
+          TENANT_OWNER_PASSWORD="${STAGING_TENANT_OWNER_PASSWORD:-password}"
+          TENANT_VIEWER_EMAIL="${STAGING_TENANT_VIEWER_EMAIL:-}"
+          TENANT_VIEWER_PASSWORD="${STAGING_TENANT_VIEWER_PASSWORD:-password}"
 
           PLAYWRIGHT_BASE_URL="$BASE_URL" \
+          PLAYWRIGHT_TENANT_BASE_URL="$TENANT_BASE_URL" \
           PLAYWRIGHT_CENTRAL_EMAIL="$EMAIL" \
           PLAYWRIGHT_CENTRAL_PASSWORD="$PASSWORD" \
-          npm run test:e2e:auth:central
+          PLAYWRIGHT_TENANT_OWNER_EMAIL="$TENANT_OWNER_EMAIL" \
+          PLAYWRIGHT_TENANT_OWNER_PASSWORD="$TENANT_OWNER_PASSWORD" \
+          PLAYWRIGHT_TENANT_VIEWER_EMAIL="$TENANT_VIEWER_EMAIL" \
+          PLAYWRIGHT_TENANT_VIEWER_PASSWORD="$TENANT_VIEWER_PASSWORD" \
+          npm run test:e2e:auth
 
       - name: Upload post-deploy Playwright report
         if: always()

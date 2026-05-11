@@ -187,8 +187,10 @@ Prefer reusing existing Playwright coverage with staging URLs:
 Current baseline:
 
 - central auth browser smoke is implemented post-deploy via
-  `npm run test:e2e:auth:central`
-- tenant/guest browser smoke remains a recommended follow-up
+  `npm run test:e2e:auth`
+- tenant auth/permissions smoke is included when staging tenant URL/credentials
+  are configured in deploy secrets
+- guest browser smoke remains a recommended follow-up
 
 Current candidate specs already in the repo:
 
@@ -245,3 +247,4 @@ should still surface the exact SHA and failure step clearly.
 2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`) as a repeatable checklist.
 3. Optionally move deployment secrets to a `staging` environment with manual approval gates.
 4. Expand post-deploy browser smoke from central auth only to include tenant/guest flows.
+4. Expand post-deploy browser smoke from auth coverage to include guest flow checks.
