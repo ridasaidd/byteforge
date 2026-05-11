@@ -77,6 +77,6 @@ describe('GuestPortalPage', () => {
     renderPage();
 
     await waitFor(() => expect(screen.getByRole('heading', { name: 'My bookings' })).toBeInTheDocument());
-    expect(screen.getByRole('heading', { name: 'Get a sign-in link' })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Get a sign-in link' })).toBeInTheDocument());
   });
 });
