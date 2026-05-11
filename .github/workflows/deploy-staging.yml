@@ -52,6 +52,9 @@ jobs:
             # Add GitHub host key to known_hosts for SSH verification
             ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
 
+            # Configure git to use the deployer's GitHub SSH key
+            export GIT_SSH_COMMAND="ssh -i ~/.ssh/github_deploy_key"
+
             # Pull latest code from main
             git fetch origin main
             git checkout main
