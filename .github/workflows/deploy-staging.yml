@@ -43,8 +43,32 @@ jobs:
           ssh-keyscan -H $STAGING_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
 
           # Deploy via SSH
-          ssh -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" << 'ENDSSH'
+          ssh -o BatchMode=yes -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" << 'ENDSSH'
             cd /var/www/byteforge
+
+            # Normalize ownership/permissions for deploy user and web group.
+            # This prevents composer/npm/build/cache permission drift.
+            if sudo -n true >/dev/null 2>&1; then
+              if getent group www-data >/dev/null 2>&1; then
+                sudo chown -R "$USER":www-data /var/www/byteforge || true
+              else
+                sudo chown -R "$USER":"$USER" /var/www/byteforge || true
+              fi
+            fi
+
+            mkdir -p storage/framework/{sessions,views,cache/data} storage/logs bootstrap/cache
+            if getent group www-data >/dev/null 2>&1; then
+              chgrp -R www-data storage bootstrap/cache || true
+            fi
+            chmod -R ug+rwX storage bootstrap/cache || true
+
+            # Fail early with a clear reason when the deploy user still cannot write.
+            for path in /var/www/byteforge /var/www/byteforge/storage /var/www/byteforge/bootstrap/cache; do
+              if [ ! -w "$path" ]; then
+                echo "Deployment aborted: deploy user lacks write permission on $path"
+                exit 1
+              fi
+            done
 
             # Ensure git trusts this directory (safe.directory for deploy user)
             git config --global --add safe.directory /var/www/byteforge 2>/dev/null || true
