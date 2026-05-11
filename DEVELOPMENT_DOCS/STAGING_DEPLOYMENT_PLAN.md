@@ -190,7 +190,8 @@ Current baseline:
   `npm run test:e2e:auth`
 - tenant auth/permissions smoke is included when staging tenant URL/credentials
   are configured in deploy secrets
-- guest browser smoke remains a recommended follow-up
+- guest portal public-navigation smoke now runs post-deploy via
+  `tests/e2e/public-navigation-utility-links.spec.ts`
 
 Current candidate specs already in the repo:
 
@@ -246,5 +247,4 @@ should still surface the exact SHA and failure step clearly.
 1. Stabilize server-side ownership/permissions baseline (`/var/www/byteforge`, `storage`, `bootstrap/cache`) so deploy logs stay clean.
 2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`) as a repeatable checklist.
 3. Optionally move deployment secrets to a `staging` environment with manual approval gates.
-4. Expand post-deploy browser smoke from central auth only to include tenant/guest flows.
-4. Expand post-deploy browser smoke from auth coverage to include guest flow checks.
+4. Keep post-deploy browser smoke green for central, tenant, and guest flows as code changes land.
