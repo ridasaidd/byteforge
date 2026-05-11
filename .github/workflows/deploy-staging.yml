@@ -231,7 +231,7 @@ jobs:
 
           PLAYWRIGHT_BASE_URL="$BASE_URL" \
           PLAYWRIGHT_TENANT_BASE_URL="$TENANT_BASE_URL" \
-          npx playwright test tests/e2e/public-navigation-utility-links.spec.ts
+          npx playwright test tests/e2e/guest-portal-shell.spec.ts
 
       - name: Upload post-deploy Playwright report
         if: always()

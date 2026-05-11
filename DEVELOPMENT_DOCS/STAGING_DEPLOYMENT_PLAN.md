@@ -191,7 +191,7 @@ Current baseline:
 - tenant auth/permissions smoke is included when staging tenant URL/credentials
   are configured in deploy secrets
 - guest portal public-navigation smoke now runs post-deploy via
-  `tests/e2e/public-navigation-utility-links.spec.ts`
+  `tests/e2e/guest-portal-shell.spec.ts`
 
 Current candidate specs already in the repo:
 
