@@ -52,6 +52,9 @@ jobs:
           touch database/database.sqlite
           php artisan migrate --force
 
+      - name: Generate Passport keys
+        run: php artisan passport:keys --force
+
       - name: Seed central fixtures for auth smoke
         run: php artisan db:seed --class=Database\\Seeders\\TestFixturesSeeder --force
 
