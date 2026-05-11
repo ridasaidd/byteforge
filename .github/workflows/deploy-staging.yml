@@ -178,6 +178,42 @@ jobs:
 
           echo "✓ Post-deploy smoke checks passed"
 
+      - name: Setup Node for browser smoke
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Node dependencies for browser smoke
+        run: npm ci
+
+      - name: Install Playwright browser for staging smoke
+        run: npx playwright install --with-deps chromium
+
+      - name: Post-deploy Playwright browser smoke
+        env:
+          STAGING_BASE_URL: ${{ secrets.STAGING_BASE_URL }}
+          STAGING_SMOKE_EMAIL: ${{ secrets.STAGING_SMOKE_EMAIL }}
+          STAGING_SMOKE_PASSWORD: ${{ secrets.STAGING_SMOKE_PASSWORD }}
+          CI: '1'
+        run: |
+          BASE_URL="${STAGING_BASE_URL:-https://stage.byteforge.se}"
+          EMAIL="${STAGING_SMOKE_EMAIL:-admin@byteforge.se}"
+          PASSWORD="${STAGING_SMOKE_PASSWORD:-password}"
+
+          PLAYWRIGHT_BASE_URL="$BASE_URL" \
+          PLAYWRIGHT_CENTRAL_EMAIL="$EMAIL" \
+          PLAYWRIGHT_CENTRAL_PASSWORD="$PASSWORD" \
+          npm run test:e2e:auth:central
+
+      - name: Upload post-deploy Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
       - name: Deployment successful
         run: echo "✓ Staging deployment completed successfully"
 

@@ -29,6 +29,7 @@ What exists today:
 - staging deployment workflow now exists on `main`: `.github/workflows/deploy-staging.yml`
 - deploy workflow performs SSH deployment, database migration, asset build,
   cache refresh, queue restart, and post-deploy API smoke checks
+- deploy workflow now also runs post-deploy Playwright central auth browser smoke
 
 Implication:
 
@@ -178,6 +179,12 @@ Prefer reusing existing Playwright coverage with staging URLs:
 - tenant login shell smoke
 - guest portal public-navigation smoke
 
+Current baseline:
+
+- central auth browser smoke is implemented post-deploy via
+  `npm run test:e2e:auth:central`
+- tenant/guest browser smoke remains a recommended follow-up
+
 Current candidate specs already in the repo:
 
 - `tests/e2e/central-login-shell.spec.ts`
@@ -224,4 +231,4 @@ should still surface the exact SHA and failure step clearly.
 1. Stabilize server-side ownership/permissions baseline (`/var/www/byteforge`, `storage`, `bootstrap/cache`) so deploy logs stay clean.
 2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`) as a repeatable checklist.
 3. Optionally move deployment secrets to a `staging` environment with manual approval gates.
-4. Consider adding a post-deploy browser smoke stage (Playwright against staging URLs) after fast API smoke checks.
+4. Expand post-deploy browser smoke from central auth only to include tenant/guest flows.
