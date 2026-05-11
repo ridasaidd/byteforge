@@ -1,7 +1,7 @@
 # Staging Deployment Plan
 
-Last updated: 2026-04-26
-Status: planned
+Last updated: 2026-05-11
+Status: active baseline
 Audience: engineering
 
 ---
@@ -26,12 +26,14 @@ What exists today:
 
 - backend tests run on pull requests and on pushes to `main`
 - Playwright smoke runs on pull requests and on pushes to `main`
-- there is no staging deployment workflow yet
+- staging deployment workflow now exists on `main`: `.github/workflows/deploy-staging.yml`
+- deploy workflow performs SSH deployment, database migration, asset build,
+  cache refresh, queue restart, and post-deploy API smoke checks
 
 Implication:
 
 - merges to `main` are validated in CI
-- no workflow currently promotes the tested commit to a staging server
+- `main` can be promoted to staging through the deploy workflow
 
 ---
 
@@ -65,7 +67,7 @@ Preferred starting point:
 
 ---
 
-## Recommended GitHub Actions Design
+## Implemented GitHub Actions Design
 
 ### Workflow Name
 
@@ -73,28 +75,33 @@ Preferred starting point:
 
 ### Trigger Strategy
 
-Recommended:
+Current:
 
-- `workflow_run` triggered by successful completion of backend and smoke CI on `main`
+- `push` to `main`
+- `workflow_dispatch`
 
-Alternative:
+Future improvement:
 
-- `workflow_dispatch` with a required commit SHA input
+- optionally switch to `workflow_run` if strict tested-SHA promotion becomes mandatory
 
 ### Environment
 
-- use GitHub Actions `environment: staging`
-- require manual approval while the process is new
-- store deployment secrets at the environment level
+Current:
+
+- repository-level secrets are used
+
+Future improvement:
+
+- migrate to `environment: staging` with approval gates and environment-scoped secrets
 
 ### Secrets Needed
 
-- `STAGING_SSH_HOST`
-- `STAGING_SSH_PORT`
-- `STAGING_SSH_USER`
-- `STAGING_SSH_PRIVATE_KEY`
-- `STAGING_APP_DIR`
-- optionally `STAGING_URL`
+Current workflow expects:
+
+- `STAGING_HOST`
+- `STAGING_USER`
+- `STAGING_SSH_KEY`
+- optional: `STAGING_BASE_URL`, `STAGING_SMOKE_EMAIL`, `STAGING_SMOKE_PASSWORD`
 
 Server-side secrets should remain on the server and not be injected from GitHub
 unless there is a clear reason.
@@ -114,18 +121,18 @@ Recommended first version:
 - clear and warm caches
 - restart required services
 
-Typical server-side command sequence:
+Current server-side command sequence (simplified):
 
 ```bash
-git fetch --all --tags
-git checkout "$DEPLOY_SHA"
-composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
+git fetch origin main
+git checkout main
+git reset --hard origin/main
+composer install --no-interaction --prefer-dist --no-dev
 npm ci
 npm run build
 php artisan migrate --force
+php artisan optimize:clear
 php artisan config:cache
-php artisan route:cache
-php artisan view:cache
 php artisan queue:restart
 ```
 
@@ -214,8 +221,7 @@ should still surface the exact SHA and failure step clearly.
 
 ## Immediate Next Actions
 
-1. Choose the staging hostname pair and server path.
-2. Decide whether staging deployment should be automatic or approval-gated.
-3. Create the GitHub Actions staging environment and secrets.
-4. Add the deploy workflow.
-5. Reuse the current Playwright smoke tests against staging URLs after deploy.
+1. Stabilize server-side ownership/permissions baseline (`/var/www/byteforge`, `storage`, `bootstrap/cache`) so deploy logs stay clean.
+2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`) as a repeatable checklist.
+3. Optionally move deployment secrets to a `staging` environment with manual approval gates.
+4. Consider adding a post-deploy browser smoke stage (Playwright against staging URLs) after fast API smoke checks.
