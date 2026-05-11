@@ -31,6 +31,8 @@ jobs:
       - name: Prepare .env
         run: |
           cp .env.example .env
+          echo "APP_URL=http://byteforge.se:8000" >> .env
+          echo "TENANCY_CENTRAL_DOMAINS=byteforge.se,localhost,127.0.0.1" >> .env
           echo "SESSION_DRIVER=file" >> .env
           echo "CACHE_STORE=file" >> .env
           echo "TENANCY_ASSET_HELPER_TENANCY=false" >> .env
@@ -48,6 +50,9 @@ jobs:
         run: |
           touch database/database.sqlite
           php artisan migrate --force
+
+      - name: Seed central fixtures for auth smoke
+        run: php artisan db:seed --class=Database\\Seeders\\FixedTestDataSeeder --force
 
       - name: Install Node dependencies
         run: npm ci
@@ -116,6 +121,8 @@ jobs:
       - name: Prepare .env
         run: |
           cp .env.example .env
+          echo "APP_URL=http://byteforge.se:8000" >> .env
+          echo "TENANCY_CENTRAL_DOMAINS=byteforge.se,localhost,127.0.0.1" >> .env
           echo "SESSION_DRIVER=file" >> .env
           echo "CACHE_STORE=file" >> .env
           echo "TENANCY_ASSET_HELPER_TENANCY=false" >> .env
