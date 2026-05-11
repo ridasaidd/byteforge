@@ -49,6 +49,9 @@ jobs:
             # Ensure git trusts this directory (safe.directory for deploy user)
             git config --global --add safe.directory /var/www/byteforge 2>/dev/null || true
 
+            # Add GitHub host key to known_hosts for SSH verification
+            ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
+
             # Pull latest code from main
             git fetch origin main
             git checkout main
