@@ -200,9 +200,13 @@ export function defineBlockTestSuite<TProps extends Record<string, unknown> = Re
       // If resolver exists, verify it returns valid field keys
       if (hasResolver) {
         const testProps = options.defaultProps;
-        const resolvedFields = componentConfig.resolveFields?.(testProps as any);
+        const resolvedFields = componentConfig.resolveFields?.(
+          { props: testProps } as any,
+          { fields: componentConfig.fields } as any
+        );
 
-        expect(Array.isArray(resolvedFields)).toBe(true);
+        expect(resolvedFields).toBeTruthy();
+        expect(typeof resolvedFields).toBe('object');
       }
     });
 
