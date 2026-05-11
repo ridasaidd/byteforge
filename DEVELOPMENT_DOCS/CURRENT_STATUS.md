@@ -15,6 +15,8 @@ Primary branch: `main`
 - CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:
   backend tests, frontend Vitest, Playwright auth smoke, and staging deployment
   workflow are now aligned and passing with the current environment model.
+- Post-deploy browser smoke now covers central auth, tenant auth/permissions,
+  and guest-portal shell runtime checks.
 - Staging mail is now configured to Mailtrap Sandbox (2026-05-11) for
   QA-visible delivery checks without using production inboxes.
 - The HttpOnly auth migration is underway in slices and now uses the hybrid
@@ -51,7 +53,7 @@ Primary branch: `main`
 - Phase 14 Payment x Booking Integration: implemented on `main`
 - Phase 15 Guest Authentication: implemented on `main`
 - Phase 19 System Surfaces: partially implemented on `main` (guest portal + tenant login slices)
-- CI + Staging deployment baseline: implemented on `main` (backend + frontend + auth smoke + post-deploy API smoke)
+- CI + Staging deployment baseline: implemented on `main` (backend + frontend + auth smoke + post-deploy API + browser smoke)
 
 ## Current Recommended Work Order
 
@@ -148,7 +150,8 @@ Recent CI/staging baseline verification on `main`:
 php artisan test --testsuite=Feature
 php artisan test --testsuite=Central,Tenant,Unit
 npm run test:run
-npm run test:e2e:auth:central
+npm run test:e2e:auth
+npx playwright test tests/e2e/guest-portal-shell.spec.ts
 ```
 
 ```bash

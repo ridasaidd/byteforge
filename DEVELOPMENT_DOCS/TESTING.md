@@ -11,8 +11,8 @@ ByteForge uses a comprehensive testing strategy with both backend (PHPUnit/Larav
 **Current Status:**
 - ✅ **Backend CI suites:** passing on `main` via `php artisan test` split suites
 - ✅ **Frontend Vitest:** 90 files / 882 tests passing (latest CI-aligned run)
-- ✅ **Playwright auth smoke:** central auth smoke passing in CI
-- ✅ **Deploy smoke checks:** central dashboard/theme endpoint checks passing post-deploy
+- ✅ **Playwright auth smoke:** central + tenant auth/permissions smoke passing in CI/deploy
+- ✅ **Deploy smoke checks:** post-deploy API smoke and browser smoke (including guest portal shell) passing
 
 ---
 
