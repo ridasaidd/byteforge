@@ -13,7 +13,7 @@ test('central user can login and logout without runtime errors', async ({ page }
   await logoutFromUserMenu(page);
   await expect(page).toHaveURL(/\/login(\/|$)/);
 
-  const authRelevantIssues = issues.filter((issue) => !issue.message.includes('/api/superadmin/themes/active'));
+  const authRelevantIssues = issues.filter((issue) => !issue.message.includes('/api/themes/active'));
 
   expect(authRelevantIssues, `Runtime issues detected in central auth flow:\n${formatIssues(authRelevantIssues)}`).toEqual([]);
 });

@@ -38,6 +38,7 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: root
       TENANCY_CENTRAL_DOMAINS: byteforge.se,localhost,127.0.0.1
+      TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE: :tenant.byteforge.se
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync
@@ -162,6 +163,7 @@ jobs:
       DB_USERNAME: root
       DB_PASSWORD: root
       TENANCY_CENTRAL_DOMAINS: byteforge.se,localhost,127.0.0.1
+      TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE: :tenant.byteforge.se
       CACHE_STORE: array
       SESSION_DRIVER: array
       QUEUE_CONNECTION: sync

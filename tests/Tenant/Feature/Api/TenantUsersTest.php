@@ -26,12 +26,12 @@ class TenantUsersTest extends TestCase
 
         $response->assertOk();
 
-        $editorRow = collect($response->json('data'))->firstWhere('email', 'editor@tenant-one.dev.byteforge.se');
+        $editorRow = collect($response->json('data'))->firstWhere('email', TestUsers::tenantEditor('tenant-one')->email);
 
         $this->assertNotNull($editorRow);
         $this->assertSame('support', $editorRow['roles'][0]['name'] ?? null);
 
-        $ownerRow = collect($response->json('data'))->firstWhere('email', 'owner@tenant-one.dev.byteforge.se');
+        $ownerRow = collect($response->json('data'))->firstWhere('email', TestUsers::tenantOwner('tenant-one')->email);
 
         $this->assertNotNull($ownerRow);
         $this->assertSame('admin', $ownerRow['roles'][0]['name'] ?? null);
