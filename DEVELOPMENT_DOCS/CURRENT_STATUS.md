@@ -15,6 +15,8 @@ Primary branch: `main`
 - CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:
   backend tests, frontend Vitest, Playwright auth smoke, and staging deployment
   workflow are now aligned and passing with the current environment model.
+- Staging mail is now configured to Mailtrap Sandbox (2026-05-11) for
+  QA-visible delivery checks without using production inboxes.
 - The HttpOnly auth migration is underway in slices and now uses the hybrid
   browser model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
@@ -56,11 +58,13 @@ Primary branch: `main`
 1. Keep CI and staging deploy parity stable (backend suites + Vitest + Playwright central auth smoke + deploy smoke checks).
 2. Tighten staging host operational permissions so deploy logs stay clean
    (no intermittent file ownership/permission warnings during build/runtime).
-3. Continue the shared, field-family input normalization rollout without
+3. Add one recurring staging mail smoke check (magic-link or equivalent)
+  as a required post-deploy verification.
+4. Continue the shared, field-family input normalization rollout without
    expanding it into blanket middleware.
-4. Continue HttpOnly auth migration closeout and operational hardening.
-5. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
-6. Do not expand support beyond the current bounded read-only workflow before launch.
+5. Continue HttpOnly auth migration closeout and operational hardening.
+6. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
+7. Do not expand support beyond the current bounded read-only workflow before launch.
 
 ## Current Reality Checks
 

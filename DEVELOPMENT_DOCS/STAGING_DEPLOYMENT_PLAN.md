@@ -158,6 +158,11 @@ Required:
 - production-like hostnames
 - access restricted through Tailscale if staging is internal-only
 
+Current mail baseline:
+
+- staging uses Mailtrap Sandbox credentials in server-side environment config
+- no production recipient delivery is expected from staging
+
 ---
 
 ## Post-Deploy Smoke Checks
@@ -199,6 +204,14 @@ These may begin as manual checks, then become automated later:
 - media upload completes and derived assets are reachable
 - booking reminder and hold-expiry scheduling paths run correctly
 - sandbox payment callback flow completes successfully
+
+Mail verification checklist (staging):
+
+1. Trigger one known email path (guest magic-link or equivalent auth flow).
+2. Confirm message appears in Mailtrap Sandbox inbox.
+3. Confirm sender identity and subject match expected template.
+4. Confirm at least one critical link in the email points to staging domains.
+5. Record pass/fail in deploy notes for that run.
 
 ---
 

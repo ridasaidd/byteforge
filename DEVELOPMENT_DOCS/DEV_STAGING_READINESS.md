@@ -217,14 +217,16 @@ Implication:
 
 ### Mail
 
-- active env currently uses `MAIL_MAILER=log`
+- development may still use `MAIL_MAILER=log` depending on local setup
+- staging is now configured to Mailtrap Sandbox for QA-safe inbox visibility
 - guest auth depends on email delivery for magic-link flows
 
 Implication:
 
-- development mail delivery is not currently observable end-to-end unless logs
-  are inspected
-- MailHog or an equivalent local SMTP sink is the right development default
+- staging mail delivery is now observable end-to-end without using production
+  recipients
+- development should still move to MailHog or an equivalent local SMTP sink
+  for local QA parity
 
 ### Queueing
 
@@ -446,7 +448,8 @@ This is the current engineering view based on the repository state.
   `bootstrap/cache` to remove deploy-time permission drift.
 2. Document deploy-user prerequisites (GitHub deploy key path, safe.directory,
   host-key trust) as mandatory staging bootstrap steps.
-3. Introduce MailHog-based development mail setup.
+3. Keep Mailtrap Sandbox as the staging default and add a short post-deploy
+  mail verification checklist.
 4. Decide and document the development queue mode: `sync` or worker-backed
   `database`.
 5. Capture scheduler/queue runtime expectations in a short runbook snippet.
