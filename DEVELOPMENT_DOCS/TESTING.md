@@ -1,6 +1,6 @@
 # ByteForge Testing Guide
 
-Last updated: March 6, 2026
+Last updated: May 11, 2026
 
 ---
 
@@ -9,9 +9,10 @@ Last updated: March 6, 2026
 ByteForge uses a comprehensive testing strategy with both backend (PHPUnit/Laravel) and frontend (Vitest/React Testing Library) tests.
 
 **Current Status:**
-- ✅ **Backend:** 217 tests passing, 14 skipped (PHPUnit 12.x)
-- ✅ **Frontend:** 700+ tests passing (Vitest)
-- ✅ **E2E Harness:** Playwright configured with central + tenant shell smoke tests and runtime console guards
+- ✅ **Backend CI suites:** passing on `main` via `php artisan test` split suites
+- ✅ **Frontend Vitest:** 90 files / 882 tests passing (latest CI-aligned run)
+- ✅ **Playwright auth smoke:** central auth smoke passing in CI
+- ✅ **Deploy smoke checks:** central dashboard/theme endpoint checks passing post-deploy
 
 ---
 
@@ -372,6 +373,15 @@ npm run lint
 
 # 3. TypeScript check
 npm run typecheck
+```
+
+For CI parity checks used on `main`:
+
+```bash
+php artisan test --testsuite=Feature
+php artisan test --testsuite=Central,Tenant,Unit
+npm run test:run
+npm run test:e2e:auth:central
 ```
 
 ---

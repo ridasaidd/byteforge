@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-04-26
+Last verified: 2026-05-11
 
 This roadmap is intentionally future-facing. Completed work should live in
 [CURRENT_STATUS.md](CURRENT_STATUS.md) and archived phase documents, not here.
@@ -15,6 +15,20 @@ This roadmap is intentionally future-facing. Completed work should live in
 - Customer accounts, password recovery, and cross-tenant SSO remain future work.
 
 ## Next Up
+
+### 0. Consolidate CI and Staging Operations Baseline
+
+Goal:
+
+- keep the newly-green backend/frontend/auth-smoke/deploy pipeline reliable as
+  a non-regression baseline for upcoming feature work
+
+Likely focus areas:
+
+- remove remaining staging deploy permission drift (app/storage/cache ownership)
+- keep deploy-user SSH/Git bootstrap assumptions explicit
+- preserve test-domain parity across backend tests and Playwright auth smoke
+- avoid adding new skipped tests in default CI suites
 
 ### 1. Continue Shared Input Normalization Rollout
 

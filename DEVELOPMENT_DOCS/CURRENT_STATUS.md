@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-04-26
+Last verified: 2026-05-11
 Primary branch: `main`
 
 ## Snapshot
@@ -12,6 +12,9 @@ Primary branch: `main`
   payments, and booking.
 - Phases 9 through 15 are implemented on `main`.
 - Phase 19 system-surface foundations are partially implemented on `main`, specifically tenant login and guest-portal runtime slices.
+- CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:
+  backend tests, frontend Vitest, Playwright auth smoke, and staging deployment
+  workflow are now aligned and passing with the current environment model.
 - The HttpOnly auth migration is underway in slices and now uses the hybrid
   browser model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
@@ -46,15 +49,16 @@ Primary branch: `main`
 - Phase 14 Payment x Booking Integration: implemented on `main`
 - Phase 15 Guest Authentication: implemented on `main`
 - Phase 19 System Surfaces: partially implemented on `main` (guest portal + tenant login slices)
+- CI + Staging deployment baseline: implemented on `main` (backend + frontend + auth smoke + post-deploy API smoke)
 
 ## Current Recommended Work Order
 
-1. Keep the post-merge documentation baseline accurate and authoritative.
-2. Continue the shared, field-family input normalization rollout without
-  expanding it into blanket middleware.
-3. Keep extending normalization only to suitable human-input fields while
-  leaving passwords, tokens, signatures, and provider payloads untouched.
-4. Continue with HttpOnly auth migration closeout and operational hardening.
+1. Keep CI and staging deploy parity stable (backend suites + Vitest + Playwright central auth smoke + deploy smoke checks).
+2. Tighten staging host operational permissions so deploy logs stay clean
+   (no intermittent file ownership/permission warnings during build/runtime).
+3. Continue the shared, field-family input normalization rollout without
+   expanding it into blanket middleware.
+4. Continue HttpOnly auth migration closeout and operational hardening.
 5. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
 6. Do not expand support beyond the current bounded read-only workflow before launch.
 
@@ -132,6 +136,24 @@ npm run test:run -- resources/js/apps/public/components/__tests__/guestPortal.se
 
 ```bash
 PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.byteforge.se npm run test:e2e -- tests/e2e/public-navigation-utility-links.spec.ts
+```
+
+Recent CI/staging baseline verification on `main`:
+
+```bash
+php artisan test --testsuite=Feature
+php artisan test --testsuite=Central,Tenant,Unit
+npm run test:run
+npm run test:e2e:auth:central
+```
+
+```bash
+# workflow
+.github/workflows/deploy-staging.yml
+# checks
+/api/superadmin/dashboard/stats
+/api/superadmin/themes/active
+/api/themes/active (expected 404 on central domain)
 ```
 
 ## Read Next

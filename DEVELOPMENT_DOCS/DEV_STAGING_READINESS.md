@@ -1,6 +1,6 @@
 # Development and Staging Readiness
 
-Last updated: 2026-04-26
+Last updated: 2026-05-11
 Status: working baseline
 Audience: engineering
 
@@ -191,6 +191,12 @@ Actions:
 Expected result:
 
 - staging is updated from known-good commits rather than ad hoc server pulls
+
+Current state (2026-05-11):
+
+- implemented baseline on `main` via `.github/workflows/deploy-staging.yml`
+- deployment now validates required SSH secrets before attempting remote steps
+- deployment includes post-deploy API smoke checks for central auth/theme health
 
 ---
 
@@ -408,6 +414,8 @@ This is the current engineering view based on the repository state.
   surfaces exist on `main`
 - focused backend, frontend, and Playwright validation exists for the recent
   guest-auth and system-surface work
+- backend + frontend + Playwright auth smoke are now first-class CI gates on `main`
+- staging deployment workflow now exists and has been validated end-to-end
 
 ### Not Ready Yet
 
@@ -415,7 +423,8 @@ This is the current engineering view based on the repository state.
 - mail delivery is still log-based instead of QA-friendly
 - queue-worker expectations are not yet documented as part of normal setup
 - scheduler expectations are not yet documented as part of normal setup
-- Vite and central-domain configuration still assume `byteforge.se`
+- staging server filesystem ownership/permissions still need a stable baseline
+  so deploy logs stay clean (composer/npm/storage/cache permissions)
 - customer-account surfaces remain intentionally unimplemented and need clear
   product boundaries
 - storage readiness exists in code/config but not yet as an explicit checklist
@@ -433,14 +442,14 @@ This is the current engineering view based on the repository state.
 
 ### Immediate
 
-1. Update environment documentation to match the actual MySQL-based development
-   server.
-2. Introduce MailHog-based development mail setup.
-3. Decide and document the development queue mode: `sync` or worker-backed
-   `database`.
-4. Parameterize domain configuration so staging does not depend on
-   hardcoded `byteforge.se` assumptions.
-5. Choose environment hostnames before touching more config.
+1. Lock staging file ownership and group permissions for app, `storage`, and
+  `bootstrap/cache` to remove deploy-time permission drift.
+2. Document deploy-user prerequisites (GitHub deploy key path, safe.directory,
+  host-key trust) as mandatory staging bootstrap steps.
+3. Introduce MailHog-based development mail setup.
+4. Decide and document the development queue mode: `sync` or worker-backed
+  `database`.
+5. Capture scheduler/queue runtime expectations in a short runbook snippet.
 
 ### Before Creating Staging
 
