@@ -21,6 +21,19 @@ jobs:
           STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
           STAGING_APP_PATH: /var/www/byteforge
         run: |
+          # Validate required deployment secrets up front for clearer CI failures.
+          missing=0
+          for var in STAGING_HOST STAGING_USER STAGING_SSH_KEY; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Missing required secret: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Deployment aborted: configure required staging secrets in GitHub Actions settings."
+            exit 1
+          fi
+
           # Create SSH key from secret
           mkdir -p ~/.ssh
           echo "$STAGING_SSH_KEY" > ~/.ssh/staging_key
