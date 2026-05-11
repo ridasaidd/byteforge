@@ -33,6 +33,7 @@ jobs:
           cp .env.example .env
           echo "APP_URL=http://byteforge.se:8000" >> .env
           echo "TENANCY_CENTRAL_DOMAINS=byteforge.se,localhost,127.0.0.1" >> .env
+          echo "TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE=:tenant.byteforge.se" >> .env
           echo "SESSION_DRIVER=file" >> .env
           echo "CACHE_STORE=file" >> .env
           echo "TENANCY_ASSET_HELPER_TENANCY=false" >> .env
@@ -52,7 +53,7 @@ jobs:
           php artisan migrate --force
 
       - name: Seed central fixtures for auth smoke
-        run: php artisan db:seed --class=Database\\Seeders\\FixedTestDataSeeder --force
+        run: php artisan db:seed --class=Database\\Seeders\\TestFixturesSeeder --force
 
       - name: Install Node dependencies
         run: npm ci
@@ -85,6 +86,8 @@ jobs:
         env:
           CI: '1'
           PLAYWRIGHT_BASE_URL: http://byteforge.se:8000
+          PLAYWRIGHT_CENTRAL_EMAIL: admin@byteforge.se
+          PLAYWRIGHT_CENTRAL_PASSWORD: password
         run: npm run test:e2e:auth:central
 
       - name: Upload Playwright report
@@ -123,6 +126,7 @@ jobs:
           cp .env.example .env
           echo "APP_URL=http://byteforge.se:8000" >> .env
           echo "TENANCY_CENTRAL_DOMAINS=byteforge.se,localhost,127.0.0.1" >> .env
+          echo "TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE=:tenant.byteforge.se" >> .env
           echo "SESSION_DRIVER=file" >> .env
           echo "CACHE_STORE=file" >> .env
           echo "TENANCY_ASSET_HELPER_TENANCY=false" >> .env
@@ -142,7 +146,7 @@ jobs:
           php artisan migrate --force
 
       - name: Seed tenant fixtures for tenant smoke
-        run: php artisan db:seed --class=Database\\Seeders\\FixedTestDataSeeder --force
+        run: php artisan db:seed --class=Database\\Seeders\\TestFixturesSeeder --force
 
       - name: Install Node dependencies
         run: npm ci
@@ -181,6 +185,8 @@ jobs:
           CI: '1'
           PLAYWRIGHT_BASE_URL: http://byteforge.se:8000
           PLAYWRIGHT_TENANT_BASE_URL: ${{ vars.PLAYWRIGHT_TENANT_BASE_URL }}
+          PLAYWRIGHT_TENANT_OWNER_EMAIL: owner@tenant-one.byteforge.se
+          PLAYWRIGHT_TENANT_OWNER_PASSWORD: password
         run: npx playwright test tests/e2e/tenant-login-shell.spec.ts --project=chromium
 
       - name: Upload Playwright report (tenant)
