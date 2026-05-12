@@ -5,9 +5,13 @@ namespace App\Services;
 use App\DataObjects\PaymentData;
 use App\Models\AnalyticsEvent;
 use App\Models\Booking;
+use App\Models\BookingResource;
 use App\Models\Payment;
 use App\Models\TenantPaymentProvider;
+use App\Models\User;
 use App\Notifications\Booking\BookingConfirmedNotification;
+use App\Notifications\Booking\StaffBookingAssignedNotification;
+use App\Notifications\Booking\TenantNewBookingNotification;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -252,13 +256,46 @@ class BookingPaymentService
             subject: $booking,
         );
 
+        $domain = $this->tenantDomain($booking->tenant_id);
+
         // Dispatch confirmation notification to customer
         try {
-            $domain = $this->tenantDomain($booking->tenant_id);
             Notification::route('mail', [$booking->customer_email => $booking->customer_name])
                 ->notify(new BookingConfirmedNotification($booking, $domain));
         } catch (\Exception $e) {
-            Log::warning('Failed to send confirmation notification', [
+            Log::warning('Failed to send confirmation notification after payment', [
+                'booking_id' => $bookingId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Notify assigned staff member if resource is a person with a linked user.
+        try {
+            if (! $booking->relationLoaded('resource')) {
+                $booking->load('resource');
+            }
+            $resource = $booking->resource;
+            if ($resource?->type === BookingResource::TYPE_PERSON && $resource->user_id) {
+                $staffUser = User::find($resource->user_id);
+                if ($staffUser) {
+                    $staffUser->notify(new StaffBookingAssignedNotification($booking, $domain, $resource));
+                }
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to send staff assignment notification after payment', [
+                'booking_id' => $bookingId,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        // Notify the tenant owner.
+        try {
+            $owner = $this->tenantOwner($booking->tenant_id);
+            if ($owner) {
+                $owner->notify(new TenantNewBookingNotification($booking, $domain));
+            }
+        } catch (\Exception $e) {
+            Log::warning('Failed to send tenant owner notification after payment', [
                 'booking_id' => $bookingId,
                 'error' => $e->getMessage(),
             ]);
@@ -347,5 +384,12 @@ class BookingPaymentService
     {
         $tenant = \App\Models\Tenant::find($tenantId);
         return $tenant?->domains()->first()?->domain ?? config('app.url');
+    }
+
+    private function tenantOwner(string $tenantId): ?User
+    {
+        $tenant = \App\Models\Tenant::find($tenantId);
+        $membership = $tenant?->memberships()->where('role', 'owner')->with('user')->first();
+        return $membership?->user;
     }
 }
