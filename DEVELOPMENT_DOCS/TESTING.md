@@ -378,6 +378,8 @@ npm run typecheck
 For CI parity checks used on `main`:
 
 ```bash
+composer audit --locked --no-interaction
+npm audit --audit-level=high --no-fund
 php artisan test --testsuite=Feature
 php artisan test --testsuite=Central,Tenant,Unit
 npm run test:run
