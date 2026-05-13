@@ -28,6 +28,11 @@ class AppServiceProvider extends ServiceProvider
         // which is wrong for this multi-tenant setup. We use our own webhook handler
         // at /api/stripe/webhook via BillingController::handleWebhook instead.
         Cashier::ignoreRoutes();
+
+        // Tell Cashier that Tenant is the billable model (not the default User).
+        // This ensures Subscription::owner() resolves via tenant_id → Tenant,
+        // allowing live Stripe API calls (addPrice, cancel, etc.) to work.
+        Cashier::useCustomerModel(Tenant::class);
     }
 
     /**
