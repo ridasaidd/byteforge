@@ -91,14 +91,14 @@ These are the main state corrections that matter for future work.
 
 ### Booking follow-ups
 
-These remain the main booking product gaps still worth tracking:
+All original booking UX gaps have been resolved (2026-05-12):
 
-- booking wizard order should become `service -> date -> resource -> slot`
-- resource step should support an "Any available" option
-- resource step heading should reflect the configured `resource_label`
-- tenant owner should receive a new-booking email where appropriate
-- staff assignment notifications should cover auto-confirm paths consistently
-- anonymous timeline entries should not render a dangling customer `#`
+- booking wizard order is `service -> date -> resource -> slot` — already correct in sectionOrder.ts
+- "Any available" resource option is implemented in ResourceStep (shows when resources > 1)
+- resource step heading reads `resource_label` from the loaded resources list
+- tenant owner `TenantNewBookingNotification` is sent from all booking creation paths, including the payment-webhook confirmation path (`BookingPaymentService::confirmBookingAfterPayment`)
+- `StaffBookingAssignedNotification` now covers the payment-webhook auto-confirm path as well as the direct and hold-confirm paths
+- anonymous customer timeline entries do not show a dangling `#` (`actor_id != null` guard in BookingDetailPage)
 
 ### Security and auth follow-ups
 

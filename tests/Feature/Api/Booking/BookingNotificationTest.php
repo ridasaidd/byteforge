@@ -8,14 +8,17 @@ use App\Models\BookingAvailability;
 use App\Models\BookingResource;
 use App\Models\BookingService;
 use App\Models\BookingNotification;
+use App\Models\Payment;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use App\Services\BookingPaymentService;
 use App\Settings\TenantSettings;
 use App\Notifications\Booking\BookingCancelledByCustomerNotification;
 use App\Notifications\Booking\BookingCancelledByTenantNotification;
 use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingReceivedNotification;
 use App\Notifications\Booking\BookingRescheduledNotification;
+use App\Notifications\Booking\TenantNewBookingNotification;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -296,5 +299,47 @@ class BookingNotificationTest extends TestCase
         $channels = $notification->via(new \Illuminate\Notifications\AnonymousNotifiable);
 
         $this->assertEmpty($channels, 'via() should return [] when notification already sent');
+    }
+
+    // ─── Payment-path notifications ───────────────────────────────────────────
+
+    #[Test]
+    public function tenant_owner_notified_when_booking_confirmed_after_payment(): void
+    {
+        Notification::fake();
+
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $booking = Booking::factory()->create([
+            'tenant_id'      => (string) $tenant->id,
+            'service_id'     => $service->id,
+            'resource_id'    => $resource->id,
+            'status'         => Booking::STATUS_AWAITING_PAYMENT,
+            'customer_email' => 'alice@example.com',
+            'customer_name'  => 'Alice Test',
+        ]);
+
+        $payment = Payment::factory()->create([
+            'tenant_id' => (string) $tenant->id,
+            'status'    => Payment::STATUS_PENDING,
+        ]);
+        $booking->update(['payment_id' => $payment->id]);
+
+        tenancy()->initialize($tenant);
+
+        $paymentService = $this->app->make(BookingPaymentService::class);
+        $paymentService->confirmBookingAfterPayment($booking->id, (string) $tenant->id);
+
+        // Customer gets confirmation
+        Notification::assertSentOnDemand(BookingConfirmedNotification::class);
+
+        // Tenant owner gets new-booking notification
+        $owner = $tenant->memberships()->where('role', 'owner')->with('user')->first()?->user;
+        $this->assertNotNull($owner, 'Tenant owner must exist for this assertion');
+        Notification::assertSentTo($owner, TenantNewBookingNotification::class);
     }
 }
