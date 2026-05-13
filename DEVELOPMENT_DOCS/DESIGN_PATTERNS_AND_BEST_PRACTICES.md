@@ -2171,7 +2171,7 @@ jobs:
 
 ---
 
-**Last Updated:** January 22, 2026 (permission naming & tenant user management added April 7, 2026)  
+**Last Updated:** January 22, 2026 (permission naming & tenant user management added April 7, 2026; central tenant user management hardening added May 13, 2026)  
 **Next Review:** February 2026  
 **Maintainers:** Development Team
 
@@ -2284,3 +2284,28 @@ This is invisible to the tenant and confusing. **Resolution (deferred)**:
 - The role assignment dropdown should not allow an `admin` (non-owner membership) to assign roles — the UI should hide the role selector entirely if the current user is not a membership `owner`
 
 Until this is resolved, the `assignRole` endpoint will continue to return 403 with the message "Only tenant owners can change user roles." — which is correct but opaque in the UI.
+
+### Central Tenant User Management — Decisions (May 13, 2026)
+
+Central tenant user management is now allowed as a constrained operator workflow. This is not a general-purpose second tenant CMS.
+
+Allowed scope:
+- list tenant members from central
+- add an existing or new user to a tenant membership from central
+- change tenant membership role from central
+- remove tenant membership from central
+
+Required security properties:
+- all central tenant user mutations require `tenants.manage`
+- list access remains readable through `tenants.view|tenants.manage`
+- the last active tenant owner cannot be demoted or removed
+- tenant membership removal must revoke tenant-scoped `web_refresh_sessions`
+- central mutations must emit both central audit entries and tenant-visible `TenantActivity` entries
+- active tenant owners should be notified when a permanent tenant membership is added, changed, or removed from central
+- destructive central UI actions should require explicit confirmation
+
+Non-goals for this operator slice:
+- tenant impersonation
+- password reset bypass for tenant users
+- cross-tenant role-definition management from central
+- broad CRUD over ordinary tenant-owned resources

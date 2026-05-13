@@ -11,16 +11,50 @@ use App\Actions\Api\Superadmin\ListUsersAction;
 use App\Actions\Api\Superadmin\UpdateTenantAction;
 use App\Actions\Api\Superadmin\UpdateUserAction;
 use App\Http\Controllers\Controller;
+use App\Models\Membership;
 use App\Models\Tenant;
 use App\Models\TenantActivity;
+use App\Notifications\TenantUserManagementOwnerNotification;
 use App\Models\User;
+use App\Models\WebRefreshSession;
+use App\Services\TenantRbacService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use App\Settings\GeneralSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SuperadminController extends Controller
 {
+    public function tenantUsers(Tenant $tenant)
+    {
+        $memberships = Membership::query()
+            ->with('user:id,name,email')
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('status', 'active')
+            ->orderByRaw("FIELD(role, 'owner', 'editor', 'viewer')")
+            ->orderBy('id')
+            ->get();
+
+        $data = $memberships
+            ->filter(fn (Membership $membership) => $membership->user !== null)
+            ->map(function (Membership $membership) {
+                return [
+                    'id' => (int) $membership->user->id,
+                    'name' => $membership->user->name,
+                    'email' => $membership->user->email,
+                    'role' => $membership->role,
+                    'status' => $membership->status,
+                    'joined_at' => $membership->created_at?->toISOString(),
+                ];
+            })
+            ->values();
+
+        return response()->json(['data' => $data]);
+    }
+
     // Tenant management
     public function indexTenants(Request $request)
     {
@@ -189,13 +223,378 @@ class SuperadminController extends Controller
     // Add user to tenant
     public function addUserToTenant(Request $request, Tenant $tenant)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.addUser works']);
+        $validated = $request->validate([
+            'email' => ['required', 'email', 'max:255'],
+            'name' => ['nullable', 'string', 'max:120'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'role' => ['sometimes', 'string', Rule::in(['owner', 'editor', 'viewer'])],
+        ]);
+
+        $role = $validated['role'] ?? 'owner';
+        $email = strtolower((string) $validated['email']);
+        $actor = $this->authenticatedActor($request);
+
+        $user = User::query()->where('email', $email)->first();
+
+        if (! $user) {
+            if (! isset($validated['name']) || trim((string) $validated['name']) === '') {
+                return response()->json([
+                    'message' => 'Name is required when creating a new user.',
+                    'errors' => ['name' => ['Name is required when creating a new user.']],
+                ], 422);
+            }
+
+            if (! isset($validated['password']) || trim((string) $validated['password']) === '') {
+                return response()->json([
+                    'message' => 'Password is required when creating a new user.',
+                    'errors' => ['password' => ['Password is required when creating a new user.']],
+                ], 422);
+            }
+
+            $user = User::query()->create([
+                'name' => trim((string) $validated['name']),
+                'email' => $email,
+                'password' => Hash::make((string) $validated['password']),
+            ]);
+        }
+
+        $membership = DB::transaction(function () use ($tenant, $user, $role) {
+            $membership = Membership::query()->updateOrCreate(
+                ['tenant_id' => (string) $tenant->id, 'user_id' => $user->id],
+                ['role' => $role, 'status' => 'active', 'source' => 'superadmin_assign', 'expires_at' => null]
+            );
+
+            app(TenantRbacService::class)->syncUserRoleFromMembership(
+                $user,
+                (string) $tenant->id,
+                $membership->role,
+                'api'
+            );
+
+            return $membership;
+        });
+
+        $this->logCentralTenantUserAction(
+            'assigned',
+            $tenant,
+            $user,
+            $actor,
+            sprintf('%s granted %s tenant access to %s on tenant %s', $actor->name, $role, $user->email, $tenant->slug),
+            [
+                'membership_role' => $membership->role,
+                'membership_status' => $membership->status,
+                'membership_source' => $membership->source,
+            ],
+        );
+
+        $this->logTenantUserAction(
+            'assigned',
+            $tenant,
+            $user,
+            $actor,
+            sprintf('Central admin %s granted %s access to %s', $actor->name, $role, $user->email),
+            [
+                'membership_role' => $membership->role,
+                'membership_status' => $membership->status,
+                'membership_source' => $membership->source,
+            ],
+        );
+
+        $this->notifyTenantOwners(
+            $tenant,
+            $user,
+            $actor,
+            TenantUserManagementOwnerNotification::EVENT_ASSIGNED,
+            $membership->role,
+        );
+
+        return response()->json([
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'membership' => [
+                    'tenant_id' => (string) $membership->tenant_id,
+                    'role' => $membership->role,
+                    'status' => $membership->status,
+                ],
+            ],
+        ], 201);
+    }
+
+    public function updateUserInTenant(Request $request, Tenant $tenant, User $user)
+    {
+        $validated = $request->validate([
+            'role' => ['required', 'string', Rule::in(['owner', 'editor', 'viewer'])],
+        ]);
+
+        $actor = $this->authenticatedActor($request);
+
+        $membership = Membership::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('user_id', $user->id)
+            ->where('status', 'active')
+            ->first();
+
+        if (! $membership) {
+            return response()->json(['message' => 'Membership not found.'], 404);
+        }
+
+        if ($membership->role === 'owner' && $validated['role'] !== 'owner') {
+            $activeOwnerCount = Membership::query()
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('status', 'active')
+                ->where('role', 'owner')
+                ->count();
+
+            if ($activeOwnerCount <= 1) {
+                return response()->json([
+                    'message' => 'Tenant must have at least one active owner.',
+                ], 422);
+            }
+        }
+
+        $previousRole = $membership->role;
+
+        $membership->update([
+            'role' => $validated['role'],
+            'status' => 'active',
+            'expires_at' => null,
+        ]);
+
+        app(TenantRbacService::class)->syncUserRoleFromMembership(
+            $user,
+            (string) $tenant->id,
+            $membership->role,
+            'api'
+        );
+
+        $this->logCentralTenantUserAction(
+            'updated',
+            $tenant,
+            $user,
+            $actor,
+            sprintf('%s changed tenant role for %s on tenant %s from %s to %s', $actor->name, $user->email, $tenant->slug, $previousRole, $membership->role),
+            [
+                'previous_role' => $previousRole,
+                'membership_role' => $membership->role,
+                'membership_status' => $membership->status,
+            ],
+        );
+
+        $this->logTenantUserAction(
+            'updated',
+            $tenant,
+            $user,
+            $actor,
+            sprintf('Central admin %s changed %s from %s to %s', $actor->name, $user->email, $previousRole, $membership->role),
+            [
+                'previous_role' => $previousRole,
+                'membership_role' => $membership->role,
+                'membership_status' => $membership->status,
+            ],
+        );
+
+        $this->notifyTenantOwners(
+            $tenant,
+            $user,
+            $actor,
+            TenantUserManagementOwnerNotification::EVENT_UPDATED,
+            $membership->role,
+            $previousRole,
+        );
+
+        return response()->json([
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
+                'membership' => [
+                    'tenant_id' => (string) $membership->tenant_id,
+                    'role' => $membership->role,
+                    'status' => $membership->status,
+                ],
+            ],
+        ]);
     }
 
     // Remove user from tenant
     public function removeUserFromTenant(Tenant $tenant, User $user)
     {
-        return response()->json(['message' => 'Route superadmin.tenants.removeUser works']);
+        $actor = request()->user();
+
+        if (! $actor instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        $membership = Membership::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('user_id', $user->id)
+            ->first();
+
+        if (! $membership) {
+            return response()->json(['message' => 'Membership not found.'], 404);
+        }
+
+        if ($membership->role === 'owner') {
+            $activeOwnerCount = Membership::query()
+                ->where('tenant_id', (string) $tenant->id)
+                ->where('status', 'active')
+                ->where('role', 'owner')
+                ->count();
+
+            if ($activeOwnerCount <= 1) {
+                return response()->json([
+                    'message' => 'Tenant must have at least one active owner.',
+                ], 422);
+            }
+        }
+
+        $previousRole = $membership->role;
+        $revokedAt = now();
+
+        DB::transaction(function () use ($membership, $tenant, $user, $revokedAt) {
+            $membership->update([
+                'status' => 'inactive',
+                'expires_at' => $revokedAt,
+            ]);
+
+            DB::table('model_has_roles')
+                ->where('model_type', $user->getMorphClass())
+                ->where('model_id', $user->getKey())
+                ->where('team_id', (string) $tenant->id)
+                ->delete();
+
+            $this->revokeTenantRefreshSessions($user->id, (string) $tenant->id, $revokedAt);
+        });
+
+        $this->logCentralTenantUserAction(
+            'removed',
+            $tenant,
+            $user,
+            $actor,
+            sprintf('%s removed tenant access for %s on tenant %s', $actor->name, $user->email, $tenant->slug),
+            [
+                'previous_role' => $previousRole,
+                'membership_status' => 'inactive',
+                'revoked_at' => $revokedAt->toISOString(),
+            ],
+        );
+
+        $this->logTenantUserAction(
+            'removed',
+            $tenant,
+            $user,
+            $actor,
+            sprintf('Central admin %s removed tenant access for %s', $actor->name, $user->email),
+            [
+                'previous_role' => $previousRole,
+                'membership_status' => 'inactive',
+                'revoked_at' => $revokedAt->toISOString(),
+            ],
+        );
+
+        $this->notifyTenantOwners(
+            $tenant,
+            $user,
+            $actor,
+            TenantUserManagementOwnerNotification::EVENT_REMOVED,
+            null,
+            $previousRole,
+        );
+
+        return response()->json(['message' => 'User removed from tenant successfully.']);
+    }
+
+    private function authenticatedActor(Request $request): User
+    {
+        $actor = $request->user();
+
+        if (! $actor instanceof User) {
+            abort(401, 'Unauthenticated.');
+        }
+
+        return $actor;
+    }
+
+    private function revokeTenantRefreshSessions(int $userId, string $tenantId, \Illuminate\Support\Carbon $revokedAt): void
+    {
+        WebRefreshSession::query()
+            ->where('user_id', $userId)
+            ->where('tenant_id', $tenantId)
+            ->whereNull('revoked_at')
+            ->update(['revoked_at' => $revokedAt]);
+    }
+
+    private function logCentralTenantUserAction(string $event, Tenant $tenant, User $subjectUser, User $actor, string $description, array $properties = []): void
+    {
+        activity('central')
+            ->causedBy($actor)
+            ->performedOn($tenant)
+            ->event($event)
+            ->withProperties(array_merge([
+                'tenant_id' => (string) $tenant->id,
+                'tenant_slug' => $tenant->slug,
+                'user_id' => $subjectUser->id,
+                'user_email' => $subjectUser->email,
+            ], $properties))
+            ->log($description);
+    }
+
+    private function logTenantUserAction(string $event, Tenant $tenant, User $subjectUser, User $actor, string $description, array $properties = []): void
+    {
+        TenantActivity::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'log_name' => 'tenant',
+            'event' => $event,
+            'description' => $description,
+            'subject_type' => User::class,
+            'subject_id' => (string) $subjectUser->id,
+            'causer_type' => User::class,
+            'causer_id' => $actor->id,
+            'properties' => array_merge([
+                'user_email' => $subjectUser->email,
+            ], $properties),
+        ]);
+    }
+
+    private function notifyTenantOwners(
+        Tenant $tenant,
+        User $managedUser,
+        User $actor,
+        string $event,
+        ?string $currentRole = null,
+        ?string $previousRole = null,
+    ): void {
+        $owners = Membership::query()
+            ->where('tenant_id', (string) $tenant->id)
+            ->where('role', 'owner')
+            ->where('status', 'active')
+            ->with('user')
+            ->get()
+            ->pluck('user')
+            ->filter(fn ($owner) => $owner instanceof User && $owner->id !== $managedUser->id);
+
+        if ($owners->isEmpty()) {
+            return;
+        }
+
+        $tenant->loadMissing('domains');
+
+        foreach ($owners as $owner) {
+            $owner->notify(new TenantUserManagementOwnerNotification(
+                $tenant,
+                $managedUser,
+                $actor,
+                $event,
+                $currentRole,
+                $previousRole,
+            ));
+        }
     }
 
     // Settings management

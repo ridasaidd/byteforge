@@ -110,7 +110,11 @@ return [
         'suffix_base' => 'tenant',
         'disks' => [
             'local',
-            'public',
+            // Keep public disk global. Media library paths are already tenant-namespaced
+            // by TenantAwarePathGenerator (tenants/{tenant_id}/...), and /storage points
+            // to shared storage/app/public. Suffixing public causes files to be written
+            // under storage/tenant{tenant_id}/... while URLs still resolve to /storage/....
+            // Result: broken media URLs (403/404). See MediaController getUrl() usage.
             // 's3',
         ],
 

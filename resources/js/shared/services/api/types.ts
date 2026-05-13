@@ -108,6 +108,15 @@ export interface TenantInspectionPage extends Record<string, unknown> {
   updated_at: string;
 }
 
+export interface TenantInspectionUser extends Record<string, unknown> {
+  id: number;
+  name: string;
+  email: string;
+  role: 'owner' | 'editor' | 'viewer' | string;
+  status: string;
+  joined_at: string | null;
+}
+
 export interface TenantSupportAccessActor extends Record<string, unknown> {
   id: number;
   name: string;
@@ -161,6 +170,27 @@ export interface GrantTenantSupportAccessData {
 
 export interface RevokeTenantSupportAccessData {
   reason?: string | null;
+}
+
+export interface AssignTenantUserData {
+  email: string;
+  name?: string;
+  password?: string;
+  password_confirmation?: string;
+  role?: 'owner' | 'editor' | 'viewer';
+}
+
+export interface AssignTenantUserResponse extends Record<string, unknown> {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  membership: {
+    tenant_id: string;
+    role: string;
+    status: string;
+  };
 }
 
 export interface CreateTenantData {

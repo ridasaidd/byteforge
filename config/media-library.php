@@ -177,7 +177,9 @@ return [
      * The path where to store temporary files while performing image conversions.
      * If set to null, storage_path('media-library/temp') will be used.
      */
-    'temporary_directory_path' => null,
+    // Keep temp conversion files outside tenant-suffixed storage paths.
+    // This avoids permission issues when tenancy suffixes storage_path().
+    'temporary_directory_path' => env('MEDIA_TEMP_DIRECTORY_PATH', '/tmp/byteforge-media-library'),
 
     /*
      * The engine that should perform the image conversions.
