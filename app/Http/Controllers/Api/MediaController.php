@@ -11,6 +11,7 @@ use App\Models\Media;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class MediaController extends Controller
 {
@@ -29,8 +30,17 @@ class MediaController extends Controller
         $availableConversions = ['thumb', 'small', 'medium', 'large', 'webp'];
 
         foreach ($availableConversions as $conversion) {
-            if ($media->hasGeneratedConversion($conversion)) {
-                $conversions[$conversion] = $media->getUrl($conversion);
+            try {
+                if ($media->hasGeneratedConversion($conversion)) {
+                    $conversions[$conversion] = $media->getUrl($conversion);
+                }
+            } catch (\Throwable $e) {
+                // Do not fail the whole response when a derived conversion URL is unavailable.
+                Log::warning('Media conversion URL unavailable', [
+                    'media_id' => $media->id,
+                    'conversion' => $conversion,
+                    'error' => $e->getMessage(),
+                ]);
             }
         }
 
@@ -104,7 +114,18 @@ class MediaController extends Controller
                 $request->input('folder_id')
             );
 
-            $conversions = $this->getConversionUrls($media);
+            // Upload succeeded. Conversion URL generation can fail independently
+            // (e.g. missing optional image tooling) and should not turn this
+            // into a failed upload response.
+            $conversions = [];
+            try {
+                $conversions = $this->getConversionUrls($media);
+            } catch (\Throwable $e) {
+                Log::warning('Media conversion metadata unavailable after upload', [
+                    'media_id' => $media->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             return response()->json([
                 'message' => 'Media uploaded successfully',
@@ -126,9 +147,11 @@ class MediaController extends Controller
                     'created_at' => $media->created_at?->toISOString(),
                 ],
             ], 201);
-        } catch (\Exception $e) {
-            \Log::error('Media upload failed', [
+        } catch (\Throwable $e) {
+            Log::error('Media upload failed', [
+                'exception' => get_class($e),
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
@@ -205,7 +228,7 @@ class MediaController extends Controller
                 'message' => 'Media not found',
             ], 404);
         } catch (\Exception $e) {
-            \Log::error('Media deletion failed', ['error' => $e->getMessage()]);
+            Log::error('Media deletion failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'message' => 'Failed to delete media',
             ], 500);

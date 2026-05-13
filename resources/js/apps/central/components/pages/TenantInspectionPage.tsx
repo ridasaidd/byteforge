@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { tenants } from '@/shared/services/api/tenants';
-import type { ActivityLog, TenantInspectionPage as TenantInspectionPageRow, TenantInspectionTheme, TenantSupportAccessGrant, TenantSupportAccessRelatedTenant } from '@/shared/services/api/types';
+import type { ActivityLog, TenantInspectionPage as TenantInspectionPageRow, TenantInspectionTheme, TenantInspectionUser, TenantSupportAccessGrant, TenantSupportAccessRelatedTenant } from '@/shared/services/api/types';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { DataTable, type Column } from '@/shared/components/molecules/DataTable';
 import { Badge } from '@/shared/components/ui/badge';
@@ -11,10 +11,12 @@ import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 import { Label } from '@/shared/components/ui/label';
+import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { useToast } from '@/shared/hooks';
+import { usePermissions } from '@/shared/hooks/usePermissions';
 
 function getErrorMessage(error: unknown, fallback: string): string {
   const apiError = error as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } };
@@ -37,6 +39,7 @@ export function TenantInspectionPage() {
   const { id } = useParams<{ id: string }>();
   const { t, i18n } = useTranslation('tenants');
   const { toast } = useToast();
+  const { hasPermission } = usePermissions();
   const [pagesPage, setPagesPage] = useState(1);
   const [activityPage, setActivityPage] = useState(1);
   const [pendingActivation, setPendingActivation] = useState<TenantInspectionTheme | null>(null);
@@ -48,35 +51,64 @@ export function TenantInspectionPage() {
   const [revokeReason, setRevokeReason] = useState('');
   const [isSubmittingGrant, setIsSubmittingGrant] = useState(false);
   const [isSubmittingRevoke, setIsSubmittingRevoke] = useState(false);
+  const [pendingUserRoleChange, setPendingUserRoleChange] = useState<{
+    userId: number;
+    name: string;
+    email: string;
+    currentRole: 'owner' | 'editor' | 'viewer';
+    nextRole: 'owner' | 'editor' | 'viewer';
+  } | null>(null);
+  const [pendingUserRemoval, setPendingUserRemoval] = useState<TenantInspectionUser | null>(null);
+  const [isUserDialogOpen, setIsUserDialogOpen] = useState(false);
+  const [userForm, setUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    password_confirmation: '',
+    role: 'owner' as 'owner' | 'editor' | 'viewer',
+  });
+  const canViewOverview = hasPermission('tenants.operate') || hasPermission('tenants.manage');
+  const canViewThemes = hasPermission('tenants.themes.view') || hasPermission('tenants.manage');
+  const canViewPages = hasPermission('tenants.pages.view') || hasPermission('tenants.manage');
+  const canViewActivity = hasPermission('tenants.activity.view') || hasPermission('tenants.manage');
+  const canViewSupport = hasPermission('tenants.support.view') || hasPermission('tenants.manage');
+  const canViewTenantUsers = hasPermission('tenants.view') || hasPermission('tenants.manage');
+  const canManageTenantUsers = hasPermission('tenants.manage');
 
   const summary = useQuery({
     queryKey: ['tenant-inspection', id, 'summary'],
     queryFn: () => tenants.summary(id!),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && canViewOverview,
   });
 
   const themes = useQuery({
     queryKey: ['tenant-inspection', id, 'themes'],
     queryFn: () => tenants.themes(id!),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && canViewThemes,
   });
 
   const pages = useQuery({
     queryKey: ['tenant-inspection', id, 'pages', pagesPage],
     queryFn: () => tenants.pages(id!, { page: pagesPage, per_page: 10 }),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && canViewPages,
   });
 
   const activity = useQuery({
     queryKey: ['tenant-inspection', id, 'activity', activityPage],
     queryFn: () => tenants.activity(id!, { page: activityPage, per_page: 10 }),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && canViewActivity,
   });
 
   const supportAccess = useQuery({
     queryKey: ['tenant-inspection', id, 'support-access'],
     queryFn: () => tenants.supportAccess(id!),
-    enabled: Boolean(id),
+    enabled: Boolean(id) && canViewSupport,
+  });
+
+  const tenantUsers = useQuery({
+    queryKey: ['tenant-inspection', id, 'users'],
+    queryFn: () => tenants.users(id!),
+    enabled: Boolean(id) && canViewTenantUsers,
   });
 
   const reloadInspection = async () => {
@@ -117,6 +149,14 @@ export function TenantInspectionPage() {
 
   const formatDateTime = (value: string | null | undefined) => {
     return value ? new Date(value).toLocaleString(i18n.language) : '-';
+  };
+
+  const formatTenantUserRole = (role: 'owner' | 'editor' | 'viewer' | string) => {
+    if (role === 'owner' || role === 'editor' || role === 'viewer') {
+      return t(`inspection_user_role_${role}`);
+    }
+
+    return role;
   };
 
   const getSupportGrantStatus = (grant: TenantSupportAccessGrant) => {
@@ -209,6 +249,86 @@ export function TenantInspectionPage() {
       setIsSubmittingRevoke(false);
     }
   };
+
+  const createTenantUserMutation = useMutation({
+    mutationFn: async () => {
+      if (!id) {
+        throw new Error('Tenant id is required.');
+      }
+
+      return tenants.addUserToTenant(id, {
+        name: userForm.name.trim() || undefined,
+        email: userForm.email.trim(),
+        password: userForm.password || undefined,
+        password_confirmation: userForm.password_confirmation || undefined,
+        role: userForm.role,
+      });
+    },
+    onSuccess: async (response) => {
+      await reloadInspection();
+      await tenantUsers.refetch();
+      setIsUserDialogOpen(false);
+      setUserForm({ name: '', email: '', password: '', password_confirmation: '', role: 'owner' });
+      toast({
+        title: t('tenant_updated_title'),
+        description: t('inspection_user_added_success', {
+          email: response.data.user.email,
+          role: t(`inspection_user_role_${response.data.membership.role}`),
+        }),
+      });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: t('error_title'),
+        description: getErrorMessage(error, t('inspection_user_added_failed')),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const updateTenantUserRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: number; role: 'owner' | 'editor' | 'viewer' }) => {
+      if (!id) {
+        throw new Error('Tenant id is required.');
+      }
+
+      return tenants.updateUserInTenant(id, userId, { role });
+    },
+    onSuccess: async () => {
+      await tenantUsers.refetch();
+      setPendingUserRoleChange(null);
+      toast({ title: t('tenant_updated_title'), description: t('inspection_user_role_updated_success') });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: t('error_title'),
+        description: getErrorMessage(error, t('inspection_user_role_updated_failed')),
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const removeTenantUserMutation = useMutation({
+    mutationFn: async (userId: number) => {
+      if (!id) {
+        throw new Error('Tenant id is required.');
+      }
+
+      return tenants.removeUserFromTenant(id, userId);
+    },
+    onSuccess: async () => {
+      await tenantUsers.refetch();
+      setPendingUserRemoval(null);
+      toast({ title: t('tenant_updated_title'), description: t('inspection_user_removed_success') });
+    },
+    onError: (error: unknown) => {
+      toast({
+        title: t('error_title'),
+        description: getErrorMessage(error, t('inspection_user_removed_failed')),
+        variant: 'destructive',
+      });
+    },
+  });
 
   const themeColumns: Column<TenantInspectionTheme>[] = [
     {
@@ -375,6 +495,73 @@ export function TenantInspectionPage() {
     ) : null
   );
 
+  const userColumns: Column<TenantInspectionUser>[] = [
+    {
+      key: 'name',
+      label: t('name'),
+      render: (row) => (
+        <div>
+          <div className="font-medium">{row.name}</div>
+          <div className="text-xs text-muted-foreground">{row.email}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'role',
+      label: t('inspection_user_role'),
+      render: (row) => canManageTenantUsers ? (
+        <Select
+          value={row.role}
+          onValueChange={(value: 'owner' | 'editor' | 'viewer') => {
+            if (value !== row.role) {
+              setPendingUserRoleChange({
+                userId: row.id,
+                name: row.name,
+                email: row.email,
+                currentRole: row.role,
+                nextRole: value,
+              });
+            }
+          }}
+        >
+          <SelectTrigger className="w-36">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="owner">{t('inspection_user_role_owner')}</SelectItem>
+            <SelectItem value="editor">{t('inspection_user_role_editor')}</SelectItem>
+            <SelectItem value="viewer">{t('inspection_user_role_viewer')}</SelectItem>
+          </SelectContent>
+        </Select>
+      ) : (
+        <Badge variant="outline">{row.role}</Badge>
+      ),
+    },
+    {
+      key: 'status',
+      label: t('inspection_status'),
+      render: (row) => <Badge variant={row.status === 'active' ? 'secondary' : 'outline'}>{row.status}</Badge>,
+    },
+    {
+      key: 'joined_at',
+      label: t('created'),
+      render: (row) => formatDateTime(row.joined_at),
+    },
+  ];
+
+  const userActions = canManageTenantUsers
+    ? (row: TenantInspectionUser) => (
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setPendingUserRemoval(row)}
+          disabled={removeTenantUserMutation.isPending}
+        >
+          {t('inspection_user_remove_action')}
+        </Button>
+      )
+    : undefined;
+
   const tenant = summary.data?.data.tenant;
   const stats = summary.data?.data.stats;
 
@@ -482,6 +669,89 @@ export function TenantInspectionPage() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={isUserDialogOpen} onOpenChange={setIsUserDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('inspection_user_add_title')}</DialogTitle>
+            <DialogDescription>{t('inspection_user_add_description')}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tenant_user_name">{t('name')}</Label>
+              <Input
+                id="tenant_user_name"
+                value={userForm.name}
+                onChange={(event) => setUserForm((prev) => ({ ...prev, name: event.target.value }))}
+                placeholder={t('inspection_user_name_placeholder')}
+              />
+              <p className="text-xs text-muted-foreground">{t('inspection_user_name_help')}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tenant_user_email">{t('inspection_user_email')}</Label>
+              <Input
+                id="tenant_user_email"
+                type="email"
+                value={userForm.email}
+                onChange={(event) => setUserForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder={t('inspection_user_email_placeholder')}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tenant_user_role">{t('inspection_user_role')}</Label>
+              <Select
+                value={userForm.role}
+                onValueChange={(value: 'owner' | 'editor' | 'viewer') => setUserForm((prev) => ({ ...prev, role: value }))}
+              >
+                <SelectTrigger id="tenant_user_role" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="owner">{t('inspection_user_role_owner')}</SelectItem>
+                  <SelectItem value="editor">{t('inspection_user_role_editor')}</SelectItem>
+                  <SelectItem value="viewer">{t('inspection_user_role_viewer')}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tenant_user_password">{t('inspection_user_password')}</Label>
+              <Input
+                id="tenant_user_password"
+                type="password"
+                value={userForm.password}
+                onChange={(event) => setUserForm((prev) => ({ ...prev, password: event.target.value }))}
+                placeholder={t('inspection_user_password_placeholder')}
+              />
+              <p className="text-xs text-muted-foreground">{t('inspection_user_password_help')}</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tenant_user_password_confirmation">{t('inspection_user_password_confirmation')}</Label>
+              <Input
+                id="tenant_user_password_confirmation"
+                type="password"
+                value={userForm.password_confirmation}
+                onChange={(event) => setUserForm((prev) => ({ ...prev, password_confirmation: event.target.value }))}
+                placeholder={t('inspection_user_password_confirmation_placeholder')}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsUserDialogOpen(false)}
+              disabled={createTenantUserMutation.isPending}
+            >
+              {t('cancel', { ns: 'common', defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              onClick={() => createTenantUserMutation.mutate()}
+              disabled={createTenantUserMutation.isPending || !userForm.email.trim()}
+            >
+              {t('inspection_user_add_action')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={!!pendingRevoke} onOpenChange={(open) => !open && resetRevokeDialog()}>
         <DialogContent>
           <DialogHeader>
@@ -506,6 +776,59 @@ export function TenantInspectionPage() {
             </Button>
             <Button variant="destructive" onClick={handleRevokeSupportAccess} disabled={isSubmittingRevoke}>
               {t('inspection_support_revoke_submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingUserRoleChange} onOpenChange={(open) => !open && setPendingUserRoleChange(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('inspection_user_role_change_title')}</DialogTitle>
+            <DialogDescription>
+              {pendingUserRoleChange ? t('inspection_user_role_change_description', {
+                email: pendingUserRoleChange.email,
+                currentRole: formatTenantUserRole(pendingUserRoleChange.currentRole),
+                nextRole: formatTenantUserRole(pendingUserRoleChange.nextRole),
+              }) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingUserRoleChange(null)} disabled={updateTenantUserRoleMutation.isPending}>
+              {t('cancel', { ns: 'common', defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              onClick={() => pendingUserRoleChange && updateTenantUserRoleMutation.mutate({
+                userId: pendingUserRoleChange.userId,
+                role: pendingUserRoleChange.nextRole,
+              })}
+              disabled={updateTenantUserRoleMutation.isPending || !pendingUserRoleChange}
+            >
+              {t('inspection_user_role_change_submit')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingUserRemoval} onOpenChange={(open) => !open && setPendingUserRemoval(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('inspection_user_remove_title')}</DialogTitle>
+            <DialogDescription>
+              {pendingUserRemoval ? t('inspection_user_remove_description', { email: pendingUserRemoval.email }) : ''}
+            </DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">{t('inspection_user_remove_warning')}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPendingUserRemoval(null)} disabled={removeTenantUserMutation.isPending}>
+              {t('cancel', { ns: 'common', defaultValue: 'Cancel' })}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => pendingUserRemoval && removeTenantUserMutation.mutate(pendingUserRemoval.id)}
+              disabled={removeTenantUserMutation.isPending || !pendingUserRemoval}
+            >
+              {t('inspection_user_remove_submit')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -548,16 +871,17 @@ export function TenantInspectionPage() {
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue={canViewOverview ? 'overview' : (canViewTenantUsers ? 'users' : (canViewThemes ? 'themes' : (canViewPages ? 'pages' : (canViewActivity ? 'activity' : 'support'))))} className="space-y-6">
         <TabsList>
-          <TabsTrigger value="overview">{t('inspection_tab_overview')}</TabsTrigger>
-          <TabsTrigger value="themes">{t('inspection_tab_themes')}</TabsTrigger>
-          <TabsTrigger value="pages">{t('inspection_tab_pages')}</TabsTrigger>
-          <TabsTrigger value="activity">{t('inspection_tab_activity')}</TabsTrigger>
-          <TabsTrigger value="support">{t('inspection_tab_support')}</TabsTrigger>
+          {canViewOverview ? <TabsTrigger value="overview">{t('inspection_tab_overview')}</TabsTrigger> : null}
+          {canViewTenantUsers ? <TabsTrigger value="users">{t('inspection_tab_users')}</TabsTrigger> : null}
+          {canViewThemes ? <TabsTrigger value="themes">{t('inspection_tab_themes')}</TabsTrigger> : null}
+          {canViewPages ? <TabsTrigger value="pages">{t('inspection_tab_pages')}</TabsTrigger> : null}
+          {canViewActivity ? <TabsTrigger value="activity">{t('inspection_tab_activity')}</TabsTrigger> : null}
+          {canViewSupport ? <TabsTrigger value="support">{t('inspection_tab_support')}</TabsTrigger> : null}
         </TabsList>
 
-        <TabsContent value="overview">
+        {canViewOverview ? <TabsContent value="overview">
           <Card>
             <CardHeader>
               <CardTitle>{t('inspection_overview_title')}</CardTitle>
@@ -569,9 +893,34 @@ export function TenantInspectionPage() {
               <div><span className="font-medium">{t('inspection_active_theme_label')}:</span> {summary.data?.data.active_theme?.name ?? t('inspection_no_active_theme')}</div>
             </CardContent>
           </Card>
-        </TabsContent>
+        </TabsContent> : null}
 
-        <TabsContent value="themes">
+        {canViewTenantUsers ? <TabsContent value="users" className="space-y-6">
+          <Card>
+            <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div>
+                <CardTitle>{t('inspection_users_title')}</CardTitle>
+                <CardDescription>{t('inspection_users_description')}</CardDescription>
+              </div>
+              {canManageTenantUsers ? (
+                <Button onClick={() => setIsUserDialogOpen(true)}>
+                  {t('inspection_user_add_action')}
+                </Button>
+              ) : null}
+            </CardHeader>
+          </Card>
+
+          <DataTable<TenantInspectionUser>
+            data={tenantUsers.data?.data || []}
+            columns={userColumns}
+            isLoading={tenantUsers.isLoading}
+            emptyMessage={t('inspection_users_empty_title')}
+            emptyDescription={t('inspection_users_empty_description')}
+            actions={userActions}
+          />
+        </TabsContent> : null}
+
+        {canViewThemes ? <TabsContent value="themes">
           <DataTable<TenantInspectionTheme>
             data={themes.data?.data || []}
             columns={themeColumns}
@@ -580,9 +929,9 @@ export function TenantInspectionPage() {
             emptyDescription={t('inspection_empty_themes_description')}
             actions={themeActions}
           />
-        </TabsContent>
+        </TabsContent> : null}
 
-        <TabsContent value="pages">
+        {canViewPages ? <TabsContent value="pages">
           <DataTable<TenantInspectionPageRow>
             data={pages.data?.data || []}
             columns={pageColumns}
@@ -593,9 +942,9 @@ export function TenantInspectionPage() {
             totalPages={pages.data?.meta.last_page}
             onPageChange={setPagesPage}
           />
-        </TabsContent>
+        </TabsContent> : null}
 
-        <TabsContent value="activity">
+        {canViewActivity ? <TabsContent value="activity">
           <DataTable<ActivityLog>
             data={activity.data?.data || []}
             columns={activityColumns}
@@ -606,9 +955,9 @@ export function TenantInspectionPage() {
             totalPages={activity.data?.meta.last_page}
             onPageChange={setActivityPage}
           />
-        </TabsContent>
+        </TabsContent> : null}
 
-        <TabsContent value="support" className="space-y-6">
+        {canViewSupport ? <TabsContent value="support" className="space-y-6">
           <Card>
             <CardHeader className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
@@ -651,7 +1000,7 @@ export function TenantInspectionPage() {
             emptyDescription={t('inspection_support_empty_description')}
             actions={supportActions}
           />
-        </TabsContent>
+        </TabsContent> : null}
       </Tabs>
     </div>
   );

@@ -77,7 +77,7 @@ function ProtectedRoutes() {
               <Route
                 path="tenants/:id"
                 element={(
-                  <PermissionGate permission="tenants.manage">
+                  <PermissionGate permission="tenants.view">
                     <TenantInspectionPage />
                   </PermissionGate>
                 )}

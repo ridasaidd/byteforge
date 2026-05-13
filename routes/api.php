@@ -173,7 +173,9 @@ foreach (config('tenancy.central_domains') as $domain) {
             Route::put('settings', [SuperadminController::class, 'updateSettings'])->middleware('permission:settings.manage');
 
             // Tenant-User relationships
+            Route::get('tenants/{tenant}/users', [SuperadminController::class, 'tenantUsers'])->middleware('permission:tenants.view|tenants.manage');
             Route::post('tenants/{tenant}/users', [SuperadminController::class, 'addUserToTenant'])->middleware('permission:tenants.manage');
+            Route::patch('tenants/{tenant}/users/{user}', [SuperadminController::class, 'updateUserInTenant'])->middleware('permission:tenants.manage');
             Route::delete('tenants/{tenant}/users/{user}', [SuperadminController::class, 'removeUserFromTenant'])->middleware('permission:tenants.manage');
 
             // Roles management

@@ -6,8 +6,11 @@ import type {
   CreateTenantData,
   GrantTenantSupportAccessData,
   PaginatedResponse,
+  AssignTenantUserData,
+  AssignTenantUserResponse,
   Tenant,
   TenantInspectionPage,
+  TenantInspectionUser,
   TenantInspectionSummary,
   TenantInspectionTheme,
   TenantSupportAccessGrant,
@@ -33,6 +36,8 @@ export const tenants = {
     http.get<ApiResponse<TenantInspectionTheme[]>>(`/superadmin/tenants/${id}/themes`),
   pages: (id: string, params?: { page?: number; per_page?: number; search?: string; status?: string }) =>
     http.get<PaginatedResponse<TenantInspectionPage>>(`/superadmin/tenants/${id}/pages`, { params }),
+  users: (id: string) =>
+    http.get<ApiResponse<TenantInspectionUser[]>>(`/superadmin/tenants/${id}/users`),
   activity: (id: string, params?: { page?: number; per_page?: number; event?: string }) =>
     http.get<PaginatedResponse<ActivityLog>>(`/superadmin/tenants/${id}/activity-logs`, { params }),
   activateTheme: (id: string, data: ActivateThemeData) =>
@@ -43,4 +48,10 @@ export const tenants = {
     http.post<{ data: TenantSupportAccessGrant; message: string }>(`/superadmin/tenants/${id}/support-access`, data),
   revokeSupportAccess: (id: string, grantId: number, data?: RevokeTenantSupportAccessData) =>
     http.post<{ data: TenantSupportAccessGrant; message: string }>(`/superadmin/tenants/${id}/support-access/${grantId}/revoke`, data ?? {}),
+  addUserToTenant: (id: string, data: AssignTenantUserData) =>
+    http.post<{ data: AssignTenantUserResponse }>(`/superadmin/tenants/${id}/users`, data),
+  updateUserInTenant: (id: string, userId: number, data: { role: 'owner' | 'editor' | 'viewer' }) =>
+    http.patch<{ data: AssignTenantUserResponse }>(`/superadmin/tenants/${id}/users/${userId}`, data),
+  removeUserFromTenant: (id: string, userId: number) =>
+    http.delete<{ message: string }>(`/superadmin/tenants/${id}/users/${userId}`),
 };

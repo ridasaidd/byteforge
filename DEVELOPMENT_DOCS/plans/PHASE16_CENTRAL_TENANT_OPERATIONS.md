@@ -1,7 +1,7 @@
 # Phase 16: Central Tenant Operations
 
-Last updated: April 19, 2026
-Status: Re-scoped plan — inspection and temporary support shipped; broader support expansion deferred
+Last updated: May 13, 2026
+Status: Partially implemented on `main` + working tree — inspection, theme activation, temporary support access, and constrained central tenant user management are in place
 Depends on: Phase 12 tenant runtime hardening, Phase 13 booking system stabilization
 Recommended branch later: feature/phase16-central-tenant-operations
 
@@ -33,8 +33,8 @@ This phase should enrich the central app without weakening the tenant-isolation 
 Central must not impersonate tenant users ad hoc.
 
 Central should also not grow into a full parallel tenant-management surface for
-pages, navigation, users, roles, and other everyday tenant operations unless a
-repeated operational need clearly justifies that complexity later.
+pages, navigation, roles, payments, and other everyday tenant operations unless
+a repeated operational need clearly justifies that complexity later.
 
 Instead, central should get explicit operator endpoints under the central API,
 targeting a tenant by ID. Those endpoints should initialize tenant context
@@ -51,6 +51,7 @@ Good direction:
 - `/api/superadmin/tenants/{tenant}/themes/*`
 - `/api/superadmin/tenants/{tenant}/activity-logs`
 - `/api/superadmin/tenants/{tenant}/support-access/*`
+- `/api/superadmin/tenants/{tenant}/users/*` for constrained membership management
 
 Bad direction:
 
@@ -68,8 +69,8 @@ Bad direction:
 3. Reuse existing tenant services and business rules instead of creating a second copy of tenant logic for central.
 4. Tenant-visible auditing is mandatory for write operations.
 5. Read-only inspection should ship before write-capable controls.
-6. The central app should stay narrow: inspection, lifecycle basics, and controlled support workflows are preferred over broad cross-tenant CRUD.
-7. Security-sensitive surfaces such as tenant RBAC, identity, and payments should not be in the first rollout.
+6. The central app should stay narrow: inspection, lifecycle basics, controlled support workflows, and constrained tenant membership management are preferred over broad cross-tenant CRUD.
+7. Security-sensitive surfaces such as payments, role-definition CRUD, and auth bypass should not be in the first rollout.
 
 ---
 
@@ -148,9 +149,23 @@ Status update:
 
 Only if temporary support access is not operationally sufficient should the
 team revisit broader central tenant operations such as page management or
-cross-tenant user or role management. Those slices need a much higher bar
-because they intersect with `permission.team`, tenant memberships, tenant
-trust, and auth guarantees.
+cross-tenant role management and other tenant-owned resources. Those slices
+need a much higher bar because they intersect with `permission.team`, tenant
+memberships, tenant trust, and auth guarantees.
+
+Status update:
+
+- constrained central tenant user management is now implemented on the current
+	working tree: list tenant users, add a tenant user membership, change role,
+	and remove membership
+- this is intentionally narrower than full tenant identity administration:
+	no impersonation, no tenant password reset bypass, no central role-definition
+	CRUD, and no direct access to unrelated tenant resources
+- security hardening for this slice includes explicit `tenants.manage`
+	permissions, last-owner protection, tenant-visible activity entries, owner
+	email notifications for permanent membership changes, confirmation-gated UI
+	for destructive actions, and immediate tenant refresh-session revocation on
+	removal
 
 ---
 
@@ -163,6 +178,9 @@ Expected wording pattern:
 - `Central admin Jane Doe activated theme "Studio"`
 - `Central support Alice Smith was granted temporary support access until 2026-04-21 10:00 UTC`
 - `Central admin John Smith revoked temporary support access for Alice Smith`
+- `Central admin Jane Doe granted viewer access to alice@example.com`
+- `Central admin Jane Doe changed alice@example.com from viewer to editor`
+- `Central admin Jane Doe removed tenant access for alice@example.com`
 
 Recommended complementary central audit entry:
 
@@ -218,7 +236,10 @@ This phase should not include by default:
 2. A central admin with the right operator permission can activate a tenant theme from central.
 3. A central operator with the right permission can grant temporary support access to an existing central support or admin user for a bounded duration.
 4. Temporary support access expires automatically and can be revoked explicitly.
-5. The tenant activity log shows that the action was performed by a named central actor.
-6. Unauthorized central roles cannot access cross-tenant operator endpoints.
-7. No tenant-domain API needs to trust central-origin browser calls directly.
-8. Existing tenant-isolation tests continue to pass.
+5. A central operator with `tenants.manage` can manage permanent tenant memberships from central through a dedicated Users tab.
+6. Permanent tenant membership changes generate tenant-visible activity entries and notify active tenant owners.
+7. Removing a tenant membership revokes active tenant refresh sessions for that user.
+8. The tenant activity log shows that the action was performed by a named central actor.
+9. Unauthorized central roles cannot access cross-tenant operator endpoints.
+10. No tenant-domain API needs to trust central-origin browser calls directly.
+11. Existing tenant-isolation tests continue to pass.

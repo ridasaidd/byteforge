@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-11
+Last verified: 2026-05-13
 Primary branch: `main`
 
 ## Snapshot
@@ -38,10 +38,13 @@ Primary branch: `main`
   fields.
 - Booking dashboard localization and booking guest-input hardening were merged
   on 2026-04-19.
-- Phase 16 operator tooling is partially implemented on the current support
-  branch: tenant inspection, limited central theme activation, and temporary
-  read-only support access are in place; broader support remediation is
-  intentionally deferred.
+- Phase 16 operator tooling is now implemented on the current working tree:
+  tenant inspection, limited central theme activation, temporary support
+  access, and central tenant user management are in place; broader support
+  remediation remains intentionally deferred.
+- Tenant media upload/render regressions have been resolved in current code by
+  removing tenant suffixing from the public disk path, making media temp
+  storage explicitly writable, and hardening conversion URL generation.
 
 ## Implemented Milestones
 
@@ -67,6 +70,9 @@ Primary branch: `main`
 5. Continue HttpOnly auth migration closeout and operational hardening.
 6. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
 7. Do not expand support beyond the current bounded read-only workflow before launch.
+8. Keep central tenant user management narrow: membership add/change/remove
+  only, with explicit permissions, tenant-visible audit entries, owner
+  notifications, and immediate tenant refresh-session revocation on removal.
 
 ## Current Reality Checks
 
@@ -111,8 +117,13 @@ All original booking UX gaps have been resolved (2026-05-12):
 
 ### Platform support follow-ups
 
-- temporary support access now exists as a bounded read-only workflow on the
-  active Phase 16 branch
+- temporary support access now exists as a bounded workflow on the active
+  Phase 16 implementation
+- central tenant user management now exists as a separate workflow for
+  permanent tenant memberships from the central app
+- permanent membership changes initiated from central now notify tenant owners,
+  write tenant-visible activity entries, and revoke tenant refresh sessions on
+  removal
 - enhanced support remediation is intentionally deferred to
   [plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md](plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md)
 
