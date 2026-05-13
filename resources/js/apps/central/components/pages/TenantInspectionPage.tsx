@@ -55,7 +55,7 @@ export function TenantInspectionPage() {
     userId: number;
     name: string;
     email: string;
-    currentRole: 'owner' | 'editor' | 'viewer';
+    currentRole: string;
     nextRole: 'owner' | 'editor' | 'viewer';
   } | null>(null);
   const [pendingUserRemoval, setPendingUserRemoval] = useState<TenantInspectionUser | null>(null);
