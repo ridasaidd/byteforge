@@ -279,6 +279,38 @@ jobs:
           env "${auth_env[@]}" npx playwright test tests/e2e/central-auth-flow.spec.ts
 
           if [ -n "$TENANT_BASE_URL" ] && [ -n "$TENANT_OWNER_EMAIL" ] && [ -n "$TENANT_VIEWER_EMAIL" ]; then
+            check_tenant_login() {
+              local label="$1"
+              local email="$2"
+              local password="$3"
+              local code
+
+              code=$(curl -sS -o /tmp/tenant-auth.out -w '%{http_code}' "${TENANT_BASE_URL%/}/api/auth/login" \
+                -H 'Accept: application/json' \
+                -H 'Content-Type: application/json' \
+                -d "{\"email\":\"$email\",\"password\":\"$password\"}")
+
+              if [ "$code" != "200" ]; then
+                echo "[tenant auth preflight:$label] Expected HTTP 200, got $code"
+                head -c 500 /tmp/tenant-auth.out || true
+                echo
+                return 1
+              fi
+
+              if ! grep -q '"token":' /tmp/tenant-auth.out; then
+                echo "[tenant auth preflight:$label] Login response did not include token"
+                head -c 500 /tmp/tenant-auth.out || true
+                echo
+                return 1
+              fi
+
+              echo "[tenant auth preflight:$label] OK"
+            }
+
+            # Fail early with a clear message if staged tenant credentials are wrong.
+            check_tenant_login "owner" "$TENANT_OWNER_EMAIL" "$TENANT_OWNER_PASSWORD"
+            check_tenant_login "viewer" "$TENANT_VIEWER_EMAIL" "$TENANT_VIEWER_PASSWORD"
+
             env "${auth_env[@]}" npx playwright test \
               tests/e2e/tenant-auth-flow.spec.ts \
               tests/e2e/tenant-permissions.spec.ts
