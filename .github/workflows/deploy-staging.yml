@@ -186,6 +186,44 @@ jobs:
 
           echo "✓ Post-deploy smoke checks passed"
 
+      - name: Post-deploy staging mail smoke
+        env:
+          STAGING_TENANT_BASE_URL: ${{ secrets.STAGING_TENANT_BASE_URL }}
+          STAGING_MAIL_SMOKE_RECIPIENT: ${{ secrets.STAGING_MAIL_SMOKE_RECIPIENT }}
+        run: |
+          TENANT_BASE_URL="${STAGING_TENANT_BASE_URL:-}"
+          MAIL_RECIPIENT="${STAGING_MAIL_SMOKE_RECIPIENT:-qa-mail-smoke@byteforge.se}"
+
+          if [ -z "$TENANT_BASE_URL" ]; then
+            echo "Staging mail smoke failed: STAGING_TENANT_BASE_URL is required"
+            exit 1
+          fi
+
+          REQUEST_URL="${TENANT_BASE_URL%/}/api/guest-auth/request-link"
+
+          echo "Triggering guest magic-link mail smoke against: $REQUEST_URL"
+
+          code=$(curl -sS -o /tmp/mail-smoke.out -w '%{http_code}' "$REQUEST_URL" \
+            -H 'Accept: application/json' \
+            -H 'Content-Type: application/json' \
+            -d "{\"email\":\"$MAIL_RECIPIENT\"}")
+
+          if [ "$code" != "200" ]; then
+            echo "[mail smoke] Expected HTTP 200, got $code"
+            head -c 500 /tmp/mail-smoke.out || true
+            echo
+            exit 1
+          fi
+
+          if ! grep -q '"sent":true' /tmp/mail-smoke.out; then
+            echo "[mail smoke] Expected JSON payload to include sent=true"
+            head -c 500 /tmp/mail-smoke.out || true
+            echo
+            exit 1
+          fi
+
+          echo "[mail smoke] Guest magic-link request accepted for $MAIL_RECIPIENT"
+
       - name: Setup Node for browser smoke
         uses: actions/setup-node@v4
         with:
@@ -208,7 +246,7 @@ jobs:
           STAGING_TENANT_OWNER_PASSWORD: ${{ secrets.STAGING_TENANT_OWNER_PASSWORD }}
           STAGING_TENANT_VIEWER_EMAIL: ${{ secrets.STAGING_TENANT_VIEWER_EMAIL }}
           STAGING_TENANT_VIEWER_PASSWORD: ${{ secrets.STAGING_TENANT_VIEWER_PASSWORD }}
-          CI: '1'
+          CI: "1"
         run: |
           BASE_URL="${STAGING_BASE_URL:-https://stage.byteforge.se}"
           TENANT_BASE_URL="${STAGING_TENANT_BASE_URL:-}"

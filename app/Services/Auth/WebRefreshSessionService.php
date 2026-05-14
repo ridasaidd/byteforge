@@ -164,7 +164,15 @@ class WebRefreshSessionService
             return null;
         }
 
-        if ($session->revoked_at !== null || $session->expires_at->isPast()) {
+        if ($session->revoked_at !== null) {
+            return null;
+        }
+
+        if ($session->expires_at->isPast()) {
+            // Expired sessions are explicitly revoked when encountered so
+            // audits can distinguish inactive sessions from untouched rows.
+            $this->revoke($session);
+
             return null;
         }
 
