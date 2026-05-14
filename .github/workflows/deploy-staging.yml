@@ -276,7 +276,15 @@ jobs:
             auth_env+=(PLAYWRIGHT_TENANT_VIEWER_PASSWORD="$TENANT_VIEWER_PASSWORD")
           fi
 
-          env "${auth_env[@]}" npm run test:e2e:auth
+          env "${auth_env[@]}" npx playwright test tests/e2e/central-auth-flow.spec.ts
+
+          if [ -n "$TENANT_BASE_URL" ] && [ -n "$TENANT_OWNER_EMAIL" ] && [ -n "$TENANT_VIEWER_EMAIL" ]; then
+            env "${auth_env[@]}" npx playwright test \
+              tests/e2e/tenant-auth-flow.spec.ts \
+              tests/e2e/tenant-permissions.spec.ts
+          else
+            echo "Skipping tenant auth browser smoke: set STAGING_TENANT_BASE_URL, STAGING_TENANT_OWNER_EMAIL, and STAGING_TENANT_VIEWER_EMAIL to enable it."
+          fi
 
           PLAYWRIGHT_BASE_URL="$BASE_URL" \
           PLAYWRIGHT_TENANT_BASE_URL="$TENANT_BASE_URL" \
