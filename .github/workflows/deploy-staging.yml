@@ -128,6 +128,20 @@ jobs:
             # Restart queue worker
             php artisan queue:restart
 
+            queue_connection=$(php artisan tinker --execute="dump(config('queue.default'));" | tail -n 1 | tr -d '[:space:]')
+
+            if [ "$queue_connection" != "sync" ]; then
+              if pgrep -fa "artisan queue:work" >/tmp/queue-worker.out || pgrep -fa "artisan horizon" >/tmp/queue-worker.out; then
+                echo "✓ Queue worker detected for [$queue_connection]"
+                cat /tmp/queue-worker.out
+              else
+                echo "Deployment aborted: queue connection [$queue_connection] requires a running worker, but none was detected after queue:restart"
+                exit 1
+              fi
+            else
+              echo "Queue connection is sync; skipping queue worker process check"
+            fi
+
             echo "✓ Deployment to staging complete"
           ENDSSH
 
