@@ -3,14 +3,24 @@ import { useMemo, useCallback } from 'react';
 import { useFormField } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
+  DEFAULT_BORDER_RADIUS,
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
+  effectsFields,
   buildLayoutCSS,
+  type BorderRadiusValue,
+  type BorderValue,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
 } from '../../fields';
+import {
+  createLegacyBorderRadiusField,
+  createUniformBorder,
+  normalizeLegacyBorderRadiusValue,
+  normalizeLegacyBorderValue,
+} from './styleUtils';
 
 // ============================================================================
 // Types
@@ -31,7 +41,9 @@ export interface CheckboxProps {
   // Styling
   labelColor: ColorValue;
   checkboxColor: ColorValue;
-  checkboxBorderColor: ColorValue;
+  border?: BorderValue;
+  borderRadius?: BorderRadiusValue | string;
+  checkboxBorderColor?: ColorValue;
   checkmarkColor: ColorValue;
   errorColor: ColorValue;
 
@@ -54,6 +66,8 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
     margin,
     labelColor,
     checkboxColor,
+    border,
+    borderRadius,
     checkboxBorderColor,
     checkmarkColor,
     errorColor,
@@ -81,10 +95,18 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
   const colors = useMemo(() => ({
     label: resolveColor(labelColor, 'inherit'),
     checkbox: resolveColor(checkboxColor, resolve('colors.primary', '#3b82f6')),
-    border: resolveColor(checkboxBorderColor, '#d1d5db'),
     checkmark: resolveColor(checkmarkColor, '#ffffff'),
     error: resolveColor(errorColor, '#ef4444'),
-  }), [labelColor, checkboxColor, checkboxBorderColor, checkmarkColor, errorColor, resolveColor, resolve]);
+  }), [labelColor, checkboxColor, checkmarkColor, errorColor, resolveColor, resolve]);
+
+  const checkboxBorderValue = useMemo(
+    () => normalizeLegacyBorderValue(border, checkboxBorderColor, { type: 'theme', value: 'border' }, '2'),
+    [border, checkboxBorderColor]
+  );
+  const checkboxBorderRadius = useMemo(
+    () => normalizeLegacyBorderRadiusValue(borderRadius, '4'),
+    [borderRadius]
+  );
 
   // Size variants
   const sizeStyles = useMemo(() => {
@@ -115,6 +137,14 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
     });
     if (layoutCss) rules.push(layoutCss);
 
+    const checkboxBorderCss = buildLayoutCSS({
+      className: `${className}-box`,
+      border: checkboxBorderValue,
+      borderRadius: checkboxBorderRadius,
+      resolveToken: resolve,
+    });
+    if (checkboxBorderCss) rules.push(checkboxBorderCss);
+
     // Container
     rules.push(`.${className} { display: block; }`);
 
@@ -133,8 +163,6 @@ function CheckboxComponent(props: CheckboxProps & { puck?: { dragRef: ((element:
   width: ${sizeStyles.box}px;
   height: ${sizeStyles.box}px;
   min-width: ${sizeStyles.box}px;
-  border-radius: 4px;
-  border: 2px solid ${colors.border};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -232,6 +260,20 @@ export const Checkbox: ComponentConfig<CheckboxProps> = {
   inline: true,
   label: 'Checkbox',
 
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<CheckboxProps>;
+
+    return {
+      props: {
+        ...typedProps,
+        border: normalizeLegacyBorderValue(typedProps.border, typedProps.checkboxBorderColor, { type: 'theme', value: 'border' }, '2'),
+        borderRadius: normalizeLegacyBorderRadiusValue(typedProps.borderRadius, '4'),
+      },
+    };
+  },
+
+  resolveFields: (_data, { fields }) => fields,
+
   fields: {
     name: {
       type: 'text',
@@ -297,14 +339,9 @@ export const Checkbox: ComponentConfig<CheckboxProps> = {
       },
     },
 
-    checkboxBorderColor: {
-      type: 'custom',
-      label: 'Border Color',
-      render: (props) => {
-        const { value = { type: 'theme', value: 'border' }, onChange } = props;
-        return <ColorPickerControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    border: { ...effectsFields.border, label: 'Checkbox Border' },
+
+    borderRadius: createLegacyBorderRadiusField('Checkbox Border Radius', DEFAULT_BORDER_RADIUS),
 
     checkmarkColor: {
       type: 'custom',
@@ -335,7 +372,8 @@ export const Checkbox: ComponentConfig<CheckboxProps> = {
     size: 'md',
     labelColor: { type: 'theme', value: 'foreground' },
     checkboxColor: { type: 'theme', value: 'primary' },
-    checkboxBorderColor: { type: 'theme', value: 'border' },
+    border: createUniformBorder({ type: 'theme', value: 'border' }, '2'),
+    borderRadius: { ...DEFAULT_BORDER_RADIUS, topLeft: '4', topRight: '4', bottomRight: '4', bottomLeft: '4' },
     checkmarkColor: { type: 'theme', value: 'primary-foreground' },
     errorColor: { type: 'theme', value: 'destructive' },
   },

@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\TenantAddonController;
 use App\Http\Controllers\Api\ActivityLogController;
 use App\Http\Controllers\Api\AnalyticsController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FormSubmissionController;
 use App\Http\Controllers\Api\GuestAuthController;
 use App\Http\Controllers\Api\LayoutController;
 use App\Http\Controllers\Api\MediaController;
@@ -151,6 +152,9 @@ Route::middleware([
     // Public analytics beacon (no auth, rate-limited)
     Route::post('analytics/track', [\App\Http\Controllers\Api\TrackController::class, 'store'])
         ->middleware('throttle:60,1');
+
+    Route::post('form-submit/email', [FormSubmissionController::class, 'email'])
+        ->middleware('throttle:10,1');
 
     // Provider callbacks/webhooks (no auth)
     Route::post('payments/stripe/webhook', [PaymentWebhookController::class, 'stripe']);

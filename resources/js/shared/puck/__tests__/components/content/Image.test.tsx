@@ -1,6 +1,12 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { defineBlockTestSuite } from '../../blockTestFactory';
 import { mockThemeResolver } from '../../testUtils';
+
+const { mockUsePuckEditMode } = vi.hoisted(() => ({
+  mockUsePuckEditMode: vi.fn(() => true),
+}));
 
 // Mock useTheme and usePuckEditMode hooks
 vi.mock('@/shared/hooks', () => ({
@@ -8,20 +14,33 @@ vi.mock('@/shared/hooks', () => ({
     theme: {},
     resolve: mockThemeResolver()
   }),
-  usePuckEditMode: () => true // Always return true in tests to generate CSS
+  usePuckEditMode: mockUsePuckEditMode,
+  useQuery: vi.fn(() => ({ data: null })),
+}));
+
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(() => ({ data: null })),
 }));
 
 const defaultProps = {
   id: 'test-image',
   src: 'https://example.com/image.jpg',
-  alt: 'Test image'
+  alt: 'Test image',
 };
 
 defineBlockTestSuite({
   name: 'Image',
   load: async () => {
     const module = await import('../../../components/content/Image');
-    return { componentConfig: module.Image, componentRender: module.Image.render };
+    return {
+      componentConfig: module.Image,
+      componentRender: module.Image.render,
+      wrapRender: (node) => (
+        <MemoryRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          {node}
+        </MemoryRouter>
+      ),
+    };
   },
   defaultProps,
   className: 'image-test-image',
@@ -73,6 +92,43 @@ defineBlockTestSuite({
           borderRadiusPreset: 'md'
         });
         expect(css).toContain('border-radius');
+      });
+
+      describe('Shared interaction behavior', () => {
+        beforeEach(() => {
+          mockUsePuckEditMode.mockReturnValue(false);
+        });
+
+        afterEach(() => {
+          mockUsePuckEditMode.mockReturnValue(true);
+        });
+
+        it('renders a linked image for internal targets', () => {
+          renderWithDefaults({
+            linkType: 'internal' as const,
+            internalPage: '/pages/about',
+          });
+
+          const img = screen.getByAltText('Test image');
+          const link = img.closest('a');
+          expect(link).toBeInTheDocument();
+          expect(link?.getAttribute('href')).toBe('/pages/about');
+        });
+
+        it('renders a linked image for external targets in a new tab', () => {
+          renderWithDefaults({
+            linkType: 'external' as const,
+            href: 'https://example.com',
+            openInNewTab: true,
+          });
+
+          const img = screen.getByAltText('Test image');
+          const link = img.closest('a');
+          expect(link).toBeInTheDocument();
+          expect(link?.getAttribute('href')).toBe('https://example.com');
+          expect(link?.getAttribute('target')).toBe('_blank');
+          expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+        });
       });
 
     });

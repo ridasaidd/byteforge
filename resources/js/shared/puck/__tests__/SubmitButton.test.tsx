@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { FormProvider } from '../components/forms/FormContext';
 
 // Mock useTheme hook
@@ -29,6 +29,8 @@ const getSubmitButton = async () => {
   const module = await import('../components/forms/SubmitButton');
   return module.SubmitButton;
 };
+
+const noopSubmit = async () => {};
 
 describe('SubmitButton Component', () => {
   let SubmitButtonConfig: any;
@@ -60,7 +62,7 @@ describe('SubmitButton Component', () => {
       ...props,
     };
     return render(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         {SubmitButtonConfig.render(resolvedProps as any)}
       </FormProvider>
     );
@@ -91,7 +93,7 @@ describe('SubmitButton Component', () => {
     expect(screen.getByRole('button')).toBeInTheDocument();
 
     rerender(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         {SubmitButtonConfig.render({ ...getBaseProps(), size: 'lg' } as any)}
       </FormProvider>
     );
@@ -110,7 +112,7 @@ describe('SubmitButton Component', () => {
   it('is disabled during form submission', async () => {
     // Create a form provider that's in submitting state
     const SubmittingProvider = ({ children }: { children: React.ReactNode }) => (
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         {children}
       </FormProvider>
     );
@@ -126,11 +128,13 @@ describe('SubmitButton Component', () => {
     expect(button).not.toBeDisabled();
   });
 
-  it('handles click events', () => {
+  it('handles click events', async () => {
     renderSubmitButton();
 
     const button = screen.getByRole('button');
-    fireEvent.click(button);
+    await act(async () => {
+      fireEvent.click(button);
+    });
 
     // Click should work without errors
     expect(button).toBeInTheDocument();
@@ -153,5 +157,4 @@ describe('SubmitButton Component', () => {
     const button = screen.getByRole('button');
     expect(button).toBeInTheDocument();
   });
-  usePuckEditMode: () => true
 });

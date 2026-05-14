@@ -3,14 +3,23 @@ import { useMemo, useCallback } from 'react';
 import { useFormContext } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
+  DEFAULT_BORDER_RADIUS,
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
+  effectsFields,
   buildLayoutCSS,
+  type BorderRadiusValue,
+  type BorderValue,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
 } from '../../fields';
+import {
+  createLegacyBorderRadiusField,
+  createUniformBorder,
+  normalizeLegacyBorderRadiusValue,
+} from './styleUtils';
 
 // ============================================================================
 // Types
@@ -31,7 +40,8 @@ export interface SubmitButtonProps {
   textColor: ColorValue;
   hoverBackgroundColor: ColorValue;
   disabledBackgroundColor: ColorValue;
-  borderRadius: string;
+  border?: BorderValue;
+  borderRadius?: BorderRadiusValue | string;
 
   // Size
   size: 'sm' | 'md' | 'lg';
@@ -57,6 +67,7 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
     textColor,
     hoverBackgroundColor,
     disabledBackgroundColor,
+    border,
     borderRadius,
     size,
     fullWidth,
@@ -89,6 +100,15 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
     hover: resolveColor(hoverBackgroundColor, resolve('colors.primaryDark', '#2563eb')),
     disabled: resolveColor(disabledBackgroundColor, '#9ca3af'),
   }), [backgroundColor, textColor, hoverBackgroundColor, disabledBackgroundColor, resolveColor, resolve]);
+
+  const buttonBorderValue = useMemo(
+    () => border ?? createUniformBorder({ type: 'theme', value: 'border' }, '0', 'none'),
+    [border]
+  );
+  const buttonBorderRadius = useMemo(
+    () => normalizeLegacyBorderRadiusValue(borderRadius, '6'),
+    [borderRadius]
+  );
 
   // Size variants
   const sizeStyles = useMemo(() => {
@@ -125,6 +145,9 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
       className,
       display,
       margin,
+      border: buttonBorderValue,
+      borderRadius: buttonBorderRadius,
+      resolveToken: resolve,
     });
     if (layoutCss) rules.push(layoutCss);
 
@@ -133,9 +156,8 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
   ${fullWidth ? 'width: 100%;' : ''}
   padding: ${sizeStyles.padding};
   font-size: ${sizeStyles.fontSize};
-  border: none;
-  border-radius: ${borderRadius}px;
   cursor: pointer;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -146,6 +168,7 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
 }
 .${className}:hover:not(:disabled) { background-color: ${colors.hover}; }
 .${className}:disabled { cursor: not-allowed; opacity: 0.6; background-color: ${colors.disabled}; }
+.${className} svg { display: block; flex-shrink: 0; }
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .${className}-spinner { animation: spin 1s linear infinite; }`);
 
@@ -216,6 +239,20 @@ function SubmitButtonComponent(props: SubmitButtonProps & { puck?: { dragRef: ((
 export const SubmitButton: ComponentConfig<SubmitButtonProps> = {
   inline: true,
   label: 'Submit Button',
+
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<SubmitButtonProps>;
+
+    return {
+      props: {
+        ...typedProps,
+        border: typedProps.border ?? createUniformBorder({ type: 'theme', value: 'border' }, '0', 'none'),
+        borderRadius: normalizeLegacyBorderRadiusValue(typedProps.borderRadius, '6'),
+      },
+    };
+  },
+
+  resolveFields: (_data, { fields }) => fields,
 
   fields: {
     text: {
@@ -313,18 +350,9 @@ export const SubmitButton: ComponentConfig<SubmitButtonProps> = {
       },
     },
 
-    borderRadius: {
-      type: 'select',
-      label: 'Border Radius',
-      options: [
-        { label: 'None', value: '0' },
-        { label: 'Small', value: '4' },
-        { label: 'Medium', value: '6' },
-        { label: 'Large', value: '8' },
-        { label: 'XL', value: '12' },
-        { label: 'Full', value: '9999' },
-      ],
-    },
+    border: { ...effectsFields.border, label: 'Button Border' },
+
+    borderRadius: createLegacyBorderRadiusField('Button Border Radius', DEFAULT_BORDER_RADIUS),
   },
 
   defaultProps: {
@@ -340,7 +368,8 @@ export const SubmitButton: ComponentConfig<SubmitButtonProps> = {
     textColor: { type: 'theme', value: 'primary-foreground' },
     hoverBackgroundColor: { type: 'theme', value: 'primary' },
     disabledBackgroundColor: { type: 'theme', value: 'muted' },
-    borderRadius: '6',
+    border: createUniformBorder({ type: 'theme', value: 'border' }, '0', 'none'),
+    borderRadius: { ...DEFAULT_BORDER_RADIUS, topLeft: '6', topRight: '6', bottomRight: '6', bottomLeft: '6' },
   },
 
   render: (props) => <SubmitButtonComponent {...props} />,

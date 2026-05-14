@@ -2,6 +2,8 @@ import { FieldLabel } from '@puckeditor/core';
 import { SpacingControl, SpacingValue } from './SpacingControl';
 import { ResponsiveWrapper, ResponsiveValue, generateResponsiveCSS } from './ResponsiveWrapper';
 
+const CSS_LENGTH_PATTERN = /^-?\d*\.?\d+(px|em|rem|%)$/i;
+
 export type ResponsiveSpacingValue = ResponsiveValue<SpacingValue>;
 
 interface ResponsiveSpacingControlProps {
@@ -70,6 +72,11 @@ const formatSpacingValue = (spacing: SpacingValue): string => {
     if (value === 'auto' || value.toLowerCase() === 'auto') {
       return 'auto';
     }
+
+    if (CSS_LENGTH_PATTERN.test(value)) {
+      return value;
+    }
+
     return `${value}${unit}`;
   };
 

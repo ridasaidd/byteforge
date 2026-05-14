@@ -2,6 +2,9 @@ import { ComponentConfig } from '@puckeditor/core';
 import { navigations, type Navigation as NavigationType } from '@/shared/services/api/navigations';
 import {
   advancedFields,
+  createPositionOffsetField,
+  createResponsiveColorField,
+  createWidthField,
   createConditionalResolver,
   customClassesFields,
   displayField,
@@ -13,14 +16,6 @@ import {
   layoutAdvancedFields,
   layoutFields,
   spacingFields,
-  type ColorValue,
-  ColorPickerControlColorful as ColorPickerControl,
-  ResponsiveWrapper,
-  type ResponsiveValue,
-  PositionOffsetControl,
-  type PositionOffsetValue,
-  WidthControl,
-  type WidthValue,
   fontFamilyField,
   fontSizeField,
   fontWeightField,
@@ -30,33 +25,13 @@ import { NavigationMenuRenderer } from './NavigationMenuRenderer';
 import { PagesSelector } from '../content/PagesSelector';
 import type { MobileVariant, NavigationMenuProps } from './shared/navTypes';
 
-const responsiveColorField = (label: string) => ({
-  type: 'custom' as const,
-  label,
-  render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveValue<ColorValue>; onChange: (value: ResponsiveValue<ColorValue>) => void }) => (
-    <ResponsiveWrapper<ColorValue>
-      label={field.label || label}
-      value={value}
-      onChange={onChange}
-      defaultValue={{ type: 'custom', value: '' }}
-      renderControl={(currentValue, onValueChange) => (
-        <ColorPickerControl
-          field={{ label: undefined }}
-          value={currentValue || { type: 'custom', value: '' }}
-          onChange={onValueChange}
-        />
-      )}
-    />
-  ),
-});
-
 const itemColorFields = {
-  itemColor: responsiveColorField('Item Text Color'),
-  itemHoverColor: responsiveColorField('Item Hover Color'),
-  itemActiveColor: responsiveColorField('Item Active Color'),
-  itemBackgroundColor: responsiveColorField('Item Background'),
-  itemHoverBackgroundColor: responsiveColorField('Item Hover Background'),
-  itemActiveBackgroundColor: responsiveColorField('Item Active Background'),
+  itemColor: createResponsiveColorField('Item Text Color'),
+  itemHoverColor: createResponsiveColorField('Item Hover Color'),
+  itemActiveColor: createResponsiveColorField('Item Active Color'),
+  itemBackgroundColor: createResponsiveColorField('Item Background'),
+  itemHoverBackgroundColor: createResponsiveColorField('Item Hover Background'),
+  itemActiveBackgroundColor: createResponsiveColorField('Item Active Background'),
 };
 
 const itemTypographyFields = {
@@ -102,10 +77,10 @@ const itemStyleFields = {
 };
 
 const subItemFields = {
-  subItemColor: responsiveColorField('Sub Item Text Color'),
-  subItemHoverColor: responsiveColorField('Sub Item Hover Color'),
-  subItemBackgroundColor: responsiveColorField('Sub Item Background'),
-  subItemHoverBackgroundColor: responsiveColorField('Sub Item Hover Background'),
+  subItemColor: createResponsiveColorField('Sub Item Text Color'),
+  subItemHoverColor: createResponsiveColorField('Sub Item Hover Color'),
+  subItemBackgroundColor: createResponsiveColorField('Sub Item Background'),
+  subItemHoverBackgroundColor: createResponsiveColorField('Sub Item Hover Background'),
   subItemPadding: {
     ...spacingFields.padding,
     label: 'Sub Item Padding',
@@ -122,7 +97,7 @@ const subItemFields = {
     ...fontWeightField.fontWeight,
     label: 'Sub Item Font Weight',
   },
-  dropdownBackgroundColor: responsiveColorField('Dropdown Background'),
+  dropdownBackgroundColor: createResponsiveColorField('Dropdown Background'),
   dropdownBorderRadius: {
     ...effectsFields.borderRadius,
     label: 'Dropdown Border Radius',
@@ -131,13 +106,7 @@ const subItemFields = {
     ...effectsFields.shadow,
     label: 'Dropdown Shadow',
   },
-  dropdownMinWidth: {
-    type: 'custom' as const,
-    label: 'Dropdown Min Width',
-    render: ({ field, value, onChange }: { field: { label?: string }; value?: WidthValue; onChange: (value: WidthValue) => void }) => (
-      <WidthControl field={field} value={value} onChange={onChange} />
-    ),
-  },
+  dropdownMinWidth: createWidthField('Dropdown Min Width'),
 };
 
 const mobileFields = {
@@ -160,15 +129,9 @@ const mobileFields = {
       { label: 'Dropdown', value: 'dropdown' },
     ],
   },
-  drawerWidth: {
-    type: 'custom' as const,
-    label: 'Drawer Width',
-    render: ({ field, value, onChange }: { field: { label?: string }; value?: WidthValue; onChange: (value: WidthValue) => void }) => (
-      <WidthControl field={field} value={value} onChange={onChange} />
-    ),
-  },
-  drawerBackgroundColor: responsiveColorField('Mobile Menu Background'),
-  drawerOverlayColor: responsiveColorField('Overlay Color'),
+  drawerWidth: createWidthField('Drawer Width'),
+  drawerBackgroundColor: createResponsiveColorField('Mobile Menu Background'),
+  drawerOverlayColor: createResponsiveColorField('Overlay Color'),
   drawerOverlayOpacity: {
     type: 'number' as const,
     label: 'Overlay Opacity',
@@ -176,32 +139,16 @@ const mobileFields = {
     max: 1,
     step: 0.05,
   },
-  closeButtonColor: responsiveColorField('Close Button Color'),
-  closeButtonBackgroundColor: responsiveColorField('Close Button Background'),
-  closeButtonSize: {
-    type: 'custom' as const,
-    label: 'Close Button Size',
-    render: ({ field, value, onChange }: { field: { label?: string }; value?: WidthValue; onChange: (value: WidthValue) => void }) => (
-      <WidthControl field={field} value={value} onChange={onChange} />
-    ),
-  },
+  closeButtonColor: createResponsiveColorField('Close Button Color'),
+  closeButtonBackgroundColor: createResponsiveColorField('Close Button Background'),
+  closeButtonSize: createWidthField('Close Button Size'),
   closeButtonIconSize: {
     type: 'number' as const,
     label: 'Close Icon Size',
     min: 12,
     max: 64,
   },
-  closeButtonOffset: {
-    type: 'custom' as const,
-    label: 'Close Button Offset',
-    render: ({ field, value, onChange }: { field: { label?: string }; value?: PositionOffsetValue; onChange: (value: PositionOffsetValue) => void }) => (
-      <PositionOffsetControl
-        field={field}
-        value={value || { top: '12', right: '12', bottom: '', left: '', unit: 'px', linked: false }}
-        onChange={onChange}
-      />
-    ),
-  },
+  closeButtonOffset: createPositionOffsetField('Close Button Offset', { top: '12', right: '12', bottom: '', left: '', unit: 'px', linked: false }),
   navItemsPadding: {
     ...spacingFields.padding,
     label: 'Nav Items Padding',
@@ -210,7 +157,7 @@ const mobileFields = {
     ...spacingFields.margin,
     label: 'Nav Items Margin',
   },
-  toggleColor: responsiveColorField('Toggle Color'),
+  toggleColor: createResponsiveColorField('Toggle Color'),
   toggleIconSize: {
     type: 'number' as const,
     label: 'Toggle Icon Size',
@@ -454,25 +401,7 @@ export const NavigationMenuBlock: ComponentConfig<NavigationMenuProps> = {
     width: layoutFields.width,
     maxWidth: layoutFields.maxWidth,
     ...spacingFields,
-    backgroundColor: {
-      type: 'custom' as const,
-      label: 'Background Color',
-      render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveValue<ColorValue>; onChange: (value: ResponsiveValue<ColorValue>) => void }) => (
-        <ResponsiveWrapper<ColorValue>
-          label={field.label || 'Background Color'}
-          value={value}
-          onChange={onChange}
-          defaultValue={{ type: 'custom', value: '' }}
-          renderControl={(currentValue, onValueChange) => (
-            <ColorPickerControl
-              field={{ label: undefined }}
-              value={currentValue || { type: 'custom', value: '' }}
-              onChange={onValueChange}
-            />
-          )}
-        />
-      ),
-    },
+    backgroundColor: createResponsiveColorField('Background Color'),
     ...effectsFields,
     position: layoutAdvancedFields.position,
     positionOffset: layoutAdvancedFields.positionOffset,

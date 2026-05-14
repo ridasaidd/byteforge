@@ -10,7 +10,12 @@ import { tenantPages } from '@/shared/services/api/pages';
 import { tenantThemeParts } from '@/shared/services/api/themeParts';
 import { tenantThemes } from '@/shared/services/api/themes';
 import { puckConfig as baseConfig } from '@/shared/puck/config';
-import { BookingWidget, PaymentWidget, bookingPuckSectionComponents } from '@/shared/puck/components/booking';
+import {
+  BookingWidget,
+  PaymentWidget,
+  bookingPuckSectionComponents,
+  bookingRegisteredSectionNames,
+} from '@/shared/puck/components/booking';
 import { PageEditorPreview } from '@/shared/components/organisms/PageEditorPreview';
 import { extractCssFromPuckData } from '@/shared/puck/services/PuckCssAggregator';
 import type { ThemeData } from '@/shared/puck/services/PuckCssAggregator';
@@ -62,6 +67,11 @@ export function PageEditorPage() {
         components: ['BookingWidget', 'PaymentWidget'],
         title: 'Bookings',
         defaultExpanded: true,
+      };
+      extraCategories.bookingLegacy = {
+        components: [...bookingRegisteredSectionNames],
+        title: 'Legacy Booking Internals',
+        defaultExpanded: false,
       };
     }
 
@@ -176,7 +186,7 @@ export function PageEditorPage() {
     puckDataRef.current = newData;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (shouldPublish = false) => {
     if (!id) return;
 
     try {
@@ -189,7 +199,12 @@ export function PageEditorPage() {
       await tenantPages.update(Number(id), {
         puck_data: puckDataRef.current as Record<string, unknown>,
         page_css: pageCss,
+        ...(shouldPublish ? { status: 'published' as const } : {}),
       });
+
+      if (shouldPublish) {
+        setPageData((current) => current ? { ...current, status: 'published' } : current);
+      }
 
       toast({
         title: t('editor_saved_title'),
@@ -218,7 +233,7 @@ export function PageEditorPage() {
     <Puck
       config={config}
       data={initialData}
-      onPublish={handleSave}
+      onPublish={() => handleSave(true)}
       onChange={handlePuckChange}
       viewports={viewports}
       headerTitle={pageData.title}

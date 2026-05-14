@@ -1,22 +1,28 @@
 import type { ComponentConfig } from '@puckeditor/core';
-import { useCallback } from 'react';
-import { FormProvider } from './FormContext';
+import { useCallback, useState } from 'react';
+import { FormProvider, useFormContext } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
   buildLayoutCSS,
+  extractDefaults,
+  displayField,
+  flexLayoutFields,
+  layoutFields,
+  backgroundFields,
+  spacingFields,
+  effectsFields,
+  DEFAULT_BORDER_RADIUS,
+  type BorderRadiusValue,
+  type ResponsiveGapValue,
+  type ResponsiveFlexDirectionValue,
   type ResponsiveSpacingValue,
   type ResponsiveWidthValue,
   type ResponsiveDisplayValue,
   type ColorValue,
   type BorderValue,
   type ShadowValue,
-  ColorPickerControlColorful as ColorPickerControl,
-  ResponsiveDisplayControl,
-  ResponsiveSpacingControl,
-  ResponsiveWidthControl,
-  BorderControl,
-  ShadowControl,
 } from '../../fields';
+import { createUniformBorder } from './styleUtils';
 
 // ============================================================================
 // Types
@@ -32,8 +38,9 @@ export interface FormProps {
   successMessage: string;
   errorMessage: string;
   display?: ResponsiveDisplayValue;
-  gap: string;
-  direction: 'column' | 'row' | 'row-reverse' | 'column-reverse';
+  flexGap?: ResponsiveGapValue;
+  gap?: string;
+  direction?: ResponsiveFlexDirectionValue | 'column' | 'row' | 'row-reverse' | 'column-reverse';
   justify: 'start' | 'end' | 'center' | 'between' | 'around' | 'evenly';
   align: 'start' | 'end' | 'center' | 'stretch' | 'baseline';
   width?: ResponsiveWidthValue;
@@ -41,9 +48,43 @@ export interface FormProps {
   padding: ResponsiveSpacingValue;
   margin: ResponsiveSpacingValue;
   border?: BorderValue;
+  borderRadius?: BorderRadiusValue;
   shadow?: ShadowValue;
   puck?: { isEditing?: boolean; dragRef?: React.Ref<HTMLFormElement> };
 }
+
+function normalizeLegacyFlexGap(
+  flexGap?: ResponsiveGapValue,
+  legacyGap?: string
+): ResponsiveGapValue | undefined {
+  if (flexGap) return flexGap;
+  if (!legacyGap) return undefined;
+
+  return {
+    mobile: {
+      value: String(legacyGap),
+      unit: 'px',
+    },
+  };
+}
+
+const formLayoutFields = {
+  ...displayField,
+  direction: flexLayoutFields.direction,
+  justify: flexLayoutFields.justify,
+  align: flexLayoutFields.align,
+  flexGap: flexLayoutFields.flexGap,
+  width: layoutFields.width,
+};
+
+const formStyleFields = {
+  ...backgroundFields,
+  padding: spacingFields.padding,
+  margin: spacingFields.margin,
+  border: effectsFields.border,
+  borderRadius: effectsFields.borderRadius,
+  shadow: effectsFields.shadow,
+};
 
 // ============================================================================
 // CSS Maps
@@ -53,16 +94,81 @@ export interface FormProps {
 // Component
 // ============================================================================
 
+interface FormContentProps {
+  className: string;
+  FormFields?: React.FC;
+  successMessage: string;
+  errorMessage: string;
+  isEditing: boolean;
+  dragRef?: React.Ref<HTMLFormElement>;
+  honeypotValue: string;
+  onHoneypotChange: (value: string) => void;
+}
+
+function FormContent({ className, FormFields, successMessage, errorMessage, isEditing, dragRef, honeypotValue, onHoneypotChange }: FormContentProps) {
+  const formContext = useFormContext();
+  const submitError = formContext?.submitError;
+  const isSubmitted = formContext?.isSubmitted;
+  const statusVariant = submitError ? 'error' : isSubmitted ? 'success' : null;
+  const statusMessage = submitError
+    ? (errorMessage || submitError)
+    : isSubmitted
+      ? successMessage
+      : null;
+
+  return (
+    <form ref={dragRef} className={className} onSubmit={(e) => e.preventDefault()}>
+      {!isEditing && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '-10000px',
+            top: 'auto',
+            width: '1px',
+            height: '1px',
+            overflow: 'hidden',
+          }}
+        >
+          <label htmlFor={`${className}-website`}>Website</label>
+          <input
+            id={`${className}-website`}
+            name="website"
+            type="text"
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypotValue}
+            onChange={(event) => onHoneypotChange(event.target.value)}
+          />
+        </div>
+      )}
+      {FormFields && <FormFields />}
+      {!isEditing && statusVariant && statusMessage && (
+        <div
+          role={statusVariant === 'error' ? 'alert' : 'status'}
+          aria-live={statusVariant === 'error' ? 'assertive' : 'polite'}
+          className={`${className}-status ${className}-status-${statusVariant}`}
+        >
+          {statusMessage}
+        </div>
+      )}
+    </form>
+  );
+}
+
 function FormComponent(props: FormProps) {
   const {
     id, formFields: FormFields, formName, submitAction, emailTo, webhookUrl,
-    display, gap, direction, justify, align, width,
-    backgroundColor, padding, margin, border, shadow, puck,
+    successMessage, errorMessage,
+    display, flexGap, gap, direction, justify, align, width,
+    backgroundColor, padding, margin, border, borderRadius, shadow, puck,
   } = props;
 
   const { resolve } = useTheme();
   const isEditing = usePuckEditMode();
   const className = `form-${id || 'unknown'}`;
+  const [honeypotValue, setHoneypotValue] = useState('');
+  const normalizedFlexGap = normalizeLegacyFlexGap(flexGap, gap);
 
   const resolveColor = useCallback((colorVal: ColorValue | undefined, fallback: string): string => {
     try {
@@ -91,14 +197,15 @@ function FormComponent(props: FormProps) {
       width,
       padding,
       margin,
-      border: border as any,  // BorderValue type compatibility
+      border,
+      borderRadius,
       shadow,
       backgroundColor: resolvedBgColor,
       // Flex properties
       direction,
       justify,
       align,
-      flexGap: { mobile: { value: gap, unit: 'px' } } as any,  // Convert gap string to responsive format
+      flexGap: normalizedFlexGap,
     });
     if (layoutCss) rules.push(layoutCss);
 
@@ -116,26 +223,33 @@ function FormComponent(props: FormProps) {
     if (submitAction === 'email' && emailTo) {
       const response = await fetch('/api/form-submit/email', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: emailTo, formName, values }),
+        body: JSON.stringify({ to: emailTo, formName, website: honeypotValue, values }),
       });
       if (!response.ok) throw new Error('Email submission failed');
     }
     if (submitAction === 'webhook' && webhookUrl) {
       const response = await fetch(webhookUrl, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ formName, values, timestamp: new Date().toISOString() }),
+        body: JSON.stringify({ formName, website: honeypotValue, values, timestamp: new Date().toISOString() }),
       });
       if (!response.ok) throw new Error('Webhook submission failed');
     }
-  }, [submitAction, emailTo, webhookUrl, formName, puck?.isEditing]);
+  }, [submitAction, emailTo, webhookUrl, formName, honeypotValue, puck?.isEditing]);
 
   return (
     <>
       {isEditing && css && <style>{css}</style>}
       <FormProvider onSubmit={handleSubmit}>
-        <form ref={puck?.dragRef} className={className} onSubmit={(e) => e.preventDefault()}>
-          {FormFields && <FormFields />}
-        </form>
+        <FormContent
+          className={className}
+          FormFields={FormFields}
+          successMessage={successMessage}
+          errorMessage={errorMessage}
+          isEditing={isEditing}
+          dragRef={puck?.dragRef}
+          honeypotValue={honeypotValue}
+          onHoneypotChange={setHoneypotValue}
+        />
       </FormProvider>
     </>
   );
@@ -146,8 +260,20 @@ function FormComponent(props: FormProps) {
 // ============================================================================
 
 export const Form: ComponentConfig<FormProps> = {
-  label: 'Form',
+  label: 'Contact Form',
   inline: true,
+
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<FormProps>;
+    const nextProps: Partial<FormProps> & { gap?: string } = {
+      ...typedProps,
+      flexGap: normalizeLegacyFlexGap(typedProps.flexGap, typedProps.gap),
+    };
+
+    delete nextProps.gap;
+
+    return { props: nextProps };
+  },
 
   resolveFields: (data, { fields }) => {
     const displayValue = data.props.display;
@@ -156,7 +282,7 @@ export const Form: ComponentConfig<FormProps> = {
     const isFlexMode = baseDisplay === 'flex' || baseDisplay === 'inline-flex';
 
     if (!isFlexMode) {
-      const flexFields = ['direction', 'justify', 'align', 'gap'];
+      const flexFields = ['direction', 'justify', 'align', 'flexGap'];
       return Object.fromEntries(Object.entries(fields).filter(([key]) => !flexFields.includes(key))) as typeof fields;
     }
     return fields;
@@ -170,17 +296,8 @@ export const Form: ComponentConfig<FormProps> = {
     webhookUrl: { type: 'text', label: 'Webhook URL' },
     successMessage: { type: 'textarea', label: 'Success Message' },
     errorMessage: { type: 'textarea', label: 'Error Message' },
-    display: { type: 'custom', label: 'Display', render: (props) => <ResponsiveDisplayControl {...props} field={{ label: 'Display' }} /> },
-    direction: { type: 'select', label: 'Direction', options: [{ label: 'Column', value: 'column' }, { label: 'Row', value: 'row' }, { label: 'Row Reverse', value: 'row-reverse' }, { label: 'Column Reverse', value: 'column-reverse' }] },
-    justify: { type: 'select', label: 'Justify Content', options: [{ label: 'Start', value: 'start' }, { label: 'End', value: 'end' }, { label: 'Center', value: 'center' }, { label: 'Space Between', value: 'between' }, { label: 'Space Around', value: 'around' }, { label: 'Space Evenly', value: 'evenly' }] },
-    align: { type: 'select', label: 'Align Items', options: [{ label: 'Start', value: 'start' }, { label: 'End', value: 'end' }, { label: 'Center', value: 'center' }, { label: 'Stretch', value: 'stretch' }, { label: 'Baseline', value: 'baseline' }] },
-    gap: { type: 'select', label: 'Gap', options: [{ label: 'None', value: '0' }, { label: '8px', value: '8' }, { label: '12px', value: '12' }, { label: '16px', value: '16' }, { label: '20px', value: '20' }, { label: '24px', value: '24' }, { label: '32px', value: '32' }] },
-    width: { type: 'custom', label: 'Width', render: (props) => <ResponsiveWidthControl {...props} field={{ label: 'Width' }} /> },
-    backgroundColor: { type: 'custom', label: 'Background Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'transparent' }} onChange={props.onChange} /> },
-    padding: { type: 'custom', label: 'Padding', render: (props) => <ResponsiveSpacingControl {...props} field={{ label: 'Padding' }} /> },
-    margin: { type: 'custom', label: 'Margin', render: (props) => <ResponsiveSpacingControl {...props} field={{ label: 'Margin' }} /> },
-    border: { type: 'custom', label: 'Border', render: (props) => <BorderControl {...props} value={props.value || { top: { width: '1', style: 'solid', color: '#e5e7eb' }, right: { width: '1', style: 'solid', color: '#e5e7eb' }, bottom: { width: '1', style: 'solid', color: '#e5e7eb' }, left: { width: '1', style: 'solid', color: '#e5e7eb' }, unit: 'px', linked: true }} onChange={props.onChange} /> },
-    shadow: { type: 'custom', label: 'Shadow', render: (props) => <ShadowControl {...props} value={props.value || { preset: 'none' }} onChange={props.onChange} /> },
+    ...formLayoutFields,
+    ...formStyleFields,
   },
 
   defaultProps: {
@@ -190,23 +307,17 @@ export const Form: ComponentConfig<FormProps> = {
     webhookUrl: '',
     successMessage: 'Thank you! Your submission has been received.',
     errorMessage: 'Something went wrong. Please try again.',
+    ...extractDefaults(formLayoutFields, formStyleFields),
     display: { mobile: 'flex' },
-    direction: 'column',
+    direction: { mobile: 'column' },
     justify: 'start',
     align: 'stretch',
-    gap: '16',
-    width: { mobile: { value: '100', unit: '%' } },
+    flexGap: { mobile: { value: '16', unit: 'px' } },
     backgroundColor: { type: 'theme', value: 'transparent' },
     padding: { mobile: { top: '24', right: '24', bottom: '24', left: '24', unit: 'px', linked: true } },
     margin: { mobile: { top: '0', right: 'auto', bottom: '0', left: 'auto', unit: 'px', linked: false } },
-    border: {
-      top: { width: '1', style: 'solid', color: '#e5e7eb' },
-      right: { width: '1', style: 'solid', color: '#e5e7eb' },
-      bottom: { width: '1', style: 'solid', color: '#e5e7eb' },
-      left: { width: '1', style: 'solid', color: '#e5e7eb' },
-      unit: 'px',
-      linked: true,
-    },
+    border: createUniformBorder({ type: 'theme', value: 'border' }),
+    borderRadius: DEFAULT_BORDER_RADIUS,
     shadow: { preset: 'none' },
   },
 

@@ -3,14 +3,24 @@ import { useMemo, useCallback } from 'react';
 import { useFormField } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
+  DEFAULT_BORDER_RADIUS,
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
+  effectsFields,
   buildLayoutCSS,
+  type BorderRadiusValue,
+  type BorderValue,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
 } from '../../fields';
+import {
+  createLegacyBorderRadiusField,
+  createUniformBorder,
+  normalizeLegacyBorderRadiusValue,
+  normalizeLegacyBorderValue,
+} from './styleUtils';
 
 // ============================================================================
 // Types
@@ -41,10 +51,11 @@ export interface TextareaProps {
   labelColor: ColorValue;
   inputBackgroundColor: ColorValue;
   inputTextColor: ColorValue;
-  inputBorderColor: ColorValue;
+  border?: BorderValue;
+  inputBorderColor?: ColorValue;
   focusBorderColor: ColorValue;
   errorColor: ColorValue;
-  borderRadius: string;
+  borderRadius?: BorderRadiusValue | string;
 
   // Size variant
   size: 'sm' | 'md' | 'lg';
@@ -72,6 +83,7 @@ function TextareaComponent(props: TextareaProps & { puck?: { dragRef: ((element:
     labelColor,
     inputBackgroundColor,
     inputTextColor,
+    border,
     inputBorderColor,
     focusBorderColor,
     errorColor,
@@ -100,10 +112,18 @@ function TextareaComponent(props: TextareaProps & { puck?: { dragRef: ((element:
     label: resolveColor(labelColor, 'inherit'),
     background: resolveColor(inputBackgroundColor, '#ffffff'),
     text: resolveColor(inputTextColor, '#000000'),
-    border: resolveColor(inputBorderColor, '#e5e7eb'),
     focus: resolveColor(focusBorderColor, resolve('colors.primary', '#3b82f6')),
     error: resolveColor(errorColor, '#ef4444'),
-  }), [labelColor, inputBackgroundColor, inputTextColor, inputBorderColor, focusBorderColor, errorColor, resolveColor, resolve]);
+  }), [labelColor, inputBackgroundColor, inputTextColor, focusBorderColor, errorColor, resolveColor, resolve]);
+
+  const textareaBorderValue = useMemo(
+    () => normalizeLegacyBorderValue(border, inputBorderColor, { type: 'theme', value: 'border' }),
+    [border, inputBorderColor]
+  );
+  const textareaBorderRadius = useMemo(
+    () => normalizeLegacyBorderRadiusValue(borderRadius, '6'),
+    [borderRadius]
+  );
 
   // Size variants
   const sizeStyles = useMemo(() => {
@@ -142,6 +162,14 @@ function TextareaComponent(props: TextareaProps & { puck?: { dragRef: ((element:
     });
     if (layoutCss) rules.push(layoutCss);
 
+    const textareaBorderCss = buildLayoutCSS({
+      className: `${className}-textarea`,
+      border: textareaBorderValue,
+      borderRadius: textareaBorderRadius,
+      resolveToken: resolve,
+    });
+    if (textareaBorderCss) rules.push(textareaBorderCss);
+
     // Container width
     rules.push(`.${className} { width: ${fullWidth ? '100%' : 'auto'}; }`);
 
@@ -159,8 +187,6 @@ function TextareaComponent(props: TextareaProps & { puck?: { dragRef: ((element:
   width: 100%;
   padding: ${sizeStyles.padding};
   font-size: ${sizeStyles.fontSize};
-  border: 1px solid ${colors.border};
-  border-radius: ${borderRadius}px;
   outline: none;
   resize: ${resize};
   transition: border-color 0.2s, box-shadow 0.2s;
@@ -258,6 +284,20 @@ function TextareaComponent(props: TextareaProps & { puck?: { dragRef: ((element:
 export const Textarea: ComponentConfig<TextareaProps> = {
   inline: true,
   label: 'Textarea',
+
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<TextareaProps>;
+
+    return {
+      props: {
+        ...typedProps,
+        border: normalizeLegacyBorderValue(typedProps.border, typedProps.inputBorderColor, { type: 'theme', value: 'border' }),
+        borderRadius: normalizeLegacyBorderRadiusValue(typedProps.borderRadius, '6'),
+      },
+    };
+  },
+
+  resolveFields: (_data, { fields }) => fields,
 
   fields: {
     name: {
@@ -375,14 +415,9 @@ export const Textarea: ComponentConfig<TextareaProps> = {
       },
     },
 
-    inputBorderColor: {
-      type: 'custom',
-      label: 'Border Color',
-      render: (props) => {
-        const { value = { type: 'theme', value: 'border' }, onChange } = props;
-        return <ColorPickerControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    border: { ...effectsFields.border, label: 'Textarea Border' },
+
+    borderRadius: createLegacyBorderRadiusField('Textarea Border Radius', DEFAULT_BORDER_RADIUS),
 
     focusBorderColor: {
       type: 'custom',
@@ -400,18 +435,6 @@ export const Textarea: ComponentConfig<TextareaProps> = {
         const { value = { type: 'theme', value: 'destructive' }, onChange } = props;
         return <ColorPickerControl {...props} value={value} onChange={onChange} />;
       },
-    },
-
-    borderRadius: {
-      type: 'select',
-      label: 'Border Radius',
-      options: [
-        { label: 'None', value: '0' },
-        { label: 'Small', value: '4' },
-        { label: 'Medium', value: '6' },
-        { label: 'Large', value: '8' },
-        { label: 'XL', value: '12' },
-      ],
     },
   },
 
@@ -432,10 +455,10 @@ export const Textarea: ComponentConfig<TextareaProps> = {
     labelColor: { type: 'theme', value: 'foreground' },
     inputBackgroundColor: { type: 'theme', value: 'background' },
     inputTextColor: { type: 'theme', value: 'foreground' },
-    inputBorderColor: { type: 'theme', value: 'border' },
+    border: createUniformBorder({ type: 'theme', value: 'border' }),
     focusBorderColor: { type: 'theme', value: 'primary' },
     errorColor: { type: 'theme', value: 'destructive' },
-    borderRadius: '6',
+    borderRadius: { ...DEFAULT_BORDER_RADIUS, topLeft: '6', topRight: '6', bottomRight: '6', bottomLeft: '6' },
   },
 
   render: (props) => <TextareaComponent {...props} />,

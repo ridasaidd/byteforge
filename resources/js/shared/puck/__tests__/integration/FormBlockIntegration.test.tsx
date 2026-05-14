@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { FormProvider } from '../../components/forms/FormContext';
 
 // Mock useTheme hook
@@ -39,9 +39,10 @@ const Select = SelectComponent.render;
 const Checkbox = CheckboxComponent.render;
 const RadioGroup = RadioGroupComponent.render;
 const Textarea = TextareaComponent.render;
+const noopSubmit = async () => {};
 
 describe('Form Block Integration Tests', () => {
-  it('form receives values from form fields', () => {
+  it('form receives values from form fields', async () => {
 
     const onSubmit = vi.fn();
 
@@ -86,15 +87,19 @@ describe('Form Block Integration Tests', () => {
 
     // Submit the form
     const submitButton = screen.getByRole('button', { name: 'Submit' });
-    fireEvent.click(submitButton);
+    await act(async () => {
+      fireEvent.click(submitButton);
+    });
 
     // Verify submission was attempted
-    expect(onSubmit).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled();
+    });
   });
 
   it('text input applies border radius configuration', () => {
-    const { container } = render(
-      <FormProvider formName="test-form">
+    render(
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         <TextInput
           name="username"
           label="Username"
@@ -126,7 +131,7 @@ describe('Form Block Integration Tests', () => {
 
   it('submit button renders with correct attributes', () => {
     render(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         <SubmitButton
           text="Send"
           loadingText="Sending..."
@@ -149,7 +154,7 @@ describe('Form Block Integration Tests', () => {
 
   it('checkbox toggles and applies configuration', () => {
     render(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         <Checkbox
           name="terms"
           label="I agree"
@@ -181,7 +186,7 @@ describe('Form Block Integration Tests', () => {
     ];
 
     render(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         <Select
           name="choice"
           label="Choose"
@@ -221,7 +226,7 @@ describe('Form Block Integration Tests', () => {
     ];
 
     render(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         <RadioGroup
           name="color"
           label="Favorite Color"
@@ -253,7 +258,7 @@ describe('Form Block Integration Tests', () => {
 
   it('textarea respects rows configuration', () => {
     render(
-      <FormProvider formName="test-form">
+      <FormProvider formName="test-form" onSubmit={noopSubmit}>
         <Textarea
           name="message"
           label="Message"

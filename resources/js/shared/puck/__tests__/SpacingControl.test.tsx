@@ -149,4 +149,28 @@ describe('SpacingControl', () => {
       );
     }
   });
+
+  it('normalizes theme preset units into numeric values', () => {
+    const onChange = vi.fn();
+
+    renderWithTheme(
+      <SpacingControl
+        field={{ label: 'Margin' }}
+        value={defaultValue}
+        onChange={onChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTitle('Small: 1rem'));
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        top: '1',
+        right: '1',
+        bottom: '1',
+        left: '1',
+        unit: 'rem',
+      })
+    );
+  });
 });

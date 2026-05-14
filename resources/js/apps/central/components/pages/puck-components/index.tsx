@@ -55,7 +55,12 @@ export * from '@/shared/puck/controlPresets';
 // can render correctly on the storefront — the addon gate only belongs in
 // the editor sidebar (PageEditorPage.tsx), not in the renderer.
 import { puckConfig } from '@/shared/puck/config';
-import { BookingWidget, PaymentWidget, bookingPuckSectionComponents } from '@/shared/puck/components/booking';
+import {
+  BookingWidget,
+  PaymentWidget,
+  bookingPuckSectionComponents,
+  bookingRegisteredSectionNames,
+} from '@/shared/puck/components/booking';
 import type { Config } from '@puckeditor/core';
 
 const rendererConfig: Config = {
@@ -65,6 +70,19 @@ const rendererConfig: Config = {
     BookingWidget: BookingWidget as Config['components'][string],
     PaymentWidget: PaymentWidget as Config['components'][string],
     ...bookingPuckSectionComponents,
+  },
+  categories: {
+    ...puckConfig.categories,
+    bookings: {
+      components: ['BookingWidget', 'PaymentWidget'],
+      title: 'Bookings',
+      defaultExpanded: false,
+    },
+    bookingLegacy: {
+      components: [...bookingRegisteredSectionNames],
+      title: 'Legacy Booking Internals',
+      defaultExpanded: false,
+    },
   },
 };
 

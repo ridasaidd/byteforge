@@ -170,6 +170,16 @@ export {
   spacingFields,
   // Background
   backgroundFields,
+  createColorField,
+  createBorderRadiusField,
+  createResponsiveSpacingField,
+  createResponsiveFontSizeField,
+  createFontWeightField,
+  createShadowField,
+  createMediaUrlField,
+  createResponsiveColorField,
+  createWidthField,
+  createPositionOffsetField,
   backgroundImageFields,
   // Layout Advanced
   layoutAdvancedFields,

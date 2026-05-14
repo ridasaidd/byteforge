@@ -1,8 +1,17 @@
-import { ComponentConfig, FieldLabel } from '@puckeditor/core';
+import { ComponentConfig } from '@puckeditor/core';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
-import { PagesSelector } from './PagesSelector';
-import { shouldUseSpaNavigation, toRelativePath } from '@/shared/utils/routerNavigation';
+import { toRelativePath } from '@/shared/utils/routerNavigation';
+import {
+  createLinkDestinationFields,
+  createLinkDestinationResolver,
+  createOpenInNewTabField,
+} from '../shared/linkDestinationFields';
+import {
+  getSharedLinkAnchorProps,
+  resolveSharedLinkDestination,
+  shouldRenderSharedSpaLink,
+} from '../shared/linkRuntime';
 import {
   type BorderValue,
   type BorderRadiusValue,
@@ -179,7 +188,8 @@ function ButtonComponent(props: ButtonProps & { puck?: { dragRef: ((element: Ele
   })();
 
   // Determine the actual link based on linkType
-  const finalHref = linkType === 'internal' ? internalPage : (linkType === 'external' ? href : undefined);
+  const finalHref = resolveSharedLinkDestination({ linkType, internalPage, href, openInNewTab });
+  const linkAnchorProps = getSharedLinkAnchorProps(openInNewTab);
 
   // Generate comprehensive CSS using builder utilities
   const buttonCss = isEditing ? (() => {
@@ -250,7 +260,7 @@ function ButtonComponent(props: ButtonProps & { puck?: { dragRef: ((element: Ele
         >
           {text}
         </span>
-      ) : finalHref && linkType === 'internal' && !openInNewTab && shouldUseSpaNavigation(finalHref) ? (
+      ) : finalHref && shouldRenderSharedSpaLink({ linkType, internalPage, href, openInNewTab }) ? (
         <RouterLink
           ref={puck?.dragRef}
           className={className}
@@ -263,8 +273,7 @@ function ButtonComponent(props: ButtonProps & { puck?: { dragRef: ((element: Ele
           ref={puck?.dragRef}
           className={className}
           href={finalHref}
-          target={openInNewTab ? '_blank' : undefined}
-          rel={openInNewTab ? 'noopener noreferrer' : undefined}
+          {...linkAnchorProps}
         >
           {text}
         </a>
@@ -318,44 +327,57 @@ const buttonContentFields = {
 };
 
 const buttonLinkFields = {
-  linkType: {
-    type: 'radio' as const,
-    label: 'Link Type',
-    options: [
+  ...createLinkDestinationFields({
+    linkTypeOptions: [
       { label: 'No Link', value: 'none' },
       { label: 'Internal Page', value: 'internal' },
       { label: 'External URL', value: 'external' },
     ],
-    defaultValue: 'none',
-  },
-  internalPage: {
-    type: 'custom' as const,
-    label: 'Select Page',
-    render: ({ field, value, onChange }: { field: { label?: string }; value: string | undefined; onChange: (value: string | undefined) => void }) => (
-      <FieldLabel label={field.label || 'Select Page'}>
-        <PagesSelector value={value} onChange={(nextValue) => onChange(nextValue || undefined)} />
-      </FieldLabel>
-    ),
-  },
-  href: {
-    type: 'text' as const,
-    label: 'External URL',
-  },
-  openInNewTab: {
-    type: 'radio' as const,
-    label: 'Open in new tab',
-    options: [
-      { label: 'Yes', value: true },
-      { label: 'No', value: false },
-    ],
-    defaultValue: false,
-  },
+    defaultLinkType: 'none',
+  }),
+  openInNewTab: createOpenInNewTabField(),
 };
 
 // Component configuration using organized field groups
 export const Button: ComponentConfig<ButtonProps> = {
   inline: true,
   label: 'Button',
+
+  resolveFields: createLinkDestinationResolver(
+    [
+      'text',
+      'backgroundColor',
+      'textColor',
+      'size',
+      'linkType',
+      'display',
+      'width',
+      'maxWidth',
+      'maxHeight',
+      'visibility',
+      'margin',
+      'padding',
+      'lineHeight',
+      'letterSpacing',
+      'textTransform',
+      'textDecoration',
+      'textDecorationStyle',
+      'cursor',
+      'transition',
+      'hoverOpacity',
+      'hoverBackgroundColor',
+      'hoverTextColor',
+      'hoverTransform',
+      'border',
+      'borderRadius',
+      'shadow',
+      'customCss',
+    ],
+    {
+      targetFieldKey: 'openInNewTab',
+      showTargetForInternalLinks: true,
+    }
+  ),
 
   fields: {
     // Content & Appearance
