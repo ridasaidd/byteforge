@@ -257,15 +257,26 @@ jobs:
           TENANT_VIEWER_EMAIL="${STAGING_TENANT_VIEWER_EMAIL:-}"
           TENANT_VIEWER_PASSWORD="${STAGING_TENANT_VIEWER_PASSWORD:-password}"
 
-          PLAYWRIGHT_BASE_URL="$BASE_URL" \
-          PLAYWRIGHT_TENANT_BASE_URL="$TENANT_BASE_URL" \
-          PLAYWRIGHT_CENTRAL_EMAIL="$EMAIL" \
-          PLAYWRIGHT_CENTRAL_PASSWORD="$PASSWORD" \
-          PLAYWRIGHT_TENANT_OWNER_EMAIL="$TENANT_OWNER_EMAIL" \
-          PLAYWRIGHT_TENANT_OWNER_PASSWORD="$TENANT_OWNER_PASSWORD" \
-          PLAYWRIGHT_TENANT_VIEWER_EMAIL="$TENANT_VIEWER_EMAIL" \
-          PLAYWRIGHT_TENANT_VIEWER_PASSWORD="$TENANT_VIEWER_PASSWORD" \
-          npm run test:e2e:auth
+          auth_env=(
+            PLAYWRIGHT_BASE_URL="$BASE_URL"
+            PLAYWRIGHT_TENANT_BASE_URL="$TENANT_BASE_URL"
+            PLAYWRIGHT_CENTRAL_EMAIL="$EMAIL"
+            PLAYWRIGHT_CENTRAL_PASSWORD="$PASSWORD"
+          )
+
+          # Do not pass empty tenant email env vars. Empty strings override the
+          # Playwright runtime fallback addresses and cause tenant login failures.
+          if [ -n "$TENANT_OWNER_EMAIL" ]; then
+            auth_env+=(PLAYWRIGHT_TENANT_OWNER_EMAIL="$TENANT_OWNER_EMAIL")
+            auth_env+=(PLAYWRIGHT_TENANT_OWNER_PASSWORD="$TENANT_OWNER_PASSWORD")
+          fi
+
+          if [ -n "$TENANT_VIEWER_EMAIL" ]; then
+            auth_env+=(PLAYWRIGHT_TENANT_VIEWER_EMAIL="$TENANT_VIEWER_EMAIL")
+            auth_env+=(PLAYWRIGHT_TENANT_VIEWER_PASSWORD="$TENANT_VIEWER_PASSWORD")
+          fi
+
+          env "${auth_env[@]}" npm run test:e2e:auth
 
           PLAYWRIGHT_BASE_URL="$BASE_URL" \
           PLAYWRIGHT_TENANT_BASE_URL="$TENANT_BASE_URL" \
