@@ -72,6 +72,12 @@ import {
   ResponsiveGapValue,
   ResponsiveVisibilityControl,
   ResponsiveVisibilityValue,
+  ResponsiveWrapper,
+  ResponsiveValue,
+  WidthControl,
+  WidthValue,
+  PositionOffsetControl,
+  PositionOffsetValue,
   ObjectFitControl,
   ObjectFitValue,
   ObjectPositionControl,
@@ -465,27 +471,158 @@ export const backgroundFields = {
     defaultValue: { type: 'custom' as const, value: '' },
   },
 };
-// ============================================================================
-// 5. Background Fields
-// ============================================================================
 
-// Background Image Field Component with Media Library integration
-function BackgroundImageField({ field, value, onChange }: { field: { label?: string }; value: string | undefined; onChange: (value: string) => void }) {
+export function createResponsiveColorField(
+  label: string,
+  defaultValue: ColorValue = { type: 'custom', value: '' }
+) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveValue<ColorValue>; onChange: (value: ResponsiveValue<ColorValue>) => void }) => (
+      <ResponsiveWrapper<ColorValue>
+        label={field.label || label}
+        value={value}
+        onChange={onChange}
+        defaultValue={defaultValue}
+        renderControl={(currentValue, onValueChange) => (
+          <ColorPickerControl
+            field={{ label: undefined }}
+            value={currentValue || defaultValue}
+            onChange={onValueChange}
+          />
+        )}
+      />
+    ),
+    defaultValue: { mobile: defaultValue },
+  };
+}
+
+export function createColorField(label: string, fallback: ColorValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ColorValue; onChange: (value: ColorValue) => void }) => (
+      <ColorPickerControl field={field} value={value || fallback} onChange={onChange} />
+    ),
+    defaultValue: fallback,
+  };
+}
+
+export function createBorderRadiusField(label: string, fallback: BorderRadiusValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: BorderRadiusValue; onChange: (value: BorderRadiusValue) => void }) => (
+      <BorderRadiusControl field={field} value={value || fallback} onChange={onChange} />
+    ),
+    defaultValue: fallback,
+  };
+}
+
+export function createResponsiveSpacingField(label: string, fallback: ResponsiveSpacingValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveSpacingValue; onChange: (value: ResponsiveSpacingValue) => void }) => (
+      <ResponsiveSpacingControl field={field} value={value || fallback} onChange={onChange} allowNegative={false} />
+    ),
+    defaultValue: fallback,
+  };
+}
+
+export function createResponsiveFontSizeField(label: string, fallback: ResponsiveFontSizeValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ResponsiveFontSizeValue; onChange: (value: ResponsiveFontSizeValue) => void }) => (
+      <ResponsiveFontSizeControl field={field} value={value || fallback} onChange={onChange} />
+    ),
+    defaultValue: fallback,
+  };
+}
+
+export function createFontWeightField(label: string, fallback: FontWeightValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: FontWeightValue; onChange: (value: FontWeightValue) => void }) => (
+      <FontWeightControl field={field} value={value || fallback} onChange={onChange} />
+    ),
+    defaultValue: fallback,
+  };
+}
+
+export function createShadowField(label: string, fallback: ShadowValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: ShadowValue; onChange: (value: ShadowValue) => void }) => (
+      <ShadowControl field={field} value={value || fallback} onChange={onChange} />
+    ),
+    defaultValue: fallback,
+  };
+}
+
+export function createWidthField(label: string, defaultValue?: WidthValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: WidthValue; onChange: (value: WidthValue) => void }) => (
+      <WidthControl field={field} value={value} onChange={onChange} />
+    ),
+    ...(defaultValue ? { defaultValue } : {}),
+  };
+}
+
+export function createPositionOffsetField(label: string, defaultValue?: PositionOffsetValue) {
+  return {
+    type: 'custom' as const,
+    label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: PositionOffsetValue; onChange: (value: PositionOffsetValue) => void }) => (
+      <PositionOffsetControl field={field} value={value || defaultValue || { top: '', right: '', bottom: '', left: '', unit: 'px', linked: false }} onChange={onChange} />
+    ),
+    ...(defaultValue ? { defaultValue } : {}),
+  };
+}
+
+type MediaUrlFieldOptions = {
+  label: string;
+  modalTitle?: string;
+  placeholder?: string;
+  defaultValue?: string;
+  previewAlt?: string;
+  previewMaxHeight?: string;
+  previewObjectFit?: 'cover' | 'contain' | 'fill' | 'none';
+  resolveMediaUrl?: (media: Media) => string;
+};
+
+function MediaUrlField({
+  field,
+  value,
+  onChange,
+  options,
+}: {
+  field: { label?: string };
+  value: string | undefined;
+  onChange: (value: string) => void;
+  options: MediaUrlFieldOptions;
+}) {
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
 
   const handleMediaSelect = (media: Media) => {
-    // Use large conversion for backgrounds (full-width) with fallbacks
-    onChange(media.large_url || media.medium_url || media.url);
+    const nextUrl = options.resolveMediaUrl ? options.resolveMediaUrl(media) : media.url;
+    onChange(nextUrl);
   };
 
   return (
-    <FieldLabel label={field.label || 'Background Image'}>
+    <FieldLabel label={field.label || options.label}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <input
           type="text"
           value={value || ''}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Enter image URL or browse media library"
+          placeholder={options.placeholder || 'Enter image URL or browse media library'}
           style={{
             width: '100%',
             padding: '8px',
@@ -517,11 +654,11 @@ function BackgroundImageField({ field, value, onChange }: { field: { label?: str
         <div style={{ marginTop: '8px' }}>
           <img
             src={value}
-            alt="Preview"
+            alt={options.previewAlt || 'Preview'}
             style={{
               width: '100%',
-              maxHeight: '120px',
-              objectFit: 'cover',
+              maxHeight: options.previewMaxHeight || '150px',
+              objectFit: options.previewObjectFit || 'cover',
               borderRadius: '4px',
               border: '1px solid var(--puck-color-grey-04)',
             }}
@@ -533,18 +670,35 @@ function BackgroundImageField({ field, value, onChange }: { field: { label?: str
         isOpen={isMediaPickerOpen}
         onClose={() => setIsMediaPickerOpen(false)}
         onSelect={handleMediaSelect}
-        title="Select Background Image"
+        title={options.modalTitle || `Select ${options.label}`}
       />
     </FieldLabel>
   );
 }
-export const backgroundImageFields = {
-  backgroundImage: {
+
+export function createMediaUrlField(options: MediaUrlFieldOptions) {
+  return {
     type: 'custom' as const,
+    label: options.label,
+    render: ({ field, value, onChange }: { field: { label?: string }; value?: string; onChange: (value: string) => void }) => (
+      <MediaUrlField field={field} value={value} onChange={onChange} options={options} />
+    ),
+    defaultValue: options.defaultValue ?? '',
+  };
+}
+// ============================================================================
+// 5. Background Fields
+// ============================================================================
+
+export const backgroundImageFields = {
+  backgroundImage: createMediaUrlField({
     label: 'Background Image',
-    render: BackgroundImageField,
-    defaultValue: '',
-  },
+    modalTitle: 'Select Background Image',
+    previewAlt: 'Background preview',
+    previewMaxHeight: '120px',
+    previewObjectFit: 'cover',
+    resolveMediaUrl: (media) => media.large_url || media.medium_url || media.url,
+  }),
 
   backgroundSize: {
     type: 'radio' as const,

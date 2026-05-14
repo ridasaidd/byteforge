@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+
+const { mockUsePuckEditMode } = vi.hoisted(() => ({
+  mockUsePuckEditMode: vi.fn(() => true),
+}));
 
 // Mock useTheme hook
 vi.mock('@/shared/hooks', () => ({
@@ -20,7 +25,7 @@ vi.mock('@/shared/hooks', () => ({
       return colors[token] || fallback;
     },
   }),
-  usePuckEditMode: () => true,
+  usePuckEditMode: mockUsePuckEditMode,
 }));
 
 // Mock MediaPickerModal
@@ -393,6 +398,49 @@ describe('Box Component', () => {
       expect(() => {
         render(<BoxComponent {...defaultProps} />);
       }).not.toThrow();
+    });
+
+    it('wraps slot content in an internal link outside edit mode', () => {
+      mockUsePuckEditMode.mockReturnValue(false);
+      const Items = () => <div data-testid="child">Child content</div>;
+
+      render(
+        <MemoryRouter future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
+          <BoxComponent
+            {...defaultProps}
+            items={Items}
+            linkType="internal"
+            internalPage="/pages/about"
+          />
+        </MemoryRouter>
+      );
+
+      const link = screen.getByTestId('child').closest('a');
+      expect(link).toBeInTheDocument();
+      expect(link?.getAttribute('href')).toBe('/pages/about');
+      mockUsePuckEditMode.mockReturnValue(true);
+    });
+
+    it('wraps slot content in an external link outside edit mode', () => {
+      mockUsePuckEditMode.mockReturnValue(false);
+      const Items = () => <div data-testid="child">Child content</div>;
+
+      render(
+        <BoxComponent
+          {...defaultProps}
+          items={Items}
+          linkType="external"
+          href="https://example.com"
+          openInNewTab={true}
+        />
+      );
+
+      const link = screen.getByTestId('child').closest('a');
+      expect(link).toBeInTheDocument();
+      expect(link?.getAttribute('href')).toBe('https://example.com');
+      expect(link?.getAttribute('target')).toBe('_blank');
+      expect(link?.getAttribute('rel')).toBe('noopener noreferrer');
+      mockUsePuckEditMode.mockReturnValue(true);
     });
   });
 

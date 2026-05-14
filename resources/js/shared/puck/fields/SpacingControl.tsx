@@ -3,6 +3,33 @@ import { FieldLabel } from '@puckeditor/core';
 import { Link, Unlink } from 'lucide-react';
 import { useTheme } from '@/shared/hooks';
 
+const CSS_LENGTH_PATTERN = /^(-?\d*\.?\d+)(px|em|rem|%)$/i;
+
+function normalizeSpacingInput(
+  rawValue: string,
+  fallbackUnit: SpacingValue['unit']
+): { value: string; unit: SpacingValue['unit'] } {
+  const trimmedValue = rawValue.trim();
+
+  if (trimmedValue === '') {
+    return { value: '0', unit: fallbackUnit };
+  }
+
+  if (trimmedValue.toLowerCase() === 'auto') {
+    return { value: 'auto', unit: fallbackUnit };
+  }
+
+  const unitMatch = trimmedValue.match(CSS_LENGTH_PATTERN);
+  if (unitMatch) {
+    return {
+      value: unitMatch[1],
+      unit: unitMatch[2].toLowerCase() as SpacingValue['unit'],
+    };
+  }
+
+  return { value: trimmedValue, unit: fallbackUnit };
+}
+
 export interface SpacingValue {
   top: string;
   right: string;
@@ -46,8 +73,8 @@ export function SpacingControl({
   };
 
   const handleValueChange = (side: 'top' | 'right' | 'bottom' | 'left', newValue: string) => {
-    const trimmedValue = newValue.trim();
-    const finalValue = trimmedValue === '' ? '0' : trimmedValue;
+    const normalized = normalizeSpacingInput(newValue, value.unit);
+    const finalValue = normalized.value;
 
     if (isLinked) {
       onChange({
@@ -56,12 +83,14 @@ export function SpacingControl({
         right: finalValue,
         bottom: finalValue,
         left: finalValue,
+        unit: normalized.unit,
         linked: isLinked,
       });
     } else {
       onChange({
         ...value,
         [side]: finalValue,
+        unit: normalized.unit,
         linked: isLinked,
       });
     }
@@ -219,30 +248,28 @@ export function SpacingControl({
             <label style={{ ...labelStyle, marginBottom: '6px' }}>Theme Presets</label>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(50px, 1fr))', gap: '6px' }}>
               {Object.entries(spacingPresets).map(([key, presetValue]) => {
-                const isActive = isLinked && value.top === presetValue;
+                const normalizedPreset = normalizeSpacingInput(String(presetValue), value.unit);
+                const isActive = isLinked && value.top === normalizedPreset.value && value.unit === normalizedPreset.unit;
                 const label = spacingLabels[key] || key;
                 return (
                   <button
                     key={key}
                     type="button"
                     onClick={() => {
+                      const nextValue = {
+                        ...value,
+                        top: normalizedPreset.value,
+                        right: normalizedPreset.value,
+                        bottom: normalizedPreset.value,
+                        left: normalizedPreset.value,
+                        unit: normalizedPreset.unit,
+                      };
+
                       if (isLinked) {
-                        onChange({
-                          ...value,
-                          top: presetValue as string,
-                          right: presetValue as string,
-                          bottom: presetValue as string,
-                          left: presetValue as string,
-                        });
+                        onChange(nextValue);
                       } else {
                         // Apply to all sides even when unlinked for preset selection
-                        onChange({
-                          ...value,
-                          top: presetValue as string,
-                          right: presetValue as string,
-                          bottom: presetValue as string,
-                          left: presetValue as string,
-                        });
+                        onChange(nextValue);
                       }
                     }}
                     style={{

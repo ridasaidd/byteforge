@@ -72,6 +72,11 @@ defineBlockTestSuite({
         const { css } = renderWithDefaults({ fullWidth: false });
         expect(css).not.toContain('width: 100%');
       });
+
+      it('should align label and icon with inline flex layout', () => {
+        const { css } = renderWithDefaults({ showIcon: true });
+        expect(css).toContain('display: inline-flex');
+      });
     });
   },
 });

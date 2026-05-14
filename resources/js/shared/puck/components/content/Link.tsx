@@ -1,8 +1,17 @@
 import { ComponentConfig } from '@puckeditor/core';
 import { Link as RouterLink } from 'react-router-dom';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
-import { PagesSelector } from './PagesSelector';
-import { shouldUseSpaNavigation } from '@/shared/utils/routerNavigation';
+import { toRelativePath } from '@/shared/utils/routerNavigation';
+import {
+  createLinkDestinationFields,
+  createLinkDestinationResolver,
+  createTargetField,
+} from '../shared/linkDestinationFields';
+import {
+  getSharedLinkAnchorProps,
+  resolveSharedLinkDestination,
+  shouldRenderSharedSpaLink,
+} from '../shared/linkRuntime';
 import {
   ColorValue,
   BorderValue,
@@ -37,6 +46,7 @@ import {
   // Utilities
   extractDefaults,
   buildTypographyCSS,
+  generateFontSizeCSS,
 } from '../../fields';
 
 export interface LinkProps {
@@ -49,8 +59,12 @@ export interface LinkProps {
   // Link type and destination
   linkType: 'external' | 'internal';
   href?: string;  // For external links
-  to?: string;    // For internal links (react-router)
+  internalPage?: string;
   label: string;
+  openInNewTab?: boolean;
+
+  // Legacy interaction props kept for saved content migration
+  to?: string;
   target?: '_self' | '_blank' | '_parent' | '_top';
 
   // Typography
@@ -101,12 +115,13 @@ function LinkComponent({
   customId = '',
   linkType,
   href,
-  to,
+  internalPage,
   label,
-  target = '_self',
+  openInNewTab = false,
   align,
   color,
   backgroundColor,
+  fontSize,
   fontWeight,
   lineHeight,
   letterSpacing,
@@ -149,6 +164,12 @@ function LinkComponent({
   const resolvedBgColor = resolveColor(backgroundColor, 'transparent');
   const resolvedHoverColor = resolveColor(hoverColor, resolve('components.link.colors.hover', '#0052a3'));
   const resolvedHoverBgColor = resolveColor(hoverBackgroundColor, 'transparent');
+  const resolvedFontWeight =
+    fontWeight?.type === 'custom'
+      ? fontWeight.value
+      : fontWeight?.type === 'theme' && fontWeight.value
+        ? resolve(fontWeight.value, 'var(--font-weight-normal, 400)')
+        : 'var(--font-weight-normal, 400)';
 
   // Generate CSS in edit mode for live preview
   const css = isEditing ? buildTypographyCSS({
@@ -162,7 +183,7 @@ function LinkComponent({
     border,
     borderRadius,
     shadow,
-    fontWeight: fontWeight?.type === 'custom' ? fontWeight.value : fontWeight?.value,
+    fontWeight: resolvedFontWeight,
     lineHeight,
     letterSpacing,
     textTransform,
@@ -173,6 +194,7 @@ function LinkComponent({
     cursor,
     transition,
   }) : '';
+  const fontSizeCss = isEditing && fontSize ? generateFontSizeCSS(className, fontSize, resolve) : '';
 
   // Generate hover state CSS in edit mode
   const hoverCss = isEditing && (hoverColor || hoverBackgroundColor || hoverTransform)
@@ -189,12 +211,13 @@ function LinkComponent({
   }` : '';
 
   // Link destination
-  const destination = linkType === 'external' ? (href || '#') : (to || '/');
+  const destination = resolveSharedLinkDestination({ linkType, internalPage, href, openInNewTab }) || '#';
+  const linkAnchorProps = getSharedLinkAnchorProps(openInNewTab);
 
   return (
     <>
-      {isEditing && (css || hoverCss || textDecorationCss) && (
-        <style>{css}{hoverCss}{textDecorationCss}</style>
+      {isEditing && (css || fontSizeCss || hoverCss || textDecorationCss) && (
+        <style>{css}{fontSizeCss}{hoverCss}{textDecorationCss}</style>
       )}
       {puck?.dragRef ? (
         // In editor: render as span to prevent all navigation
@@ -211,17 +234,16 @@ function LinkComponent({
           className={className}
           {...(elementId && { id: elementId })}
           href={destination}
-          target={target}
-          rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+          {...linkAnchorProps}
         >
           {label}
         </a>
-      ) : shouldUseSpaNavigation(destination) ? (
+      ) : shouldRenderSharedSpaLink({ linkType, internalPage, href, openInNewTab }) ? (
         // Storefront: internal link with React Router
         <RouterLink
           className={className}
           {...(elementId && { id: elementId })}
-          to={destination}
+          to={toRelativePath(destination)}
         >
           {label}
         </RouterLink>
@@ -230,8 +252,7 @@ function LinkComponent({
           className={className}
           {...(elementId && { id: elementId })}
           href={destination}
-          target={target}
-          rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+          {...linkAnchorProps}
         >
           {label}
         </a>
@@ -241,51 +262,49 @@ function LinkComponent({
   );
 }
 
+const linkDestinationFields = {
+  ...createLinkDestinationFields({
+    linkTypeOptions: [
+      { label: 'Internal (React Router)', value: 'internal' },
+      { label: 'External (URL)', value: 'external' },
+    ],
+    defaultLinkType: 'internal',
+    internalPageLabel: 'Page (Internal)',
+    externalUrlLabel: 'URL (External)',
+    externalUrlPlaceholder: 'https://example.com',
+  }),
+  target: createTargetField(),
+};
+
 // Component configuration
 export const Link: ComponentConfig<LinkProps> = {
   label: 'Link',
   inline: true,
+
+  resolveData: ({ props }) => {
+    const nextProps = {
+      ...props,
+      internalPage: props.internalPage || props.to,
+      openInNewTab: typeof props.openInNewTab === 'boolean'
+        ? props.openInNewTab
+        : props.target === '_blank',
+    };
+
+    delete nextProps.to;
+    delete nextProps.target;
+
+    return { props: nextProps };
+  },
 
   fields: {
     // Custom styling
     ...customClassesFields,
 
     // Link configuration
-    linkType: {
-      type: 'radio',
-      label: 'Link Type',
-      options: [
-        { label: 'Internal (React Router)', value: 'internal' },
-        { label: 'External (URL)', value: 'external' },
-      ],
-    },
+    ...linkDestinationFields,
     label: {
       type: 'text',
       label: 'Link Text',
-    },
-
-    // Destination fields
-    href: {
-      type: 'text',
-      label: 'URL (External)',
-      placeholder: 'https://example.com',
-    },
-    to: {
-      type: 'custom',
-      label: 'Page (Internal)',
-      render: ({ value, onChange }: { value?: string; onChange: (value: string) => void }) => (
-        <PagesSelector value={value} onChange={onChange} />
-      ),
-    },
-    target: {
-      type: 'select',
-      label: 'Target',
-      options: [
-        { label: 'Same Window (_self)', value: '_self' },
-        { label: 'New Window (_blank)', value: '_blank' },
-        { label: 'Parent Frame (_parent)', value: '_parent' },
-        { label: 'Top Frame (_top)', value: '_top' },
-      ],
     },
 
     // Typography
@@ -345,28 +364,47 @@ export const Link: ComponentConfig<LinkProps> = {
     ...advancedFields,
   },
 
-  // Conditional field resolution - show/hide fields based on linkType
-  resolveFields: (data, { fields }) => {
-    // Hide 'href' and 'target' for internal links
-    // Hide 'to' for external links
-    if (data.props.linkType === 'external') {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { to, ...rest } = fields;
-      return rest;
-    } else {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { href, target, ...rest } = fields;
-      return rest;
-    }
-  },
+  resolveFields: createLinkDestinationResolver(
+    [
+      'customClassName',
+      'customId',
+      'linkType',
+      'label',
+      'align',
+      'color',
+      'backgroundColor',
+      'fontSize',
+      'fontWeight',
+      'lineHeight',
+      'letterSpacing',
+      'textTransform',
+      'textDecoration',
+      'display',
+      'width',
+      'maxWidth',
+      'maxHeight',
+      'visibility',
+      'margin',
+      'padding',
+      'border',
+      'borderRadius',
+      'shadow',
+      'cursor',
+      'transition',
+      'hoverColor',
+      'hoverBackgroundColor',
+      'hoverTransform',
+      'customCss',
+    ],
+    { targetFieldKey: 'target' }
+  ),
 
   defaultProps: {
-    linkType: 'internal',
     label: 'Click here',
-    target: '_self',
     textDecoration: 'underline',
     ...extractDefaults(
       customClassesFields,
+      linkDestinationFields as Record<string, { defaultValue?: string | number | boolean | object | undefined }>,
       textAlignField,
       textColorField,
       fontSizeField,
@@ -381,6 +419,13 @@ export const Link: ComponentConfig<LinkProps> = {
       interactionFields,
       advancedFields
     ),
+    linkType: 'internal',
+    internalPage: undefined,
+    href: undefined,
+    openInNewTab: false,
+    hoverColor: { type: 'theme', value: '' },
+    hoverBackgroundColor: { type: 'theme', value: '' },
+    hoverTransform: 'none',
   },
 
   render: (props) => <LinkComponent {...props} />,

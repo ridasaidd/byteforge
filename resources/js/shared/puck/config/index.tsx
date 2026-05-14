@@ -12,6 +12,11 @@ import {
   // Content
   Heading,
   Text as TextComponent,
+  Divider,
+  Logo,
+  Gallery,
+  Table,
+  Accordion,
   RichText,
   Button,
   Image,
@@ -56,6 +61,11 @@ export const puckConfig: Config = {
     // Content Components
     Heading: Heading as Config['components'][string],
     Text: TextComponent as Config['components'][string],
+    Divider: Divider as Config['components'][string],
+    Logo: Logo as Config['components'][string],
+    Gallery: Gallery as Config['components'][string],
+    Table: Table as Config['components'][string],
+    Accordion: Accordion as Config['components'][string],
     RichText: RichText as Config['components'][string],
     Button: Button as Config['components'][string],
     Link: Link as Config['components'][string],
@@ -91,7 +101,7 @@ export const puckConfig: Config = {
       defaultExpanded: false,
     },
     content: {
-      components: ['Heading', 'Text', 'RichText', 'Button', 'Link', 'Image'],
+      components: ['Heading', 'Text', 'Divider', 'Logo', 'Gallery', 'Table', 'Accordion', 'RichText', 'Button', 'Link', 'Image'],
       title: 'Content',
       defaultExpanded: true,
     },
@@ -102,7 +112,7 @@ export const puckConfig: Config = {
     },
     forms: {
       components: ['Form', 'TextInput', 'Textarea', 'Select', 'Checkbox', 'RadioGroup', 'SubmitButton'],
-      title: 'Forms',
+      title: 'Contact Forms',
       defaultExpanded: false,
     },
   },

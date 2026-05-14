@@ -1,6 +1,17 @@
 import { ComponentConfig, type Fields } from '@puckeditor/core';
 import React from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
+import { toRelativePath } from '@/shared/utils/routerNavigation';
+import {
+  createLinkDestinationFields,
+  createOpenInNewTabField,
+} from '../shared/linkDestinationFields';
+import {
+  getSharedLinkAnchorProps,
+  resolveSharedLinkDestination,
+  shouldRenderSharedSpaLink,
+} from '../shared/linkRuntime';
 import {
   BorderValue,
   BorderRadiusValue,
@@ -52,6 +63,12 @@ export interface BoxProps {
 
   // Semantic HTML
   tag?: 'div' | 'section' | 'article' | 'aside' | 'header' | 'footer' | 'main' | 'nav';
+
+  // Shared interaction
+  linkType?: 'none' | 'internal' | 'external';
+  internalPage?: string;
+  href?: string;
+  openInNewTab?: boolean;
 
   // Display type
   display?: ResponsiveDisplayValue;
@@ -107,6 +124,10 @@ export function BoxComponent({
   customClassName = '',
   customId = '',
   // tag = 'div', // TODO: Implement dynamic tag rendering
+  linkType = 'none',
+  internalPage,
+  href,
+  openInNewTab = false,
   display,
   direction = 'row',
   justify = 'start',
@@ -201,16 +222,43 @@ export function BoxComponent({
     visibility,
   }) : '';
 
+  const destination = resolveSharedLinkDestination({ linkType, internalPage, href, openInNewTab });
+  const linkAnchorProps = getSharedLinkAnchorProps(openInNewTab);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const boxContent = Items ? <Items {...({ className, ...(elementId && { id: elementId }) } as any)} /> : null;
+
   return (
     <>
       {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
       {isEditing && layoutCss && <style>{layoutCss}</style>}
-      {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-      {Items && <Items {...({ className, ...(elementId && { id: elementId }) } as any)} />}
+      {isEditing || !destination ? boxContent : shouldRenderSharedSpaLink({ linkType, internalPage, href, openInNewTab }) ? (
+        <RouterLink to={toRelativePath(destination)}>
+          {boxContent}
+        </RouterLink>
+      ) : (
+        <a
+          href={destination}
+          {...linkAnchorProps}
+        >
+          {boxContent}
+        </a>
+      )}
       {customCss && <style>{customCss}</style>}
     </>
   );
 }
+
+const boxLinkFields = {
+  ...createLinkDestinationFields({
+    linkTypeOptions: [
+      { label: 'No Link', value: 'none' },
+      { label: 'Internal Page', value: 'internal' },
+      { label: 'External URL', value: 'external' },
+    ],
+    defaultLinkType: 'none',
+  }),
+  openInNewTab: createOpenInNewTabField(),
+};
 
 // Component configuration using organized field groups
 export const Box: ComponentConfig<BoxProps> = {
@@ -238,6 +286,8 @@ export const Box: ComponentConfig<BoxProps> = {
         { label: 'Nav (Navigation)', value: 'nav' },
       ],
     },
+    // Shared interaction
+    ...boxLinkFields,
     // 1. Layout (most used)
     ...displayField,
     ...layoutFields,
@@ -268,6 +318,7 @@ export const Box: ComponentConfig<BoxProps> = {
       'customClassName',
       'customId',
       'tag',
+      'linkType',
       // Layout
       'display',
       'width',
@@ -306,13 +357,26 @@ export const Box: ComponentConfig<BoxProps> = {
         condition: (props) => hasNonStaticPositionInAnyBreakpoint(props.position),
         fieldKeys: ['positionOffset'],
       },
+      {
+        condition: (props) => props.linkType === 'internal',
+        fieldKeys: ['internalPage', 'openInNewTab'],
+      },
+      {
+        condition: (props) => props.linkType === 'external',
+        fieldKeys: ['href', 'openInNewTab'],
+      },
     ]
   ),
 
   // Use extractDefaults to get defaults from field groups - DRY!
   defaultProps: {
     tag: 'div',
+    linkType: 'none',
+    internalPage: undefined,
+    href: undefined,
+    openInNewTab: false,
     ...extractDefaults(
+      boxLinkFields as Record<string, { defaultValue?: string | number | boolean | object | undefined }>,
       customClassesFields,
       displayField,
       layoutFields,

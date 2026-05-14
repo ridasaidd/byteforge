@@ -3,14 +3,24 @@ import { useMemo, useCallback } from 'react';
 import { useFormField } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
+  DEFAULT_BORDER_RADIUS,
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
+  effectsFields,
   buildLayoutCSS,
+  type BorderRadiusValue,
+  type BorderValue,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
 } from '../../fields';
+import {
+  createLegacyBorderRadiusField,
+  createUniformBorder,
+  normalizeLegacyBorderRadiusValue,
+  normalizeLegacyBorderValue,
+} from './styleUtils';
 
 // ============================================================================
 // Types
@@ -39,10 +49,11 @@ export interface TextInputProps {
   labelColor: ColorValue;
   inputBackgroundColor: ColorValue;
   inputTextColor: ColorValue;
-  inputBorderColor: ColorValue;
+  border?: BorderValue;
+  inputBorderColor?: ColorValue;
   focusBorderColor: ColorValue;
   errorColor: ColorValue;
-  borderRadius: string;
+  borderRadius?: BorderRadiusValue | string;
 
   // Size
   size: 'sm' | 'md' | 'lg';
@@ -69,6 +80,7 @@ function TextInputComponent(props: TextInputProps & { puck?: { dragRef: ((elemen
     labelColor,
     inputBackgroundColor,
     inputTextColor,
+    border,
     inputBorderColor,
     focusBorderColor,
     errorColor,
@@ -97,10 +109,18 @@ function TextInputComponent(props: TextInputProps & { puck?: { dragRef: ((elemen
     label: resolveColor(labelColor, 'inherit'),
     background: resolveColor(inputBackgroundColor, '#ffffff'),
     text: resolveColor(inputTextColor, '#000000'),
-    border: resolveColor(inputBorderColor, '#e5e7eb'),
     focus: resolveColor(focusBorderColor, resolve('colors.primary', '#3b82f6')),
     error: resolveColor(errorColor, '#ef4444'),
-  }), [labelColor, inputBackgroundColor, inputTextColor, inputBorderColor, focusBorderColor, errorColor, resolveColor, resolve]);
+  }), [labelColor, inputBackgroundColor, inputTextColor, focusBorderColor, errorColor, resolveColor, resolve]);
+
+  const inputBorderValue = useMemo(
+    () => normalizeLegacyBorderValue(border, inputBorderColor, { type: 'theme', value: 'border' }),
+    [border, inputBorderColor]
+  );
+  const inputBorderRadius = useMemo(
+    () => normalizeLegacyBorderRadiusValue(borderRadius, '6'),
+    [borderRadius]
+  );
 
   // Size variants
   const sizeStyles = useMemo(() => {
@@ -128,6 +148,14 @@ function TextInputComponent(props: TextInputProps & { puck?: { dragRef: ((elemen
     });
     if (layoutCss) rules.push(layoutCss);
 
+    const inputBorderCss = buildLayoutCSS({
+      className: `${className}-input`,
+      border: inputBorderValue,
+      borderRadius: inputBorderRadius,
+      resolveToken: resolve,
+    });
+    if (inputBorderCss) rules.push(inputBorderCss);
+
     // Container width
     rules.push(`.${className} { width: ${fullWidth ? '100%' : 'auto'}; }`);
 
@@ -145,8 +173,6 @@ function TextInputComponent(props: TextInputProps & { puck?: { dragRef: ((elemen
   width: 100%;
   padding: ${sizeStyles.padding};
   font-size: ${sizeStyles.fontSize};
-  border: 1px solid ${colors.border};
-  border-radius: ${borderRadius}px;
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
   background-color: ${colors.background};
@@ -208,6 +234,20 @@ export const TextInput: ComponentConfig<TextInputProps> = {
   inline: true,
   label: 'Text Input',
 
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<TextInputProps>;
+
+    return {
+      props: {
+        ...typedProps,
+        border: normalizeLegacyBorderValue(typedProps.border, typedProps.inputBorderColor, { type: 'theme', value: 'border' }),
+        borderRadius: normalizeLegacyBorderRadiusValue(typedProps.borderRadius, '6'),
+      },
+    };
+  },
+
+  resolveFields: (_data, { fields }) => fields,
+
   fields: {
     name: { type: 'text', label: 'Field Name' },
     label: { type: 'text', label: 'Label' },
@@ -234,10 +274,10 @@ export const TextInput: ComponentConfig<TextInputProps> = {
     labelColor: { type: 'custom', label: 'Label Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'foreground' }} onChange={props.onChange} /> },
     inputBackgroundColor: { type: 'custom', label: 'Input Background', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'background' }} onChange={props.onChange} /> },
     inputTextColor: { type: 'custom', label: 'Input Text Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'foreground' }} onChange={props.onChange} /> },
-    inputBorderColor: { type: 'custom', label: 'Border Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'border' }} onChange={props.onChange} /> },
+    border: { ...effectsFields.border, label: 'Input Border' },
+    borderRadius: createLegacyBorderRadiusField('Input Border Radius', DEFAULT_BORDER_RADIUS),
     focusBorderColor: { type: 'custom', label: 'Focus Border Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'primary' }} onChange={props.onChange} /> },
     errorColor: { type: 'custom', label: 'Error Color', render: (props) => <ColorPickerControl {...props} value={props.value || { type: 'theme', value: 'destructive' }} onChange={props.onChange} /> },
-    borderRadius: { type: 'select', label: 'Border Radius', options: [{ label: 'None', value: '0' }, { label: 'Small', value: '4' }, { label: 'Medium', value: '6' }, { label: 'Large', value: '8' }, { label: 'XL', value: '12' }] },
   },
 
   defaultProps: {
@@ -256,10 +296,10 @@ export const TextInput: ComponentConfig<TextInputProps> = {
     labelColor: { type: 'theme', value: 'foreground' },
     inputBackgroundColor: { type: 'theme', value: 'background' },
     inputTextColor: { type: 'theme', value: 'foreground' },
-    inputBorderColor: { type: 'theme', value: 'border' },
+    border: createUniformBorder({ type: 'theme', value: 'border' }),
     focusBorderColor: { type: 'theme', value: 'primary' },
     errorColor: { type: 'theme', value: 'destructive' },
-    borderRadius: '6',
+    borderRadius: { ...DEFAULT_BORDER_RADIUS, topLeft: '6', topRight: '6', bottomRight: '6', bottomLeft: '6' },
   },
 
   render: (props) => <TextInputComponent {...props} />,

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   extractCssFromPuckData,
   generateVariablesCss,
@@ -186,6 +186,117 @@ describe('PuckCssAggregator', () => {
 
       expect(css).toBe('');
     });
+
+    it('should include nested storefront styles for form controls', () => {
+      const formComponent = {
+            type: 'Form',
+            props: {
+              id: 'Form-1',
+              display: { mobile: 'flex' },
+              gap: '16',
+              direction: 'column',
+              justify: 'start',
+              align: 'stretch',
+              width: { mobile: { value: '100', unit: '%' } },
+              backgroundColor: { type: 'custom', value: '#ffffff' },
+              padding: { mobile: { top: '24', right: '24', bottom: '24', left: '24', unit: 'px', linked: true } },
+              margin: { mobile: { top: '0', right: 'auto', bottom: '0', left: 'auto', unit: 'px', linked: false } },
+              border: {
+                top: { width: '1', style: 'solid', color: '#e5e7eb' },
+                right: { width: '1', style: 'solid', color: '#e5e7eb' },
+                bottom: { width: '1', style: 'solid', color: '#e5e7eb' },
+                left: { width: '1', style: 'solid', color: '#e5e7eb' },
+                unit: 'px',
+                linked: true,
+              },
+            },
+            zones: {
+              formFields: [
+                {
+                  type: 'TextInput',
+                  props: {
+                    id: 'TextInput-1',
+                    name: 'name',
+                    label: 'Name',
+                    placeholder: 'Enter your name',
+                    inputType: 'text',
+                    required: true,
+                    helpText: '',
+                    display: { mobile: 'block' },
+                    margin: { mobile: { top: '0', right: '0', bottom: '5', left: '0', unit: 'px', linked: false } },
+                    labelColor: { type: 'custom', value: '#111827' },
+                    inputBackgroundColor: { type: 'custom', value: '#ffffff' },
+                    inputTextColor: { type: 'custom', value: '#111827' },
+                    inputBorderColor: { type: 'custom', value: '#d1d5db' },
+                    focusBorderColor: { type: 'custom', value: '#3b82f6' },
+                    errorColor: { type: 'custom', value: '#ef4444' },
+                    borderRadius: '6',
+                    size: 'md',
+                    fullWidth: true,
+                  },
+                },
+                {
+                  type: 'Textarea',
+                  props: {
+                    id: 'Textarea-1',
+                    name: 'message',
+                    label: 'Message',
+                    placeholder: 'Write a message',
+                    required: true,
+                    helpText: '',
+                    rows: 4,
+                    resize: 'vertical',
+                    display: { mobile: 'block' },
+                    margin: { mobile: { top: '0', right: '0', bottom: '16', left: '0', unit: 'px', linked: false } },
+                    labelColor: { type: 'custom', value: '#111827' },
+                    inputBackgroundColor: { type: 'custom', value: '#ffffff' },
+                    inputTextColor: { type: 'custom', value: '#111827' },
+                    inputBorderColor: { type: 'custom', value: '#d1d5db' },
+                    focusBorderColor: { type: 'custom', value: '#3b82f6' },
+                    errorColor: { type: 'custom', value: '#ef4444' },
+                    borderRadius: '6',
+                    size: 'md',
+                    fullWidth: true,
+                  },
+                },
+                {
+                  type: 'SubmitButton',
+                  props: {
+                    id: 'SubmitButton-1',
+                    text: 'Send',
+                    loadingText: 'Sending...',
+                    display: { mobile: 'block' },
+                    margin: { mobile: { top: '16', right: '0', bottom: '0', left: '0', unit: 'px', linked: false } },
+                    backgroundColor: { type: 'custom', value: '#3b82f6' },
+                    textColor: { type: 'custom', value: '#ffffff' },
+                    hoverBackgroundColor: { type: 'custom', value: '#2563eb' },
+                    disabledBackgroundColor: { type: 'custom', value: '#9ca3af' },
+                    borderRadius: '6',
+                    size: 'md',
+                    fullWidth: true,
+                    showIcon: false,
+                    iconPosition: 'right',
+                  },
+                },
+              ],
+            },
+          } as unknown as Data['content'][number];
+
+      const puckData: Partial<Data> = {
+        content: [formComponent],
+      };
+
+      const css = extractLayoutComponentsCss(puckData as Data);
+
+      expect(css).toContain('.form-Form-1');
+      expect(css).toContain('gap: 16px');
+      expect(css).toContain('.textinput-TextInput-1-input');
+      expect(css).toContain('background-color: #ffffff');
+      expect(css).toContain('.textarea-Textarea-1-textarea');
+      expect(css).toContain('resize: vertical');
+      expect(css).toContain('.submitbutton-SubmitButton-1');
+      expect(css).toContain('cursor: pointer');
+    });
   });
 
   describe('extractTypographyComponentsCss', () => {
@@ -247,6 +358,53 @@ describe('PuckCssAggregator', () => {
 
       expect(css).toBe('');
     });
+
+    it('should resolve theme font size and weight tokens for typography components', () => {
+      const themeData = {
+        typography: {
+          fontSize: {
+            xl: '24px',
+          },
+          fontWeight: {
+            bold: '700',
+          },
+        },
+      };
+
+      const puckData: Partial<Data> = {
+        content: [
+          {
+            type: 'text',
+            props: {
+              id: 'text-theme-audit',
+              content: 'Themed text',
+              fontSize: { mobile: { type: 'theme', value: 'typography.fontSize.xl' } },
+              fontWeight: { type: 'theme', value: 'typography.fontWeight.bold' },
+            },
+          },
+          {
+            type: 'link',
+            props: {
+              id: 'link-theme-audit',
+              label: 'Themed link',
+              linkType: 'external',
+              href: 'https://example.com',
+              fontSize: { mobile: { type: 'theme', value: 'typography.fontSize.xl' } },
+              fontWeight: { type: 'theme', value: 'typography.fontWeight.bold' },
+            },
+          },
+        ],
+      };
+
+      const css = extractTypographyComponentsCss(puckData as Data, themeData);
+
+      expect(css).toContain('.text-text-theme-audit');
+      expect(css).toContain('.link-link-theme-audit');
+      expect(css).toContain('font-size: 24px');
+      expect(css).toContain('font-weight: 700');
+      expect(css).not.toContain('typography.fontSize.xl');
+      expect(css).not.toContain('typography.fontWeight.bold');
+    });
   });
 
   describe('extractCssFromPuckData', () => {
@@ -291,7 +449,6 @@ describe('PuckCssAggregator', () => {
         content: [
           {
             type: 'Box',
-            id: 'box-123',
             props: { id: 'box-123', padding: { mobile: { top: '40', bottom: '40', left: '20', right: '20', unit: 'px', linked: false } } },
           },
         ],
@@ -308,7 +465,6 @@ describe('PuckCssAggregator', () => {
         content: [
           {
             type: 'Box',
-            id: 'box-456',
             props: { id: 'box-456', padding: { mobile: { top: '40', bottom: '40', left: '20', right: '20', unit: 'px', linked: false } } },
           },
         ],
@@ -326,7 +482,6 @@ describe('PuckCssAggregator', () => {
         content: [
           {
             type: 'BookingWidget',
-            id: 'booking-legacy',
             props: {
               id: 'booking-legacy',
               primaryColor: '#ff0000',

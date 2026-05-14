@@ -3,14 +3,24 @@ import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { useFormField } from './FormContext';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
 import {
+  DEFAULT_BORDER_RADIUS,
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
+  effectsFields,
   buildLayoutCSS,
+  type BorderRadiusValue,
+  type BorderValue,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
 } from '../../fields';
+import {
+  createLegacyBorderRadiusField,
+  createUniformBorder,
+  normalizeLegacyBorderRadiusValue,
+  normalizeLegacyBorderValue,
+} from './styleUtils';
 
 // ============================================================================
 // Types
@@ -41,10 +51,11 @@ export interface SelectProps {
   labelColor: ColorValue;
   inputBackgroundColor: ColorValue;
   inputTextColor: ColorValue;
-  inputBorderColor: ColorValue;
+  border?: BorderValue;
+  inputBorderColor?: ColorValue;
   focusBorderColor: ColorValue;
   errorColor: ColorValue;
-  borderRadius: string;
+  borderRadius?: BorderRadiusValue | string;
 
   // Size
   size: 'sm' | 'md' | 'lg';
@@ -164,6 +175,7 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
     labelColor,
     inputBackgroundColor,
     inputTextColor,
+    border,
     inputBorderColor,
     focusBorderColor,
     errorColor,
@@ -194,10 +206,18 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
     label: resolveColor(labelColor, 'inherit'),
     background: resolveColor(inputBackgroundColor, '#ffffff'),
     text: resolveColor(inputTextColor, '#000000'),
-    border: resolveColor(inputBorderColor, '#e5e7eb'),
     focus: resolveColor(focusBorderColor, resolve('colors.primary', '#3b82f6')),
     error: resolveColor(errorColor, '#ef4444'),
-  }), [labelColor, inputBackgroundColor, inputTextColor, inputBorderColor, focusBorderColor, errorColor, resolveColor, resolve]);
+  }), [labelColor, inputBackgroundColor, inputTextColor, focusBorderColor, errorColor, resolveColor, resolve]);
+
+  const selectBorderValue = useMemo(
+    () => normalizeLegacyBorderValue(border, inputBorderColor, { type: 'theme', value: 'border' }),
+    [border, inputBorderColor]
+  );
+  const selectBorderRadius = useMemo(
+    () => normalizeLegacyBorderRadiusValue(borderRadius, '6'),
+    [borderRadius]
+  );
 
   // Size variants
   const sizeStyles = useMemo(() => {
@@ -226,6 +246,22 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
     });
     if (layoutCss) rules.push(layoutCss);
 
+    const buttonBorderCss = buildLayoutCSS({
+      className: `${className}-button`,
+      border: selectBorderValue,
+      borderRadius: selectBorderRadius,
+      resolveToken: resolve,
+    });
+    if (buttonBorderCss) rules.push(buttonBorderCss);
+
+    const dropdownBorderCss = buildLayoutCSS({
+      className: `${className}-dropdown`,
+      border: selectBorderValue,
+      borderRadius: selectBorderRadius,
+      resolveToken: resolve,
+    });
+    if (dropdownBorderCss) rules.push(dropdownBorderCss);
+
     // Container
     rules.push(`.${className} {
   width: ${fullWidth ? '100%' : 'auto'};
@@ -247,8 +283,6 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
   width: 100%;
   padding: ${sizeStyles.padding};
   font-size: ${sizeStyles.fontSize};
-  border: 1px solid ${colors.border};
-  border-radius: ${borderRadius}px;
   outline: none;
   cursor: pointer;
   display: flex;
@@ -275,8 +309,6 @@ function SelectComponent(props: SelectProps & { puck?: { dragRef: ((element: Ele
   left: 0;
   right: 0;
   margin-top: 4px;
-  border: 1px solid ${colors.border};
-  border-radius: ${borderRadius}px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
   z-index: 999;
   max-height: 200px;
@@ -385,6 +417,20 @@ export const Select: ComponentConfig<SelectProps> = {
   inline: true,
   label: 'Select',
 
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<SelectProps>;
+
+    return {
+      props: {
+        ...typedProps,
+        border: normalizeLegacyBorderValue(typedProps.border, typedProps.inputBorderColor, { type: 'theme', value: 'border' }),
+        borderRadius: normalizeLegacyBorderRadiusValue(typedProps.borderRadius, '6'),
+      },
+    };
+  },
+
+  resolveFields: (_data, { fields }) => fields,
+
   fields: {
     name: {
       type: 'text',
@@ -481,14 +527,9 @@ export const Select: ComponentConfig<SelectProps> = {
       },
     },
 
-    inputBorderColor: {
-      type: 'custom',
-      label: 'Border Color',
-      render: (props) => {
-        const { value = { type: 'theme', value: 'border' }, onChange } = props;
-        return <ColorPickerControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    border: { ...effectsFields.border, label: 'Select Border' },
+
+    borderRadius: createLegacyBorderRadiusField('Select Border Radius', DEFAULT_BORDER_RADIUS),
 
     focusBorderColor: {
       type: 'custom',
@@ -506,18 +547,6 @@ export const Select: ComponentConfig<SelectProps> = {
         const { value = { type: 'theme', value: 'destructive' }, onChange } = props;
         return <ColorPickerControl {...props} value={value} onChange={onChange} />;
       },
-    },
-
-    borderRadius: {
-      type: 'select',
-      label: 'Border Radius',
-      options: [
-        { label: 'None', value: '0' },
-        { label: 'Small', value: '4' },
-        { label: 'Medium', value: '6' },
-        { label: 'Large', value: '8' },
-        { label: 'XL', value: '12' },
-      ],
     },
   },
 
@@ -539,10 +568,10 @@ export const Select: ComponentConfig<SelectProps> = {
     labelColor: { type: 'theme', value: 'foreground' },
     inputBackgroundColor: { type: 'theme', value: 'background' },
     inputTextColor: { type: 'theme', value: 'foreground' },
-    inputBorderColor: { type: 'theme', value: 'border' },
+    border: createUniformBorder({ type: 'theme', value: 'border' }),
     focusBorderColor: { type: 'theme', value: 'primary' },
     errorColor: { type: 'theme', value: 'destructive' },
-    borderRadius: '6',
+    borderRadius: { ...DEFAULT_BORDER_RADIUS, topLeft: '6', topRight: '6', bottomRight: '6', bottomLeft: '6' },
   },
 
   render: (props) => <SelectComponent {...props} />,

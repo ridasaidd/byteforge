@@ -49,7 +49,7 @@ defineBlockTestSuite({
   defaultProps,
   className: 'textarea-textarea-1',
   rootTag: 'div',
-  allowedHardcodedValues: ['width: 100%', '0.2s', 'inherit', '#3b82f6', '#000000', '8px 12px', '14px', '10px 14px', '16px', '14px 18px', '18px'],
+  allowedHardcodedValues: ['width: 100%', '0.2s', 'inherit', '#3b82f6', '#000000', '#e5e7eb', '8px 12px', '14px', '10px 14px', '16px', '14px 18px', '18px'],
   extraTests: ({ renderWithDefaults }) => {
     describe('Textarea-specific tests', () => {
       it('should render label and textarea field', () => {

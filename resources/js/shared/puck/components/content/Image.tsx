@@ -1,8 +1,16 @@
-import { ComponentConfig, FieldLabel } from '@puckeditor/core';
-import { useState } from 'react';
+import { ComponentConfig } from '@puckeditor/core';
+import { Link as RouterLink } from 'react-router-dom';
 import { useTheme, usePuckEditMode } from '@/shared/hooks';
-import { MediaPickerModal } from '@/shared/components/organisms/MediaPickerModal';
-import type { Media } from '@/shared/services/api';
+import { toRelativePath } from '@/shared/utils/routerNavigation';
+import {
+  createLinkDestinationFields,
+  createOpenInNewTabField,
+} from '../shared/linkDestinationFields';
+import {
+  getSharedLinkAnchorProps,
+  resolveSharedLinkDestination,
+  shouldRenderSharedSpaLink,
+} from '../shared/linkRuntime';
 import {
   type BorderValue,
   type BorderRadiusValue,
@@ -24,6 +32,8 @@ import {
   extractDefaults,
   buildLayoutCSS,
   ResponsiveSpacingControl,
+  createConditionalResolver,
+  createMediaUrlField,
 } from '../../fields';
 
 // Responsive image sources for srcset
@@ -40,6 +50,10 @@ export interface ImageProps {
   src: string;
   srcSet?: ImageSrcSet; // Optional responsive sources
   alt: string;
+  linkType?: 'none' | 'internal' | 'external';
+  internalPage?: string;
+  href?: string;
+  openInNewTab?: boolean;
   width?: ResponsiveWidthValue;
   maxWidth?: ResponsiveMaxWidthValue;
   maxHeight?: ResponsiveMaxHeightValue;
@@ -62,6 +76,10 @@ function ImageComponent({
   src,
   srcSet,
   alt,
+  linkType = 'none',
+  internalPage,
+  href,
+  openInNewTab = false,
   width,
   maxWidth,
   maxHeight,
@@ -175,110 +193,50 @@ function ImageComponent({
     ? '(max-width: 640px) 100vw, (max-width: 1024px) 75vw, 50vw'
     : undefined;
 
+  const destination = resolveSharedLinkDestination({ linkType, internalPage, href, openInNewTab });
+  const linkAnchorProps = getSharedLinkAnchorProps(openInNewTab);
+
+  const imageNode = (
+    <img
+      ref={puck?.dragRef}
+      className={className}
+      src={src || 'https://placehold.co/800x600?text=Add+Image'}
+      srcSet={srcSetString}
+      sizes={sizesString}
+      alt={alt || 'Image'}
+    />
+  );
+
   return (
     <>
       {/* Only inject runtime CSS in edit mode - storefront uses pre-generated CSS from file */}
       {isEditing && css && <style>{css}</style>}
-      <img
-        ref={puck?.dragRef}
-        className={className}
-        src={src || 'https://placehold.co/800x600?text=Add+Image'}
-        srcSet={srcSetString}
-        sizes={sizesString}
-        alt={alt || 'Image'}
-      />
+      {isEditing || !destination ? imageNode : shouldRenderSharedSpaLink({ linkType, internalPage, href, openInNewTab }) ? (
+        <RouterLink to={toRelativePath(destination)}>
+          {imageNode}
+        </RouterLink>
+      ) : (
+        <a
+          href={destination}
+          {...linkAnchorProps}
+        >
+          {imageNode}
+        </a>
+      )}
       {customCss && <style>{customCss}</style>}
     </>
   );
 }
 
-// Combined custom field component for image URL with responsive srcSet support
-function ImageUrlField({
-  field,
-  value,
-  onChange,
-}: {
-  field: { label?: string };
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
-
-  const handleMediaSelect = (media: Media) => {
-    // Store the original URL - the component will handle responsive variants
-    // We prefer to store the original so we have the best quality source
-    // and can derive conversion URLs from the pattern
-    onChange(media.url);
-  };
-
-  return (
-    <FieldLabel label={field.label || 'Image'}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <input
-          type="text"
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="Enter image URL or browse media library"
-          style={{
-            width: '100%',
-            padding: '8px',
-            border: '1px solid var(--puck-color-grey-04)',
-            borderRadius: '4px',
-            fontSize: '14px',
-            backgroundColor: 'var(--puck-color-white)',
-          }}
-        />
-        <button
-          type="button"
-          onClick={() => setIsMediaPickerOpen(true)}
-          style={{
-            width: '100%',
-            padding: '8px 16px',
-            backgroundColor: 'var(--puck-color-azure-04)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}
-        >
-          Browse
-        </button>
-      </div>
-      {value && (
-        <div style={{ marginTop: '8px' }}>
-          <img
-            src={value}
-            alt="Preview"
-            style={{
-              maxWidth: '200px',
-              maxHeight: '150px',
-              objectFit: 'cover',
-              borderRadius: '4px',
-              border: '1px solid var(--puck-color-grey-04)',
-            }}
-          />
-        </div>
-      )}
-
-      <MediaPickerModal
-        isOpen={isMediaPickerOpen}
-        onClose={() => setIsMediaPickerOpen(false)}
-        onSelect={handleMediaSelect}
-        title="Select Image"
-      />
-    </FieldLabel>
-  );
-}
-
 // Image-specific fields
 const imageContentFields = {
-  src: {
-    type: 'custom' as const,
+  src: createMediaUrlField({
     label: 'Image',
-    render: ImageUrlField,
-  },
+    modalTitle: 'Select Image',
+    previewAlt: 'Image preview',
+    previewMaxHeight: '150px',
+    previewObjectFit: 'cover',
+  }),
   alt: {
     type: 'text' as const,
     label: 'Alt Text',
@@ -312,6 +270,18 @@ const imageStyleFields = {
   },
 };
 
+const imageLinkFields = {
+  ...createLinkDestinationFields({
+    linkTypeOptions: [
+      { label: 'No Link', value: 'none' },
+      { label: 'Internal Page', value: 'internal' },
+      { label: 'External URL', value: 'external' },
+    ],
+    defaultLinkType: 'none',
+  }),
+  openInNewTab: createOpenInNewTabField(),
+};
+
 // Margin-only spacing for images (no padding)
 const imageMarginField = {
   margin: {
@@ -331,9 +301,47 @@ export const Image: ComponentConfig<ImageProps> = {
   inline: true,
   label: 'Image',
 
+  resolveFields: createConditionalResolver(
+    [
+      'src',
+      'alt',
+      'linkType',
+      'objectFit',
+      'borderRadiusPreset',
+      'display',
+      'width',
+      'maxWidth',
+      'maxHeight',
+      'height',
+      'aspectRatio',
+      'visibility',
+      'margin',
+      'border',
+      'borderRadius',
+      'shadow',
+      'customCss',
+    ],
+    [
+      {
+        condition: (props) => props.linkType === 'internal',
+        fieldKeys: ['internalPage', 'openInNewTab'],
+      },
+      {
+        condition: (props) => props.linkType === 'external',
+        fieldKeys: ['href', 'openInNewTab'],
+      },
+      {
+        condition: (props) => props.aspectRatio === 'custom',
+        fieldKeys: ['aspectRatioCustom'],
+      },
+    ]
+  ),
+
   fields: {
     // Content
     ...imageContentFields,
+    // Interaction
+    ...imageLinkFields,
     // Style
     ...imageStyleFields,
     // Layout
@@ -357,9 +365,14 @@ export const Image: ComponentConfig<ImageProps> = {
   defaultProps: {
     src: '',
     alt: 'Image',
+    linkType: 'none',
+    internalPage: undefined,
+    href: undefined,
+    openInNewTab: false,
     objectFit: 'cover',
     borderRadiusPreset: 'none',
     ...extractDefaults(
+      imageLinkFields as Record<string, { defaultValue?: string | number | boolean | object | undefined }>,
       displayField,
       layoutFields,
       layoutAdvancedFields,

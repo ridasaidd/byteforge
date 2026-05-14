@@ -6,11 +6,17 @@ import {
   ColorPickerControlColorful as ColorPickerControl,
   ResponsiveDisplayControl,
   ResponsiveSpacingControl,
+  effectsFields,
   buildLayoutCSS,
+  type BorderValue,
   type ColorValue,
   type ResponsiveDisplayValue,
   type ResponsiveSpacingValue,
 } from '../../fields';
+import {
+  createUniformBorder,
+  normalizeLegacyBorderValue,
+} from './styleUtils';
 
 // ============================================================================
 // Types
@@ -40,7 +46,8 @@ export interface RadioGroupProps {
   // Styling
   labelColor: ColorValue;
   radioColor: ColorValue;
-  radioBorderColor: ColorValue;
+  border?: BorderValue;
+  radioBorderColor?: ColorValue;
   errorColor: ColorValue;
 
   // Size
@@ -159,6 +166,7 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
     margin,
     labelColor,
     radioColor,
+    border,
     radioBorderColor,
     errorColor,
     size,
@@ -183,9 +191,13 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
   const colors = useMemo(() => ({
     label: resolveColor(labelColor, 'inherit'),
     radio: resolveColor(radioColor, resolve('colors.primary', '#3b82f6')),
-    border: resolveColor(radioBorderColor, '#d1d5db'),
     error: resolveColor(errorColor, '#ef4444'),
-  }), [labelColor, radioColor, radioBorderColor, errorColor, resolveColor, resolve]);
+  }), [labelColor, radioColor, errorColor, resolveColor, resolve]);
+
+  const radioBorderValue = useMemo(
+    () => normalizeLegacyBorderValue(border, radioBorderColor, { type: 'theme', value: 'border' }, '2'),
+    [border, radioBorderColor]
+  );
 
   // Size variants
   const sizeStyles = useMemo(() => {
@@ -215,6 +227,13 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
       margin,
     });
     if (layoutCss) rules.push(layoutCss);
+
+    const radioBorderCss = buildLayoutCSS({
+      className: `${className}-radio`,
+      border: radioBorderValue,
+      resolveToken: resolve,
+    });
+    if (radioBorderCss) rules.push(radioBorderCss);
 
     // Container
     rules.push(`.${className} { display: block; }`);
@@ -252,7 +271,6 @@ function RadioGroupComponent(props: RadioGroupProps & { puck?: { dragRef: ((elem
   width: ${sizeStyles.circle}px;
   height: ${sizeStyles.circle}px;
   border-radius: 50%;
-  border: 2px solid ${colors.border};
   background-color: transparent;
   display: flex;
   align-items: center;
@@ -343,6 +361,19 @@ export const RadioGroup: ComponentConfig<RadioGroupProps> = {
   inline: true,
   label: 'Radio Group',
 
+  resolveData: ({ props }) => {
+    const typedProps = props as Partial<RadioGroupProps>;
+
+    return {
+      props: {
+        ...typedProps,
+        border: normalizeLegacyBorderValue(typedProps.border, typedProps.radioBorderColor, { type: 'theme', value: 'border' }, '2'),
+      },
+    };
+  },
+
+  resolveFields: (_data, { fields }) => fields,
+
   fields: {
     name: {
       type: 'text',
@@ -425,14 +456,7 @@ export const RadioGroup: ComponentConfig<RadioGroupProps> = {
       },
     },
 
-    radioBorderColor: {
-      type: 'custom',
-      label: 'Border Color',
-      render: (props) => {
-        const { value = { type: 'theme', value: 'border' }, onChange } = props;
-        return <ColorPickerControl {...props} value={value} onChange={onChange} />;
-      },
-    },
+    border: { ...effectsFields.border, label: 'Radio Border' },
 
     errorColor: {
       type: 'custom',
@@ -460,7 +484,7 @@ export const RadioGroup: ComponentConfig<RadioGroupProps> = {
     size: 'md',
     labelColor: { type: 'theme', value: 'foreground' },
     radioColor: { type: 'theme', value: 'primary' },
-    radioBorderColor: { type: 'theme', value: 'border' },
+    border: createUniformBorder({ type: 'theme', value: 'border' }, '2'),
     errorColor: { type: 'theme', value: 'destructive' },
   },
 

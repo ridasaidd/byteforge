@@ -1,14 +1,14 @@
 import type { ComponentConfig } from '@puckeditor/core';
 import {
-  BorderRadiusControl,
-  ColorPickerControlColorful as ColorPickerControl,
-  FontWeightControl,
-  ResponsiveFontSizeControl,
   ResponsiveMaxWidthValue,
-  ResponsiveSpacingControl,
   ResponsiveSpacingValue,
   ResponsiveWidthValue,
-  ShadowControl,
+  createBorderRadiusField,
+  createColorField,
+  createFontWeightField,
+  createResponsiveFontSizeField,
+  createResponsiveSpacingField,
+  createShadowField,
   layoutFields,
   spacingFields,
   type BorderRadiusValue,
@@ -119,66 +119,6 @@ function createBooleanField(label: string) {
   };
 }
 
-function createColorField(label: string, fallback: ColorValue) {
-  return {
-    type: 'custom' as const,
-    label,
-    render: (props: { field: { label?: string }; value?: ColorValue; onChange: (value: ColorValue) => void }) => (
-      <ColorPickerControl field={props.field} value={props.value || fallback} onChange={props.onChange} />
-    ),
-  };
-}
-
-function createRadiusField(label: string, fallback: BorderRadiusValue) {
-  return {
-    type: 'custom' as const,
-    label,
-    render: (props: { field: { label?: string }; value?: BorderRadiusValue; onChange: (value: BorderRadiusValue) => void }) => (
-      <BorderRadiusControl field={props.field} value={props.value || fallback} onChange={props.onChange} />
-    ),
-  };
-}
-
-function createSpacingField(label: string, fallback: ResponsiveSpacingValue) {
-  return {
-    type: 'custom' as const,
-    label,
-    render: (props: { field: { label?: string }; value?: ResponsiveSpacingValue; onChange: (value: ResponsiveSpacingValue) => void }) => (
-      <ResponsiveSpacingControl field={props.field} value={props.value || fallback} onChange={props.onChange} allowNegative={false} />
-    ),
-  };
-}
-
-function createFontSizeField(label: string, fallback: ResponsiveFontSizeValue) {
-  return {
-    type: 'custom' as const,
-    label,
-    render: (props: { field: { label?: string }; value?: ResponsiveFontSizeValue; onChange: (value: ResponsiveFontSizeValue) => void }) => (
-      <ResponsiveFontSizeControl field={props.field} value={props.value || fallback} onChange={props.onChange} />
-    ),
-  };
-}
-
-function createFontWeightField(label: string, fallback: FontWeightValue) {
-  return {
-    type: 'custom' as const,
-    label,
-    render: (props: { field: { label?: string }; value?: FontWeightValue; onChange: (value: FontWeightValue) => void }) => (
-      <FontWeightControl field={props.field} value={props.value || fallback} onChange={props.onChange} />
-    ),
-  };
-}
-
-function createShadowField(label: string, fallback: ShadowValue) {
-  return {
-    type: 'custom' as const,
-    label,
-    render: (props: { field: { label?: string }; value?: ShadowValue; onChange: (value: ShadowValue) => void }) => (
-      <ShadowControl field={props.field} value={props.value || fallback} onChange={props.onChange} />
-    ),
-  };
-}
-
 export const BookingWidget: ComponentConfig<BookingWidgetProps> = {
   label: 'Booking Widget',
 
@@ -260,14 +200,14 @@ export const BookingWidget: ComponentConfig<BookingWidgetProps> = {
       label: 'Container Margin',
     },
     containerBg: createColorField('Container Background', defaultColor('#ffffff')),
-    containerBorderRadius: createRadiusField('Container Radius', defaultRadius('12')),
+    containerBorderRadius: createBorderRadiusField('Container Radius', defaultRadius('12')),
     containerShadow: createShadowField('Container Shadow', defaultShadow('0 1px 8px rgba(0, 0, 0, 0.08)')),
-    containerPadding: createSpacingField('Container Padding', defaultSpacing('20')),
+    containerPadding: createResponsiveSpacingField('Container Padding', defaultSpacing('20')),
     headerBg: createColorField('Header Background', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
     headerColor: createColorField('Header Text Color', defaultColor('#ffffff')),
-    headerFontSize: createFontSizeField('Header Font Size', defaultFontSize('18px')),
+    headerFontSize: createResponsiveFontSizeField('Header Font Size', defaultFontSize('18px')),
     headerFontWeight: createFontWeightField('Header Font Weight', defaultFontWeight('700')),
-    headerPadding: createSpacingField('Header Padding', defaultInsetSpacing('16', '20', '16', '20')),
+    headerPadding: createResponsiveSpacingField('Header Padding', defaultInsetSpacing('16', '20', '16', '20')),
     progressStepBg: createColorField('Progress Step Background', defaultColor('#ffffff')),
     progressStepBorderColor: createColorField('Progress Step Border', defaultColor('#e5e7eb')),
     progressStepActiveBg: createColorField('Progress Active Background', defaultColor('rgba(59, 130, 246, 0.07)')),
@@ -287,30 +227,30 @@ export const BookingWidget: ComponentConfig<BookingWidgetProps> = {
         { label: '40px', value: '40px' },
       ],
     },
-    progressLabelFontSize: createFontSizeField('Progress Label Font Size', defaultFontSize('13px')),
-    progressStateFontSize: createFontSizeField('Progress State Font Size', defaultFontSize('12px')),
+    progressLabelFontSize: createResponsiveFontSizeField('Progress Label Font Size', defaultFontSize('13px')),
+    progressStateFontSize: createResponsiveFontSizeField('Progress State Font Size', defaultFontSize('12px')),
     cardBorderColor: createColorField('Card Border Color', defaultColor('#e5e7eb')),
     cardHoverBorderColor: createColorField('Card Hover Border', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
     cardHoverBg: createColorField('Card Hover Background', defaultColor('rgba(59, 130, 246, 0.07)')),
-    cardBorderRadius: createRadiusField('Card Radius', defaultRadius('8')),
-    cardPadding: createSpacingField('Card Padding', defaultInsetSpacing('12', '16', '12', '16')),
-    cardTitleFontSize: createFontSizeField('Card Title Font Size', defaultFontSize('14px')),
+    cardBorderRadius: createBorderRadiusField('Card Radius', defaultRadius('8')),
+    cardPadding: createResponsiveSpacingField('Card Padding', defaultInsetSpacing('12', '16', '12', '16')),
+    cardTitleFontSize: createResponsiveFontSizeField('Card Title Font Size', defaultFontSize('14px')),
     cardTitleFontWeight: createFontWeightField('Card Title Font Weight', defaultFontWeight('600')),
-    cardSubtitleFontSize: createFontSizeField('Card Subtitle Font Size', defaultFontSize('12px')),
+    cardSubtitleFontSize: createResponsiveFontSizeField('Card Subtitle Font Size', defaultFontSize('12px')),
     cardSubtitleColor: createColorField('Card Subtitle Color', defaultColor('#6b7280')),
     calendarSelectedBg: createColorField('Calendar Selected Background', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
     calendarSelectedColor: createColorField('Calendar Selected Text', defaultColor('#ffffff')),
     calendarTodayBorderColor: createColorField('Calendar Today Border', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
     formInputBorderColor: createColorField('Form Input Border', defaultColor('#e5e7eb')),
-    formInputBorderRadius: createRadiusField('Form Input Radius', defaultRadius('6')),
-    formInputFontSize: createFontSizeField('Form Input Font Size', defaultFontSize('14px')),
+    formInputBorderRadius: createBorderRadiusField('Form Input Radius', defaultRadius('6')),
+    formInputFontSize: createResponsiveFontSizeField('Form Input Font Size', defaultFontSize('14px')),
     formLabelColor: createColorField('Form Label Color', defaultColor('#374151')),
-    formLabelFontSize: createFontSizeField('Form Label Font Size', defaultFontSize('13px')),
+    formLabelFontSize: createResponsiveFontSizeField('Form Label Font Size', defaultFontSize('13px')),
     formLabelFontWeight: createFontWeightField('Form Label Font Weight', defaultFontWeight('600')),
     btnBg: createColorField('Button Background', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
     btnColor: createColorField('Button Text Color', defaultColor('#ffffff')),
-    btnBorderRadius: createRadiusField('Button Radius', defaultRadius('8')),
-    btnFontSize: createFontSizeField('Button Font Size', defaultFontSize('14px')),
+    btnBorderRadius: createBorderRadiusField('Button Radius', defaultRadius('8')),
+    btnFontSize: createResponsiveFontSizeField('Button Font Size', defaultFontSize('14px')),
     btnFontWeight: createFontWeightField('Button Font Weight', defaultFontWeight('600')),
     btnDisabledBg: createColorField('Button Disabled Background', defaultColor('#9ca3af')),
     processingSpinnerColor: createColorField('Processing Spinner Color', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
@@ -318,13 +258,13 @@ export const BookingWidget: ComponentConfig<BookingWidgetProps> = {
     processingTextColor: createColorField('Processing Text Color', defaultColor('#6b7280')),
     slotBorderColor: createColorField('Slot Border Color', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
     slotColor: createColorField('Slot Text Color', defaultColor(BOOKING_WIDGET_DEFAULT_PRIMARY_COLOR)),
-    slotBorderRadius: createRadiusField('Slot Radius', defaultRadius('6')),
-    slotPadding: createSpacingField('Slot Padding', defaultInsetSpacing('8', '4', '8', '4')),
-    slotFontSize: createFontSizeField('Slot Font Size', defaultFontSize('13px')),
+    slotBorderRadius: createBorderRadiusField('Slot Radius', defaultRadius('6')),
+    slotPadding: createResponsiveSpacingField('Slot Padding', defaultInsetSpacing('8', '4', '8', '4')),
+    slotFontSize: createResponsiveFontSizeField('Slot Font Size', defaultFontSize('13px')),
     slotFontWeight: createFontWeightField('Slot Font Weight', defaultFontWeight('600')),
-    stepHeadingFontSize: createFontSizeField('Step Heading Font Size', defaultFontSize('15px')),
+    stepHeadingFontSize: createResponsiveFontSizeField('Step Heading Font Size', defaultFontSize('15px')),
     stepHeadingFontWeight: createFontWeightField('Step Heading Font Weight', defaultFontWeight('600')),
-    summaryFontSize: createFontSizeField('Summary Font Size', defaultFontSize('14px')),
+    summaryFontSize: createResponsiveFontSizeField('Summary Font Size', defaultFontSize('14px')),
     summaryLabelColor: createColorField('Summary Label Color', defaultColor('#6b7280')),
     summaryValueColor: createColorField('Summary Value Color', defaultColor('#111827')),
     mutedColor: createColorField('Muted Text Color', defaultColor('#6b7280')),

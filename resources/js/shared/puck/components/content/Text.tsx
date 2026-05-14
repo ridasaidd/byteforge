@@ -162,7 +162,7 @@ function TextComponent({
   });
 
   // Responsive font size (handled separately)
-  const fontSizeCss = fontSize ? generateFontSizeCSS(className, fontSize) : '';
+  const fontSizeCss = fontSize ? generateFontSizeCSS(className, fontSize, resolve) : '';
 
   return (
     <>

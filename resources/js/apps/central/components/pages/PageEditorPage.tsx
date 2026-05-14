@@ -151,7 +151,7 @@ export function PageEditorPage() {
     puckDataRef.current = newData;
   };
 
-  const handleSave = async () => {
+  const handleSave = async (shouldPublish = false) => {
     if (!id) return;
 
     try {
@@ -163,7 +163,12 @@ export function PageEditorPage() {
       await pages.update(Number(id), {
         puck_data: puckDataRef.current as Record<string, unknown>,
         page_css: pageCss,
+        ...(shouldPublish ? { status: 'published' as const } : {}),
       });
+
+      if (shouldPublish) {
+        setPageData((current) => current ? { ...current, status: 'published' } : current);
+      }
 
       toast({
         title: t('editor_saved_title'),
@@ -192,7 +197,7 @@ export function PageEditorPage() {
     <Puck
       config={config}
       data={initialData}
-      onPublish={handleSave}
+      onPublish={() => handleSave(true)}
       onChange={handlePuckChange}
       viewports={viewports}
       headerTitle={pageData.title}
