@@ -192,6 +192,9 @@ Current baseline:
   are configured in deploy secrets
 - guest portal public-navigation smoke now runs post-deploy via
   `tests/e2e/guest-portal-shell.spec.ts`
+- deploy now fails during the remote deploy step if staging uses an async queue
+  connection but no `queue:work` or Horizon process is running after
+  `php artisan queue:restart`
 
 Current candidate specs already in the repo:
 
@@ -215,6 +218,12 @@ Mail verification checklist (staging):
 3. Confirm sender identity and subject match expected template.
 4. Confirm at least one critical link in the email points to staging domains.
 5. Record pass/fail in deploy notes for that run.
+
+Operational note:
+
+- if `QUEUE_CONNECTION` is async (`database` or `redis`), staging must run a
+  persistent queue worker or Horizon; otherwise queued notifications may be
+  accepted by the app but never delivered
 
 ---
 
