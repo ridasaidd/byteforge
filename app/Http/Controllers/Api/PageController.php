@@ -258,7 +258,7 @@ class PageController extends Controller
             ],
             'page_type' => 'sometimes|required|string|in:general,home,about,contact,blog,service,product,custom',
             'puck_data' => 'nullable|array',
-            'page_css' => 'nullable|string|max:65535',
+            'page_css' => 'nullable|string',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
             'is_homepage' => 'boolean',
