@@ -1,6 +1,6 @@
 # ByteForge Testing Guide
 
-Last updated: May 11, 2026
+Last updated: May 14, 2026
 
 ---
 
@@ -12,7 +12,7 @@ ByteForge uses a comprehensive testing strategy with both backend (PHPUnit/Larav
 - ✅ **Backend CI suites:** passing on `main` via `php artisan test` split suites
 - ✅ **Frontend Vitest:** 90 files / 882 tests passing (latest CI-aligned run)
 - ✅ **Playwright auth smoke:** central + tenant auth/permissions smoke passing in CI/deploy
-- ✅ **Deploy smoke checks:** post-deploy API smoke and browser smoke (including guest portal shell) passing
+- ✅ **Deploy smoke checks:** post-deploy API smoke, staging mail smoke (guest magic-link trigger), and browser smoke (including guest portal shell) passing
 
 ---
 
@@ -61,6 +61,13 @@ npm run test:e2e
 
 > Linux host note: if Playwright reports missing browser dependencies, install them once with:
 > `sudo npx playwright install-deps`
+
+### Staging Deploy Smoke Notes
+
+- `.github/workflows/deploy-staging.yml` now runs a post-deploy guest magic-link mail smoke request against the tenant host.
+- Required secret: `STAGING_TENANT_BASE_URL`.
+- Optional secret: `STAGING_MAIL_SMOKE_RECIPIENT` (defaults to `qa-mail-smoke@byteforge.se`).
+- The smoke step validates that `POST /api/guest-auth/request-link` returns HTTP 200 and `{ "sent": true }`.
 
 ---
 

@@ -274,6 +274,47 @@ class AuthApiTest extends TestCase
     }
 
     #[Test]
+    public function central_api_refresh_rejects_expired_refresh_cookie_and_revokes_expired_session(): void
+    {
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
+            'email' => $this->centralEmail('superadmin'),
+            'password' => 'password',
+        ]);
+
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $session = WebRefreshSession::query()->latest('id')->firstOrFail();
+        $session->forceFill([
+            'expires_at' => now()->subMinute(),
+            'revoked_at' => null,
+        ])->save();
+
+        $response = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+
+        $expiredCookie = $this->refreshCookieFromResponse($response);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+
+        $session->refresh();
+        $this->assertNotNull($session->revoked_at);
+    }
+
+    #[Test]
     public function central_api_user_endpoint_requires_authentication(): void
     {
         $response = $this->getJson('/api/auth/user');
