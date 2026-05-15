@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-13
+Last verified: 2026-05-15
 Primary branch: `main`
 
 ## Snapshot
@@ -38,6 +38,10 @@ Primary branch: `main`
   fields.
 - Booking dashboard localization and booking guest-input hardening were merged
   on 2026-04-19.
+- Tenant booking dashboard manual-booking creation now exists on the current
+  working tree: tenant users with booking-management permission can create
+  confirmed bookings directly from the dashboard calendar using the existing
+  CMS booking endpoint.
 - Phase 16 operator tooling is now implemented on the current working tree:
   tenant inspection, limited central theme activation, temporary support
   access, and central tenant user management are in place; broader support
@@ -97,14 +101,17 @@ These are the main state corrections that matter for future work.
 
 ### Booking follow-ups
 
-All original booking UX gaps have been resolved (2026-05-12):
+The original booking UX gaps from the earlier Phase 13 follow-up list were
+resolved by 2026-05-12.
 
-- booking wizard order is `service -> date -> resource -> slot` — already correct in sectionOrder.ts
-- "Any available" resource option is implemented in ResourceStep (shows when resources > 1)
-- resource step heading reads `resource_label` from the loaded resources list
-- tenant owner `TenantNewBookingNotification` is sent from all booking creation paths, including the payment-webhook confirmation path (`BookingPaymentService::confirmBookingAfterPayment`)
-- `StaffBookingAssignedNotification` now covers the payment-webhook auto-confirm path as well as the direct and hold-confirm paths
-- anonymous customer timeline entries do not show a dangling `#` (`actor_id != null` guard in BookingDetailPage)
+Current booking follow-ups worth tracking now are:
+
+- guest-facing self-service rescheduling is still missing; guest surfaces can
+  cancel bookings but cannot yet move them into a new valid slot
+- tenant dashboard manual booking creation now exists, but it still uses raw
+  datetime entry rather than an availability-driven slot or range picker
+- booking reminder/queue-worker operational expectations should stay explicit
+  in environment and deployment docs so reminder delivery remains reliable
 
 ### Security and auth follow-ups
 

@@ -136,6 +136,19 @@ export interface BookingListParams {
   per_page?: number;
 }
 
+export interface CreateCmsBookingData {
+  service_id: number;
+  resource_id: number;
+  starts_at: string;
+  ends_at: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone?: string | null;
+  customer_notes?: string | null;
+  internal_notes?: string | null;
+  force?: boolean;
+}
+
 export interface PaginatedBookings {
   data: CmsBooking[];
   current_page: number;
@@ -150,6 +163,8 @@ export const cmsBookingApi = {
   // Bookings
   listBookings: (params?: BookingListParams) =>
     http.get<PaginatedBookings>('/booking/bookings', { params }),
+  createBooking: (data: CreateCmsBookingData) =>
+    http.post<ApiResponse<CmsBooking>>('/booking/bookings', data),
   getBooking: (id: number) =>
     http.get<ApiResponse<CmsBooking>>(`/booking/bookings/${id}`),
   confirmBooking: (id: number) =>

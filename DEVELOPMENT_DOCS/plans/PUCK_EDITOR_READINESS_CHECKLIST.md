@@ -1,14 +1,19 @@
 # Puck Editor Readiness Checklist
 
-Last updated: May 14, 2026
-Status: Active working checklist
-Recommended branch: `chore/puck-css-audit`
+Last updated: May 15, 2026
+Status: Baseline shipped; remaining items are follow-up backlog
+Recommended branch: create a new focused follow-up branch only when editor work is needed again
 
 ---
 
 ## Goal
 
 Make the shared visual editor stable enough for production page building, then grow the block surface on top of reusable primitives so future blocks are easier to add and maintain.
+
+Current state note:
+
+- The first shared-block expansion baseline is now in place and green.
+- Additional Puck block work is explicitly deferred until product needs justify reopening this checklist.
 
 Hard rule for this phase:
 

@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   format,
   parseISO,
@@ -20,15 +20,19 @@ import {
   isSameMonth,
 } from 'date-fns';
 import { arSA, enUS, sv as svDateLocale } from 'date-fns/locale';
-import { ChevronLeft, ChevronRight, Calendar, CalendarDays, List } from 'lucide-react';
+import { Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cmsBookingApi } from '@/shared/services/api/booking';
-import type { CmsBooking, BookingStatus } from '@/shared/services/api/booking';
+import type { CmsBooking, CmsBookingResource, CmsBookingService, BookingStatus, CreateCmsBookingData } from '@/shared/services/api/booking';
+import { usePermissions } from '@/shared/hooks/usePermissions';
+import { useToast } from '@/shared/hooks/useToast';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardContent } from '@/shared/components/ui/card';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/shared/components/ui/dialog';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -138,6 +142,55 @@ function formatTime(iso: string | null, dateLocale: ReturnType<typeof getDateLoc
 function formatDate(iso: string | null, dateLocale: ReturnType<typeof getDateLocale>): string {
   if (!iso) return '-';
   try { return format(parseISO(iso), 'PP', { locale: dateLocale }); } catch { return '-'; }
+}
+
+function toDateTimeLocalValue(date: Date): string {
+  return format(date, "yyyy-MM-dd'T'HH:mm");
+}
+
+type CreateBookingFormState = {
+  serviceId: string;
+  resourceId: string;
+  customerName: string;
+  customerEmail: string;
+  customerPhone: string;
+  startsAt: string;
+  endsAt: string;
+  customerNotes: string;
+  internalNotes: string;
+  force: boolean;
+};
+
+function makeDefaultBookingForm(
+  referenceDate: Date,
+  services: CmsBookingService[],
+  resources: CmsBookingResource[]
+): CreateBookingFormState {
+  const startsAt = new Date(referenceDate);
+  startsAt.setHours(10, 0, 0, 0);
+
+  const endsAt = new Date(startsAt);
+  endsAt.setHours(endsAt.getHours() + 1);
+
+  const firstService = services[0];
+  const allowedResourceIds = new Set(firstService?.resources?.map((resource) => resource.id) ?? []);
+  const candidateResources = allowedResourceIds.size > 0
+    ? resources.filter((resource) => allowedResourceIds.has(resource.id))
+    : resources;
+  const firstResource = candidateResources[0] ?? resources[0];
+
+  return {
+    serviceId: firstService ? String(firstService.id) : '',
+    resourceId: firstResource ? String(firstResource.id) : '',
+    customerName: '',
+    customerEmail: '',
+    customerPhone: '',
+    startsAt: toDateTimeLocalValue(startsAt),
+    endsAt: toDateTimeLocalValue(endsAt),
+    customerNotes: '',
+    internalNotes: '',
+    force: false,
+  };
 }
 
 function BookingPill({
@@ -386,6 +439,241 @@ function BookingListView({
   );
 }
 
+function CreateBookingDialog({
+  open,
+  onClose,
+  onSave,
+  saving,
+  services,
+  resources,
+  referenceDate,
+  t,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSave: (payload: CreateCmsBookingData) => void;
+  saving: boolean;
+  services: CmsBookingService[];
+  resources: CmsBookingResource[];
+  referenceDate: Date;
+  t: (key: string, options?: Record<string, unknown>) => string;
+}) {
+  const [form, setForm] = useState<CreateBookingFormState>(() => makeDefaultBookingForm(referenceDate, services, resources));
+
+  useEffect(() => {
+    if (open) {
+      setForm(makeDefaultBookingForm(referenceDate, services, resources));
+    }
+  }, [open, referenceDate, services, resources]);
+
+  const selectedService = services.find((service) => String(service.id) === form.serviceId);
+  const availableResources = useMemo(() => {
+    if (!selectedService?.resources?.length) {
+      return resources;
+    }
+
+    const allowedIds = new Set(selectedService.resources.map((resource) => resource.id));
+    return resources.filter((resource) => allowedIds.has(resource.id));
+  }, [resources, selectedService]);
+
+  useEffect(() => {
+    if (!form.resourceId && availableResources[0]) {
+      setForm((previous) => ({ ...previous, resourceId: String(availableResources[0].id) }));
+      return;
+    }
+
+    if (form.resourceId && !availableResources.some((resource) => String(resource.id) === form.resourceId)) {
+      setForm((previous) => ({
+        ...previous,
+        resourceId: availableResources[0] ? String(availableResources[0].id) : '',
+      }));
+    }
+  }, [availableResources, form.resourceId]);
+
+  const canSubmit = Boolean(
+    form.serviceId && form.resourceId && form.customerName.trim() && form.customerEmail.trim() && form.startsAt && form.endsAt,
+  );
+
+  function updateField<K extends keyof CreateBookingFormState>(key: K, value: CreateBookingFormState[K]) {
+    setForm((previous) => ({ ...previous, [key]: value }));
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!canSubmit) {
+      return;
+    }
+
+    onSave({
+      service_id: parseInt(form.serviceId, 10),
+      resource_id: parseInt(form.resourceId, 10),
+      starts_at: form.startsAt,
+      ends_at: form.endsAt,
+      customer_name: form.customerName.trim(),
+      customer_email: form.customerEmail.trim(),
+      customer_phone: form.customerPhone.trim() || null,
+      customer_notes: form.customerNotes.trim() || null,
+      internal_notes: form.internalNotes.trim() || null,
+      force: form.force,
+    });
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t('new_booking_title')}</DialogTitle>
+          <DialogDescription>
+            {t('new_booking_description')}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-service">{t('service')}</Label>
+              <select
+                id="create-booking-service"
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.serviceId}
+                onChange={(event) => updateField('serviceId', event.target.value)}
+              >
+                <option value="">{t('select_service')}</option>
+                {services.map((service) => (
+                  <option key={service.id} value={service.id}>{service.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-resource">{t('resource')}</Label>
+              <select
+                id="create-booking-resource"
+                className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.resourceId}
+                onChange={(event) => updateField('resourceId', event.target.value)}
+                disabled={availableResources.length === 0}
+              >
+                <option value="">{t('select_resource')}</option>
+                {availableResources.map((resource) => (
+                  <option key={resource.id} value={resource.id}>{resource.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {services.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t('no_services_available')}</p>
+          )}
+
+          {services.length > 0 && availableResources.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t('no_resources_available')}</p>
+          )}
+
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-customer-name">{t('customer_name')}</Label>
+              <Input
+                id="create-booking-customer-name"
+                value={form.customerName}
+                onChange={(event) => updateField('customerName', event.target.value)}
+                required
+              />
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-booking-customer-email">{t('email')}</Label>
+                <Input
+                  id="create-booking-customer-email"
+                  type="email"
+                  value={form.customerEmail}
+                  onChange={(event) => updateField('customerEmail', event.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-booking-customer-phone">{t('phone')}</Label>
+                <Input
+                  id="create-booking-customer-phone"
+                  value={form.customerPhone}
+                  onChange={(event) => updateField('customerPhone', event.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-starts-at">{t('start')}</Label>
+              <Input
+                id="create-booking-starts-at"
+                type="datetime-local"
+                value={form.startsAt}
+                onChange={(event) => updateField('startsAt', event.target.value)}
+                required
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-ends-at">{t('end')}</Label>
+              <Input
+                id="create-booking-ends-at"
+                type="datetime-local"
+                value={form.endsAt}
+                onChange={(event) => updateField('endsAt', event.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-customer-notes">{t('customer_notes_label')}</Label>
+              <textarea
+                id="create-booking-customer-notes"
+                className="min-h-[88px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.customerNotes}
+                onChange={(event) => updateField('customerNotes', event.target.value)}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="create-booking-internal-notes">{t('internal_notes_label')}</Label>
+              <textarea
+                id="create-booking-internal-notes"
+                className="min-h-[88px] rounded-md border border-input bg-background px-3 py-2 text-sm"
+                value={form.internalNotes}
+                onChange={(event) => updateField('internalNotes', event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="rounded-md border border-dashed p-3">
+            <label className="flex items-start gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={form.force}
+                onChange={(event) => updateField('force', event.target.checked)}
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium text-foreground">{t('force_booking_override')}</span>
+                <span className="mt-1 block text-muted-foreground">{t('force_booking_override_help')}</span>
+              </span>
+            </label>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>{t('cancel')}</Button>
+            <Button type="submit" disabled={saving || !canSubmit}>{saving ? t('saving') : t('create_booking')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 type ViewMode = 'month' | 'week' | 'list';
@@ -393,12 +681,17 @@ type ViewMode = 'month' | 'week' | 'list';
 export function BookingsCalendarPage() {
   const { t, i18n } = useTranslation('booking');
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { hasPermission } = usePermissions();
+  const canManage = hasPermission('bookings.manage');
   const [viewMode, setViewMode] = useState<ViewMode>('month');
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [statusFilter, setStatusFilter] = useState('');
   const [serviceFilter, setServiceFilter] = useState('');
   const [resourceFilter, setResourceFilter] = useState('');
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedDayLabel, setSelectedDayLabel] = useState('');
   const [selectedDayBookings, setSelectedDayBookings] = useState<CmsBooking[]>([]);
   const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language]);
@@ -478,6 +771,18 @@ export function BookingsCalendarPage() {
   const services = servicesData?.data ?? [];
   const resources = resourcesData?.data ?? [];
 
+  const createMutation = useMutation({
+    mutationFn: (payload: CreateCmsBookingData) => cmsBookingApi.createBooking(payload),
+    onSuccess: () => {
+      setCreateDialogOpen(false);
+      qc.invalidateQueries({ queryKey: ['cms-bookings'] });
+      toast({ title: t('booking_created') });
+    },
+    onError: () => {
+      toast({ title: t('failed_to_create_booking'), variant: 'destructive' });
+    },
+  });
+
   // For week view, filter client-side to the visible week
   const visibleBookings = useMemo(() => {
     if (viewMode === 'list') return allBookings;
@@ -539,6 +844,11 @@ export function BookingsCalendarPage() {
       <PageHeader
         title={t('bookings_page_title')}
         description={t('bookings_page_description')}
+        actions={canManage ? (
+          <Button onClick={() => setCreateDialogOpen(true)} disabled={services.length === 0 || resources.length === 0}>
+            <Plus size={14} className="mr-1" /> {t('new_booking')}
+          </Button>
+        ) : undefined}
       />
 
       {/* Filters + view toggle */}
@@ -714,6 +1024,17 @@ export function BookingsCalendarPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <CreateBookingDialog
+        open={createDialogOpen}
+        onClose={() => setCreateDialogOpen(false)}
+        onSave={(payload) => createMutation.mutate(payload)}
+        saving={createMutation.isPending}
+        services={services}
+        resources={resources}
+        referenceDate={currentDate}
+        t={t}
+      />
     </div>
   );
 }

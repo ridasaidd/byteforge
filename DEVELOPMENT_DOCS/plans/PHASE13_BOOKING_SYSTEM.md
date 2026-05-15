@@ -4,7 +4,7 @@
 **Historical branch target**: `feature/phase13-booking-system`  
 **Depends on**: Phase 12 (Tenant Runtime Readiness) ✅, Addon Foundation ✅  
 **Unlocks**: Phase 14 (Booking × Payment integration) ✅  
-**Last Verified Against Code**: April 19, 2026
+**Last Verified Against Code**: May 15, 2026
 
 ## Implementation Reality Check
 
@@ -27,11 +27,20 @@ the feature is still unimplemented.
 
 ## Current Follow-Ups Still Worth Tracking
 
-- wizard order should move to `service -> date -> resource -> slot`
-- the resource step should support an "Any available" option
-- the resource step heading should respect the configured `resource_label`
-- owner/staff notification behavior should be audited for consistency
-- anonymous timeline rendering should avoid the dangling customer `#`
+The older UX corrections that used to live here are now resolved in current
+code and should not be treated as open work anymore.
+
+Current follow-ups that still matter:
+
+- guest-facing self-service rescheduling is still missing; the guest side can
+     cancel but not yet move a booking into a new valid slot
+- tenant dashboard manual booking creation is now implemented, but the first
+     version still relies on direct datetime entry instead of an
+     availability-driven slot or date-range selector
+- reminder/notification delivery should stay paired with explicit queue-worker
+     and scheduler expectations in environment and deployment documentation
+- focused regression coverage should continue to expand as guest reschedule and
+     richer dashboard booking flows land
 
 ---
 

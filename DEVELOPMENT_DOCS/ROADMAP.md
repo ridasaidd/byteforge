@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-11
+Last verified: 2026-05-15
 
 This roadmap is intentionally future-facing. Completed work should live in
 [CURRENT_STATUS.md](CURRENT_STATUS.md) and archived phase documents, not here.
@@ -110,8 +110,11 @@ Primary docs:
 
 Likely focus areas:
 
-- booking flow UX improvements
+- guest self-service reschedule flow
+- availability-guided tenant manual booking creation instead of raw datetime entry
+- booking flow UX improvements that reuse existing availability and notification paths
 - notification consistency improvements
+- reminder and queue-worker operational verification/documentation
 - ongoing security hardening and focused regression coverage
 
 ### 5. Environment Hardening and Production-Like Staging
