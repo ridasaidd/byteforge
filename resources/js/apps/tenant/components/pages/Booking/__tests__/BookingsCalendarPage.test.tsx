@@ -263,8 +263,18 @@ describe('BookingsCalendarPage', () => {
     expect(screen.getByLabelText('Kundanteckningar')).toHaveValue('Estimate after inspection.');
     expect(screen.getByLabelText('Interna anteckningar')).toHaveValue('Complex restorative treatment.');
 
+    await waitFor(() => {
+      expect(screen.getByLabelText('Tjänst')).toHaveValue('7');
+      expect(screen.getByLabelText('Resurs')).toHaveValue('3');
+    });
+
     fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-05-15T10:00' } });
     fireEvent.change(screen.getByLabelText('Slut'), { target: { value: '2026-05-15T11:00' } });
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('Start')).toHaveValue('2026-05-15T10:00');
+      expect(screen.getByLabelText('Slut')).toHaveValue('2026-05-15T11:00');
+    });
 
     const createButton = screen.getByRole('button', { name: 'Skapa bokning' });
     await waitFor(() => {
