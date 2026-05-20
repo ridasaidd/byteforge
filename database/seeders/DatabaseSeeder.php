@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            BillingCatalogSeeder::class,
             RolePermissionSeeder::class,
             PassportTestSeeder::class, // Passport personal access client (must run before auth tests)
             FixedTestDataSeeder::class, // Fixed test tenants and users
