@@ -1,8 +1,13 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
+const laravelBootstrapAvailable = existsSync(resolve(process.cwd(), 'vendor/autoload.php'))
+  && existsSync(resolve(process.cwd(), 'bootstrap/app.php'))
+  && (existsSync(resolve(process.cwd(), '.env')) || existsSync(resolve(process.cwd(), '.env.testing')));
 
 type SeededGuestQuoteSession = {
   guestUserId: number;
@@ -98,6 +103,7 @@ test('guest portal shell loads without runtime errors', async ({ page }) => {
 
 test('authenticated guest can review and accept a linked quote from the guest portal', async ({ page }) => {
   test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable guest portal shell smoke tests.');
+  test.skip(!laravelBootstrapAvailable, 'This guest quote continuity flow requires a local Laravel bootstrap to seed test data.');
 
   const issues = attachRuntimeGuards(page);
   const seed = `${Date.now()}`;
