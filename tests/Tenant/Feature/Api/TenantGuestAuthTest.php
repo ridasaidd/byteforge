@@ -63,11 +63,36 @@ class TenantGuestAuthTest extends TestCase
         );
     }
 
+    private function activateQuotesAddon(): void
+    {
+        $addon = Addon::query()->where('feature_flag', 'estimates_quotes')->firstOrFail();
+
+        TenantAddon::query()->updateOrCreate(
+            ['tenant_id' => (string) $this->tenant->id, 'addon_id' => $addon->id],
+            ['activated_at' => now(), 'deactivated_at' => null],
+        );
+    }
+
     private function deactivateBookingAddon(): void
     {
         $row = TenantAddon::query()
             ->where('tenant_id', (string) $this->tenant->id)
             ->whereHas('addon', fn ($query) => $query->where('feature_flag', 'booking'))
+            ->first();
+
+        if (! $row instanceof TenantAddon) {
+            return;
+        }
+
+        $row->deactivated_at = now();
+        $row->save();
+    }
+
+    private function deactivateQuotesAddon(): void
+    {
+        $row = TenantAddon::query()
+            ->where('tenant_id', (string) $this->tenant->id)
+            ->whereHas('addon', fn ($query) => $query->where('feature_flag', 'estimates_quotes'))
             ->first();
 
         if (! $row instanceof TenantAddon) {
@@ -114,13 +139,33 @@ class TenantGuestAuthTest extends TestCase
     }
 
     #[Test]
-    public function request_link_is_rejected_when_booking_addon_is_inactive(): void
+    public function request_link_is_rejected_when_booking_and_quotes_addons_are_inactive(): void
     {
         $this->deactivateBookingAddon();
+        $this->deactivateQuotesAddon();
 
         $this->postJson($this->tenantUrl('/api/guest-auth/request-link'), [
             'email' => 'guest.portal@example.com',
         ])->assertForbidden();
+    }
+
+    #[Test]
+    public function request_link_is_allowed_when_quotes_addon_is_active_without_booking(): void
+    {
+        Notification::fake();
+        $this->deactivateBookingAddon();
+        $this->activateQuotesAddon();
+
+        $response = $this->postJson($this->tenantUrl('/api/guest-auth/request-link'), [
+            'email' => 'quotes.portal@example.com',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('sent', true);
+
+        $guestUser = GuestUser::query()->where('email', 'quotes.portal@example.com')->firstOrFail();
+
+        Notification::assertSentTo($guestUser, GuestMagicLinkNotification::class);
     }
 
     #[Test]

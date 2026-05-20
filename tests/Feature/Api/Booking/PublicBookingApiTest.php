@@ -111,7 +111,7 @@ class PublicBookingApiTest extends TestCase
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
         $this->activateBookingAddon($tenant);
 
-        $active   = $this->makeService((string) $tenant->id, ['is_active' => true]);
+        $active   = $this->makeService((string) $tenant->id, ['is_active' => true, 'customer_flow' => 'quote_request']);
         $inactive = $this->makeService((string) $tenant->id, ['is_active' => false]);
 
         $resp = $this->getJson($this->url('/api/public/booking/services'));
@@ -120,6 +120,7 @@ class PublicBookingApiTest extends TestCase
         $ids = collect($resp->json('data'))->pluck('id');
         $this->assertTrue($ids->contains($active->id));
         $this->assertFalse($ids->contains($inactive->id));
+        $this->assertSame('quote_request', collect($resp->json('data'))->firstWhere('id', $active->id)['customer_flow']);
     }
 
     #[Test]

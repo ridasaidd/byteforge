@@ -16,10 +16,13 @@ export type BookingStatus =
   | 'cancelled'
   | 'no_show';
 
+export type BookingCustomerFlow = 'direct_booking' | 'quote_request' | 'either';
+
 export interface CmsBooking {
   id: number;
   service_id: number;
   resource_id: number;
+  source_quote_id?: number | null;
   customer_name: string;
   customer_email: string;
   customer_phone: string | null;
@@ -53,6 +56,7 @@ export interface CmsBookingService {
   name: string;
   description: string | null;
   booking_mode: 'slot' | 'range';
+  customer_flow: BookingCustomerFlow;
   duration_minutes: number | null;
   slot_interval_minutes: number | null;
   min_nights: number | null;
@@ -90,6 +94,7 @@ export interface CreateBookingServiceData {
   name: string;
   description?: string | null;
   booking_mode: 'slot' | 'range';
+  customer_flow?: BookingCustomerFlow;
   duration_minutes?: number | null;
   slot_interval_minutes?: number | null;
   min_nights?: number | null;
@@ -139,6 +144,7 @@ export interface BookingListParams {
 export interface CreateCmsBookingData {
   service_id: number;
   resource_id: number;
+  quote_id?: number;
   starts_at: string;
   ends_at: string;
   customer_name: string;

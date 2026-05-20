@@ -20,6 +20,7 @@ type FormData = {
   name: string;
   description: string;
   booking_mode: 'slot' | 'range';
+  customer_flow: 'direct_booking' | 'quote_request' | 'either';
   duration_minutes: string;
   slot_interval_minutes: string;
   min_nights: string;
@@ -37,6 +38,7 @@ function defaultForm(svc?: CmsBookingService): FormData {
     name:                   svc?.name ?? '',
     description:            svc?.description ?? '',
     booking_mode:           svc?.booking_mode ?? 'slot',
+    customer_flow:          svc?.customer_flow ?? 'direct_booking',
     duration_minutes:       String(svc?.duration_minutes ?? 60),
     slot_interval_minutes:  String(svc?.slot_interval_minutes ?? 30),
     min_nights:             String(svc?.min_nights ?? ''),
@@ -55,6 +57,7 @@ function formToPayload(f: FormData): CreateBookingServiceData {
     name:                   f.name,
     description:            f.description || null,
     booking_mode:           f.booking_mode,
+    customer_flow:          f.customer_flow,
     duration_minutes:       f.duration_minutes ? parseInt(f.duration_minutes) : null,
     slot_interval_minutes:  f.slot_interval_minutes ? parseInt(f.slot_interval_minutes) : null,
     min_nights:             f.min_nights ? parseInt(f.min_nights) : null,
@@ -120,6 +123,19 @@ function ServiceDialog({
               <option value="slot">{t('booking_mode_slot')}</option>
               <option value="range">{t('booking_mode_range')}</option>
             </select>
+          </div>
+          <div>
+            <Label>{t('customer_flow_required')}</Label>
+            <select
+              className="w-full border rounded-md px-3 py-2 text-sm"
+              value={form.customer_flow}
+              onChange={e => set('customer_flow', e.target.value as FormData['customer_flow'])}
+            >
+              <option value="direct_booking">{t('customer_flow_direct_booking')}</option>
+              <option value="quote_request">{t('customer_flow_quote_request')}</option>
+              <option value="either">{t('customer_flow_either')}</option>
+            </select>
+            <p className="mt-1 text-xs text-muted-foreground">{t('customer_flow_help')}</p>
           </div>
           {isSlot ? (
             <>
@@ -353,6 +369,7 @@ export function ServiceManagerPage() {
                     {svc.is_active ? t('active') : t('inactive')}
                   </Badge>
                   <Badge variant="outline">{svc.booking_mode === 'slot' ? t('booking_mode_slot') : t('booking_mode_range')}</Badge>
+                  <Badge variant="outline">{t(`customer_flow_${svc.customer_flow}`)}</Badge>
                   {svc.requires_payment && (
                     <Badge variant="outline">{t('paid')}</Badge>
                   )}
@@ -377,6 +394,7 @@ export function ServiceManagerPage() {
               {isExpanded && (
                 <CardContent className="pt-0 pb-3 px-4 text-sm text-muted-foreground space-y-1">
                   {svc.description && <p>{svc.description}</p>}
+                  <p>{t('customer_flow_label')}: {t(`customer_flow_${svc.customer_flow}`)}</p>
                   {svc.booking_mode === 'slot' && (
                     <p>{t('service_details_slot', { duration: svc.duration_minutes, interval: svc.slot_interval_minutes, buffer: svc.buffer_minutes })}</p>
                   )}

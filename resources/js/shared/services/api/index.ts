@@ -19,6 +19,8 @@ export * from './paymentProviders';
 export * from './payments';
 export * from './tenantDashboard';
 export * from './tenantUsers';
+export * from './tenantActivity';
 export * from './booking';
+export * from './quotes';
 export * from './systemSurfaces';
 export * from './types';

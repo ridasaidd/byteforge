@@ -20,10 +20,20 @@ export interface WizardState {
   selectedResource: BookingResource | null;
   selectedDate: string | null;
   selectedSlot: Slot | null;
-  customer: { name: string; email: string; phone: string; notes: string } | null;
+  selectedFlow: 'booking' | 'quote_request' | null;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    notes: string;
+    preferredStartAt?: string;
+    preferredEndAt?: string;
+    attachments?: File[];
+  } | null;
   holdToken: string | null;
   holdExpiresAt: string | null;
   bookingId: number | null;
+  submissionKind: 'booking' | 'quote_request' | null;
   loading: boolean;
   error: string | null;
   currentMonth: Date;
@@ -33,13 +43,14 @@ export type WizardAction =
   | { type: 'SET_SERVICES'; services: BookingService[] }
   | { type: 'SET_RESOURCES'; resources: BookingResource[] }
   | { type: 'SET_SLOTS'; slots: Slot[] }
-  | { type: 'SELECT_SERVICE'; service: BookingService; nextStep: WizardStep }
+  | { type: 'SELECT_SERVICE'; service: BookingService; nextStep: WizardStep; flow: 'booking' | 'quote_request' }
   | { type: 'SELECT_RESOURCE'; resource: BookingResource; nextStep: WizardStep }
   | { type: 'SELECT_DATE'; date: string; nextStep: WizardStep }
   | { type: 'SELECT_SLOT'; slot: Slot; nextStep: WizardStep }
   | { type: 'SET_CUSTOMER'; customer: WizardState['customer']; nextStep: WizardStep }
   | { type: 'SET_HOLD'; holdToken: string; holdExpiresAt: string }
   | { type: 'SET_SUCCESS'; bookingId: number }
+  | { type: 'SET_QUOTE_REQUEST_SUCCESS'; customer: NonNullable<WizardState['customer']> }
   | { type: 'SET_LOADING'; loading: boolean; preserveError?: boolean }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
@@ -59,10 +70,12 @@ export function makeInitialState(initialServiceId: number): WizardState {
     selectedResource: null,
     selectedDate: null,
     selectedSlot: null,
+    selectedFlow: null,
     customer: null,
     holdToken: null,
     holdExpiresAt: null,
     bookingId: null,
+    submissionKind: null,
     loading: false,
     error: null,
     currentMonth: new Date(),
@@ -84,6 +97,12 @@ export function reducer(state: WizardState, action: WizardAction): WizardState {
         selectedResource: null,
         selectedDate: null,
         selectedSlot: null,
+        selectedFlow: action.flow,
+        customer: null,
+        holdToken: null,
+        holdExpiresAt: null,
+        bookingId: null,
+        submissionKind: null,
         resources: [],
         slots: [],
         error: null,
@@ -116,7 +135,18 @@ export function reducer(state: WizardState, action: WizardAction): WizardState {
     case 'SET_HOLD':
       return { ...state, holdToken: action.holdToken, holdExpiresAt: action.holdExpiresAt, loading: false, step: 'confirm' };
     case 'SET_SUCCESS':
-      return { ...state, bookingId: action.bookingId, loading: false, step: 'success' };
+      return { ...state, bookingId: action.bookingId, submissionKind: 'booking', loading: false, step: 'success' };
+    case 'SET_QUOTE_REQUEST_SUCCESS':
+      return {
+        ...state,
+        customer: action.customer,
+        bookingId: null,
+        holdToken: null,
+        holdExpiresAt: null,
+        submissionKind: 'quote_request',
+        loading: false,
+        step: 'success',
+      };
     case 'SET_LOADING':
       return {
         ...state,

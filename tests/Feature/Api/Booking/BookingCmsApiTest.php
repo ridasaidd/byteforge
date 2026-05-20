@@ -7,6 +7,8 @@ use App\Models\Booking;
 use App\Models\BookingAvailability;
 use App\Models\BookingResource;
 use App\Models\BookingService;
+use App\Models\Quote;
+use App\Models\QuoteRequest;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
 use Laravel\Pennant\Feature;
@@ -262,15 +264,19 @@ class BookingCmsApiTest extends TestCase
                 'name'             => 'Hair Cut',
                 'booking_mode'     => 'slot',
                 'duration_minutes' => 45,
+                'customer_flow'    => 'quote_request',
             ]);
-        $create->assertCreated()->assertJsonPath('data.name', 'Hair Cut');
+        $create->assertCreated()
+            ->assertJsonPath('data.name', 'Hair Cut')
+            ->assertJsonPath('data.customer_flow', 'quote_request');
         $id = $create->json('data.id');
 
         // Read
         $this->actingAsTenantOwner('tenant-one')
             ->getJson($this->url("/api/booking/services/{$id}"))
             ->assertOk()
-            ->assertJsonPath('data.name', 'Hair Cut');
+            ->assertJsonPath('data.name', 'Hair Cut')
+            ->assertJsonPath('data.customer_flow', 'quote_request');
 
         // Update
         $this->actingAsTenantOwner('tenant-one')
@@ -278,9 +284,11 @@ class BookingCmsApiTest extends TestCase
                 'name'             => 'Hair Cut & Beard',
                 'booking_mode'     => 'slot',
                 'duration_minutes' => 60,
+                'customer_flow'    => 'either',
             ])
             ->assertOk()
-            ->assertJsonPath('data.name', 'Hair Cut & Beard');
+            ->assertJsonPath('data.name', 'Hair Cut & Beard')
+            ->assertJsonPath('data.customer_flow', 'either');
 
         // Delete
         $this->actingAsTenantOwner('tenant-one')
@@ -784,6 +792,146 @@ class BookingCmsApiTest extends TestCase
             'customer_email' => 'vip@example.com',
             'customer_notes' => "Customer\nnotes",
             'internal_notes' => "Internal\nnotes",
+        ]);
+    }
+
+    #[Test]
+    public function owner_can_create_booking_from_accepted_quote_and_mark_it_converted(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+
+        $ownerId = \Tests\Support\TestUsers::tenantOwner('tenant-one')->id;
+        $request = QuoteRequest::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'requested_booking_service_id' => $service->id,
+            'origin_surface' => QuoteRequest::ORIGIN_PUBLIC,
+            'guest_name' => 'Anna Andersson',
+            'guest_email' => 'anna@example.com',
+            'guest_phone' => '0701234567',
+            'request_description' => 'Need an estimate before booking.',
+            'status' => 'quoted',
+            'submitted_at' => now()->subDays(2),
+            'last_activity_at' => now()->subDay(),
+        ]);
+        $quote = Quote::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'quote_request_id' => $request->id,
+            'version' => 1,
+            'booking_service_id' => $service->id,
+            'created_by_user_id' => $ownerId,
+            'sent_by_user_id' => $ownerId,
+            'currency' => 'SEK',
+            'subtotal_minor' => 9000,
+            'total_minor' => 9000,
+            'customer_message' => 'Estimate after inspection.',
+            'internal_notes' => 'Complex restorative treatment.',
+            'public_token' => Quote::generateToken(),
+            'status' => Quote::STATUS_ACCEPTED,
+            'sent_at' => now()->subDay(),
+            'accepted_at' => now()->subHour(),
+        ]);
+
+        $startsAt = now()->addDays(7)->setTimeFromTimeString('10:00:00')->toIso8601String();
+        $endsAt = now()->addDays(7)->setTimeFromTimeString('11:00:00')->toIso8601String();
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/booking/bookings'), [
+                'service_id' => $service->id,
+                'resource_id' => $resource->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'customer_name' => 'Anna Andersson',
+                'customer_email' => 'anna@example.com',
+                'customer_phone' => '0701234567',
+                'customer_notes' => 'Estimate after inspection.',
+                'internal_notes' => 'Complex restorative treatment.',
+                'quote_id' => $quote->id,
+                'force' => true,
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.source_quote_id', $quote->id)
+            ->assertJsonPath('data.status', Booking::STATUS_CONFIRMED);
+
+        $bookingId = (int) $response->json('data.id');
+
+        $this->assertDatabaseHas('bookings', [
+            'id' => $bookingId,
+            'tenant_id' => (string) $tenant->id,
+            'source_quote_id' => $quote->id,
+        ]);
+
+        $this->assertDatabaseHas('quotes', [
+            'id' => $quote->id,
+            'status' => Quote::STATUS_CONVERTED,
+        ]);
+
+        $quote->refresh();
+        $this->assertNotNull($quote->converted_at);
+    }
+
+    #[Test]
+    public function booking_create_rejects_non_accepted_quote_conversion(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id);
+        $service->resources()->attach($resource->id);
+
+        $ownerId = \Tests\Support\TestUsers::tenantOwner('tenant-one')->id;
+        $request = QuoteRequest::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'requested_booking_service_id' => $service->id,
+            'origin_surface' => QuoteRequest::ORIGIN_PUBLIC,
+            'guest_name' => 'Anna Andersson',
+            'guest_email' => 'anna@example.com',
+            'request_description' => 'Need an estimate before booking.',
+            'status' => 'quoted',
+            'submitted_at' => now()->subDays(2),
+            'last_activity_at' => now()->subDay(),
+        ]);
+        $quote = Quote::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'quote_request_id' => $request->id,
+            'version' => 1,
+            'booking_service_id' => $service->id,
+            'created_by_user_id' => $ownerId,
+            'sent_by_user_id' => $ownerId,
+            'currency' => 'SEK',
+            'subtotal_minor' => 9000,
+            'total_minor' => 9000,
+            'public_token' => Quote::generateToken(),
+            'status' => Quote::STATUS_SENT,
+            'sent_at' => now()->subDay(),
+        ]);
+
+        $startsAt = now()->addDays(7)->setTimeFromTimeString('10:00:00')->toIso8601String();
+        $endsAt = now()->addDays(7)->setTimeFromTimeString('11:00:00')->toIso8601String();
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/booking/bookings'), [
+                'service_id' => $service->id,
+                'resource_id' => $resource->id,
+                'starts_at' => $startsAt,
+                'ends_at' => $endsAt,
+                'customer_name' => 'Anna Andersson',
+                'customer_email' => 'anna@example.com',
+                'quote_id' => $quote->id,
+                'force' => true,
+            ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Only accepted quotes can be converted into bookings.');
+
+        $this->assertDatabaseMissing('bookings', [
+            'tenant_id' => (string) $tenant->id,
+            'source_quote_id' => $quote->id,
         ]);
     }
 

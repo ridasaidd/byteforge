@@ -91,6 +91,8 @@ describe('booking widget styles', () => {
   it('includes shared class rules for widget rendering', () => {
     expect(BOOKING_WIDGET_STATIC_CSS).toContain('.bw-root');
     expect(BOOKING_WIDGET_STATIC_CSS).toContain('.bw-btn');
+    expect(BOOKING_WIDGET_STATIC_CSS).toContain('.bw-card-actions');
+    expect(BOOKING_WIDGET_STATIC_CSS).toContain('.bw-secondary-action');
     expect(BOOKING_WIDGET_STATIC_CSS).toContain('.bw-calendar-day.is-selected');
   });
 });

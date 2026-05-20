@@ -15,6 +15,7 @@ export interface BookingService {
   name: string;
   description: string | null;
   booking_mode: 'slot' | 'range';
+  customer_flow?: 'direct_booking' | 'quote_request' | 'either';
   duration_minutes: number | null;
   price: number | null;
   currency: string | null;

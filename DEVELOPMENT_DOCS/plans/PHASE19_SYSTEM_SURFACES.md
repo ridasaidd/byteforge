@@ -57,6 +57,7 @@ There is now a third category that does not fit cleanly into either existing buc
 - reset password
 - guest magic-link handoff
 - authenticated guest portal shell
+- future tokenized public quote review
 
 These are not ordinary CMS pages. They are **route-owned system surfaces** tied to fixed application behavior, required inputs, redirects, sessions, and security rules.
 
@@ -107,6 +108,7 @@ System Surfaces are:
 5. **Authenticated content can become widget-driven.** The guest portal shell is fixed, but widgets like bookings, quotes, and estimates should be addable to the authenticated area.
 6. **System Surfaces are not Pages.** They deserve their own CMS navigation item, their own API/resource model, and their own editor constraints.
 7. **Tenant customization must not break route contracts.** The system must remain valid even if a tenant customizes every visual option available.
+8. **Anonymous token-review flows remain route-owned.** If public quote review becomes customizable, it should be its own system page with locked summary and decision controls, not a widget inside the authenticated guest portal.
 
 ---
 
@@ -194,6 +196,10 @@ Recommended tenant CMS nav addition:
   - `Forgot Password`
   - `Reset Password`
   - `Guest Portal`
+
+Later candidate after Phase 17 stabilization:
+
+- `Quote Review` for the tokenized public quote route
 
 Alternative label for internal architecture: `System Surfaces`
 
@@ -417,6 +423,10 @@ Recommended first widget list:
 2. `GuestQuotesWidget` (future)
 3. `GuestEstimatesWidget` (future)
 4. `GuestHelpWidget`
+
+Important boundary:
+
+The tokenized public quote-review page is not a guest-portal widget. If it becomes tenant-customizable, it should be modeled as its own route-bound system page with locked quote summary and decision actions.
 
 The portal shell remains fixed and route-owned. Widget placement happens inside explicit portal zones.
 

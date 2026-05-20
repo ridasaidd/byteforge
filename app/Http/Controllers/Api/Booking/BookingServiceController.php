@@ -99,6 +99,7 @@ class BookingServiceController extends Controller
             'name'                  => [$partial ? 'sometimes' : 'required', 'string', 'max:120'],
             'description'           => ['nullable', 'string'],
             'booking_mode'          => [$partial ? 'sometimes' : 'required', 'string', 'in:slot,range'],
+            'customer_flow'         => ['sometimes', 'string', 'in:direct_booking,quote_request,either'],
             'duration_minutes'      => ['nullable', 'integer', 'min:1'],
             'slot_interval_minutes' => ['nullable', 'integer', 'min:1'],
             'min_nights'            => ['nullable', 'integer', 'min:1'],

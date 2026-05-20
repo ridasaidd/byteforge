@@ -2,7 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Addon;
 use App\Models\Tenant;
+use App\Models\TenantAddon;
 use App\Models\User;
 use App\Services\TenantRbacService;
 use Spatie\Permission\PermissionRegistrar;
@@ -35,6 +37,7 @@ class RolesPermissionsTest extends TestCase
 
         $this->assertTrue($user->hasRole('admin', 'api'));
         $this->assertTrue($user->hasPermissionTo('pages.view', 'api'));
+        $this->assertTrue($user->hasPermissionTo('activity.view', 'api'));
 
         tenancy()->end();
     }
@@ -63,7 +66,46 @@ class RolesPermissionsTest extends TestCase
 
         $this->assertTrue($user->hasRole('support', 'api'));
         $this->assertTrue($user->hasPermissionTo('pages.edit', 'api'));
+        $this->assertTrue($user->hasPermissionTo('activity.view', 'api'));
         $this->assertFalse($user->hasPermissionTo('users.manage', 'api'));
+
+        tenancy()->end();
+    }
+
+    public function test_quote_permissions_are_available_when_estimates_quotes_addon_is_active()
+    {
+        $tenant = Tenant::where('slug', 'tenant-one')->firstOrFail();
+        $addon = Addon::where('feature_flag', 'estimates_quotes')->firstOrFail();
+
+        TenantAddon::updateOrCreate(
+            ['tenant_id' => (string) $tenant->id, 'addon_id' => $addon->id],
+            ['activated_at' => now(), 'deactivated_at' => null]
+        );
+
+        tenancy()->initialize($tenant);
+        app(PermissionRegistrar::class)->setPermissionsTeamId((string) $tenant->id);
+
+        $rbac = app(TenantRbacService::class);
+        $rbac->ensureTenantRoles((string) $tenant->id);
+
+        $permissionNames = $rbac->permissionNamesForTenant((string) $tenant->id);
+        $adminRole = Role::query()
+            ->where('team_id', (string) $tenant->id)
+            ->where('guard_name', 'api')
+            ->where('name', 'admin')
+            ->with('permissions')
+            ->firstOrFail();
+        $adminPermissionNames = $adminRole->permissions->pluck('name')->values()->all();
+
+        $this->assertContains('quotes.view', $permissionNames);
+        $this->assertContains('quotes.manage', $permissionNames);
+        $this->assertContains('quotes.send', $permissionNames);
+        $this->assertContains('quotes.convert', $permissionNames);
+
+        $this->assertContains('quotes.view', $adminPermissionNames);
+        $this->assertContains('quotes.manage', $adminPermissionNames);
+        $this->assertContains('quotes.send', $adminPermissionNames);
+        $this->assertContains('quotes.convert', $adminPermissionNames);
 
         tenancy()->end();
     }

@@ -16,6 +16,7 @@ import {
   bookingPuckSectionComponents,
   bookingRegisteredSectionNames,
 } from '@/shared/puck/components/booking';
+import { QuoteRequestWidget } from '@/shared/puck/components/quotes';
 import { PageEditorPreview } from '@/shared/components/organisms/PageEditorPreview';
 import { extractCssFromPuckData } from '@/shared/puck/services/PuckCssAggregator';
 import type { ThemeData } from '@/shared/puck/services/PuckCssAggregator';
@@ -72,6 +73,15 @@ export function PageEditorPage() {
         components: [...bookingRegisteredSectionNames],
         title: 'Legacy Booking Internals',
         defaultExpanded: false,
+      };
+    }
+
+    if (hasAddon('estimates_quotes')) {
+      extraComponents.QuoteRequestWidget = QuoteRequestWidget as Config['components'][string];
+      extraCategories.quotes = {
+        components: ['QuoteRequestWidget'],
+        title: 'Quotes',
+        defaultExpanded: true,
       };
     }
 

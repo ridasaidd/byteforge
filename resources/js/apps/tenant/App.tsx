@@ -2,7 +2,7 @@ import { FC } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { DashboardLayout } from '@/shared/components/templates/DashboardLayout';
 import { ThemeProvider } from '@/shared/contexts/ThemeContext';
-import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, SystemPagesPage, SystemSurfaceEditorPage, PageEditorPage, AnalyticsPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage, BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage } from './components/pages';
+import { DashboardPage, AccessDeniedPage, LoginPage, ThemesPage, PagesPage, SystemPagesPage, SystemSurfaceEditorPage, PageEditorPage, AnalyticsPage, ActivityLogPage, SettingsPage, MediaPage, NavigationPage, PaymentProvidersPage, PaymentsPage, UsersPage, RolesPermissionsPage, QuoteRequestsPage, QuoteRequestDetailPage, BookingsCalendarPage, BookingDetailPage, ServiceManagerPage, ResourceManagerPage, BookingSettingsPage } from './components/pages';
 import { ThemeCustomizePage } from '@/shared/components/organisms/ThemeCustomizePage';
 import { ProfilePage } from '@/apps/central/components/pages/ProfilePage';
 import { AccountSettingsPage } from '@/apps/central/components/pages/AccountSettingsPage';
@@ -28,6 +28,7 @@ function ProtectedRoutes() {
   const tenantMenuItems = useTenantMenuItems();
   const { hasAddon } = useAddon();
   const hasBooking = hasAddon('booking');
+  const hasQuotes = hasAddon('estimates_quotes');
 
   if (isLoading) {
     return (
@@ -118,6 +119,22 @@ function ProtectedRoutes() {
                   )}
                 />
                 <Route
+                  path="/cms/activity"
+                  element={(
+                    <PermissionGate permission="activity.view">
+                      <Navigate to="/cms/activity-log" replace />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
+                  path="/cms/activity-log"
+                  element={(
+                    <PermissionGate permission="activity.view">
+                      <ActivityLogPage />
+                    </PermissionGate>
+                  )}
+                />
+                <Route
                   path="/cms/media"
                   element={(
                     <PermissionGate permission="media.view">
@@ -172,6 +189,22 @@ function ProtectedRoutes() {
                       <RolesPermissionsPage />
                     </PermissionGate>
                   )}
+                />
+                <Route
+                  path="/cms/quotes"
+                  element={hasQuotes ? (
+                    <PermissionGate permission="quotes.view">
+                      <QuoteRequestsPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
+                />
+                <Route
+                  path="/cms/quotes/:id"
+                  element={hasQuotes ? (
+                    <PermissionGate permission="quotes.view">
+                      <QuoteRequestDetailPage />
+                    </PermissionGate>
+                  ) : <AccessDeniedPage />}
                 />
                 {/* Booking addon routes */}
                 <Route

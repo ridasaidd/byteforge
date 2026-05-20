@@ -44,6 +44,85 @@ describe('guestPortalService', () => {
     expect(headers.get('Authorization')).toBe('Bearer guest-access-token');
   });
 
+  it('uses the verified guest token for quote requests as well', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        guest: { id: 9, email: 'verify@example.com', name: 'Verified Guest' },
+        token: 'verified-token',
+      }))
+      .mockResolvedValueOnce(jsonResponse({ data: [] }))
+      .mockResolvedValueOnce(jsonResponse({
+        data: {
+          id: 7,
+          request_id: 4,
+          status: 'sent',
+          currency: 'SEK',
+          subtotal_minor: 9000,
+          tax_minor: null,
+          total_minor: 9000,
+          estimated_duration_minutes: 60,
+          customer_message: 'Quote details',
+          valid_until: null,
+          sent_at: null,
+          accepted_at: null,
+          rejected_at: null,
+          cancelled_at: null,
+          expired_at: null,
+          converted_at: null,
+          subject_label: 'Verified quote',
+          request_description: 'Quote request',
+          preferred_start_at: null,
+          preferred_end_at: null,
+          booking_service: null,
+          line_items: [],
+          converted_booking: null,
+        },
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        data: {
+          id: 7,
+          request_id: 4,
+          status: 'accepted',
+          currency: 'SEK',
+          subtotal_minor: 9000,
+          tax_minor: null,
+          total_minor: 9000,
+          estimated_duration_minutes: 60,
+          customer_message: 'Quote details',
+          valid_until: null,
+          sent_at: null,
+          accepted_at: '2026-05-19T10:00:00Z',
+          rejected_at: null,
+          cancelled_at: null,
+          expired_at: null,
+          converted_at: null,
+          subject_label: 'Verified quote',
+          request_description: 'Quote request',
+          preferred_start_at: null,
+          preferred_end_at: null,
+          booking_service: null,
+          line_items: [],
+          converted_booking: null,
+        },
+      }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await guestPortalService.verifyMagicLink('magic-token-123');
+    await guestPortalService.listQuotes();
+    await guestPortalService.getQuote(7);
+    await guestPortalService.acceptQuote(7);
+
+    const listHeaders = fetchMock.mock.calls[1][1]?.headers as Headers;
+    expect(listHeaders.get('Authorization')).toBe('Bearer verified-token');
+
+    const detailHeaders = fetchMock.mock.calls[2][1]?.headers as Headers;
+    expect(detailHeaders.get('Authorization')).toBe('Bearer verified-token');
+
+    const acceptHeaders = fetchMock.mock.calls[3][1]?.headers as Headers;
+    expect(acceptHeaders.get('Authorization')).toBe('Bearer verified-token');
+  });
+
   it('returns null when the guest session is unauthenticated', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ guest: null, token: null })));
 
@@ -94,7 +173,7 @@ describe('guestPortalService', () => {
     vi.stubGlobal('fetch', fetchMock);
 
     await guestPortalService.verifyMagicLink('magic-token-123');
-  await guestPortalService.getBooking(42);
+    await guestPortalService.getBooking(42);
     await guestPortalService.cancelBooking(42);
 
     expect(fetchMock).toHaveBeenNthCalledWith(

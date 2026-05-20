@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useId, useLayoutEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import {
   eachDayOfInterval,
   endOfMonth,
@@ -14,6 +14,9 @@ import {
 import { AlertCircle, CheckCircle, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { useBookingContext } from './BookingContext';
 import { useBookingRenderContext } from './BookingRenderContext';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
+import { Textarea } from '@/shared/components/ui/textarea';
 import { PrimaryButton, StepHeading } from './shared';
 import type { WizardState, WizardStep } from './state';
 import type { BookingWidgetText } from './text';
@@ -128,12 +131,38 @@ function SelectCard({
   label,
   sublabel,
   onClick,
+  secondaryAction,
+  actionHint,
+  primaryActionText,
+  secondaryActionText,
 }: {
   label: string;
   sublabel?: string;
   onClick: () => void;
+  secondaryAction?: () => void;
+  actionHint?: string;
+  primaryActionText?: string;
+  secondaryActionText?: string;
   primaryColor: string;
 }) {
+  if (secondaryAction) {
+    return (
+      <div className="bw-card">
+        <div className="bw-card-title">{label}</div>
+        {sublabel && <div className="bw-card-subtitle">{sublabel}</div>}
+        {actionHint ? <div className="bw-card-action-hint">{actionHint}</div> : null}
+        <div className="bw-card-actions">
+          <PrimaryButton onClick={onClick} primaryColor="" className="bw-card-primary-action">
+            {primaryActionText ?? 'Continue'}
+          </PrimaryButton>
+          <button type="button" onClick={secondaryAction} className="bw-secondary-action bw-card-secondary-action">
+            {secondaryActionText ?? 'Alternate action'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -160,30 +189,57 @@ function CustomerForm({
   loading,
   primaryColor,
   text,
+  title,
+  submitText,
+  notesRequired = false,
+  showPreferredDateFields = false,
+  preferredDateHelpText,
+  showAttachmentField = false,
+  attachmentHelpText,
 }: {
-  onBack: () => void;
+  onBack?: () => void;
   onSubmit: (data: NonNullable<WizardState['customer']>) => void;
   loading: boolean;
   primaryColor: string;
   text: BookingWidgetText;
+  title?: string;
+  submitText?: string;
+  notesRequired?: boolean;
+  showPreferredDateFields?: boolean;
+  preferredDateHelpText?: string;
+  showAttachmentField?: boolean;
+  attachmentHelpText?: string;
 }) {
+  const fieldId = useId();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [notes, setNotes] = useState('');
+  const [preferredStartAt, setPreferredStartAt] = useState('');
+  const [preferredEndAt, setPreferredEndAt] = useState('');
+  const [attachments, setAttachments] = useState<File[]>([]);
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    onSubmit({ name: name.trim(), email: email.trim(), phone: phone.trim(), notes: notes.trim() });
+    onSubmit({
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone.trim(),
+      notes: notes.trim(),
+      preferredStartAt: preferredStartAt || undefined,
+      preferredEndAt: preferredEndAt || undefined,
+      attachments,
+    });
   }
 
   return (
     <form onSubmit={handleSubmit} className="bw-form">
-      <BackButton onClick={onBack} label={text.backButtonText} />
-      <StepHeading>{text.customerStepTitle}</StepHeading>
+      {onBack ? <BackButton onClick={onBack} label={text.backButtonText} /> : null}
+      <StepHeading>{title ?? text.customerStepTitle}</StepHeading>
 
-      <label className="bw-label">{text.fullNameLabelText}</label>
-      <input
+      <Label className="bw-label" htmlFor={`${fieldId}-name`}>{text.fullNameLabelText}</Label>
+      <Input
+        id={`${fieldId}-name`}
         required
         type="text"
         value={name}
@@ -193,8 +249,9 @@ function CustomerForm({
         maxLength={120}
       />
 
-      <label className="bw-label">{text.emailLabelText}</label>
-      <input
+      <Label className="bw-label" htmlFor={`${fieldId}-email`}>{text.emailLabelText}</Label>
+      <Input
+        id={`${fieldId}-email`}
         required
         type="email"
         value={email}
@@ -204,8 +261,9 @@ function CustomerForm({
         maxLength={255}
       />
 
-      <label className="bw-label">{text.phoneLabelText}</label>
-      <input
+      <Label className="bw-label" htmlFor={`${fieldId}-phone`}>{text.phoneLabelText}</Label>
+      <Input
+        id={`${fieldId}-phone`}
         type="tel"
         value={phone}
         onChange={(event) => setPhone(event.target.value)}
@@ -214,18 +272,62 @@ function CustomerForm({
         maxLength={30}
       />
 
-      <label className="bw-label">{text.notesLabelText}</label>
-      <textarea
+      <Label className="bw-label" htmlFor={`${fieldId}-notes`}>{text.notesLabelText}</Label>
+      <Textarea
+        id={`${fieldId}-notes`}
         value={notes}
         onChange={(event) => setNotes(event.target.value)}
         placeholder={text.notesPlaceholderText}
         rows={3}
         className="bw-input bw-textarea"
         maxLength={1000}
+        required={notesRequired}
       />
 
+      {showAttachmentField ? (
+        <>
+          <Label className="bw-label" htmlFor={`${fieldId}-attachments`}>Reference photos or videos</Label>
+          <Input
+            id={`${fieldId}-attachments`}
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mpeg,video/quicktime,video/x-msvideo,video/webm"
+            onChange={(event) => setAttachments(Array.from(event.target.files ?? []).slice(0, 5))}
+            className="bw-input"
+          />
+          <p className="bw-meta">
+            {attachmentHelpText ?? 'Add up to 5 private images or videos to help us prepare your estimate.'}
+          </p>
+        </>
+      ) : null}
+
+      {showPreferredDateFields ? (
+        <>
+          {preferredDateHelpText ? <p className="bw-meta">{preferredDateHelpText}</p> : null}
+
+          <Label className="bw-label" htmlFor={`${fieldId}-preferred-start`}>Preferred earliest date</Label>
+          <Input
+            id={`${fieldId}-preferred-start`}
+            type="datetime-local"
+            value={preferredStartAt}
+            onChange={(event) => setPreferredStartAt(event.target.value)}
+            className="bw-input"
+          />
+
+          <Label className="bw-label" htmlFor={`${fieldId}-preferred-end`}>Preferred latest date</Label>
+          <Input
+            id={`${fieldId}-preferred-end`}
+            type="datetime-local"
+            value={preferredEndAt}
+            min={preferredStartAt || undefined}
+            onChange={(event) => setPreferredEndAt(event.target.value)}
+            className="bw-input"
+          />
+        </>
+      ) : null}
+
       <PrimaryButton loading={loading} primaryColor={primaryColor}>
-        {text.continueToReviewText}
+        {submitText ?? text.continueToReviewText}
       </PrimaryButton>
     </form>
   );
@@ -265,6 +367,24 @@ export function ServiceStep({ primaryColor, showPrices }: { primaryColor: string
   const { state, dispatch } = useBookingContext();
   const renderContext = useBookingRenderContext();
 
+  const selectServiceForBooking = (service: typeof state.services[number]) => {
+    dispatch({
+      type: 'SELECT_SERVICE',
+      service,
+      nextStep: toWizardStep(renderContext.getNextStep('service', service.booking_mode)) ?? 'date',
+      flow: 'booking',
+    });
+  };
+
+  const selectServiceForQuote = (service: typeof state.services[number]) => {
+    dispatch({
+      type: 'SELECT_SERVICE',
+      service,
+      nextStep: 'customer',
+      flow: 'quote_request',
+    });
+  };
+
   return (
     <>
       <StepHeading>{renderContext.text.serviceStepTitle}</StepHeading>
@@ -283,11 +403,17 @@ export function ServiceStep({ primaryColor, showPrices }: { primaryColor: string
                     ? `${service.price} ${service.currency ?? ''}`
                     : undefined
               }
-              onClick={() => dispatch({
-                type: 'SELECT_SERVICE',
-                service,
-                nextStep: toWizardStep(renderContext.getNextStep('service', service.booking_mode)) ?? 'date',
-              })}
+              onClick={() => service.customer_flow === 'quote_request'
+                ? selectServiceForQuote(service)
+                : selectServiceForBooking(service)}
+              secondaryAction={service.customer_flow === 'either'
+                ? () => selectServiceForQuote(service)
+                : undefined}
+              actionHint={service.customer_flow === 'either'
+                ? 'Choose a standard slot instantly, or ask for a tailored quote first.'
+                : undefined}
+              primaryActionText={service.customer_flow === 'either' ? 'Book now' : undefined}
+              secondaryActionText={service.customer_flow === 'either' ? 'Get custom quote' : undefined}
               primaryColor={primaryColor}
             />
           ))}
@@ -448,7 +574,7 @@ export function CustomerStep({
 
   return (
     <CustomerForm
-      onBack={() => previousStep && dispatch({ type: 'GO_STEP', step: previousStep })}
+      onBack={previousStep ? () => dispatch({ type: 'GO_STEP', step: previousStep }) : undefined}
       onSubmit={(customer) => {
         dispatch({ type: 'SET_CUSTOMER', customer, nextStep });
         onSubmit(customer);
@@ -456,6 +582,39 @@ export function CustomerStep({
       loading={loading}
       primaryColor={primaryColor}
       text={renderContext.text}
+    />
+  );
+}
+
+export function QuoteRequestStep({
+  onSubmit,
+  loading,
+  primaryColor,
+}: {
+  onSubmit: (data: NonNullable<WizardState['customer']>) => void;
+  loading: boolean;
+  primaryColor: string;
+}) {
+  const { state, dispatch } = useBookingContext();
+  const renderContext = useBookingRenderContext();
+  const title = state.selectedService?.name
+    ? `Request a quote for ${state.selectedService.name}`
+    : 'Request a quote';
+
+  return (
+    <CustomerForm
+      onBack={renderContext.serviceId === 0 ? () => dispatch({ type: 'GO_STEP', step: 'service' }) : undefined}
+      onSubmit={onSubmit}
+      loading={loading}
+      primaryColor={primaryColor}
+      text={renderContext.text}
+      title={title}
+      submitText="Send quote request"
+      notesRequired={true}
+      showPreferredDateFields={true}
+      preferredDateHelpText="Optional preferred dates help the provider review availability before they suggest the final appointment time."
+      showAttachmentField={true}
+      attachmentHelpText="Add up to 5 private images or videos to support your quote request."
     />
   );
 }
@@ -527,9 +686,11 @@ export function SuccessStep({ primaryColor: _primaryColor, successMessage }: { p
   return (
     <div className="bw-state">
       <CheckCircle size={48} className="bw-state-icon success" />
-      <p className="bw-state-title">{successMessage || 'Booking confirmed!'}</p>
+      <p className="bw-state-title">{successMessage || (state.submissionKind === 'quote_request' ? 'Quote request received' : 'Booking confirmed!')}</p>
       <p className="bw-state-text">
-        {renderContext.text.confirmationSentPrefixText} {state.customer?.email}.
+        {state.submissionKind === 'quote_request'
+          ? `We received your request and will follow up at ${state.customer?.email}.`
+          : `${renderContext.text.confirmationSentPrefixText} ${state.customer?.email}.`}
       </p>
     </div>
   );

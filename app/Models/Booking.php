@@ -49,6 +49,7 @@ class Booking extends Model
         'token_expires_at',
         'notification_opt_out',
         'payment_id',
+        'source_quote_id',
         'internal_notes',
         'customer_notes',
         'cancelled_at',
@@ -99,6 +100,11 @@ class Booking extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class, 'payment_id');
+    }
+
+    public function sourceQuote(): BelongsTo
+    {
+        return $this->belongsTo(Quote::class, 'source_quote_id');
     }
 
     public function guestUser(): BelongsTo

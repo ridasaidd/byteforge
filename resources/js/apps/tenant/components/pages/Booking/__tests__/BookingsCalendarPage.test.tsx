@@ -45,12 +45,12 @@ function createQueryClient() {
   });
 }
 
-function renderPage() {
+function renderPage(initialEntries: Array<string | { pathname: string; state?: unknown }> = ['/']) {
   const queryClient = createQueryClient();
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={initialEntries}>
         <BookingsCalendarPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -190,6 +190,101 @@ describe('BookingsCalendarPage', () => {
         customer_phone: '0701234567',
         customer_notes: null,
         internal_notes: null,
+        force: false,
+      });
+    });
+  });
+
+  it('opens the manual booking dialog with quote conversion prefill', async () => {
+    listServicesMock.mockResolvedValue({
+      data: [
+        {
+          id: 7,
+          name: 'Spa',
+          description: null,
+          booking_mode: 'slot',
+          duration_minutes: 60,
+          slot_interval_minutes: 60,
+          min_nights: null,
+          max_nights: null,
+          buffer_minutes: 0,
+          advance_notice_hours: 0,
+          max_advance_days: null,
+          price: null,
+          currency: 'SEK',
+          requires_payment: false,
+          is_active: true,
+          resources: [{ id: 3, name: 'Room A', type: 'space' }],
+          created_at: '2026-05-01T08:00:00Z',
+          updated_at: '2026-05-01T08:00:00Z',
+        },
+      ],
+    });
+    listResourcesMock.mockResolvedValue({
+      data: [
+        {
+          id: 3,
+          name: 'Room A',
+          type: 'space',
+          description: null,
+          checkin_time: null,
+          checkout_time: null,
+          capacity: 1,
+          resource_label: null,
+          user_id: null,
+          is_active: true,
+          created_at: '2026-05-01T08:00:00Z',
+          updated_at: '2026-05-01T08:00:00Z',
+        },
+      ],
+    });
+
+    renderPage([
+      {
+        pathname: '/',
+        state: {
+          createBookingPrefill: {
+            quote_id: 99,
+            service_id: 7,
+            customer_name: 'Anna Andersson',
+            customer_email: 'anna@example.com',
+            customer_phone: '0701234567',
+            customer_notes: 'Estimate after inspection.',
+            internal_notes: 'Complex restorative treatment.',
+          },
+        },
+      },
+    ]);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByLabelText('Namn')).toHaveValue('Anna Andersson');
+    expect(screen.getByLabelText('E-post')).toHaveValue('anna@example.com');
+    expect(screen.getByLabelText('Telefon')).toHaveValue('0701234567');
+    expect(screen.getByLabelText('Kundanteckningar')).toHaveValue('Estimate after inspection.');
+    expect(screen.getByLabelText('Interna anteckningar')).toHaveValue('Complex restorative treatment.');
+
+    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-05-15T10:00' } });
+    fireEvent.change(screen.getByLabelText('Slut'), { target: { value: '2026-05-15T11:00' } });
+
+    const createButton = screen.getByRole('button', { name: 'Skapa bokning' });
+    await waitFor(() => {
+      expect(createButton).toBeEnabled();
+    });
+
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(createBookingMock).toHaveBeenCalledWith({
+        quote_id: 99,
+        service_id: 7,
+        resource_id: 3,
+        starts_at: '2026-05-15T10:00',
+        ends_at: '2026-05-15T11:00',
+        customer_name: 'Anna Andersson',
+        customer_email: 'anna@example.com',
+        customer_phone: '0701234567',
+        customer_notes: 'Estimate after inspection.',
+        internal_notes: 'Complex restorative treatment.',
         force: false,
       });
     });

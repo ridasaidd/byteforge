@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingResource;
 use App\Models\BookingService;
+use App\Models\Quote;
 use App\Models\Tenant;
 use App\Notifications\Booking\BookingCancelledByTenantNotification;
 use App\Notifications\Booking\BookingConfirmedNotification;
@@ -16,6 +17,7 @@ use App\Notifications\Booking\BookingRescheduledNotification;
 use App\Notifications\Booking\StaffBookingAssignedNotification;
 use App\Services\BookingAvailabilityService;
 use App\Services\BookingPaymentService;
+use App\Services\QuoteWorkflowService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -30,6 +32,7 @@ class BookingManagementController extends Controller
         private readonly BookingAvailabilityService $availability,
         private readonly BookingPaymentService $bookingPayment,
         private readonly SanitizeBookingCustomerInputAction $sanitizeBookingCustomerInput,
+        private readonly QuoteWorkflowService $quoteWorkflow,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -320,6 +323,7 @@ class BookingManagementController extends Controller
             'customer_phone' => ['nullable', 'string', 'max:30'],
             'internal_notes' => ['nullable', 'string'],
             'customer_notes' => ['nullable', 'string'],
+            'quote_id'       => ['nullable', 'integer'],
             'force'          => ['sometimes', 'boolean'],
         ])->validate();
 
@@ -342,12 +346,26 @@ class BookingManagementController extends Controller
             }
         }
 
-        $booking = DB::transaction(function () use ($validated, $tenantId, $service, $resource, $startsAt, $endsAt, $force) {
+        $quote = null;
+
+        $booking = DB::transaction(function () use ($validated, $tenantId, $service, $resource, $startsAt, $endsAt, $force, &$quote) {
             if (! $force) {
                 BookingResource::where('id', $resource->id)->lockForUpdate()->first();
 
                 if (! $this->checkAvailability($service, $resource, $startsAt, $endsAt)) {
                     throw new \RuntimeException('Slot taken', 409);
+                }
+            }
+            if (isset($validated['quote_id'])) {
+                $quote = Quote::query()
+                    ->forTenant($tenantId)
+                    ->lockForUpdate()
+                    ->findOrFail((int) $validated['quote_id']);
+
+                if ($quote->status !== Quote::STATUS_ACCEPTED) {
+                    return response()->json([
+                        'message' => 'Only accepted quotes can be converted into bookings.',
+                    ], 422);
                 }
             }
 
@@ -363,6 +381,7 @@ class BookingManagementController extends Controller
                 'status'           => Booking::STATUS_CONFIRMED,
                 'management_token' => Booking::generateToken(),
                 'token_expires_at' => now()->addDays(365),
+                'source_quote_id'  => $quote?->id,
                 'internal_notes'   => $validated['internal_notes'] ?? null,
                 'customer_notes'   => $validated['customer_notes'] ?? null,
             ]);
@@ -377,8 +396,27 @@ class BookingManagementController extends Controller
                 $note,
             );
 
+            if ($quote) {
+                $quote->update([
+                    'status' => Quote::STATUS_CONVERTED,
+                    'converted_at' => now(),
+                ]);
+
+                $quote->request?->update([
+                    'last_activity_at' => now(),
+                ]);
+            }
+
             return $booking;
         });
+
+        if ($booking instanceof JsonResponse) {
+            return $booking;
+        }
+
+        if ($quote instanceof Quote) {
+            $this->quoteWorkflow->handleConverted($quote->fresh()->load('request'), $booking, $request->user('api'));
+        }
 
         return response()->json(['data' => $booking->fresh()->load(['service:id,name', 'resource:id,name'])], 201);
     }

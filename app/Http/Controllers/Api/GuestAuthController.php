@@ -12,6 +12,7 @@ use App\Services\Auth\WebRefreshSessionService;
 use App\Services\Guest\BookingGuestLinkingService;
 use App\Services\Guest\GuestAccessTokenService;
 use App\Services\Guest\GuestMagicLinkService;
+use App\Services\Guest\QuoteGuestLinkingService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -21,6 +22,7 @@ class GuestAuthController extends Controller
     public function __construct(
         private readonly GuestMagicLinkService $guestMagicLinkService,
         private readonly BookingGuestLinkingService $bookingGuestLinkingService,
+        private readonly QuoteGuestLinkingService $quoteGuestLinkingService,
         private readonly GuestAccessTokenService $guestAccessTokenService,
         private readonly NormalizeInputFieldsAction $normalizeInputFields,
         private readonly WebRefreshSessionService $webRefreshSessionService,
@@ -55,6 +57,7 @@ class GuestAuthController extends Controller
         $tenantId = $this->currentTenantId();
         $guestUser = $this->guestMagicLinkService->verify($validated['token'], $tenantId);
         $this->bookingGuestLinkingService->linkByEmail($guestUser, $tenantId);
+        $this->quoteGuestLinkingService->linkByEmail($guestUser, $tenantId);
         [$refreshSession, $refreshCookie] = $this->webRefreshSessionService->issueGuest($guestUser, $request, $tenantId);
         $accessToken = $this->guestAccessTokenService->issue($guestUser, $tenantId, $refreshSession);
 

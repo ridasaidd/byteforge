@@ -14,6 +14,9 @@ use App\Http\Controllers\Api\NavigationController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PaymentWebhookController;
+use App\Http\Controllers\Api\Quotes\GuestQuoteController;
+use App\Http\Controllers\Api\Quotes\PublicQuoteRequestController;
+use App\Http\Controllers\Api\Quotes\QuoteRequestController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\SystemSurfaceController;
 use App\Http\Controllers\Api\TenantPaymentProviderController;
@@ -94,6 +97,10 @@ Route::middleware([
         return $renderPublicTenantView();
     });
 
+    Route::get('/guest-portal/quotes/{quoteId}', function (int $quoteId) use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    })->whereNumber('quoteId');
+
     Route::get('/guest-portal/{bookingId}', function (int $bookingId) use ($renderPublicTenantView) {
         return $renderPublicTenantView();
     })->whereNumber('bookingId');
@@ -102,6 +109,10 @@ Route::middleware([
         return $renderPublicTenantView();
     });
 
+    Route::get('/my-bookings/quotes/{quoteId}', function (int $quoteId) use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    })->whereNumber('quoteId');
+
     Route::get('/my-bookings/{bookingId}', function (int $bookingId) use ($renderPublicTenantView) {
         return $renderPublicTenantView();
     })->whereNumber('bookingId');
@@ -109,6 +120,10 @@ Route::middleware([
     Route::get('/guest/magic/{token}', function (string $token) use ($renderPublicTenantView) {
         return $renderPublicTenantView();
     });
+
+    Route::get('/quotes/{token}', function (string $token) use ($renderPublicTenantView) {
+        return $renderPublicTenantView();
+    })->where('token', '[A-Za-z0-9]+');
 
     Route::get('/pages/{slug}', function (string $slug) use ($renderPublicTenantView) {
         return $renderPublicTenantView($slug);
@@ -156,6 +171,17 @@ Route::middleware([
     Route::post('form-submit/email', [FormSubmissionController::class, 'email'])
         ->middleware('throttle:10,1');
 
+    Route::prefix('public/quotes')->middleware('addon:estimates_quotes')->group(function () {
+        Route::post('requests', [PublicQuoteRequestController::class, 'store'])
+            ->middleware('throttle:20,1');
+        Route::get('{token}', [PublicQuoteRequestController::class, 'show'])
+            ->middleware('throttle:20,1');
+        Route::post('{token}/accept', [PublicQuoteRequestController::class, 'accept'])
+            ->middleware('throttle:20,1');
+        Route::post('{token}/reject', [PublicQuoteRequestController::class, 'reject'])
+            ->middleware('throttle:20,1');
+    });
+
     // Provider callbacks/webhooks (no auth)
     Route::post('payments/stripe/webhook', [PaymentWebhookController::class, 'stripe']);
     Route::post('payments/swish/callback', [PaymentWebhookController::class, 'swish']);
@@ -177,16 +203,25 @@ Route::middleware([
         Route::patch('{token}/cancel', [\App\Http\Controllers\Api\Booking\PublicBookingController::class, 'cancel'])->middleware('throttle:10,1');
     });
 
-    Route::prefix('guest-auth')->middleware('addon:booking')->group(function () {
+    Route::prefix('guest-auth')->middleware('addon:booking,estimates_quotes')->group(function () {
         Route::post('request-link', [GuestAuthController::class, 'requestLink'])->middleware('throttle:10,1');
         Route::post('verify', [GuestAuthController::class, 'verify'])->middleware('throttle:10,1');
         Route::get('session', [GuestAuthController::class, 'session']);
         Route::post('logout', [GuestAuthController::class, 'logout'])->middleware('auth.guest');
 
         Route::middleware('auth.guest')->group(function () {
-            Route::get('bookings', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'index']);
-            Route::get('bookings/{id}', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'show'])->whereNumber('id');
-            Route::patch('bookings/{id}/cancel', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'cancel'])->whereNumber('id');
+            Route::middleware('addon:booking')->group(function () {
+                Route::get('bookings', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'index']);
+                Route::get('bookings/{id}', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'show'])->whereNumber('id');
+                Route::patch('bookings/{id}/cancel', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'cancel'])->whereNumber('id');
+            });
+
+            Route::middleware('addon:estimates_quotes')->group(function () {
+                Route::get('quotes', [GuestQuoteController::class, 'index']);
+                Route::get('quotes/{id}', [GuestQuoteController::class, 'show'])->whereNumber('id');
+                Route::post('quotes/{id}/accept', [GuestQuoteController::class, 'accept'])->whereNumber('id');
+                Route::post('quotes/{id}/reject', [GuestQuoteController::class, 'reject'])->whereNumber('id');
+            });
         });
     });
 
@@ -346,6 +381,36 @@ Route::middleware([
         Route::post('payments/{payment}/refund', [PaymentController::class, 'refund'])
             ->whereNumber('payment')
             ->middleware('permission:payments.refund');
+
+        Route::prefix('quotes')->middleware('addon:estimates_quotes')->group(function () {
+            Route::post('requests', [QuoteRequestController::class, 'store'])
+                ->middleware('permission:quotes.manage');
+            Route::get('requests', [QuoteRequestController::class, 'index'])
+                ->middleware('permission:quotes.view');
+            Route::get('requests/{id}', [QuoteRequestController::class, 'show'])
+                ->whereNumber('id')
+                ->middleware('permission:quotes.view');
+            Route::get('requests/{id}/attachments/{attachmentId}/download', [QuoteRequestController::class, 'downloadAttachment'])
+                ->whereNumber('id')
+                ->whereNumber('attachmentId')
+                ->middleware('permission:quotes.view')
+                ->name('tenant.quotes.requests.attachments.download');
+            Route::post('requests/{id}/quotes', [QuoteRequestController::class, 'createQuote'])
+                ->whereNumber('id')
+                ->middleware('permission:quotes.manage');
+            Route::post('{id}/send', [QuoteRequestController::class, 'sendQuote'])
+                ->whereNumber('id')
+                ->middleware('permission:quotes.send');
+            Route::post('{id}/cancel', [QuoteRequestController::class, 'cancelQuote'])
+                ->whereNumber('id')
+                ->middleware('permission:quotes.manage');
+            Route::delete('{id}', [QuoteRequestController::class, 'destroyQuote'])
+                ->whereNumber('id')
+                ->middleware('permission:quotes.manage');
+            Route::post('{id}/convert-to-booking', [QuoteRequestController::class, 'convertToBooking'])
+                ->whereNumber('id')
+                ->middleware('permission:quotes.convert');
+        });
 
         // Booking CMS API (Phase 13.4) — authenticated, addon gated
         Route::prefix('booking')->middleware('addon:booking')->group(function () {

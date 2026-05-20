@@ -1,16 +1,18 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { guestPortalService, type GuestPortalBooking, type GuestPortalGuest } from '../services/guestPortal';
+import { guestPortalService, type GuestPortalBooking, type GuestPortalGuest, type GuestPortalQuote } from '../services/guestPortal';
 
 export function GuestPortalExperience({
   variant = 'embedded',
 }: {
   variant?: 'standalone' | 'embedded';
 }) {
-  const { bookingId } = useParams<{ bookingId?: string }>();
+  const { bookingId, quoteId } = useParams<{ bookingId?: string; quoteId?: string }>();
   const [guest, setGuest] = useState<GuestPortalGuest | null>(null);
   const [bookings, setBookings] = useState<GuestPortalBooking[]>([]);
+  const [quotes, setQuotes] = useState<GuestPortalQuote[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<GuestPortalBooking | null>(null);
+  const [selectedQuote, setSelectedQuote] = useState<GuestPortalQuote | null>(null);
   const [email, setEmail] = useState('');
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
@@ -19,6 +21,7 @@ export function GuestPortalExperience({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedBookingId = parseBookingId(bookingId);
+  const selectedQuoteId = parseBookingId(quoteId);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,23 +36,31 @@ export function GuestPortalExperience({
         if (!restoredGuest || cancelled) {
           setGuest(null);
           setBookings([]);
+          setQuotes([]);
+          setSelectedBooking(null);
+          setSelectedQuote(null);
           return;
         }
 
-        const [nextBookings, nextSelectedBooking] = await Promise.all([
+        const [nextBookings, nextQuotes, nextSelectedBooking, nextSelectedQuote] = await Promise.all([
           guestPortalService.listBookings(),
+          guestPortalService.listQuotes(),
           selectedBookingId ? guestPortalService.getBooking(selectedBookingId) : Promise.resolve(null),
+          selectedQuoteId ? guestPortalService.getQuote(selectedQuoteId) : Promise.resolve(null),
         ]);
 
         if (!cancelled) {
           setGuest(restoredGuest);
           setBookings(nextBookings);
+          setQuotes(nextQuotes);
           setSelectedBooking(nextSelectedBooking);
+          setSelectedQuote(nextSelectedQuote);
         }
       } catch (bootstrapError) {
         if (!cancelled) {
           setSelectedBooking(null);
-          setErrorMessage(bootstrapError instanceof Error ? bootstrapError.message : 'Failed to load your guest booking space.');
+          setSelectedQuote(null);
+          setErrorMessage(bootstrapError instanceof Error ? bootstrapError.message : 'Failed to load your guest portal.');
         }
       } finally {
         if (!cancelled) {
@@ -63,7 +74,7 @@ export function GuestPortalExperience({
     return () => {
       cancelled = true;
     };
-  }, [selectedBookingId]);
+  }, [selectedBookingId, selectedQuoteId]);
 
   const handleRequestLink = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -89,8 +100,10 @@ export function GuestPortalExperience({
       await guestPortalService.logout();
       setGuest(null);
       setBookings([]);
+      setQuotes([]);
       setSelectedBooking(null);
-      setInfoMessage('You have been signed out of your booking space.');
+      setSelectedQuote(null);
+      setInfoMessage('You have been signed out of your guest portal.');
       setErrorMessage(null);
     } catch (logoutError) {
       setErrorMessage(logoutError instanceof Error ? logoutError.message : 'Failed to sign out.');
@@ -114,6 +127,25 @@ export function GuestPortalExperience({
     }
   };
 
+  const handleQuoteDecision = async (quoteId: number, decision: 'accept' | 'reject') => {
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+
+      const updatedQuote = decision === 'accept'
+        ? await guestPortalService.acceptQuote(quoteId)
+        : await guestPortalService.rejectQuote(quoteId);
+
+      setQuotes((current) => current.map((quote) => quote.id === updatedQuote.id ? updatedQuote : quote));
+      setSelectedQuote((current) => current?.id === updatedQuote.id ? updatedQuote : current);
+      setInfoMessage(decision === 'accept' ? 'Your quote was accepted.' : 'Your quote was declined.');
+    } catch (decisionError) {
+      setErrorMessage(decisionError instanceof Error ? decisionError.message : 'Failed to update your quote.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleViewBooking = async (booking: GuestPortalBooking) => {
     if (selectedBookingId === booking.id) {
       return;
@@ -127,6 +159,24 @@ export function GuestPortalExperience({
     } catch (detailError) {
       setSelectedBooking(null);
       setErrorMessage(detailError instanceof Error ? detailError.message : 'Failed to load booking details.');
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  };
+
+  const handleViewQuote = async (quote: GuestPortalQuote) => {
+    if (selectedQuoteId === quote.id) {
+      return;
+    }
+
+    try {
+      setIsLoadingDetails(true);
+      setErrorMessage(null);
+      const detailedQuote = await guestPortalService.getQuote(quote.id);
+      setSelectedQuote(detailedQuote);
+    } catch (detailError) {
+      setSelectedQuote(null);
+      setErrorMessage(detailError instanceof Error ? detailError.message : 'Failed to load quote details.');
     } finally {
       setIsLoadingDetails(false);
     }
@@ -155,6 +205,75 @@ export function GuestPortalExperience({
 
           <section style={styles.portalGrid}>
             <div style={styles.bookingGrid}>
+              {quotes.length === 0 ? (
+                <article style={styles.panel}>
+                  <h2 style={styles.panelTitle}>No linked quotes yet</h2>
+                  <p style={styles.text}>
+                    Quotes sent to this same email address will appear here automatically.
+                  </p>
+                </article>
+              ) : (
+                quotes.map((quote) => (
+                  <article key={quote.id} style={styles.bookingCard}>
+                    <div style={styles.bookingHeader}>
+                      <div>
+                        <p style={styles.panelLabel}>Quote #{quote.id}</p>
+                        <h2 style={styles.panelTitle}>{quote.subject_label ?? quote.booking_service?.name ?? 'Service quote'}</h2>
+                      </div>
+                      <span style={quoteStatusStyle(quote.status)}>{formatQuoteStatus(quote.status)}</span>
+                    </div>
+
+                    <dl style={styles.metaList}>
+                      <div>
+                        <dt style={styles.metaTerm}>Total</dt>
+                        <dd style={styles.metaValue}>{formatQuoteAmount(quote.total_minor, quote.currency)}</dd>
+                      </div>
+                      <div>
+                        <dt style={styles.metaTerm}>Service</dt>
+                        <dd style={styles.metaValue}>{quote.booking_service?.name ?? 'Custom request'}</dd>
+                      </div>
+                      <div>
+                        <dt style={styles.metaTerm}>Valid until</dt>
+                        <dd style={styles.metaValue}>{formatOptionalDate(quote.valid_until, 'No expiry')}</dd>
+                      </div>
+                    </dl>
+
+                    {quote.request_description ? <p style={styles.notes}>{quote.request_description}</p> : null}
+
+                    <div style={styles.cardActions}>
+                      <Link
+                        to={`/guest-portal/quotes/${quote.id}`}
+                        onClick={() => void handleViewQuote(quote)}
+                        style={styles.detailLink}
+                      >
+                        {selectedQuote?.id === quote.id ? 'Viewing details' : 'View quote'}
+                      </Link>
+
+                      {quote.status === 'sent' ? (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => void handleQuoteDecision(quote.id, 'accept')}
+                            disabled={isSubmitting}
+                            style={styles.primaryButton}
+                          >
+                            Accept quote
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleQuoteDecision(quote.id, 'reject')}
+                            disabled={isSubmitting}
+                            style={styles.secondaryButton}
+                          >
+                            Reject quote
+                          </button>
+                        </>
+                      ) : null}
+                    </div>
+                  </article>
+                ))
+              )}
+
               {bookings.length === 0 ? (
                 <article style={styles.panel}>
                   <h2 style={styles.panelTitle}>No linked bookings yet</h2>
@@ -216,7 +335,87 @@ export function GuestPortalExperience({
             </div>
 
             <aside style={styles.detailPanel}>
-              {selectedBooking ? (
+              {selectedQuote ? (
+                <article style={styles.panel}>
+                  <div style={styles.detailHeader}>
+                    <div>
+                      <p style={styles.panelLabel}>Selected quote</p>
+                      <h2 style={styles.panelTitle}>{selectedQuote.subject_label ?? selectedQuote.booking_service?.name ?? 'Service quote'}</h2>
+                    </div>
+                    <span style={quoteStatusStyle(selectedQuote.status)}>{formatQuoteStatus(selectedQuote.status)}</span>
+                  </div>
+
+                  <dl style={styles.detailList}>
+                    <div>
+                      <dt style={styles.metaTerm}>Quote ID</dt>
+                      <dd style={styles.metaValue}>#{selectedQuote.id}</dd>
+                    </div>
+                    <div>
+                      <dt style={styles.metaTerm}>Total</dt>
+                      <dd style={styles.metaValue}>{formatQuoteAmount(selectedQuote.total_minor, selectedQuote.currency)}</dd>
+                    </div>
+                    <div>
+                      <dt style={styles.metaTerm}>Service</dt>
+                      <dd style={styles.metaValue}>{selectedQuote.booking_service?.name ?? 'Custom request'}</dd>
+                    </div>
+                    <div>
+                      <dt style={styles.metaTerm}>Preferred date</dt>
+                      <dd style={styles.metaValue}>{formatDateRange(selectedQuote.preferred_start_at, selectedQuote.preferred_end_at)}</dd>
+                    </div>
+                    <div>
+                      <dt style={styles.metaTerm}>Valid until</dt>
+                      <dd style={styles.metaValue}>{formatOptionalDate(selectedQuote.valid_until, 'No expiry')}</dd>
+                    </div>
+                    <div>
+                      <dt style={styles.metaTerm}>Converted booking</dt>
+                      <dd style={styles.metaValue}>
+                        {selectedQuote.converted_booking ? `#${selectedQuote.converted_booking.id}` : 'Not converted'}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {selectedQuote.customer_message ? <p style={styles.notes}>{selectedQuote.customer_message}</p> : null}
+                  {selectedQuote.request_description ? <p style={styles.notesAlt}>{selectedQuote.request_description}</p> : null}
+
+                  {selectedQuote.line_items.length > 0 ? (
+                    <div style={styles.detailList}>
+                      {selectedQuote.line_items.map((item) => (
+                        <div key={item.id} style={styles.lineItemRow}>
+                          <div>
+                            <dt style={styles.metaTerm}>{item.label}</dt>
+                            <dd style={styles.metaValue}>{item.description ?? 'No additional description'}</dd>
+                          </div>
+                          <dd style={styles.metaValue}>{formatQuoteAmount(item.line_total_minor, selectedQuote.currency)}</dd>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  <div style={styles.detailActions}>
+                    <Link to="/guest-portal" style={styles.secondaryLink}>Back to all activity</Link>
+                    {selectedQuote.status === 'sent' ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => void handleQuoteDecision(selectedQuote.id, 'accept')}
+                          disabled={isSubmitting}
+                          style={styles.primaryButton}
+                        >
+                          Accept quote
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleQuoteDecision(selectedQuote.id, 'reject')}
+                          disabled={isSubmitting}
+                          style={styles.secondaryButton}
+                        >
+                          Reject quote
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </article>
+              ) : selectedBooking ? (
                 <article style={styles.panel}>
                   <div style={styles.detailHeader}>
                     <div>
@@ -271,11 +470,11 @@ export function GuestPortalExperience({
                 </article>
               ) : (
                 <article style={styles.panel}>
-                  <h2 style={styles.panelTitle}>Booking details</h2>
+                  <h2 style={styles.panelTitle}>Activity details</h2>
                   <p style={styles.text}>
                     {isLoadingDetails
-                      ? 'Loading booking details...'
-                      : 'Choose a booking to view the full schedule, resource, payment, and contact details.'}
+                      ? 'Loading activity details...'
+                      : 'Choose a quote or booking to view the full schedule, pricing, and contact details.'}
                   </p>
                 </article>
               )}
@@ -319,10 +518,10 @@ export function GuestPortalExperience({
       <section style={styles.shell}>
         <div style={styles.hero}>
           <p style={styles.kicker}>Guest portal</p>
-          <h1 style={styles.title}>My bookings</h1>
+          <h1 style={styles.title}>My bookings and quotes</h1>
           <p style={styles.subtitle}>
-            This is the customer-facing space for your tenant activities. Today it contains bookings.
-            Later it can also include quote history, approvals, and other guest-visible add-on flows.
+            This is the customer-facing space for your tenant activities, including linked bookings and quote history
+            for the same authenticated guest identity.
           </p>
         </div>
         {content}
@@ -345,6 +544,10 @@ function formatStatus(status: GuestPortalBooking['status']): string {
   return status.replace(/_/g, ' ');
 }
 
+function formatQuoteStatus(status: GuestPortalQuote['status']): string {
+  return status.replace(/_/g, ' ');
+}
+
 function formatPayment(booking: GuestPortalBooking): string {
   if (!booking.payment) {
     return 'No payment attached';
@@ -354,6 +557,10 @@ function formatPayment(booking: GuestPortalBooking): string {
   const currency = booking.payment.currency.toUpperCase();
 
   return `${amount.toFixed(2)} ${currency} · ${booking.payment.status}`;
+}
+
+function formatQuoteAmount(amountMinor: number, currency: string): string {
+  return `${amountMinor} ${currency}`;
 }
 
 function formatDateRange(startsAt: string | null, endsAt: string | null): string {
@@ -381,6 +588,17 @@ function formatDateRange(startsAt: string | null, endsAt: string | null): string
   return `${startLabel} - ${endLabel}`;
 }
 
+function formatOptionalDate(value: string | null, fallback: string): string {
+  if (!value) {
+    return fallback;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 function statusStyle(status: GuestPortalBooking['status']): React.CSSProperties {
   const palette: Record<GuestPortalBooking['status'], { background: string; color: string }> = {
     pending: { background: '#fef3c7', color: '#92400e' },
@@ -390,6 +608,29 @@ function statusStyle(status: GuestPortalBooking['status']): React.CSSProperties 
     completed: { background: '#e2e8f0', color: '#334155' },
     cancelled: { background: '#fee2e2', color: '#991b1b' },
     no_show: { background: '#e5e7eb', color: '#374151' },
+  };
+
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    borderRadius: '999px',
+    padding: '0.35rem 0.75rem',
+    fontSize: '0.8rem',
+    fontWeight: 700,
+    textTransform: 'capitalize',
+    background: palette[status].background,
+    color: palette[status].color,
+  };
+}
+
+function quoteStatusStyle(status: GuestPortalQuote['status']): React.CSSProperties {
+  const palette: Record<GuestPortalQuote['status'], { background: string; color: string }> = {
+    sent: { background: '#dbeafe', color: '#1d4ed8' },
+    accepted: { background: '#dcfce7', color: '#166534' },
+    rejected: { background: '#fee2e2', color: '#991b1b' },
+    cancelled: { background: '#fde68a', color: '#92400e' },
+    expired: { background: '#e5e7eb', color: '#374151' },
+    converted: { background: '#ede9fe', color: '#5b21b6' },
   };
 
   return {
@@ -612,6 +853,14 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#7c2d12',
     lineHeight: 1.7,
   },
+  notesAlt: {
+    margin: '0.85rem 0 0',
+    padding: '1rem',
+    borderRadius: '1rem',
+    background: '#eff6ff',
+    color: '#1d4ed8',
+    lineHeight: 1.7,
+  },
   cardActions: {
     marginTop: '1.25rem',
     display: 'flex',
@@ -637,6 +886,15 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap',
     gap: '0.75rem',
     alignItems: 'center',
+  },
+  lineItemRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '1rem',
+    padding: '0.9rem 1rem',
+    borderRadius: '1rem',
+    background: '#f8fafc',
+    alignItems: 'flex-start',
   },
   detailLink: {
     display: 'inline-flex',

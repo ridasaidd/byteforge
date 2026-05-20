@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   format,
@@ -24,6 +24,7 @@ import { Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Plus } from 'l
 import { useTranslation } from 'react-i18next';
 import { cmsBookingApi } from '@/shared/services/api/booking';
 import type { CmsBooking, CmsBookingResource, CmsBookingService, BookingStatus, CreateCmsBookingData } from '@/shared/services/api/booking';
+import type { BookingConversionPrefill } from '@/shared/services/api/quotes';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useToast } from '@/shared/hooks/useToast';
 import { PageHeader } from '@/shared/components/molecules/PageHeader';
@@ -164,7 +165,8 @@ type CreateBookingFormState = {
 function makeDefaultBookingForm(
   referenceDate: Date,
   services: CmsBookingService[],
-  resources: CmsBookingResource[]
+  resources: CmsBookingResource[],
+  overrides: Partial<CreateBookingFormState> = {},
 ): CreateBookingFormState {
   const startsAt = new Date(referenceDate);
   startsAt.setHours(10, 0, 0, 0);
@@ -172,12 +174,17 @@ function makeDefaultBookingForm(
   const endsAt = new Date(startsAt);
   endsAt.setHours(endsAt.getHours() + 1);
 
-  const firstService = services[0];
+  const requestedService = overrides.serviceId
+    ? services.find((service) => String(service.id) === overrides.serviceId)
+    : undefined;
+  const firstService = requestedService ?? services[0];
   const allowedResourceIds = new Set(firstService?.resources?.map((resource) => resource.id) ?? []);
   const candidateResources = allowedResourceIds.size > 0
     ? resources.filter((resource) => allowedResourceIds.has(resource.id))
     : resources;
-  const firstResource = candidateResources[0] ?? resources[0];
+  const firstResource = overrides.resourceId
+    ? candidateResources.find((resource) => String(resource.id) === overrides.resourceId)
+    : (candidateResources[0] ?? resources[0]);
 
   return {
     serviceId: firstService ? String(firstService.id) : '',
@@ -190,6 +197,22 @@ function makeDefaultBookingForm(
     customerNotes: '',
     internalNotes: '',
     force: false,
+    ...overrides,
+  };
+}
+
+function makeBookingFormOverridesFromPrefill(prefill: BookingConversionPrefill | null): Partial<CreateBookingFormState> {
+  if (!prefill) {
+    return {};
+  }
+
+  return {
+    ...(prefill.service_id ? { serviceId: String(prefill.service_id) } : {}),
+    customerName: prefill.customer_name ?? '',
+    customerEmail: prefill.customer_email ?? '',
+    customerPhone: prefill.customer_phone ?? '',
+    customerNotes: prefill.customer_notes ?? '',
+    internalNotes: prefill.internal_notes ?? '',
   };
 }
 
@@ -444,6 +467,7 @@ function CreateBookingDialog({
   onClose,
   onSave,
   saving,
+  initialPrefill,
   services,
   resources,
   referenceDate,
@@ -453,18 +477,29 @@ function CreateBookingDialog({
   onClose: () => void;
   onSave: (payload: CreateCmsBookingData) => void;
   saving: boolean;
+  initialPrefill: BookingConversionPrefill | null;
   services: CmsBookingService[];
   resources: CmsBookingResource[];
   referenceDate: Date;
   t: (key: string, options?: Record<string, unknown>) => string;
 }) {
-  const [form, setForm] = useState<CreateBookingFormState>(() => makeDefaultBookingForm(referenceDate, services, resources));
+  const [form, setForm] = useState<CreateBookingFormState>(() => makeDefaultBookingForm(
+    referenceDate,
+    services,
+    resources,
+    makeBookingFormOverridesFromPrefill(initialPrefill),
+  ));
 
   useEffect(() => {
     if (open) {
-      setForm(makeDefaultBookingForm(referenceDate, services, resources));
+      setForm(makeDefaultBookingForm(
+        referenceDate,
+        services,
+        resources,
+        makeBookingFormOverridesFromPrefill(initialPrefill),
+      ));
     }
-  }, [open, referenceDate, services, resources]);
+  }, [open, referenceDate, services, resources, initialPrefill]);
 
   const selectedService = services.find((service) => String(service.id) === form.serviceId);
   const availableResources = useMemo(() => {
@@ -680,6 +715,7 @@ type ViewMode = 'month' | 'week' | 'list';
 
 export function BookingsCalendarPage() {
   const { t, i18n } = useTranslation('booking');
+  const location = useLocation();
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { toast } = useToast();
@@ -692,8 +728,10 @@ export function BookingsCalendarPage() {
   const [resourceFilter, setResourceFilter] = useState('');
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [createDialogPrefill, setCreateDialogPrefill] = useState<BookingConversionPrefill | null>(null);
   const [selectedDayLabel, setSelectedDayLabel] = useState('');
   const [selectedDayBookings, setSelectedDayBookings] = useState<CmsBooking[]>([]);
+  const consumedPrefillLocationKey = useRef<string | null>(null);
   const dateLocale = useMemo(() => getDateLocale(i18n.language), [i18n.language]);
   const statusOptions: Array<{ value: string; label: string }> = useMemo(() => [
     { value: '', label: t('all_statuses') },
@@ -771,9 +809,23 @@ export function BookingsCalendarPage() {
   const services = servicesData?.data ?? [];
   const resources = resourcesData?.data ?? [];
 
+  useEffect(() => {
+    const nextState = location.state as { createBookingPrefill?: BookingConversionPrefill } | null;
+    const nextPrefill = nextState?.createBookingPrefill ?? null;
+
+    if (!nextPrefill || consumedPrefillLocationKey.current === location.key) {
+      return;
+    }
+
+    consumedPrefillLocationKey.current = location.key;
+    setCreateDialogPrefill(nextPrefill);
+    setCreateDialogOpen(true);
+  }, [location.key, location.state]);
+
   const createMutation = useMutation({
     mutationFn: (payload: CreateCmsBookingData) => cmsBookingApi.createBooking(payload),
     onSuccess: () => {
+      setCreateDialogPrefill(null);
       setCreateDialogOpen(false);
       qc.invalidateQueries({ queryKey: ['cms-bookings'] });
       toast({ title: t('booking_created') });
@@ -839,13 +891,23 @@ export function BookingsCalendarPage() {
     return getStatusLabel(status, t);
   }
 
+  function openCreateDialog(prefill: BookingConversionPrefill | null = null) {
+    setCreateDialogPrefill(prefill);
+    setCreateDialogOpen(true);
+  }
+
+  function closeCreateDialog() {
+    setCreateDialogOpen(false);
+    setCreateDialogPrefill(null);
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
         title={t('bookings_page_title')}
         description={t('bookings_page_description')}
         actions={canManage ? (
-          <Button onClick={() => setCreateDialogOpen(true)} disabled={services.length === 0 || resources.length === 0}>
+          <Button onClick={() => openCreateDialog()} disabled={services.length === 0 || resources.length === 0}>
             <Plus size={14} className="mr-1" /> {t('new_booking')}
           </Button>
         ) : undefined}
@@ -1027,9 +1089,12 @@ export function BookingsCalendarPage() {
 
       <CreateBookingDialog
         open={createDialogOpen}
-        onClose={() => setCreateDialogOpen(false)}
-        onSave={(payload) => createMutation.mutate(payload)}
+        onClose={closeCreateDialog}
+        onSave={(payload) => createMutation.mutate(createDialogPrefill
+          ? { ...payload, quote_id: createDialogPrefill.quote_id }
+          : payload)}
         saving={createMutation.isPending}
+        initialPrefill={createDialogPrefill}
         services={services}
         resources={resources}
         referenceDate={currentDate}

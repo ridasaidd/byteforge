@@ -1,4 +1,4 @@
-import { LayoutDashboard, FileText, Image, Menu, Settings, BarChart2, CreditCard, Palette, Users, Shield, CalendarDays, Layers, Users2, Settings2 } from 'lucide-react';
+import { LayoutDashboard, FileText, Image, Menu, Settings, BarChart2, CreditCard, Palette, Users, Shield, CalendarDays, Layers, Users2, Settings2, Activity } from 'lucide-react';
 import type { MenuItem } from '@/shared/components/organisms/Drawer';
 import { useTranslation } from 'react-i18next';
 import { useAddon } from '@/shared/hooks/useAddon';
@@ -30,6 +30,12 @@ export function useTenantMenuItems(): MenuItem[] {
       path: '/cms/analytics',
       icon: BarChart2,
       permission: 'analytics.view',
+    },
+    {
+      label: t('menu_activity_log'),
+      path: '/cms/activity-log',
+      icon: Activity,
+      permission: 'activity.view',
     },
     {
       label: t('menu_payments'),
@@ -73,6 +79,14 @@ export function useTenantMenuItems(): MenuItem[] {
       icon: Settings,
       permission: 'settings.view',
     },
+    ...(hasAddon('estimates_quotes') ? [
+      {
+        label: t('menu_quotes'),
+        path: '/cms/quotes',
+        icon: FileText,
+        permission: 'quotes.view',
+      },
+    ] as MenuItem[] : []),
     ...(hasAddon('booking') ? [
       {
         label: t('menu_bookings'),

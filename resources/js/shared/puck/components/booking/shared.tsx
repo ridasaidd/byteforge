@@ -11,19 +11,21 @@ export function PrimaryButton({
   loading = false,
   disabled = false,
   primaryColor: _primaryColor,
+  className,
 }: {
   children: ReactNode;
   onClick?: () => void;
   loading?: boolean;
   disabled?: boolean;
   primaryColor: string;
+  className?: string;
 }) {
   return (
     <button
       type={onClick ? 'button' : 'submit'}
       onClick={onClick}
       disabled={disabled || loading}
-      className="bw-btn"
+      className={['bw-btn', className].filter(Boolean).join(' ')}
     >
       {loading && <Loader2 size={16} className="bw-spinner" />}
       {children}

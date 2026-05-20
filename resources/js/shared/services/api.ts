@@ -22,6 +22,7 @@ export { themes } from './api/themes';
 export { stats } from './api/stats';
 export { tenantDashboard } from './api/tenantDashboard';
 export { tenantUsers } from './api/tenantUsers';
+export { tenantActivity } from './api/tenantActivity';
 export { billingApi } from './api/billing';
 export { paymentProviders } from './api/paymentProviders';
 export { paymentsApi } from './api/payments';
@@ -39,6 +40,7 @@ import { themes } from './api/themes';
 import { stats } from './api/stats';
 import { tenantDashboard } from './api/tenantDashboard';
 import { tenantUsers } from './api/tenantUsers';
+import { tenantActivity } from './api/tenantActivity';
 import { billingApi } from './api/billing';
 import { paymentProviders } from './api/paymentProviders';
 import { paymentsApi } from './api/payments';
@@ -69,6 +71,7 @@ export const api = {
   stats,
   tenantDashboard,
   tenantUsers,
+  tenantActivity,
   billingApi,
   paymentProviders,
   paymentsApi,
