@@ -841,7 +841,7 @@ test.describe('Booking storefront appointment flow', () => {
       const quoteResponse = await quoteResponsePromise;
       expect(quoteResponse.status(), `Quote request response should be created: ${quoteResponse.status()} ${quoteResponse.statusText()}`).toBe(201);
 
-      const quoteBody = await quoteResponse.json() as PageResponse<{ id: number }>; 
+      const quoteBody = await quoteResponse.json() as PageResponse<{ id: number }>;
       createdQuoteRequestId = quoteBody.data.id;
 
       await expect(page.getByText('Appointment confirmed!')).toBeVisible();
