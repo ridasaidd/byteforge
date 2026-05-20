@@ -26,6 +26,7 @@ import {
   ConfirmStep,
   CustomerStep,
   DateStep,
+  QuoteRequestStep,
   ResourceStep,
   ServiceStep,
   SlotStep,
@@ -55,6 +56,54 @@ function toWizardStep(step: 'service' | 'date' | 'resource' | 'slot' | 'range_ch
   }
 
   return step;
+}
+
+export function buildQuoteRequestBody(serviceId: number, serviceName: string, customer: NonNullable<WizardState['customer']>): BodyInit {
+  const payload = {
+    requested_booking_service_id: serviceId,
+    guest_name: customer.name,
+    guest_email: customer.email,
+    guest_phone: customer.phone || undefined,
+    subject_label: serviceName,
+    request_description: customer.notes || `Quote request for ${serviceName}`,
+    preferred_start_at: customer.preferredStartAt || undefined,
+    preferred_end_at: customer.preferredEndAt || undefined,
+  };
+
+  const attachments = customer.attachments ?? [];
+
+  if (attachments.length === 0) {
+    return JSON.stringify(payload);
+  }
+
+  const formData = new FormData();
+  formData.append('requested_booking_service_id', String(payload.requested_booking_service_id));
+  formData.append('guest_name', payload.guest_name);
+  formData.append('guest_email', payload.guest_email);
+
+  if (payload.guest_phone) {
+    formData.append('guest_phone', payload.guest_phone);
+  }
+
+  if (payload.subject_label) {
+    formData.append('subject_label', payload.subject_label);
+  }
+
+  formData.append('request_description', payload.request_description);
+
+  if (payload.preferred_start_at) {
+    formData.append('preferred_start_at', payload.preferred_start_at);
+  }
+
+  if (payload.preferred_end_at) {
+    formData.append('preferred_end_at', payload.preferred_end_at);
+  }
+
+  attachments.forEach((attachment) => {
+    formData.append('attachments[]', attachment);
+  });
+
+  return formData;
 }
 
 function BookingWidgetShell({
@@ -96,6 +145,7 @@ function DefaultBookingSections({
   successContent,
   timeFormat,
   submitHold,
+  submitQuoteRequest,
   submitConfirm,
 }: {
   serviceId: number;
@@ -105,6 +155,7 @@ function DefaultBookingSections({
   successContent?: BookingWidgetProps['successContent'];
   timeFormat: string;
   submitHold: (customer: NonNullable<WizardState['customer']>) => void;
+  submitQuoteRequest: (customer: NonNullable<WizardState['customer']>) => void;
   submitConfirm: () => void;
 }) {
   const { state } = useBookingContext();
@@ -121,7 +172,11 @@ function DefaultBookingSections({
 
       {state.step === 'slot' && <SlotStep primaryColor={primaryColor} timeFormat={timeFormat} />}
 
-      {state.step === 'customer' && (
+      {state.step === 'customer' && state.selectedFlow === 'quote_request' && (
+        <QuoteRequestStep onSubmit={submitQuoteRequest} loading={state.loading} primaryColor={primaryColor} />
+      )}
+
+      {state.step === 'customer' && state.selectedFlow !== 'quote_request' && (
         <CustomerStep onSubmit={submitHold} loading={state.loading} primaryColor={primaryColor} />
       )}
 
@@ -548,7 +603,10 @@ function BookingWidgetContent(props: BookingWidgetProps) {
           dispatch({
             type: 'SELECT_SERVICE',
             service: svc,
-            nextStep: toWizardStep(getNextStep('service', svc.booking_mode)) ?? 'date',
+              nextStep: svc.customer_flow === 'quote_request'
+                ? 'customer'
+                : (toWizardStep(getNextStep('service', svc.booking_mode)) ?? 'date'),
+            flow: svc.customer_flow === 'quote_request' ? 'quote_request' : 'booking',
           });
         }
         else     dispatch({ type: 'SET_ERROR', error: 'The configured service was not found.' });
@@ -634,6 +692,41 @@ function BookingWidgetContent(props: BookingWidgetProps) {
     }
   }, [dispatch, getPreviousStep, state.selectedResource, state.selectedService, state.selectedSlot]);
 
+  const submitQuoteRequest = useCallback(async (customer: NonNullable<WizardState['customer']>) => {
+    if (!state.selectedService) return;
+
+    dispatch({ type: 'SET_LOADING', loading: true });
+
+    try {
+      const requestBody = buildQuoteRequestBody(state.selectedService.id, state.selectedService.name, customer);
+
+      const response = await fetch('/api/public/quotes/requests', {
+        method: 'POST',
+        headers: requestBody instanceof FormData
+          ? { Accept: 'application/json' }
+          : {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            },
+        body: requestBody,
+      });
+
+      const body = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw Object.assign(new Error((body as { message?: string }).message ?? 'Could not submit your quote request.'), {
+          status: response.status,
+          body,
+        });
+      }
+
+      dispatch({ type: 'SET_QUOTE_REQUEST_SUCCESS', customer });
+    } catch (err: unknown) {
+      const error = err as { message?: string };
+      dispatch({ type: 'SET_ERROR', error: error.message ?? 'Could not submit your quote request.' });
+    }
+  }, [dispatch, state.selectedService]);
+
   // ── Confirm hold (called from confirm step) ───────────────────────────────
   const submitConfirm = useCallback(async () => {
     if (!state.holdToken) return;
@@ -713,6 +806,7 @@ function BookingWidgetContent(props: BookingWidgetProps) {
     timeFormat,
     flowResolution,
     submitHold,
+    submitQuoteRequest,
     submitConfirm,
     getNextStep,
     getPreviousStep,
@@ -763,6 +857,7 @@ function BookingWidgetContent(props: BookingWidgetProps) {
             successContent={successContent}
             timeFormat={timeFormat}
             submitHold={submitHold}
+            submitQuoteRequest={submitQuoteRequest}
             submitConfirm={submitConfirm}
           />
         ) : isEditing ? (
@@ -784,6 +879,7 @@ function BookingWidgetContent(props: BookingWidgetProps) {
             successContent={successContent}
             timeFormat={timeFormat}
             submitHold={submitHold}
+            submitQuoteRequest={submitQuoteRequest}
             submitConfirm={submitConfirm}
           />
         )}

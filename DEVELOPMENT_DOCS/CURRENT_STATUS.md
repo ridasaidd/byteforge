@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-15
+Last verified: 2026-05-20
 Primary branch: `main`
 
 ## Snapshot
@@ -12,6 +12,7 @@ Primary branch: `main`
   payments, and booking.
 - Phases 9 through 15 are implemented on `main`.
 - Phase 19 system-surface foundations are partially implemented on `main`, specifically tenant login and guest-portal runtime slices.
+- Phase 17 guest-authenticated quote continuity is now implemented on the current working tree: guest-auth routes are available when booking or estimates-quotes is active, quote requests now persist guest linkage, and `/guest-portal` can list, view, accept, and reject linked quotes.
 - CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:
   backend tests, frontend Vitest, Playwright auth smoke, and staging deployment
   workflow are now aligned and passing with the current environment model.
@@ -113,6 +114,19 @@ Current booking follow-ups worth tracking now are:
 - booking reminder/queue-worker operational expectations should stay explicit
   in environment and deployment docs so reminder delivery remains reliable
 
+### Quotes follow-ups
+
+- the core Phase 17 quote flow is now complete on the current working tree and ready for staging/merge review: storefront quote entry, tokenized review, guest-portal continuity, tenant authoring, booking handoff, and focused validation are all in place
+- authenticated guest quote continuity now exists on the current working tree through the existing guest-auth stack and `/guest-portal`
+- quote-request attachments are now implemented on the current working tree as request-scoped private media with tenant-only review and download handling
+- automated quote mail contract assertions now cover the actual tenant and guest action links, and development Mailtrap delivery verification succeeded for a real guest quote notification
+- service-driven storefront quote-request browser coverage now exists, and guest-portal quote continuity browser coverage now exists with authenticated quote review and acceptance
+- the public guest portal client now deduplicates in-flight guest verification and session restore requests so development Strict Mode no longer invalidates one-time guest auth flows during browser coverage
+- public quote review tokens are now stored as hashes at rest; the plain review token is minted for the email link path without being persisted in the quotes table
+- the tokenized public quote page is still a route-owned React surface rather than a tenant-editable system page; if customization is added later, it should be a dedicated system page instead of a guest-portal widget
+- PDF/downloadable quote presentation is still deferred; when added, it should be implemented as ByteForge-owned quote document rendering rather than as invoice-package-led architecture
+- optional staging-specific quote mail verification may still be useful, but it is no longer treated as a blocker for Phase 17 branch completion after development Mailtrap verification and the full merge-readiness validation pass
+
 ### Security and auth follow-ups
 
 - browser auth still uses JavaScript-accessible bearer access tokens in memory,
@@ -156,6 +170,42 @@ php artisan test tests/Tenant/Feature/Api/TenantGuestAuthTest.php tests/Tenant/F
 
 ```bash
 npm run test:run -- resources/js/apps/public/components/__tests__/guestPortal.service.test.ts resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx resources/js/shared/utils/__tests__/routerNavigation.test.ts
+```
+
+Recent Phase 17 guest-quote continuity verification on the current working tree:
+
+```bash
+php artisan test tests/Tenant/Feature/Api/TenantGuestAuthTest.php tests/Tenant/Feature/Api/TenantGuestQuotesTest.php tests/Feature/Api/Quotes/PublicQuoteRequestApiTest.php
+```
+
+```bash
+npx vitest run resources/js/apps/public/components/__tests__/guestPortal.service.test.ts resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx
+```
+
+Recent Phase 17 quote-attachment verification on the current working tree:
+
+```bash
+php artisan test tests/Feature/Api/Quotes/PublicQuoteRequestApiTest.php tests/Feature/Api/Quotes/QuoteCmsApiTest.php
+```
+
+```bash
+npx vitest run resources/js/shared/puck/components/quotes/__tests__/QuoteRequestWidget.test.tsx resources/js/shared/puck/components/booking/__tests__/BookingWidgetRuntime.test.tsx resources/js/apps/tenant/components/pages/Quotes/__tests__/QuoteRequestDetailPage.test.tsx
+```
+
+Recent Phase 17 notification and storefront-quote verification on the current working tree:
+
+```bash
+php artisan test tests/Feature/Api/Quotes/QuoteNotificationActivityTest.php
+```
+
+```bash
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.dev.byteforge.se npx playwright test tests/e2e/booking-storefront-appointment.spec.ts -g "guest can submit a service-driven quote request with a private attachment from a published storefront page"
+```
+
+Recent Phase 17 guest-portal continuity verification on the current working tree:
+
+```bash
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.dev.byteforge.se npx playwright test tests/e2e/guest-portal-shell.spec.ts -g "authenticated guest can review and accept a linked quote from the guest portal"
 ```
 
 ```bash

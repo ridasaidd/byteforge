@@ -30,6 +30,7 @@ class TenantRbacService
             'media.view', 'media.manage',
             'users.view', 'users.manage', 'roles.manage',
             'settings.view', 'settings.manage',
+            'activity.view',
             'analytics.view',
         ],
         'support' => [
@@ -39,6 +40,7 @@ class TenantRbacService
             'layouts.view',
             'templates.view',
             'media.view', 'media.manage',
+            'activity.view',
             'analytics.view',
         ],
         'viewer' => [
@@ -56,6 +58,7 @@ class TenantRbacService
             'layouts.view',
             'templates.view',
             'media.view',
+            'activity.view',
             'analytics.view',
         ],
     ];
@@ -69,6 +72,12 @@ class TenantRbacService
             'support' => ['bookings.view'],
             'viewer' => ['bookings.view'],
             'platform_support' => ['bookings.view'],
+        ],
+        'estimates_quotes' => [
+            'admin' => ['quotes.view', 'quotes.manage', 'quotes.send', 'quotes.convert'],
+            'support' => ['quotes.view'],
+            'viewer' => ['quotes.view'],
+            'platform_support' => ['quotes.view'],
         ],
         'payments' => [
             'admin' => ['payments.view', 'payments.manage', 'payments.refund'],

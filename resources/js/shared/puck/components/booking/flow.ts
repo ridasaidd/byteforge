@@ -43,18 +43,36 @@ export function getBookingActiveFlowStep(state: WizardState, resolution: Booking
 }
 
 function isStepCompleted(step: BookingRuntimeFlowStep, state: WizardState, resolution: BookingFlowResolution): boolean {
+  const isQuoteRequestFlow = state.selectedFlow === 'quote_request';
+
   switch (step) {
     case 'service':
       return resolution.usesServiceStep && Boolean(state.selectedService);
     case 'date':
+      if (isQuoteRequestFlow) {
+        return false;
+      }
+
       return Boolean(state.selectedService || !resolution.usesServiceStep);
     case 'resource':
+      if (isQuoteRequestFlow) {
+        return false;
+      }
+
       return Boolean(state.selectedDate);
     case 'slot':
+      if (isQuoteRequestFlow) {
+        return false;
+      }
+
       return Boolean(state.selectedResource);
     case 'customer':
-      return Boolean(state.selectedSlot);
+      return isQuoteRequestFlow ? Boolean(state.customer) : Boolean(state.selectedSlot);
     case 'confirm':
+      if (isQuoteRequestFlow) {
+        return false;
+      }
+
       return Boolean(state.customer);
     default:
       return false;
@@ -62,7 +80,10 @@ function isStepCompleted(step: BookingRuntimeFlowStep, state: WizardState, resol
 }
 
 export function getBookingFlowItems(state: WizardState, resolution: BookingFlowResolution): BookingFlowItem[] {
-  const flow = resolution.runtimeOrder.filter(
+  const flow = (state.selectedFlow === 'quote_request'
+    ? (resolution.usesServiceStep ? ['service', 'customer'] : ['customer'])
+    : resolution.runtimeOrder
+  ).filter(
     (step): step is BookingRuntimeFlowStep => step !== 'range_checkout',
   );
 

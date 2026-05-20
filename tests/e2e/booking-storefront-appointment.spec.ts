@@ -132,6 +132,12 @@ async function isBookingAddonActive(request: ApiContext, token: string): Promise
   return (await getActiveAddons(request, token)).has('booking');
 }
 
+async function hasRequiredQuoteStorefrontAddons(request: ApiContext, token: string): Promise<boolean> {
+  const addons = await getActiveAddons(request, token);
+
+  return addons.has('booking') && addons.has('estimates_quotes');
+}
+
 async function attachResourceToService(
   request: ApiContext,
   token: string,
@@ -275,6 +281,7 @@ async function createSlotServiceWithAvailability(
     requiresPayment?: boolean;
     price?: number;
     currency?: string;
+    customerFlow?: 'direct_booking' | 'quote_request' | 'either';
   },
 ): Promise<{ serviceId: number; serviceName: string; resourceId: number; resourceName: string }> {
   const serviceName = `Playwright Appointment Service ${seed}`;
@@ -285,6 +292,7 @@ async function createSlotServiceWithAvailability(
     data: {
       name: serviceName,
       booking_mode: 'slot',
+      customer_flow: options?.customerFlow,
       duration_minutes: 60,
       slot_interval_minutes: 60,
       advance_notice_hours: 0,
@@ -619,6 +627,30 @@ async function deleteAvailabilityWindows(
   }
 }
 
+function forceDeleteQuoteRequest(tenantId: string, quoteRequestId: number): void {
+  const script = [
+    "require 'vendor/autoload.php';",
+    "$app = require 'bootstrap/app.php';",
+    "$kernel = $app->make(Illuminate\\Contracts\\Console\\Kernel::class);",
+    '$kernel->bootstrap();',
+    '$tenant = App\\Models\\Tenant::query()->find($argv[1]);',
+    'if (! $tenant) { echo "ok"; return; }',
+    'tenancy()->initialize($tenant);',
+    '$quoteRequest = App\\Models\\QuoteRequest::query()->forTenant((string) $tenant->id)->find((int) $argv[2]);',
+    'if (! $quoteRequest) { tenancy()->end(); echo "ok"; return; }',
+    '$quoteRequest->quotes()->each(function ($quote) { $quote->lineItems()->delete(); $quote->delete(); });',
+    '$quoteRequest->clearMediaCollection(App\\Models\\QuoteRequest::ATTACHMENTS_COLLECTION);',
+    '$quoteRequest->delete();',
+    'tenancy()->end();',
+    'echo "ok";',
+  ].join(' ');
+
+  execFileSync('php', ['-r', script, '--', tenantId, String(quoteRequestId)], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+}
+
 function getMonthLabel(date: Date): string {
   return date.toLocaleDateString('en-US', {
     month: 'long',
@@ -758,6 +790,95 @@ test.describe('Booking storefront appointment flow', () => {
     } finally {
       for (const bookingId of createdBookingIds) {
         await cancelAndDeleteBookingIfNeeded(request, ownerToken, bookingId);
+      }
+      await deleteIfPresent(request, ownerToken, `${tenantBaseUrl}/api/pages/${publishedPage.id}`);
+      await detachResourceFromServiceIfNeeded(request, ownerToken, serviceId, resourceId);
+      await deleteAvailabilityWindows(request, ownerToken, resourceId);
+      await deleteIfPresent(request, ownerToken, `${tenantBaseUrl}/api/booking/services/${serviceId}`);
+      await deleteIfPresent(request, ownerToken, `${tenantBaseUrl}/api/booking/resources/${resourceId}`);
+    }
+  });
+
+  test('guest can submit a service-driven quote request with a private attachment from a published storefront page', async ({ page, request }) => {
+    test.setTimeout(90000);
+
+    test.skip(!(await hasRequiredQuoteStorefrontAddons(request, ownerToken)), 'booking and estimates_quotes addons must both be active on this tenant — skipping.');
+
+    const issues = attachRuntimeGuards(page);
+    const seed = `${Date.now()}-quote-request`;
+    const tenantId = await getTenantId(request);
+    const guestEmail = `playwright-quote-${seed}@example.com`;
+    let createdQuoteRequestId: number | null = null;
+
+    const { serviceId, serviceName, resourceId } = await createSlotServiceWithAvailability(request, ownerToken, seed, {
+      customerFlow: 'quote_request',
+    });
+    const publishedPage = await createPublishedStorefrontPage(request, ownerToken, seed);
+
+    try {
+      await page.goto(`${tenantBaseUrl}/pages/${publishedPage.slug}`);
+      await expect(page.locator('#public-app')).toBeAttached();
+
+      await page.getByText(serviceName, { exact: true }).click();
+      await expect(page.getByText(`Request a quote for ${serviceName}`)).toBeVisible();
+
+      await page.getByPlaceholder('Your name').fill('Playwright Quote Guest');
+      await page.getByPlaceholder('your@email.com').fill(guestEmail);
+      await page.getByPlaceholder('Share anything we should know...').fill('Need pricing after photo review and condition check.');
+      await page.getByLabel('Reference photos or videos').setInputFiles({
+        name: 'quote-reference.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO6pK3sAAAAASUVORK5CYII=', 'base64'),
+      });
+
+      const quoteResponsePromise = page.waitForResponse((response) => {
+        return response.request().method() === 'POST'
+          && response.url().endsWith('/api/public/quotes/requests');
+      });
+
+      await page.getByRole('button', { name: /Send quote request/i }).click();
+
+      const quoteResponse = await quoteResponsePromise;
+      expect(quoteResponse.status(), `Quote request response should be created: ${quoteResponse.status()} ${quoteResponse.statusText()}`).toBe(201);
+
+      const quoteBody = await quoteResponse.json() as PageResponse<{ id: number }>;
+      createdQuoteRequestId = quoteBody.data.id;
+
+      await expect(page.getByText('Appointment confirmed!')).toBeVisible();
+      await expect(page.getByText(new RegExp(guestEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeVisible();
+
+      const detailRes = await request.get(`${tenantBaseUrl}/api/quotes/requests/${createdQuoteRequestId}`, {
+        headers: authHeaders(ownerToken),
+      });
+      expect(detailRes.status()).toBe(200);
+
+      const detailBody = await detailRes.json() as PageResponse<{
+        guest_email: string;
+        requested_booking_service_id: number | null;
+        attachments: Array<{ id: number; file_name: string }>;
+      }>;
+
+      expect(detailBody.data.guest_email).toBe(guestEmail);
+      expect(detailBody.data.requested_booking_service_id).toBe(serviceId);
+      expect(detailBody.data.attachments).toHaveLength(1);
+      expect(detailBody.data.attachments[0]?.file_name).toMatch(/quote-reference\.png$/);
+
+      const attachmentId = detailBody.data.attachments[0]!.id;
+      const downloadRes = await request.get(`${tenantBaseUrl}/api/quotes/requests/${createdQuoteRequestId}/attachments/${attachmentId}/download`, {
+        headers: {
+          Authorization: `Bearer ${ownerToken}`,
+          Accept: 'application/octet-stream',
+        },
+      });
+
+      expect(downloadRes.status()).toBe(200);
+      expect(downloadRes.headers()['content-disposition'] ?? '').toContain('quote-reference.png');
+
+      const filteredIssues = filterRuntimeIssues(issues, []);
+      expect(filteredIssues, `Runtime issues detected in storefront quote-request flow:\n${formatIssues(filteredIssues)}`).toEqual([]);
+    } finally {
+      if (createdQuoteRequestId !== null) {
+        forceDeleteQuoteRequest(tenantId, createdQuoteRequestId);
       }
       await deleteIfPresent(request, ownerToken, `${tenantBaseUrl}/api/pages/${publishedPage.id}`);
       await detachResourceFromServiceIfNeeded(request, ownerToken, serviceId, resourceId);

@@ -6,6 +6,7 @@ namespace App\Observers;
 
 use App\Models\Tenant;
 use App\Models\TenantAddon;
+use App\Services\TenantRbacService;
 use Laravel\Pennant\Feature;
 
 /**
@@ -42,6 +43,7 @@ class TenantAddonObserver
 
         if ($tenant) {
             Feature::for($tenant)->forget($flag);
+            app(TenantRbacService::class)->refreshTenantPermissionCache((string) $tenant->id);
         }
     }
 }

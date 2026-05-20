@@ -94,6 +94,24 @@ class TenantAddonApiTest extends TestCase
     }
 
     #[Test]
+    public function estimates_quotes_addon_is_returned_when_active_for_the_current_tenant(): void
+    {
+        $tenantId = $this->tenantId('tenant-one');
+        $addon = Addon::where('feature_flag', 'estimates_quotes')->firstOrFail();
+
+        TenantAddon::updateOrCreate(
+            ['tenant_id' => $tenantId, 'addon_id' => $addon->id],
+            ['activated_at' => now(), 'deactivated_at' => null]
+        );
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->getJson($this->tenantUrl('/api/addons', 'tenant-one'));
+
+        $response->assertOk();
+        $this->assertContains('estimates_quotes', $response->json('data'));
+    }
+
+    #[Test]
     public function endpoint_requires_authentication(): void
     {
         $tenant = TestUsers::tenant('tenant-one');

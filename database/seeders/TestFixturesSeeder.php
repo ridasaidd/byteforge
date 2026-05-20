@@ -196,6 +196,17 @@ class TestFixturesSeeder extends Seeder
                 'is_active' => true,
                 'sort_order' => 4,
             ],
+            [
+                'name' => 'Estimates and Quotes',
+                'slug' => 'estimates-quotes',
+                'description' => 'Request-first quote intake, tenant-authored quotes, and booking handoff',
+                'stripe_price_id' => env('STRIPE_PRICE_ADDON_ESTIMATES_QUOTES', 'price_estimates_quotes_placeholder'),
+                'price_monthly' => 8900,
+                'currency' => 'SEK',
+                'feature_flag' => 'estimates_quotes',
+                'is_active' => true,
+                'sort_order' => 5,
+            ],
         ];
 
         foreach ($addons as $addon) {

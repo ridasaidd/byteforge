@@ -329,9 +329,53 @@ export const BOOKING_WIDGET_STATIC_CSS = `
   outline: none;
 }
 
+.bw-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--bw-btn-bg);
+  border-radius: var(--bw-btn-border-radius);
+  background: var(--bw-btn-bg);
+  color: var(--bw-btn-color);
+  cursor: pointer;
+  font-size: var(--bw-btn-font-size);
+  font-weight: var(--bw-btn-font-weight);
+  line-height: 1.4;
+  transition: transform 0.15s ease, opacity 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+}
+
+.bw-btn:hover {
+  opacity: 0.96;
+}
+
+.bw-btn:focus-visible,
+.bw-secondary-action:focus-visible {
+  outline: 2px solid var(--bw-btn-bg);
+  outline-offset: 2px;
+}
+
 .bw-btn:disabled {
   background: var(--bw-btn-disabled-bg);
+  border-color: var(--bw-btn-disabled-bg);
   cursor: not-allowed;
+  box-shadow: none;
+}
+
+.bw-card-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.bw-card-action-hint {
+  margin-top: 10px;
+  color: var(--bw-muted-color);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .bw-error-banner {
@@ -386,14 +430,29 @@ export const BOOKING_WIDGET_STATIC_CSS = `
 }
 
 .bw-secondary-action {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
   margin-top: 8px;
-  background: none;
-  border: none;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--bw-card-border-color);
+  border-radius: var(--bw-btn-border-radius);
   cursor: pointer;
-  color: var(--bw-muted-color);
+  color: var(--bw-summary-value-color);
   font-size: 13px;
+  font-weight: 600;
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+
+.bw-secondary-action:hover {
+  border-color: var(--bw-card-hover-border-color);
+  background: var(--bw-card-hover-bg);
+}
+
+.bw-card-secondary-action {
+  margin-top: 0;
 }
 
 .bw-state {

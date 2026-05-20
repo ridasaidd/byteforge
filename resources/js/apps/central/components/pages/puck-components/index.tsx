@@ -61,6 +61,7 @@ import {
   bookingPuckSectionComponents,
   bookingRegisteredSectionNames,
 } from '@/shared/puck/components/booking';
+import { QuoteRequestWidget } from '@/shared/puck/components/quotes';
 import type { Config } from '@puckeditor/core';
 
 const rendererConfig: Config = {
@@ -69,6 +70,7 @@ const rendererConfig: Config = {
     ...puckConfig.components,
     BookingWidget: BookingWidget as Config['components'][string],
     PaymentWidget: PaymentWidget as Config['components'][string],
+    QuoteRequestWidget: QuoteRequestWidget as Config['components'][string],
     ...bookingPuckSectionComponents,
   },
   categories: {
@@ -81,6 +83,11 @@ const rendererConfig: Config = {
     bookingLegacy: {
       components: [...bookingRegisteredSectionNames],
       title: 'Legacy Booking Internals',
+      defaultExpanded: false,
+    },
+    quotes: {
+      components: ['QuoteRequestWidget'],
+      title: 'Quotes',
       defaultExpanded: false,
     },
   },

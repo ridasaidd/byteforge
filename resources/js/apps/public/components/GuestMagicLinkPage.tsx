@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { guestPortalService } from '../services/guestPortal';
 
@@ -6,15 +6,29 @@ export function GuestMagicLinkPage() {
   const navigate = useNavigate();
   const { token } = useParams<{ token: string }>();
   const [error, setError] = useState<string | null>(null);
+  const verifiedTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
+    if (!token) {
+      setError('This sign-in link is invalid.');
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (verifiedTokenRef.current === token) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    verifiedTokenRef.current = token;
+
     const verify = async () => {
-      if (!token) {
-        setError('This sign-in link is invalid.');
-        return;
-      }
+      setError(null);
 
       try {
         await guestPortalService.verifyMagicLink(token);

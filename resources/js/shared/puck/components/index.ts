@@ -77,3 +77,6 @@ export {
 // Booking add-on components (conditionally registered in puckConfig when addon is active)
 export { BookingWidget, PaymentWidget, type BookingWidgetProps, type PaymentWidgetProps } from './booking';
 
+// Quotes add-on components (conditionally registered in puckConfig when addon is active)
+export { QuoteRequestWidget, type QuoteRequestWidgetProps } from './quotes';
+

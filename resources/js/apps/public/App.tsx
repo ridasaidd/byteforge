@@ -5,6 +5,7 @@ import { CookieBanner } from './components';
 import { BookingPaymentPage } from './components/BookingPaymentPage';
 import { GuestMagicLinkPage } from './components/GuestMagicLinkPage';
 import { GuestPortalPage } from './components/GuestPortalPage';
+import { PublicQuotePage } from './components/PublicQuotePage';
 
 export const PublicApp: FC = () => {
     return (
@@ -28,10 +29,15 @@ export const PublicApp: FC = () => {
 
                 {/* Guest portal */}
                 <Route path="/guest-portal" element={<GuestPortalPage />} />
+                <Route path="/guest-portal/quotes/:quoteId" element={<GuestPortalPage />} />
                 <Route path="/guest-portal/:bookingId" element={<GuestPortalPage />} />
                 <Route path="/my-bookings" element={<GuestPortalPage />} />
+                <Route path="/my-bookings/quotes/:quoteId" element={<GuestPortalPage />} />
                 <Route path="/my-bookings/:bookingId" element={<GuestPortalPage />} />
                 <Route path="/guest/magic/:token" element={<GuestMagicLinkPage />} />
+
+                {/* Public quote review */}
+                <Route path="/quotes/:token" element={<PublicQuotePage />} />
             </Routes>
         </BrowserRouter>
     );

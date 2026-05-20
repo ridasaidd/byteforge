@@ -78,6 +78,17 @@ class AppServiceProvider extends ServiceProvider
                 ->exists();
         });
 
+        Feature::define('estimates_quotes', function ($scope): bool {
+            if (! $scope instanceof Tenant) {
+                return false;
+            }
+
+            return TenantAddon::active()
+                ->forTenant((string) $scope->id)
+                ->whereHas('addon', fn ($q) => $q->where('feature_flag', 'estimates_quotes'))
+                ->exists();
+        });
+
         // Identity-aware login rate limiter.
         // Keys by email + IP so that rotating IPs cannot bypass the limit,
         // and one IP brute-forcing many accounts does not lock unrelated users out.

@@ -21,19 +21,36 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class EnsureAddon
 {
-    public function handle(Request $request, Closure $next, string $featureFlag): Response
+    public function handle(Request $request, Closure $next, string ...$featureFlags): Response
     {
         if (! tenancy()->initialized || ! tenancy()->tenant) {
             abort(403, 'Tenant context is required.');
         }
 
-        if (Feature::for(tenancy()->tenant)->inactive($featureFlag)) {
+        $featureFlags = array_values(array_filter($featureFlags, static fn (string $flag): bool => $flag !== ''));
+
+        if ($featureFlags === []) {
+            abort(500, 'At least one add-on feature flag is required.');
+        }
+
+        $tenantFeatures = Feature::for(tenancy()->tenant);
+
+        foreach ($featureFlags as $featureFlag) {
+            if ($tenantFeatures->active($featureFlag)) {
+                return $next($request);
+            }
+        }
+
+        if (count($featureFlags) === 1) {
             return response()->json([
-                'message'         => 'This feature requires the ' . $featureFlag . ' add-on.',
-                'addon_required'  => $featureFlag,
+                'message' => 'This feature requires the ' . $featureFlags[0] . ' add-on.',
+                'addon_required' => $featureFlags[0],
             ], 403);
         }
 
-        return $next($request);
+        return response()->json([
+            'message' => 'This feature requires one of the following add-ons: ' . implode(', ', $featureFlags) . '.',
+            'addon_required_any' => $featureFlags,
+        ], 403);
     }
 }

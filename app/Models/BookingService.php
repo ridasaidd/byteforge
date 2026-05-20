@@ -14,6 +14,9 @@ class BookingService extends Model
 
     public const MODE_SLOT = 'slot';
     public const MODE_RANGE = 'range';
+    public const FLOW_DIRECT_BOOKING = 'direct_booking';
+    public const FLOW_QUOTE_REQUEST = 'quote_request';
+    public const FLOW_EITHER = 'either';
 
     /** @var list<string> */
     protected $fillable = [
@@ -21,6 +24,7 @@ class BookingService extends Model
         'name',
         'description',
         'booking_mode',
+        'customer_flow',
         'duration_minutes',
         'slot_interval_minutes',
         'min_nights',

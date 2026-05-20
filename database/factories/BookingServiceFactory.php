@@ -16,6 +16,7 @@ class BookingServiceFactory extends Factory
             'name' => fake()->words(3, true),
             'description' => fake()->optional()->sentence(),
             'booking_mode' => fake()->randomElement([BookingService::MODE_SLOT, BookingService::MODE_RANGE]),
+            'customer_flow' => BookingService::FLOW_DIRECT_BOOKING,
             'duration_minutes' => 60,
             'slot_interval_minutes' => 30,
             'min_nights' => null,
