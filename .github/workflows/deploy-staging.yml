@@ -98,6 +98,10 @@ jobs:
             # Run migrations
             php artisan migrate --force
 
+            # Sync global permission rows so newly shipped tenant/central
+            # capabilities are available without a full reseed.
+            php artisan db:seed --class=RolePermissionSeeder --force
+
             # Sync plans/add-ons catalog rows so newly shipped billing items
             # become visible without needing a destructive full reseed.
             php artisan db:seed --class=BillingCatalogSeeder --force
