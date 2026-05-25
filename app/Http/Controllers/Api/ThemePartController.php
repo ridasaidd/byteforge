@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\ThemePart;
 use App\Services\PuckCompilerService;
@@ -12,6 +13,10 @@ use Illuminate\Validation\Rule;
 
 class ThemePartController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     /**
      * Get tenant ID
      */
@@ -97,7 +102,10 @@ class ThemePartController extends Controller
     {
         $tenantId = $this->getTenantId();
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+        ), [
             'name' => 'required|string|max:255',
             'slug' => [
                 'nullable',
@@ -116,7 +124,7 @@ class ThemePartController extends Controller
             'puck_data_raw' => 'nullable|array',
             'status' => 'required|string|in:draft,published',
             'sort_order' => 'nullable|integer',
-        ]);
+        ])->validate();
 
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
@@ -205,7 +213,10 @@ class ThemePartController extends Controller
 
         $themePart = $query->findOrFail($id);
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+        ), [
             'name' => 'sometimes|required|string|max:255',
             'slug' => [
                 'sometimes',
@@ -225,7 +236,7 @@ class ThemePartController extends Controller
             'puck_data_raw' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published',
             'sort_order' => 'nullable|integer',
-        ]);
+        ])->validate();
 
         $oldStatus = $themePart->status;
         $themePart->update($validated);

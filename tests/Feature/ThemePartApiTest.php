@@ -68,6 +68,35 @@ class ThemePartApiTest extends TestCase
     }
 
     #[Test]
+    public function it_normalizes_theme_part_name_on_create_and_update()
+    {
+        $createResponse = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
+            ->postJson('/api/superadmin/theme-parts', [
+                'name' => '  <b>Main   Header</b>  ',
+                'type' => 'header',
+                'status' => 'draft',
+            ]);
+
+        $createResponse->assertStatus(201)
+            ->assertJsonPath('data.name', 'Main Header')
+            ->assertJsonPath('data.slug', 'main-header');
+
+        $themePart = ThemePart::findOrFail($createResponse->json('data.id'));
+        $this->assertSame('Main Header', $themePart->name);
+
+        $updateResponse = $this->actingAsSuperadmin()->withServerVariables(['HTTP_HOST' => 'localhost'])
+            ->putJson("/api/superadmin/theme-parts/{$themePart->id}", [
+                'name' => "\t<p>Updated   Header</p>\n",
+            ]);
+
+        $updateResponse->assertStatus(200)
+            ->assertJsonPath('data.name', 'Updated Header');
+
+        $themePart->refresh();
+        $this->assertSame('Updated Header', $themePart->name);
+    }
+
+    #[Test]
     public function it_compiles_theme_part_on_publish()
     {
         Theme::query()->whereNull('tenant_id')->update(['is_active' => false]);

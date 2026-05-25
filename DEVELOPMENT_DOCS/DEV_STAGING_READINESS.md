@@ -1,6 +1,6 @@
 # Development and Staging Readiness
 
-Last updated: 2026-05-11
+Last updated: 2026-05-25
 Status: working baseline
 Audience: engineering
 
@@ -197,6 +197,11 @@ Current state (2026-05-11):
 - implemented baseline on `main` via `.github/workflows/deploy-staging.yml`
 - deployment now validates required SSH secrets before attempting remote steps
 - deployment includes post-deploy API smoke checks for central auth/theme health
+- deployment now also seeds `RolePermissionSeeder` and `BillingCatalogSeeder`
+  after migrations so new permissions and billing catalog rows become available
+  on staging without a destructive reseed
+- deployment now includes a required staging guest magic-link mail smoke after
+  the remote deploy step
 
 ---
 
@@ -403,6 +408,31 @@ For the shared development server, HTTPS is strongly recommended once the team
 is using stable dev hostnames over Tailscale. It is not as mandatory as staging,
 but enabling it early reduces environment drift.
 
+### 9. Auth Cookie Settings Must Be Explicit
+
+Before staging, the hybrid auth model should not rely on implicit framework
+defaults alone.
+
+Required outcomes:
+
+- `SESSION_SECURE_COOKIE`, `SESSION_HTTP_ONLY`, and `SESSION_SAME_SITE` are
+  explicitly chosen per environment
+- staff refresh-cookie settings (`AUTH_REFRESH_*`) are present in the owned env
+  template or deployment secret set
+- guest refresh-cookie settings (`GUEST_AUTH_REFRESH_*`) are present in the
+  owned env template or deployment secret set
+- `SESSION_DOMAIN` stays unset so dashboard and guest refresh cookies remain
+  host-scoped by default
+
+Why this matters:
+
+- the auth migration now depends on host-scoped HttpOnly refresh cookies for
+  central and tenant continuity
+- staging should exercise the same secure-cookie behavior expected in
+  production
+- keeping these values explicit reduces accidental drift when moving from the
+  Raspberry environments to a VPS
+
 ---
 
 ## Current Before-Staging Audit
@@ -425,6 +455,8 @@ This is the current engineering view based on the repository state.
 - mail delivery is still log-based instead of QA-friendly
 - queue-worker expectations are not yet documented as part of normal setup
 - scheduler expectations are not yet documented as part of normal setup
+- auth cookie/session settings are now documented, but the actual owned staging
+  and production env templates still need to carry those values explicitly
 - staging server filesystem ownership/permissions still need a stable baseline
   so deploy logs stay clean (composer/npm/storage/cache permissions)
 - customer-account surfaces remain intentionally unimplemented and need clear

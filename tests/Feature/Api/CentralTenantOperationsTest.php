@@ -304,6 +304,43 @@ class CentralTenantOperationsTest extends TestCase
     }
 
     #[Test]
+    public function support_access_reasons_are_normalized_on_grant_and_revoke(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $supportUser = TestUsers::centralSupport();
+
+        $create = $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenant->id}/support-access", [
+                'support_user_id' => $supportUser->id,
+                'reason' => "  <b>Investigate   booking issue</b>\t",
+                'duration_hours' => 24,
+            ]);
+
+        $create->assertCreated();
+
+        $grantId = (int) $create->json('data.id');
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'id' => $grantId,
+            'reason' => 'Investigate booking issue',
+        ]);
+
+        $this->actingAsCentralAdmin()
+            ->withServerVariables($this->central())
+            ->postJson("/api/superadmin/tenants/{$tenant->id}/support-access/{$grantId}/revoke", [
+                'reason' => "  <i>Issue   resolved</i>\n",
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('tenant_support_access_grants', [
+            'id' => $grantId,
+            'revoke_reason' => 'Issue resolved',
+            'status' => 'revoked',
+        ]);
+    }
+
+    #[Test]
     public function central_admin_can_grant_same_support_user_to_multiple_tenants_concurrently(): void
     {
         $tenantOne = TestUsers::tenant('tenant-one');

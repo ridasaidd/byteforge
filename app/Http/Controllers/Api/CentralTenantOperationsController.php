@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\Page;
 use App\Models\Tenant;
@@ -21,6 +22,7 @@ class CentralTenantOperationsController extends Controller
     public function __construct(
         private readonly ThemeService $themeService,
         private readonly TenantSupportAccessService $tenantSupportAccess,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
     ) {}
 
     public function summary(Tenant $tenant): JsonResponse
@@ -226,7 +228,12 @@ class CentralTenantOperationsController extends Controller
 
     public function grantSupportAccess(Request $request, Tenant $tenant): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
+        $normalizedInput = ($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['reason'],
+        );
+
+        $validator = Validator::make($normalizedInput, [
             'support_user_id' => 'required|integer|exists:users,id',
             'reason' => 'required|string|max:1000',
             'duration_hours' => 'required|integer|min:1|max:168',
@@ -239,7 +246,9 @@ class CentralTenantOperationsController extends Controller
             ], 422);
         }
 
-        $supportUser = User::query()->findOrFail((int) $request->integer('support_user_id'));
+        $validated = $validator->validated();
+
+        $supportUser = User::query()->findOrFail((int) $validated['support_user_id']);
         $actor = $request->user();
 
         if (! $actor instanceof User) {
@@ -250,8 +259,8 @@ class CentralTenantOperationsController extends Controller
             $tenant,
             $supportUser,
             $actor,
-            (string) $request->input('reason'),
-            (int) $request->integer('duration_hours'),
+            (string) $validated['reason'],
+            (int) $validated['duration_hours'],
         );
 
         return response()->json([
@@ -269,7 +278,12 @@ class CentralTenantOperationsController extends Controller
             return response()->json(['message' => 'Support grant not found'], 404);
         }
 
-        $validator = Validator::make($request->all(), [
+        $normalizedInput = ($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['reason'],
+        );
+
+        $validator = Validator::make($normalizedInput, [
             'reason' => 'nullable|string|max:1000',
         ]);
 
@@ -280,6 +294,8 @@ class CentralTenantOperationsController extends Controller
             ], 422);
         }
 
+        $validated = $validator->validated();
+
         $actor = $request->user();
 
         if (! $actor instanceof User) {
@@ -289,7 +305,7 @@ class CentralTenantOperationsController extends Controller
         $grant = $this->tenantSupportAccess->revoke(
             $grant,
             $actor,
-            $request->filled('reason') ? (string) $request->input('reason') : null,
+            array_key_exists('reason', $validated) ? (string) $validated['reason'] : null,
         );
 
         return response()->json([

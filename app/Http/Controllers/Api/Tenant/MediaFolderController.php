@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Tenant;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Actions\Api\Tenant\DeleteFolderAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Tenant\CreateFolderRequest;
@@ -12,6 +13,10 @@ use Illuminate\Validation\Rule;
 
 class MediaFolderController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     /**
      * List all folders for the current tenant or central.
      */
@@ -88,8 +93,14 @@ class MediaFolderController extends Controller
 
         $folder = MediaFolder::where('tenant_id', $tenantId)->findOrFail($id);
 
+        $normalizedInput = ($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        );
+
         // Validate the update
-        $request->validate([
+        $validated = validator($normalizedInput, [
             'name' => [
                 'sometimes',
                 'required',
@@ -120,14 +131,14 @@ class MediaFolderController extends Controller
             ],
             'description' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'metadata' => ['sometimes', 'nullable', 'array'],
-        ]);
+        ])->validate();
 
-        $folder->update($request->only([
+        $folder->update(array_intersect_key($validated, array_flip([
             'name',
             'parent_id',
             'description',
             'metadata',
-        ]));
+        ])));
 
         return response()->json([
             'message' => 'Folder updated successfully.',

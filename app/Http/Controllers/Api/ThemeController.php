@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\Theme;
 use App\Services\ThemeCssSectionService;
@@ -42,11 +43,13 @@ class ThemeController extends Controller
     }
     protected ThemeService $themeService;
     protected ThemeCssSectionService $sectionService;
+    protected NormalizeInputFieldsAction $normalizeInputFields;
 
-    public function __construct(ThemeService $themeService, ThemeCssSectionService $sectionService)
+    public function __construct(ThemeService $themeService, ThemeCssSectionService $sectionService, NormalizeInputFieldsAction $normalizeInputFields)
     {
         $this->themeService = $themeService;
         $this->sectionService = $sectionService;
+        $this->normalizeInputFields = $normalizeInputFields;
     }
 
     /**
@@ -184,26 +187,23 @@ class ThemeController extends Controller
             ], 403);
         }
 
-        $validator = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        ), [
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
             'preview_image' => 'nullable|string',
             'is_system_theme' => 'nullable|boolean',
             'base_theme' => 'nullable|string',
             'theme_data' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+        ])->validate();
 
         $tenantId = $this->getTenantId();
 
         // Generate slug from name
-        $slug = \Illuminate\Support\Str::slug($request->name);
+        $slug = \Illuminate\Support\Str::slug($validated['name']);
 
         // Ensure unique slug for this tenant
         $originalSlug = $slug;
@@ -215,13 +215,13 @@ class ThemeController extends Controller
 
         $theme = Theme::create([
             'tenant_id' => $tenantId,
-            'name' => $request->name,
+            'name' => $validated['name'],
             'slug' => $slug,
-            'description' => $request->description,
-            'preview_image' => $request->preview_image,
-            'is_system_theme' => $request->is_system_theme ?? false,
-            'base_theme' => $request->base_theme,
-            'theme_data' => $request->theme_data ?? [],
+            'description' => $validated['description'] ?? null,
+            'preview_image' => $validated['preview_image'] ?? null,
+            'is_system_theme' => $validated['is_system_theme'] ?? false,
+            'base_theme' => $validated['base_theme'] ?? null,
+            'theme_data' => $validated['theme_data'] ?? [],
             'is_active' => false,
             'author' => $request->user()?->name ?? 'Unknown',
             'version' => '1.0.0',
@@ -292,34 +292,31 @@ class ThemeController extends Controller
             ], 404);
         }
 
-        $validator = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        ), [
             'name' => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'preview_image' => 'nullable|string',
             'theme_data' => 'nullable|array',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors(),
-            ], 422);
-        }
+        ])->validate();
 
         // Update basic fields if provided
-        if ($request->has('name')) {
-            $theme->name = $request->name;
+        if (array_key_exists('name', $validated)) {
+            $theme->name = $validated['name'];
         }
-        if ($request->has('description')) {
-            $theme->description = $request->description;
+        if (array_key_exists('description', $validated)) {
+            $theme->description = $validated['description'];
         }
-        if ($request->has('preview_image')) {
-            $theme->preview_image = $request->preview_image;
+        if (array_key_exists('preview_image', $validated)) {
+            $theme->preview_image = $validated['preview_image'];
         }
 
         // Update theme_data if provided
-        if ($request->has('theme_data')) {
-            $theme = $this->themeService->updateTheme($theme, $request->theme_data);
+        if (array_key_exists('theme_data', $validated)) {
+            $theme = $this->themeService->updateTheme($theme, $validated['theme_data']);
         } else {
             $theme->save();
         }

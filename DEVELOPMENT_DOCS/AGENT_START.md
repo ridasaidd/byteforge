@@ -2,18 +2,22 @@
 
 Status: canonical
 Audience: AI agent
-Last verified: 2026-04-19
+Last verified: 2026-05-25
 
 This is the fastest safe entry point for AI agents working in ByteForge.
 
 ## Current Truth
 
 - primary branch: `main`
-- implemented on `main`: Phases 9 through 14
-- not implemented yet: Phase 15 guest authentication
-- auth storage migration is still planned, not shipped
+- implemented on `main`: Phases 9 through 15
+- partially implemented on `main`: early Phase 19 tenant-login and guest-portal/system-surface slices
+- auth storage migration is in progress with the hybrid in-memory access token plus HttpOnly refresh-cookie model already in use
+- staff password changes now revoke outstanding refresh sessions and clear the current refresh cookie
+- staff logout now revokes the current bearer token as well as the current refresh session, including tenant routes where membership middleware refreshes the user model
+- the shared frontend auth client now has focused unit coverage for silent refresh retry, refresh deduplication, and failed-refresh token cleanup
+- browser-level auth coverage now includes reload-based session restore checks for central and tenant dashboards
 - shared input normalization now exists via `app/Actions/Api/NormalizeInputFieldsAction.php`
-- current reuse points: booking customer fields, payment human-text fields, and auth name/email fields
+- current reuse points: booking customer fields, booking CMS resource/service text fields and cancellation notes, tenant user-management create name/email fields, tenant settings site title/description fields, shared media-folder name/description fields, shared media upload metadata text fields, central theme metadata fields, central page-template name/description fields, central and tenant theme-part name fields, central and tenant page title fields, central and tenant navigation name fields, central and tenant layout name fields, payment human-text fields, auth name/email fields, central admin user/tenant/settings/support-access fields, and tenant CMS quote request/draft text fields
 - the rollout is still partial and should remain field-family driven rather than global
 
 ## Read Order
@@ -80,5 +84,8 @@ local invariants.
 ## Next Likely Work
 
 The shared input normalization layer now exists. The next likely work is to
-expand it deliberately to other suitable human-input fields, then continue with
-auth/session foundation work and guest authentication.
+expand it deliberately to other suitable human-input fields when new explicit
+write boundaries appear, while keeping structured Puck/placeholder JSON,
+identifier-like fields, and dead request classes out of scope. The strongest
+current CMS candidates are already covered, so the next likely substantial work
+after this track is auth/session foundation hardening and guest-auth follow-up.

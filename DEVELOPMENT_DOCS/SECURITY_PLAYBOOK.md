@@ -52,10 +52,41 @@ Current implemented examples:
   `app/Actions/Api/NormalizeInputFieldsAction.php`
 - booking customer-field normalization via
   `app/Actions/Api/SanitizeBookingCustomerInputAction.php`
+- booking CMS resource/service text normalization at the request boundary in
+  `app/Http/Controllers/Api/Booking/BookingResourceController.php` and
+  `app/Http/Controllers/Api/Booking/BookingServiceController.php`
+- booking tenant-management cancellation-note normalization at the request
+  boundary in `app/Http/Controllers/Api/Booking/BookingManagementController.php`
+- tenant user-management create name/email normalization at the request
+  boundary in `app/Http/Controllers/Api/UserController.php`
+- tenant settings site title/description normalization at the request boundary
+  in `app/Http/Controllers/Api/SettingsController.php`
+- shared media-folder name/description normalization at the request boundary
+  in `app/Http/Requests/Tenant/CreateFolderRequest.php` and
+  `app/Http/Controllers/Api/Tenant/MediaFolderController.php`
+- shared media upload metadata normalization for `custom_properties.title`,
+  `custom_properties.alt_text`, and `custom_properties.description` at the
+  request boundary in `app/Http/Requests/Tenant/UploadMediaRequest.php`
+- central theme metadata normalization for `name` and `description` at the
+  request boundary in `app/Http/Controllers/Api/ThemeController.php`
+- central page-template metadata normalization for `name` and `description` at
+  the request boundary in `app/Http/Controllers/Api/PageTemplateController.php`
+- central and tenant theme-part name normalization at the request boundary in
+  `app/Http/Controllers/Api/ThemePartController.php`
+- central and tenant page-title normalization at the request boundary in
+  `app/Http/Controllers/Api/PageController.php`
+- central and tenant navigation-name normalization at the request boundary in
+  `app/Http/Requests/Api/Tenant/CreateNavigationRequest.php` and
+  `app/Http/Requests/Api/Tenant/UpdateNavigationRequest.php`
+- central and tenant layout-name normalization at the request boundary in
+  `app/Http/Controllers/Api/LayoutController.php`
 - payment human-text normalization at the request boundary in
   `app/Http/Controllers/Api/PaymentController.php`
 - auth name/email normalization at the request boundary in
   `app/Http/Controllers/Api/AuthController.php`
+- tenant CMS quote-request and draft-quote text normalization via
+  `app/Actions/Api/SanitizeQuoteRequestInputAction.php` and
+  `app/Actions/Api/SanitizeQuoteDraftInputAction.php`
 
 ## Output Handling
 

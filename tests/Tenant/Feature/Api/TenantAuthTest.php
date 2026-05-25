@@ -7,6 +7,7 @@ use App\Services\TenantSupportAccessService;
 use App\Models\WebRefreshSession;
 use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
+use Laravel\Passport\Token as PassportToken;
 use Laravel\Pennant\Feature;
 use PHPUnit\Framework\Attributes\Test;
 use Symfony\Component\HttpFoundation\Cookie;
@@ -184,6 +185,58 @@ class TenantAuthTest extends TestCase
     }
 
     #[Test]
+    public function tenant_logout_invalidates_current_bearer_token_and_refresh_cookie(): void
+    {
+        $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => $this->ownerEmail('tenant-one'),
+            'password' => 'password',
+        ]);
+
+        $token = (string) $loginResponse->json('token');
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($refreshCookie);
+        $passportToken = PassportToken::query()
+            ->where('user_id', TestUsers::tenantOwner('tenant-one')->id)
+            ->latest('created_at')
+            ->firstOrFail();
+
+        $logoutResponse = $this->call(
+            'POST',
+            '/api/auth/logout',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+                'HTTP_AUTHORIZATION' => "Bearer {$token}",
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $logoutResponse->assertOk();
+
+        $passportToken->refresh();
+        $this->assertTrue((bool) $passportToken->revoked);
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+    }
+
+    #[Test]
     public function tenant_refresh_can_rotate_session_from_refresh_cookie_without_bearer(): void
     {
         $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
@@ -224,6 +277,53 @@ class TenantAuthTest extends TestCase
 
         $rotatedSession = WebRefreshSession::query()->latest('id')->firstOrFail();
         $this->assertSame($originalSession->id, $rotatedSession->rotated_from_id);
+    }
+
+    #[Test]
+    public function tenant_refresh_rejects_a_stale_cookie_after_rotation(): void
+    {
+        $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => $this->ownerEmail('tenant-one'),
+            'password' => 'password',
+        ]);
+
+        $issuedCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($issuedCookie);
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertOk();
+
+        $staleResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $staleResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+
+        $expiredCookie = $this->refreshCookieFromResponse($staleResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
     }
 
     #[Test]
@@ -275,6 +375,92 @@ class TenantAuthTest extends TestCase
 
         $session->refresh();
         $this->assertNotNull($session->revoked_at);
+    }
+
+    #[Test]
+    public function tenant_refresh_rejects_refresh_cookie_on_another_tenant_host(): void
+    {
+        $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => $this->ownerEmail('tenant-one'),
+            'password' => 'password',
+        ]);
+
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $response = $this->withCookie($refreshCookie->getName(), (string) $refreshCookie->getValue())
+            ->postJson($this->tenantUrl('/api/auth/refresh', 'tenant-two'));
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+
+        $expiredCookie = $this->refreshCookieFromResponse($response);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
+    public function tenant_password_change_revokes_refresh_sessions_and_clears_cookie(): void
+    {
+        $loginResponse = $this->postJson($this->tenantUrl('/api/auth/login', 'tenant-one'), [
+            'email' => $this->ownerEmail('tenant-one'),
+            'password' => 'password',
+        ]);
+
+        $token = (string) $loginResponse->json('token');
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+
+        $this->assertNotNull($refreshCookie);
+
+        $session = WebRefreshSession::query()->latest('id')->firstOrFail();
+
+        $passwordResponse = $this->call(
+            'PUT',
+            '/api/auth/password',
+            [
+                'current_password' => 'password',
+                'password' => 'Newpassword1',
+                'password_confirmation' => 'Newpassword1',
+            ],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+                'HTTP_AUTHORIZATION' => "Bearer {$token}",
+            ],
+            json_encode([
+                'current_password' => 'password',
+                'password' => 'Newpassword1',
+                'password_confirmation' => 'Newpassword1',
+            ], JSON_THROW_ON_ERROR),
+        );
+
+        $passwordResponse->assertOk()
+            ->assertJsonPath('message', __('Password updated successfully'));
+
+        $expiredCookie = $this->refreshCookieFromResponse($passwordResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+
+        $session->refresh();
+        $this->assertNotNull($session->revoked_at);
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost('tenant-one'),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
     }
 
     // =========================================================================

@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-20
+Last verified: 2026-05-25
 Primary branch: `main`
 
 ## Snapshot
@@ -16,10 +16,17 @@ Primary branch: `main`
 - CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:
   backend tests, frontend Vitest, Playwright auth smoke, and staging deployment
   workflow are now aligned and passing with the current environment model.
+- Staging deploy hardening continued after the Phase 17 rollout: the deploy
+  workflow now seeds newly introduced global permission rows and billing
+  catalog rows during deploy so new add-ons and tenant capabilities become
+  usable without a destructive full reseed.
 - Post-deploy browser smoke now covers central auth, tenant auth/permissions,
   and guest-portal shell runtime checks.
 - Staging mail is now configured to Mailtrap Sandbox (2026-05-11) for
   QA-visible delivery checks without using production inboxes.
+- Post-deploy staging mail smoke is now part of the deploy workflow via the
+  guest magic-link request path, so each staging deployment verifies one real
+  queued email trigger against the staging tenant host.
 - The HttpOnly auth migration is underway in slices and now uses the hybrid
   browser model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
@@ -30,13 +37,55 @@ Primary branch: `main`
 - Backend refresh-session groundwork now exists: `web_refresh_sessions`
   persistence, host-scoped HttpOnly refresh cookie issuance, and cookie-based
   refresh rotation are implemented server-side.
+- Staff password changes now revoke outstanding `web_refresh_sessions` rows
+  and clear the current refresh cookie, reducing stale multi-tab/browser
+  continuity after credential rotation.
 - Central and tenant dashboard refresh flows are both verified against the
   cookie-backed path, and the transitional bearer-based refresh fallback has
   been removed.
+- Focused auth regressions now verify that staff and guest refresh cookies do
+  not restore sessions on the wrong host or tenant host.
+- Guest session bootstrap now also has focused regression coverage for expired
+  refresh sessions returning an empty payload, clearing the cookie, and
+  revoking the expired row.
+- Focused auth regressions now also verify multi-tab stale-cookie behavior:
+  once a refresh session rotates, the old cookie can no longer restore a
+  staff or guest session.
+- Staff logout now has focused regression coverage for current bearer-token
+  invalidation as well as refresh-cookie invalidation, and the tenant
+  membership middleware now preserves the current Passport access token when it
+  refreshes the authenticated user so tenant logout can revoke that bearer
+  token correctly.
+- The shared frontend HTTP auth client now has focused Vitest coverage for
+  silent refresh retry, concurrent refresh deduplication, and failed-refresh
+  in-memory token cleanup.
+- Browser-level auth coverage now also includes reload-based session restore
+  checks for the central and tenant dashboards, with the central Playwright
+  spec cleanly skipping when the configured base URL does not actually serve
+  the login page.
+- The central Playwright auth flow, including reload-based session restore,
+  was verified against both `http://dev.byteforge.se` and
+  `https://stage.byteforge.se` on 2026-05-25.
+- The tenant Playwright auth flow, including reload-based session restore,
+  was verified against both `http://tenant-one.dev.byteforge.se` and
+  `https://tenant-one.stage.byteforge.se` on 2026-05-25.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
-  booking customer fields, payment human-text fields, and auth name/email
-  fields.
+  booking customer fields, payment human-text fields, auth name/email
+  fields, booking CMS resource and service human-text fields, booking tenant
+  cancellation notes, tenant user-management create name/email fields, tenant
+  settings site title/description fields, shared media-folder name/description
+  fields, shared media upload metadata text fields, central theme metadata
+  fields, central page-template name/description fields, central admin user
+  and tenant management fields, central and tenant theme-part name fields,
+  central and tenant page title fields, central and tenant navigation name
+  fields, central and tenant layout name fields, central support access
+  reasons, central general-settings human-text fields, and tenant CMS quote
+  request and draft-quote human-text fields.
+- The strongest CMS-adjacent normalization candidates on the current codebase
+  are now largely covered. The remaining nearby surfaces are mostly structured
+  payloads, identifier-like fields, or dead/unwired request classes and are
+  intentionally left outside this normalization family.
 - Booking dashboard localization and booking guest-input hardening were merged
   on 2026-04-19.
 - Tenant booking dashboard manual-booking creation now exists on the current
@@ -65,11 +114,12 @@ Primary branch: `main`
 
 ## Current Recommended Work Order
 
-1. Keep CI and staging deploy parity stable (backend suites + Vitest + Playwright central auth smoke + deploy smoke checks).
+1. Keep CI and staging deploy parity stable (backend suites + Vitest + Playwright auth smoke + deploy smoke checks).
 2. Tighten staging host operational permissions so deploy logs stay clean
-   (no intermittent file ownership/permission warnings during build/runtime).
-3. Add one recurring staging mail smoke check (magic-link or equivalent)
-  as a required post-deploy verification.
+  (no intermittent file ownership/permission warnings during build/runtime).
+3. Keep deploy-user SSH/Git/bootstrap assumptions explicit, including
+  safe-directory, GitHub deploy key, queue worker expectations, and required
+  non-destructive seeders.
 4. Continue the shared, field-family input normalization rollout without
    expanding it into blanket middleware.
 5. Continue HttpOnly auth migration closeout and operational hardening.

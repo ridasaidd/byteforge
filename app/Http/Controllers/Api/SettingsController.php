@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Settings\TenantSettings;
 use Illuminate\Http\Request;
@@ -11,6 +12,10 @@ use Illuminate\Validation\Rule;
 
 class SettingsController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     /**
      * Display tenant settings.
      */
@@ -68,7 +73,13 @@ class SettingsController extends Controller
      */
     public function update(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $normalizedInput = ($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['site_title'],
+            multilineFields: ['site_description'],
+        );
+
+        $validator = Validator::make($normalizedInput, [
             'site_title' => 'sometimes|string|max:255',
             'site_description' => 'nullable|string',
             'logo_url' => 'nullable|url',
@@ -120,6 +131,8 @@ class SettingsController extends Controller
             ], 422);
         }
 
+        $validated = $validator->validated();
+
         // Evaluate final state (incoming values override existing settings)
         $settings = app(TenantSettings::class);
 
@@ -168,13 +181,13 @@ class SettingsController extends Controller
         try {
             $changedFields = [];
 
-            if ($request->has('site_title')) {
-                $changedFields['site_title'] = ['old' => $settings->site_title, 'new' => $request->site_title];
-                $settings->site_title = $request->site_title;
+            if (array_key_exists('site_title', $validated)) {
+                $changedFields['site_title'] = ['old' => $settings->site_title, 'new' => $validated['site_title']];
+                $settings->site_title = $validated['site_title'];
             }
-            if ($request->has('site_description')) {
-                $changedFields['site_description'] = ['old' => $settings->site_description, 'new' => $request->site_description];
-                $settings->site_description = $request->site_description;
+            if (array_key_exists('site_description', $validated)) {
+                $changedFields['site_description'] = ['old' => $settings->site_description, 'new' => $validated['site_description']];
+                $settings->site_description = $validated['site_description'];
             }
             if ($request->has('logo_url')) {
                 $changedFields['logo_url'] = ['old' => $settings->logo_url, 'new' => $request->logo_url];

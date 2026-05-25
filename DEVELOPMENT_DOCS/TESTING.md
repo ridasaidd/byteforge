@@ -59,6 +59,41 @@ PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.byteforge.se \
 npm run test:e2e
 ```
 
+Focused auth examples:
+
+```bash
+# Central auth smoke against shared development
+PLAYWRIGHT_BASE_URL=http://dev.byteforge.se \
+PLAYWRIGHT_CENTRAL_EMAIL=admin@dev.byteforge.se \
+PLAYWRIGHT_CENTRAL_PASSWORD="<password>" \
+npx playwright test tests/e2e/central-auth-flow.spec.ts
+
+# Central auth smoke against staging
+PLAYWRIGHT_BASE_URL=https://stage.byteforge.se \
+PLAYWRIGHT_CENTRAL_EMAIL=admin@stage.byteforge.se \
+PLAYWRIGHT_CENTRAL_PASSWORD="<password>" \
+npx playwright test tests/e2e/central-auth-flow.spec.ts
+
+# Tenant auth smoke against shared development
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.dev.byteforge.se \
+PLAYWRIGHT_TENANT_OWNER_EMAIL=owner@tenant-one.dev.byteforge.se \
+PLAYWRIGHT_TENANT_OWNER_PASSWORD="<password>" \
+npx playwright test tests/e2e/tenant-auth-flow.spec.ts
+
+# Tenant auth smoke against staging
+PLAYWRIGHT_TENANT_BASE_URL=https://tenant-one.stage.byteforge.se \
+PLAYWRIGHT_TENANT_OWNER_EMAIL=owner@tenant-one.stage.byteforge.se \
+PLAYWRIGHT_TENANT_OWNER_PASSWORD="<password>" \
+npx playwright test tests/e2e/tenant-auth-flow.spec.ts
+```
+
+Notes:
+
+- the central auth spec now covers both login/logout and reload-based session restore through the HttpOnly refresh cookie
+- the tenant auth spec now covers both login/logout and reload-based session restore through the HttpOnly refresh cookie
+- the central auth spec skips cleanly when the configured base URL does not actually serve the login page, which avoids false-negative localhost/Apache 404 failures
+- when running the tenant spec locally, only the owner credentials are required for this suite
+
 > Linux host note: if Playwright reports missing browser dependencies, install them once with:
 > `sudo npx playwright install-deps`
 
@@ -68,6 +103,7 @@ npm run test:e2e
 - Required secret: `STAGING_TENANT_BASE_URL`.
 - Optional secret: `STAGING_MAIL_SMOKE_RECIPIENT` (defaults to `qa-mail-smoke@byteforge.se`).
 - The smoke step validates that `POST /api/guest-auth/request-link` returns HTTP 200 and `{ "sent": true }`.
+- The staging Playwright auth smoke can now also exercise reload-based tenant session restore when `STAGING_TENANT_BASE_URL` and the tenant owner credentials are present.
 
 ---
 

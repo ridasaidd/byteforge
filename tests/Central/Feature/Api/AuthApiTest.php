@@ -4,8 +4,11 @@ namespace Tests\Central\Feature\Api;
 
 use App\Models\WebRefreshSession;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\TestUsers;
 use Tests\TestCase;
 
 /**
@@ -26,6 +29,13 @@ class AuthApiTest extends TestCase
     private function centralUrl(string $path): string
     {
         return 'http://'.$this->centralHost().$path;
+    }
+
+    private function tenantUrl(string $path, string $tenantSlug = 'tenant-one'): string
+    {
+        $host = TestUsers::tenant($tenantSlug)->domains()->first()?->domain ?? "{$tenantSlug}.byteforge.se";
+
+        return "http://{$host}{$path}";
     }
 
     private function centralEmail(string $localPart): string
@@ -215,6 +225,53 @@ class AuthApiTest extends TestCase
     }
 
     #[Test]
+    public function central_api_refresh_rejects_a_stale_cookie_after_rotation(): void
+    {
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
+            'email' => $this->centralEmail('superadmin'),
+            'password' => 'password',
+        ]);
+
+        $issuedCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($issuedCookie);
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertOk();
+
+        $staleResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $staleResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+
+        $expiredCookie = $this->refreshCookieFromResponse($staleResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
     public function central_api_logout_revokes_refresh_session_and_clears_cookie(): void
     {
         $loginResponse = $this->postJson('/api/auth/login', [
@@ -251,6 +308,57 @@ class AuthApiTest extends TestCase
         $expiredCookie = $this->refreshCookieFromResponse($logoutResponse);
         $this->assertNotNull($expiredCookie);
         $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
+    public function central_api_logout_invalidates_current_bearer_token_and_refresh_cookie(): void
+    {
+        $loginResponse = $this->postJson('/api/auth/login', [
+            'email' => $this->centralEmail('superadmin'),
+            'password' => 'password',
+        ]);
+
+        $token = (string) $loginResponse->json('token');
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $logoutResponse = $this->call(
+            'POST',
+            '/api/auth/logout',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+                'HTTP_AUTHORIZATION' => "Bearer {$token}",
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $logoutResponse->assertOk();
+
+        Auth::forgetGuards();
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/auth/user')
+            ->assertUnauthorized();
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
     }
 
     #[Test]
@@ -315,6 +423,28 @@ class AuthApiTest extends TestCase
     }
 
     #[Test]
+    public function central_api_refresh_rejects_refresh_cookie_on_wrong_host(): void
+    {
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
+            'email' => $this->centralEmail('superadmin'),
+            'password' => 'password',
+        ]);
+
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $response = $this->withCookie($refreshCookie->getName(), (string) $refreshCookie->getValue())
+            ->postJson($this->tenantUrl('/api/auth/refresh', 'tenant-one'));
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
+
+        $expiredCookie = $this->refreshCookieFromResponse($response);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
     public function central_api_user_endpoint_requires_authentication(): void
     {
         $response = $this->getJson('/api/auth/user');
@@ -364,6 +494,76 @@ class AuthApiTest extends TestCase
 
         $user = User::query()->where('email', $this->centralEmail('superadmin'))->firstOrFail();
         $this->assertSame('Super Admin', $user->name);
+    }
+
+    #[Test]
+    public function password_change_revokes_refresh_sessions_and_clears_cookie(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Central Password Reset',
+            'email' => $this->centralEmail('password-reset-'.uniqid()),
+            'password' => Hash::make('password'),
+        ]);
+
+        $loginResponse = $this->postJson($this->centralUrl('/api/auth/login'), [
+            'email' => $user->email,
+            'password' => 'password',
+        ]);
+
+        $token = (string) $loginResponse->json('token');
+        $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
+
+        $this->assertNotNull($refreshCookie);
+
+        $session = WebRefreshSession::query()->where('user_id', $user->id)->latest('id')->firstOrFail();
+
+        $passwordResponse = $this->call(
+            'PUT',
+            '/api/auth/password',
+            [
+                'current_password' => 'password',
+                'password' => 'Newpassword1',
+                'password_confirmation' => 'Newpassword1',
+            ],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+                'HTTP_AUTHORIZATION' => "Bearer {$token}",
+            ],
+            json_encode([
+                'current_password' => 'password',
+                'password' => 'Newpassword1',
+                'password_confirmation' => 'Newpassword1',
+            ], JSON_THROW_ON_ERROR),
+        );
+
+        $passwordResponse->assertOk()
+            ->assertJsonPath('message', __('Password updated successfully'));
+
+        $expiredCookie = $this->refreshCookieFromResponse($passwordResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+
+        $session->refresh();
+        $this->assertNotNull($session->revoked_at);
+
+        $refreshResponse = $this->call(
+            'POST',
+            '/api/auth/refresh',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->centralHost(),
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $refreshResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
     }
 
     #[Test]

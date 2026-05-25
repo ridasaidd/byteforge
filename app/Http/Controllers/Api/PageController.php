@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Models\Page;
 use App\Models\Theme;
 use App\Http\Controllers\Controller;
@@ -18,6 +19,7 @@ use Illuminate\Validation\Rule;
 class PageController extends Controller
 {
     public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
         private readonly PageCssService   $pageCssService,
         private readonly AnalyticsService $analytics
     ) {}
@@ -108,7 +110,10 @@ class PageController extends Controller
     {
         $tenantId = $this->getTenantId();
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['title'],
+        ), [
             'title' => 'required|string|max:255',
             'slug' => [
                 'nullable',
@@ -128,7 +133,7 @@ class PageController extends Controller
             'status' => 'required|string|in:draft,published,archived',
             'is_homepage' => 'boolean',
             'sort_order' => 'nullable|integer',
-        ]);
+        ])->validate();
 
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
@@ -241,7 +246,10 @@ class PageController extends Controller
 
         $page = $query->findOrFail($id);
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['title'],
+        ), [
             'title' => 'sometimes|required|string|max:255',
             'slug' => [
                 'sometimes',
@@ -263,7 +271,7 @@ class PageController extends Controller
             'status' => 'sometimes|required|string|in:draft,published,archived',
             'is_homepage' => 'boolean',
             'sort_order' => 'nullable|integer',
-        ]);
+        ])->validate();
 
         // Set published_at when status changes to published
         if (isset($validated['status']) && $validated['status'] === 'published' && !$page->published_at) {

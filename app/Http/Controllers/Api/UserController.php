@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\Membership;
 use App\Services\TenantRbacService;
@@ -18,6 +19,7 @@ class UserController extends Controller
 {
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
     ) {}
 
     private function tenantMembershipRoleFor(User $user, string $tenantId): ?string
@@ -113,12 +115,15 @@ class UserController extends Controller
             ->pluck('name')
             ->all();
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name', 'email'],
+        ), [
             'name' => ['required', 'string', 'max:120'],
             'email' => ['required', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
             'role' => ['required', 'string', Rule::in($allowedRoleNames)],
-        ]);
+        ])->validate();
 
         $membershipRole = $this->tenantRbac->tenantRoleToMembershipRole($validated['role']);
 

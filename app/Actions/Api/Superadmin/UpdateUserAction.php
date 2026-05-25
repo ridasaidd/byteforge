@@ -2,6 +2,7 @@
 
 namespace App\Actions\Api\Superadmin;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -11,6 +12,10 @@ class UpdateUserAction
 {
     use AsAction;
 
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     public function handle(User $user, array $data): array
     {
         return $this->execute($user, $data);
@@ -18,7 +23,10 @@ class UpdateUserAction
 
     public function execute(User $user, array $data): array
     {
-        $validated = Validator::make($data, [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $data,
+            singleLineFields: ['name', 'email'],
+        ), [
             'name' => 'sometimes|required|string|max:255',
             'email' => 'sometimes|required|string|email|max:255|unique:users,email,'.$user->id,
             'password' => 'sometimes|required|string|min:8|confirmed',

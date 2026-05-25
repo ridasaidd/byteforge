@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Booking;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\BookingResource;
 use App\Models\BookingService;
@@ -13,6 +14,10 @@ use Illuminate\Support\Facades\Validator;
 
 class BookingServiceController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     public function index(): JsonResponse
     {
         $tenantId = (string) tenant('id');
@@ -113,7 +118,11 @@ class BookingServiceController extends Controller
             'is_active'             => ['sometimes', 'boolean'],
         ];
 
-        return Validator::make($request->all(), $rules)->validate();
+        return Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        ), $rules)->validate();
     }
 
     private function resolveService(int $id): BookingService

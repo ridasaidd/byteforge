@@ -203,6 +203,40 @@ class QuoteCmsApiTest extends TestCase
     }
 
     #[Test]
+    public function owner_manual_quote_request_input_is_normalized(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateQuotesAddon($tenant);
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/quotes/requests', 'tenant-one'), [
+                'guest_name' => '  <b>Manual   Customer</b>  ',
+                'guest_email' => "  MANUAL@example.com\t",
+                'guest_phone' => "  0705 55 12 12\n",
+                'subject_label' => '  <i>Phone   consultation</i>  ',
+                'request_description' => "\n<p>Customer called.</p>\r\nNeeds an   estimate before booking.\t",
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.guest_phone', '0705 55 12 12')
+            ->assertJsonPath('data.subject_label', 'Phone consultation')
+            ->assertJsonPath('data.request_description', "Customer called.\nNeeds an   estimate before booking.")
+            ->assertJsonPath('data.guest_name', 'Manual Customer')
+            ->assertJsonPath('data.guest_email', 'MANUAL@example.com');
+
+        $quoteRequest = QuoteRequest::query()->findOrFail((int) $response->json('data.id'));
+
+        $this->assertSame((string) $tenant->id, $quoteRequest->tenant_id);
+        $this->assertSame(QuoteRequest::ORIGIN_MANUAL, $quoteRequest->origin_surface);
+        $this->assertSame('Manual Customer', $quoteRequest->guest_name);
+        $this->assertSame('MANUAL@example.com', $quoteRequest->guest_email);
+        $this->assertSame('0705 55 12 12', $quoteRequest->guest_phone);
+        $this->assertSame('Phone consultation', $quoteRequest->subject_label);
+        $this->assertSame("Customer called.\nNeeds an   estimate before booking.", $quoteRequest->request_description);
+        $this->assertSame(QuoteRequest::STATUS_SUBMITTED, $quoteRequest->status);
+    }
+
+    #[Test]
     public function owner_can_create_a_draft_quote_and_totals_are_computed_server_side(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
@@ -260,6 +294,52 @@ class QuoteCmsApiTest extends TestCase
             'unit_price_minor' => 4500,
             'line_total_minor' => 9000,
         ]);
+    }
+
+    #[Test]
+    public function owner_draft_quote_input_is_normalized(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateQuotesAddon($tenant);
+
+        $request = QuoteRequest::query()->create([
+            'tenant_id' => (string) $tenant->id,
+            'origin_surface' => QuoteRequest::ORIGIN_PUBLIC,
+            'guest_name' => 'Anna Andersson',
+            'guest_email' => 'anna@example.com',
+            'request_description' => 'Need an estimate for hair treatment.',
+            'status' => QuoteRequest::STATUS_SUBMITTED,
+            'submitted_at' => now(),
+            'last_activity_at' => now(),
+        ]);
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url("/api/quotes/requests/{$request->id}/quotes", 'tenant-one'), [
+                'currency' => 'SEK',
+                'customer_message' => "\n<p>Estimate after inspection.</p>\r\nBring reference photos.\t",
+                'internal_notes' => "\n<div>Complex treatment.</div>\r\nUse premium products.\t",
+                'line_items' => [
+                    [
+                        'label' => '  <b>Hair   restoration session</b>  ',
+                        'description' => "\n<p>Initial treatment.</p>\r\nIncludes assessment.\t",
+                        'quantity' => 2,
+                        'unit_price_minor' => 4500,
+                    ],
+                ],
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.customer_message', "Estimate after inspection.\nBring reference photos.")
+            ->assertJsonPath('data.internal_notes', "Complex treatment.\nUse premium products.")
+            ->assertJsonPath('data.line_items.0.label', 'Hair restoration session')
+            ->assertJsonPath('data.line_items.0.description', "Initial treatment.\nIncludes assessment.");
+
+        $quote = Quote::query()->findOrFail((int) $response->json('data.id'));
+
+        $this->assertSame("Estimate after inspection.\nBring reference photos.", $quote->customer_message);
+        $this->assertSame("Complex treatment.\nUse premium products.", $quote->internal_notes);
+        $this->assertSame('Hair restoration session', $quote->lineItems()->firstOrFail()->label);
+        $this->assertSame("Initial treatment.\nIncludes assessment.", $quote->lineItems()->firstOrFail()->description);
     }
 
     #[Test]

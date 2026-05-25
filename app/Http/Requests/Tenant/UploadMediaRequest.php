@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -54,5 +55,20 @@ class UploadMediaRequest extends FormRequest
             'file.mimetypes' => 'Invalid file type detected. Only safe file types are allowed.',
             'folder_id.exists' => 'The selected folder does not exist.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $input = $this->all();
+
+        if (isset($input['custom_properties']) && is_array($input['custom_properties'])) {
+            $input['custom_properties'] = app(NormalizeInputFieldsAction::class)(
+                $input['custom_properties'],
+                singleLineFields: ['title', 'alt_text'],
+                multilineFields: ['description'],
+            );
+        }
+
+        $this->replace($input);
     }
 }

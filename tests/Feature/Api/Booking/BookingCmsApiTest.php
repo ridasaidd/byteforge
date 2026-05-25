@@ -187,6 +187,46 @@ class BookingCmsApiTest extends TestCase
     }
 
     #[Test]
+    public function resource_input_is_normalized_on_create_and_update(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/booking/resources'), [
+                'name' => '  <b>Meeting   Room Alpha</b>  ',
+                'type' => BookingResource::TYPE_SPACE,
+                'description' => "\n<p>Quiet room.</p>\r\nSuitable for private sessions.\t",
+                'resource_label' => '  <i>Upstairs   room</i>  ',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.name', 'Meeting Room Alpha')
+            ->assertJsonPath('data.description', "Quiet room.\nSuitable for private sessions.")
+            ->assertJsonPath('data.resource_label', 'Upstairs room');
+
+        $resourceId = (int) $create->json('data.id');
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->patchJson($this->url("/api/booking/resources/{$resourceId}"), [
+                'name' => '  <b>Meeting   Room Beta</b>  ',
+                'description' => "\n<p>Updated room details.</p>\r\nFor staff and guests.\t",
+                'resource_label' => '  <i>Ground   floor</i>  ',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Meeting Room Beta')
+            ->assertJsonPath('data.description', "Updated room details.\nFor staff and guests.")
+            ->assertJsonPath('data.resource_label', 'Ground floor');
+
+        $this->assertDatabaseHas('booking_resources', [
+            'id' => $resourceId,
+            'name' => 'Meeting Room Beta',
+            'description' => "Updated room details.\nFor staff and guests.",
+            'resource_label' => 'Ground floor',
+        ]);
+    }
+
+    #[Test]
     public function person_resource_normalizes_capacity_and_label(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
@@ -296,6 +336,47 @@ class BookingCmsApiTest extends TestCase
             ->assertNoContent();
 
         $this->assertDatabaseMissing('booking_services', ['id' => $id]);
+    }
+
+    #[Test]
+    public function service_input_is_normalized_on_create_and_update(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url('/api/booking/services'), [
+                'name' => '  <b>Hair   Cut</b>  ',
+                'description' => "\n<p>Standard trim.</p>\r\nIncludes wash.\t",
+                'booking_mode' => 'slot',
+                'duration_minutes' => 45,
+                'customer_flow' => 'quote_request',
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.name', 'Hair Cut')
+            ->assertJsonPath('data.description', "Standard trim.\nIncludes wash.");
+
+        $serviceId = (int) $create->json('data.id');
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->putJson($this->url("/api/booking/services/{$serviceId}"), [
+                'name' => '  <b>Hair   Cut & Beard</b>  ',
+                'description' => "\n<p>Updated service.</p>\r\nMore detail for guests.\t",
+                'booking_mode' => 'slot',
+                'duration_minutes' => 60,
+                'customer_flow' => 'either',
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.name', 'Hair Cut & Beard')
+            ->assertJsonPath('data.description', "Updated service.\nMore detail for guests.");
+
+        $this->assertDatabaseHas('booking_services', [
+            'id' => $serviceId,
+            'name' => 'Hair Cut & Beard',
+            'description' => "Updated service.\nMore detail for guests.",
+            'customer_flow' => 'either',
+        ]);
     }
 
     #[Test]
@@ -633,6 +714,36 @@ class BookingCmsApiTest extends TestCase
             'status'       => Booking::STATUS_CANCELLED,
             'cancelled_by' => Booking::CANCELLED_BY_TENANT,
         ]);
+    }
+
+    #[Test]
+    public function owner_cancel_note_is_normalized(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id);
+        $booking  = Booking::factory()->confirmed()->create([
+            'tenant_id' => (string) $tenant->id,
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'customer_name' => 'Test Customer',
+            'customer_email' => 'customer@example.com',
+            'payment_id' => null,
+        ]);
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->patchJson($this->url("/api/booking/bookings/{$booking->id}/cancel"), [
+                'note' => "  <b>Customer\n requested</b>   cancellation\t",
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.status', Booking::STATUS_CANCELLED);
+
+        $event = $booking->fresh()->events()->latest('id')->first();
+
+        $this->assertNotNull($event);
+        $this->assertSame('Customer requested cancellation', $event->note);
     }
 
     #[Test]

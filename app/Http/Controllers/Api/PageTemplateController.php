@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\PageTemplate;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,10 @@ use Illuminate\Validation\Rule;
 
 class PageTemplateController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     /**
      * Get tenant ID
      */
@@ -95,7 +100,11 @@ class PageTemplateController extends Controller
     {
         $tenantId = $this->getTenantId();
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        ), [
             'name' => 'required|string|max:255',
             'slug' => [
                 'nullable',
@@ -116,7 +125,7 @@ class PageTemplateController extends Controller
             'puck_data' => 'nullable|array',
             'meta' => 'nullable|array',
             'is_active' => 'nullable|boolean',
-        ]);
+        ])->validate();
 
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
@@ -203,7 +212,11 @@ class PageTemplateController extends Controller
 
         $pageTemplate = $query->findOrFail($id);
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        ), [
             'name' => 'sometimes|required|string|max:255',
             'slug' => [
                 'sometimes',
@@ -225,7 +238,7 @@ class PageTemplateController extends Controller
             'puck_data' => 'nullable|array',
             'meta' => 'nullable|array',
             'is_active' => 'nullable|boolean',
-        ]);
+        ])->validate();
 
         $pageTemplate->update($validated);
 

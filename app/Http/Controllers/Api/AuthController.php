@@ -4,10 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
+use App\Models\WebRefreshSession;
 use App\Services\TenantSupportAccessService;
 use App\Services\TenantRbacService;
 use App\Services\Auth\WebRefreshSessionService;
-use App\Models\WebRefreshSession;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Laravel\Passport\AccessToken as PassportAccessToken;
 use Laravel\Passport\Token as PassportToken;
 
 class AuthController extends Controller
@@ -104,7 +105,7 @@ class AuthController extends Controller
      */
     private function authenticatedUser(Request $request): User
     {
-        $user = $request->user();
+        $user = $request->user('api');
 
         if (! $user instanceof User) {
             abort(401, 'Unauthenticated.');
@@ -181,7 +182,7 @@ class AuthController extends Controller
 
         $token = $user->token();
 
-        if ($token instanceof PassportToken) {
+        if ($token instanceof PassportAccessToken || $token instanceof PassportToken) {
             $token->revoke();
         }
     }
@@ -396,6 +397,14 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        WebRefreshSession::query()
+            ->where('user_id', $user->id)
+            ->whereNull('revoked_at')
+            ->update([
+                'revoked_at' => now(),
+                'last_used_at' => now(),
+            ]);
+
         // Log activity
         $causer = auth('api')->user();
         activity('central')
@@ -405,7 +414,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => __('Password updated successfully'),
-        ]);
+        ])->withCookie($this->webRefreshSessionService->expireCookie($request));
     }
 
     /**

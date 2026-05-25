@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Quotes;
 
+use App\Actions\Api\SanitizeQuoteDraftInputAction;
+use App\Actions\Api\SanitizeQuoteRequestInputAction;
 use App\Http\Controllers\Controller;
 use App\Models\BookingService;
 use App\Models\Media;
@@ -20,6 +22,8 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 class QuoteRequestController extends Controller
 {
     public function __construct(
+        private readonly SanitizeQuoteDraftInputAction $sanitizeQuoteDraftInput,
+        private readonly SanitizeQuoteRequestInputAction $sanitizeQuoteRequestInput,
         private readonly QuoteWorkflowService $quoteWorkflow,
     ) {}
 
@@ -60,7 +64,7 @@ class QuoteRequestController extends Controller
     {
         $tenantId = (string) tenant('id');
 
-        $validated = Validator::make($httpRequest->all(), [
+        $validated = Validator::make(($this->sanitizeQuoteRequestInput)($httpRequest->all()), [
             'requested_booking_service_id' => ['nullable', 'integer'],
             'guest_name' => ['required', 'string', 'max:120'],
             'guest_email' => ['required', 'email:rfc', 'max:255'],
@@ -165,7 +169,7 @@ class QuoteRequestController extends Controller
             ->with('quotes')
             ->findOrFail($id);
 
-        $validated = Validator::make($httpRequest->all(), [
+        $validated = Validator::make(($this->sanitizeQuoteDraftInput)($httpRequest->all()), [
             'currency' => ['required', 'string', 'size:3'],
             'estimated_duration_minutes' => ['nullable', 'integer', 'min:1', 'max:10080'],
             'customer_message' => ['nullable', 'string', 'max:5000'],

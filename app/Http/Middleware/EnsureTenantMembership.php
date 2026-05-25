@@ -62,6 +62,7 @@ class EnsureTenantMembership
         $refreshedUser = $user->fresh();
 
         if ($refreshedUser !== null) {
+            $refreshedUser->withAccessToken($user->currentAccessToken());
             Auth::guard('api')->setUser($refreshedUser);
             $request->setUserResolver(static fn () => $refreshedUser);
         }

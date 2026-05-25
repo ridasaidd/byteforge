@@ -1,6 +1,6 @@
 # Staging Deployment Plan
 
-Last updated: 2026-05-11
+Last updated: 2026-05-25
 Status: active baseline
 Audience: engineering
 
@@ -29,6 +29,9 @@ What exists today:
 - staging deployment workflow now exists on `main`: `.github/workflows/deploy-staging.yml`
 - deploy workflow performs SSH deployment, database migration, asset build,
   cache refresh, queue restart, and post-deploy API smoke checks
+- deploy workflow now also runs non-destructive seeders for global permissions
+  and billing catalog rows so newly shipped capabilities become usable on
+  staging without a full reseed
 - deploy workflow now also runs post-deploy Playwright central auth browser smoke
 
 Implication:
@@ -132,6 +135,8 @@ composer install --no-interaction --prefer-dist --no-dev
 npm ci
 npm run build
 php artisan migrate --force
+php artisan db:seed --class=RolePermissionSeeder --force
+php artisan db:seed --class=BillingCatalogSeeder --force
 php artisan optimize:clear
 php artisan config:cache
 php artisan queue:restart
@@ -162,6 +167,8 @@ Current mail baseline:
 
 - staging uses Mailtrap Sandbox credentials in server-side environment config
 - no production recipient delivery is expected from staging
+- deploy workflow now performs one post-deploy guest magic-link mail smoke
+  request against the staging tenant host and expects `{ "sent": true }`
 
 ---
 
@@ -192,6 +199,10 @@ Current baseline:
   are configured in deploy secrets
 - guest portal public-navigation smoke now runs post-deploy via
   `tests/e2e/guest-portal-shell.spec.ts`
+- authenticated guest quote continuity remains covered in regular test suites,
+  but it is not part of deploy smoke because that path depends on a local
+  Laravel bootstrap/seed helper that is not available on the GitHub runner for
+  the staging-host smoke job
 - deploy now fails during the remote deploy step if staging uses an async queue
   connection but no `queue:work` or Horizon process is running after
   `php artisan queue:restart`
@@ -254,6 +265,6 @@ should still surface the exact SHA and failure step clearly.
 ## Immediate Next Actions
 
 1. Stabilize server-side ownership/permissions baseline (`/var/www/byteforge`, `storage`, `bootstrap/cache`) so deploy logs stay clean.
-2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`) as a repeatable checklist.
+2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`, queue worker presence, non-destructive seeders) as a repeatable checklist.
 3. Optionally move deployment secrets to a `staging` environment with manual approval gates.
-4. Keep post-deploy browser smoke green for central, tenant, and guest flows as code changes land.
+4. Keep post-deploy browser smoke and staging mail smoke green as code changes land.
