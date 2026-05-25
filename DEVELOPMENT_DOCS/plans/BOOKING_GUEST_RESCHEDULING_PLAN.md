@@ -1,6 +1,6 @@
 # Booking Guest Rescheduling Plan
 
-Status: proposed follow-up
+Status: implementation in progress
 Audience: human + AI agent
 Last updated: 2026-05-25
 
@@ -20,26 +20,42 @@ It is intentionally grounded in the current codebase, not in the older Phase
 ## Current Reality
 
 The guest booking flow already exists, but it stops at list, detail, and
-cancel.
+cancel in the merged baseline, while the current working tree extends it
+through guest-owned rescheduling.
+
+Implementation progress on the current working tree:
+
+- backend guest-owned reschedule support is now implemented under the existing
+  guest-auth boundary
+- the shared availability path now correctly distinguishes slot-mode versus
+  range-mode reschedules and can ignore the current booking during conflict
+  checks
+- tenant-side rescheduling now uses that shared mode-aware availability path,
+  closing a slot-mode correctness gap
+- guest portal service/UI support and focused Vitest coverage are now in place
+- Playwright happy-path and rejection-path coverage now exist in the working
+  tree and have been validated against the configured tenant browser-test
+  environment
 
 Current implementation anchors:
 
 - `app/Http/Controllers/Api/Booking/GuestBookingController.php`
-  supports `index`, `show`, and `cancel` for authenticated guest-owned
-  bookings, but has no reschedule endpoint.
+  now supports `index`, `show`, `cancel`, and `reschedule` for authenticated
+  guest-owned bookings.
 - `resources/js/apps/public/services/guestPortal.ts`
-  exposes `listBookings()`, `getBooking()`, and `cancelBooking()`, but no
-  reschedule API call.
+  now exposes the guest booking reschedule API alongside list/detail/cancel.
 - `resources/js/apps/public/components/GuestPortalExperience.tsx`
-  renders booking detail and cancel actions, but no reschedule UI.
+  now renders guest reschedule controls on the booking detail surface.
 - `tests/Tenant/Feature/Api/TenantGuestBookingsTest.php`
-  covers guest listing and cancellation, but not guest rescheduling.
+  now covers guest reschedule success and unavailable-slot rejection.
 - `app/Http/Controllers/Api/Booking/BookingManagementController.php`
   already supports native tenant-side rescheduling via
-  `PATCH /api/booking/bookings/{id}/reschedule`.
+  `PATCH /api/booking/bookings/{id}/reschedule`, and now shares the same
+  mode-aware availability guard used by guest rescheduling.
 
-That means the missing work is not booking infrastructure from scratch. It is a
-guest-owned mutation path plus guest portal UX.
+That means the current remaining work is not booking infrastructure from
+scratch. It is merge/push/CI confirmation plus any broader follow-up coverage
+or rollout tasks.
 
 ---
 
@@ -176,8 +192,8 @@ Minimum expected coverage:
 - backend guest booking test: payment-linked booking keeps its payment linkage
   and does not enter cancellation/refund path
 - frontend guest portal test: reschedule action updates selected booking state
-- Playwright guest portal coverage for the happy path when environment support
-  exists
+- Playwright guest portal coverage for the happy path and unavailable-slot
+  rejection path when environment support exists
 
 ---
 

@@ -787,6 +787,51 @@ class BookingCmsApiTest extends TestCase
     }
 
     #[Test]
+    public function owner_reschedule_rejects_slot_times_outside_available_windows(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service = $this->makeService((string) $tenant->id, [
+            'booking_mode' => BookingService::MODE_SLOT,
+            'duration_minutes' => 60,
+            'slot_interval_minutes' => 60,
+        ]);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $bookingDate = now()->addDays(4);
+
+        BookingAvailability::create([
+            'resource_id' => $resource->id,
+            'specific_date' => $bookingDate->toDateString(),
+            'day_of_week' => null,
+            'starts_at' => '09:00:00',
+            'ends_at' => '10:00:00',
+            'is_blocked' => false,
+        ]);
+
+        $booking = Booking::factory()->confirmed()->create([
+            'tenant_id' => (string) $tenant->id,
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'starts_at' => $bookingDate->copy()->setTime(9, 0, 0),
+            'ends_at' => $bookingDate->copy()->setTime(10, 0, 0),
+        ]);
+
+        $this->actingAsTenantOwner('tenant-one')
+            ->patchJson($this->url("/api/booking/bookings/{$booking->id}/reschedule"), [
+                'starts_at' => $bookingDate->copy()->setTime(18, 0, 0)->toIso8601String(),
+                'ends_at' => $bookingDate->copy()->setTime(19, 0, 0)->toIso8601String(),
+            ])
+            ->assertStatus(409)
+            ->assertJsonPath('message', 'The requested time slot is not available.');
+
+        $booking->refresh();
+        $this->assertSame('09:00:00', $booking->starts_at->format('H:i:s'));
+        $this->assertSame('10:00:00', $booking->ends_at->format('H:i:s'));
+    }
+
+    #[Test]
     public function owner_can_manually_create_booking(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();

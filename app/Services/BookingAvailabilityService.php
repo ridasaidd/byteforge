@@ -54,6 +54,7 @@ class BookingAvailabilityService
         BookingService $service,
         BookingResource $resource,
         Carbon $date,
+        ?int $ignoreBookingId = null,
     ): Collection {
         // 1. Resource-level block check
         if ($this->isResourceBlockedOnDate($resource, $date)) {
@@ -81,7 +82,7 @@ class BookingAvailabilityService
             : null;
 
         // 4. Load existing bookings that block the resource on this date
-        $existingBookings = $this->loadBlockingBookings($resource, $date);
+        $existingBookings = $this->loadBlockingBookings($resource, $date, $ignoreBookingId);
 
         $slots = collect();
 
@@ -165,6 +166,7 @@ class BookingAvailabilityService
         BookingResource $resource,
         Carbon $checkIn,
         Carbon $checkOut,
+        ?int $ignoreBookingId = null,
     ): bool {
         // 1. Logical order
         if (!$checkOut->greaterThan($checkIn)) {
@@ -219,9 +221,31 @@ class BookingAvailabilityService
             ])
             ->where('starts_at', '<', $endsAtUtc)
             ->where('ends_at', '>', $startsAtUtc)
+            ->when($ignoreBookingId !== null, fn ($query) => $query->whereKeyNot($ignoreBookingId))
             ->exists();
 
         return !$conflict;
+    }
+
+    public function isBookingWindowAvailable(
+        BookingService $service,
+        BookingResource $resource,
+        Carbon $startsAt,
+        Carbon $endsAt,
+        ?int $ignoreBookingId = null,
+    ): bool {
+        if ($service->booking_mode === BookingService::MODE_RANGE) {
+            return $this->isRangeAvailable($service, $resource, $startsAt, $endsAt, $ignoreBookingId);
+        }
+
+        $date = $startsAt->copy()->setTimezone($startsAt->timezone)->startOfDay();
+        $slots = $this->getSlotsForDate($service, $resource, $date, $ignoreBookingId);
+
+        return $slots->contains(fn (array $slot): bool =>
+            $slot['starts_at']->equalTo($startsAt)
+            && $slot['ends_at']->equalTo($endsAt)
+            && $slot['available'] === true
+        );
     }
 
     // ─── Multi-resource finder ────────────────────────────────────────────────
@@ -264,6 +288,7 @@ class BookingAvailabilityService
         BookingService $service,
         Carbon $startsAt,
         Carbon $endsAt,
+        ?int $ignoreBookingId = null,
     ): bool {
         $date = $startsAt->copy()->setTimezone($startsAt->timezone)->startOfDay();
 
@@ -281,6 +306,7 @@ class BookingAvailabilityService
             ])
             ->where('starts_at', '<', $endsAt->toDateTimeString())
             ->where('ends_at', '>', $startsAt->copy()->subMinutes($bufferMinutes)->toDateTimeString())
+            ->when($ignoreBookingId !== null, fn ($query) => $query->whereKeyNot($ignoreBookingId))
             ->exists();
 
         return !$conflict;
@@ -345,7 +371,7 @@ class BookingAvailabilityService
      *
      * @return Collection<int, Booking>
      */
-    private function loadBlockingBookings(BookingResource $resource, Carbon $date): Collection
+    private function loadBlockingBookings(BookingResource $resource, Carbon $date, ?int $ignoreBookingId = null): Collection
     {
         // Expand the query window slightly to capture bookings whose ends_at bleeds
         // into the date from the previous day (e.g. a midnight-spanning slot).
@@ -360,6 +386,7 @@ class BookingAvailabilityService
             ])
             ->where('starts_at', '<', $dayEnd)
             ->where('ends_at', '>', $dayStart)
+            ->when($ignoreBookingId !== null, fn ($query) => $query->whereKeyNot($ignoreBookingId))
             ->get(['id', 'starts_at', 'ends_at']);
     }
 

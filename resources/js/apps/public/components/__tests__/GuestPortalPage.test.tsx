@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GuestPortalPage } from '../GuestPortalPage';
@@ -9,6 +9,7 @@ const listBookingsMock = vi.fn();
 const listQuotesMock = vi.fn();
 const getBookingMock = vi.fn();
 const getQuoteMock = vi.fn();
+const rescheduleBookingMock = vi.fn();
 const acceptQuoteMock = vi.fn();
 const rejectQuoteMock = vi.fn();
 
@@ -39,6 +40,7 @@ vi.mock('../../services/guestPortal', () => ({
     requestMagicLink: vi.fn(),
     logout: vi.fn(),
     cancelBooking: vi.fn(),
+    rescheduleBooking: (...args: unknown[]) => rescheduleBookingMock(...args),
     acceptQuote: (...args: unknown[]) => acceptQuoteMock(...args),
     rejectQuote: (...args: unknown[]) => rejectQuoteMock(...args),
   },
@@ -64,6 +66,7 @@ describe('GuestPortalPage', () => {
     listQuotesMock.mockResolvedValue([]);
     getBookingMock.mockResolvedValue(null);
     getQuoteMock.mockResolvedValue(null);
+    rescheduleBookingMock.mockResolvedValue(null);
     acceptQuoteMock.mockResolvedValue(null);
     rejectQuoteMock.mockResolvedValue(null);
   });
@@ -133,5 +136,51 @@ describe('GuestPortalPage', () => {
     await waitFor(() => expect(screen.getByText('Inspection quote')).toBeInTheDocument());
     expect(screen.getByText('Need a repair estimate')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View quote' })).toBeInTheDocument();
+  });
+
+  it('allows a guest to reschedule a selected booking in the fallback portal', async () => {
+    publicGetMock.mockRejectedValue(new Error('missing surface'));
+    restoreSessionMock.mockResolvedValue({ id: 9, email: 'guest@example.com', name: null });
+
+    const booking = {
+      id: 42,
+      status: 'confirmed',
+      customer_name: 'Guest User',
+      customer_email: 'guest@example.com',
+      customer_phone: null,
+      customer_notes: null,
+      starts_at: '2026-06-01T09:00:00.000Z',
+      ends_at: '2026-06-01T10:00:00.000Z',
+      cancelled_at: null,
+      can_cancel: true,
+      can_reschedule: true,
+      service: { id: 3, name: 'Consultation', booking_mode: 'slot' },
+      resource: { id: 5, name: 'Studio One', type: 'space' },
+      payment: null,
+    };
+
+    listBookingsMock.mockResolvedValue([booking]);
+    getBookingMock.mockResolvedValue(booking);
+    rescheduleBookingMock.mockResolvedValue({
+      ...booking,
+      starts_at: '2026-06-01T11:00:00.000Z',
+      ends_at: '2026-06-01T12:00:00.000Z',
+    });
+
+    renderPage('/guest-portal/42');
+
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Reschedule booking' })).toHaveLength(2));
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Reschedule booking' })[1]);
+    fireEvent.change(screen.getByLabelText('New start time'), { target: { value: '2026-06-01T11:00' } });
+    fireEvent.change(screen.getByLabelText('New end time'), { target: { value: '2026-06-01T12:00' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Confirm reschedule' }));
+
+    await waitFor(() => expect(rescheduleBookingMock).toHaveBeenCalledWith(
+      42,
+      expect.any(String),
+      expect.any(String),
+    ));
+    await waitFor(() => expect(screen.getByText('Your booking was rescheduled.')).toBeInTheDocument());
   });
 });

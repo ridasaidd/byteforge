@@ -15,6 +15,7 @@ export interface GuestPortalBooking {
   ends_at: string | null;
   cancelled_at: string | null;
   can_cancel: boolean;
+  can_reschedule: boolean;
   service: {
     id: number;
     name: string;
@@ -231,6 +232,15 @@ export const guestPortalService = {
   async cancelBooking(bookingId: number): Promise<GuestPortalBooking> {
     const payload = await requestJson<GuestBookingResponse>(`/api/guest-auth/bookings/${bookingId}/cancel`, {
       method: 'PATCH',
+    }, true);
+
+    return payload.data;
+  },
+
+  async rescheduleBooking(bookingId: number, startsAt: string, endsAt: string): Promise<GuestPortalBooking> {
+    const payload = await requestJson<GuestBookingResponse>(`/api/guest-auth/bookings/${bookingId}/reschedule`, {
+      method: 'PATCH',
+      body: JSON.stringify({ starts_at: startsAt, ends_at: endsAt }),
     }, true);
 
     return payload.data;

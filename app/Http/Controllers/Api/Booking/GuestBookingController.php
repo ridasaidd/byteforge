@@ -6,16 +6,23 @@ namespace App\Http\Controllers\Api\Booking;
 
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
+use App\Models\BookingService;
 use App\Models\BookingResource;
 use App\Models\GuestUser;
 use App\Notifications\Booking\BookingCancelledByCustomerNotification;
+use App\Notifications\Booking\BookingRescheduledNotification;
+use App\Services\BookingAvailabilityService;
 use App\Services\BookingPaymentService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Validator;
 
 class GuestBookingController extends Controller
 {
     public function __construct(
+        private readonly BookingAvailabilityService $availability,
         private readonly BookingPaymentService $bookingPayment,
     ) {}
 
@@ -92,6 +99,64 @@ class GuestBookingController extends Controller
         ]);
     }
 
+    public function reschedule(Request $request, int $id): JsonResponse
+    {
+        $booking = $this->resolveGuestBooking($request, $id);
+
+        if (! in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED], true)) {
+            return response()->json([
+                'message' => 'This booking cannot be rescheduled.',
+            ], 422);
+        }
+
+        $validated = Validator::make($request->all(), [
+            'starts_at' => ['required', 'date'],
+            'ends_at' => ['required', 'date', 'after:starts_at'],
+        ])->validate();
+
+        $service = BookingService::findOrFail($booking->service_id);
+        $resource = BookingResource::findOrFail($booking->resource_id);
+        $startsAt = Carbon::parse($validated['starts_at']);
+        $endsAt = Carbon::parse($validated['ends_at']);
+
+        $isAvailable = $this->availability->isBookingWindowAvailable(
+            $service,
+            $resource,
+            $startsAt,
+            $endsAt,
+            $booking->id,
+        );
+
+        if (! $isAvailable) {
+            return response()->json([
+                'message' => 'The requested time slot is not available.',
+            ], 409);
+        }
+
+        $fromStatus = $booking->status;
+
+        $booking->update([
+            'starts_at' => $startsAt,
+            'ends_at' => $endsAt,
+        ]);
+
+        $booking->recordEvent(
+            toStatus: $booking->status,
+            actorType: Booking::ACTOR_CUSTOMER,
+            fromStatus: $fromStatus,
+            note: "Rescheduled by authenticated guest to {$startsAt->toDateTimeString()} - {$endsAt->toDateTimeString()}",
+        );
+
+        $booking->load(['service:id,name,booking_mode', 'resource:id,name,type']);
+
+        Notification::route('mail', [$booking->customer_email => $booking->customer_name])
+            ->notify(new BookingRescheduledNotification($booking, $this->tenantDomain(), 'customer'));
+
+        return response()->json([
+            'data' => $this->bookingPayload($booking),
+        ]);
+    }
+
     private function resolveGuestBooking(Request $request, int $id): Booking
     {
         $guestUser = $this->authenticatedGuest($request);
@@ -137,6 +202,7 @@ class GuestBookingController extends Controller
             'ends_at' => $booking->ends_at?->toIso8601String(),
             'cancelled_at' => $booking->cancelled_at?->toIso8601String(),
             'can_cancel' => in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED], true),
+            'can_reschedule' => in_array($booking->status, [Booking::STATUS_PENDING, Booking::STATUS_CONFIRMED], true),
             'service' => $booking->service ? [
                 'id' => $booking->service->id,
                 'name' => $booking->service->name,
