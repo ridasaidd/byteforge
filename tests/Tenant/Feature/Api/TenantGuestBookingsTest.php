@@ -101,15 +101,15 @@ class TenantGuestBookingsTest extends TestCase
         ], $overrides));
     }
 
-    private function makeAvailability(BookingResource $resource): void
+    private function makeAvailability(BookingResource $resource, array $overrides = []): void
     {
-        BookingAvailability::factory()->create([
+        BookingAvailability::factory()->create(array_merge([
             'resource_id' => $resource->id,
             'day_of_week' => now()->addDay()->dayOfWeek,
             'starts_at' => '00:00',
             'ends_at' => '23:59',
             'is_blocked' => false,
-        ]);
+        ], $overrides));
     }
 
     #[Test]
@@ -246,5 +246,93 @@ class TenantGuestBookingsTest extends TestCase
 
         $booking->refresh();
         $this->assertSame(Booking::STATUS_CANCELLED, $booking->status);
+    }
+
+    #[Test]
+    public function authenticated_guest_can_reschedule_their_own_linked_booking(): void
+    {
+        $this->activateBookingAddon($this->tenant);
+
+        $service = $this->makeService((string) $this->tenant->id);
+        $resource = $this->makeResource((string) $this->tenant->id);
+        $session = $this->issueGuestSession('reschedule.guest@example.com');
+
+        $targetStart = now()->addDays(2)->setTime(12, 0, 0);
+        $targetEnd = now()->addDays(2)->setTime(13, 0, 0);
+
+        $this->makeAvailability($resource, [
+            'day_of_week' => null,
+            'specific_date' => $targetStart->toDateString(),
+            'starts_at' => '08:00:00',
+            'ends_at' => '20:00:00',
+        ]);
+
+        $booking = Booking::factory()->confirmed()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'guest_user_id' => $session['guest_id'],
+            'customer_email' => 'reschedule.guest@example.com',
+            'customer_name' => 'Reschedule Guest',
+            'starts_at' => now()->addDays(2)->setTime(10, 0, 0),
+            'ends_at' => now()->addDays(2)->setTime(11, 0, 0),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$session['token'])
+            ->patchJson($this->tenantUrl("/api/guest-auth/bookings/{$booking->id}/reschedule"), [
+                'starts_at' => $targetStart->toIso8601String(),
+                'ends_at' => $targetEnd->toIso8601String(),
+            ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.starts_at', $targetStart->toIso8601String())
+            ->assertJsonPath('data.ends_at', $targetEnd->toIso8601String())
+            ->assertJsonPath('data.can_reschedule', true);
+
+        $booking->refresh();
+        $this->assertTrue($booking->starts_at->equalTo($targetStart));
+        $this->assertTrue($booking->ends_at->equalTo($targetEnd));
+    }
+
+    #[Test]
+    public function authenticated_guest_reschedule_rejects_an_unavailable_slot(): void
+    {
+        $this->activateBookingAddon($this->tenant);
+
+        $service = $this->makeService((string) $this->tenant->id);
+        $resource = $this->makeResource((string) $this->tenant->id);
+        $session = $this->issueGuestSession('conflict.guest@example.com');
+
+        $bookingDate = now()->addDays(3);
+        $this->makeAvailability($resource, [
+            'day_of_week' => null,
+            'specific_date' => $bookingDate->toDateString(),
+            'starts_at' => '09:00:00',
+            'ends_at' => '10:00:00',
+        ]);
+
+        $booking = Booking::factory()->confirmed()->create([
+            'tenant_id' => (string) $this->tenant->id,
+            'service_id' => $service->id,
+            'resource_id' => $resource->id,
+            'guest_user_id' => $session['guest_id'],
+            'customer_email' => 'conflict.guest@example.com',
+            'customer_name' => 'Conflict Guest',
+            'starts_at' => $bookingDate->copy()->setTime(9, 0, 0),
+            'ends_at' => $bookingDate->copy()->setTime(10, 0, 0),
+        ]);
+
+        $response = $this->withHeader('Authorization', 'Bearer '.$session['token'])
+            ->patchJson($this->tenantUrl("/api/guest-auth/bookings/{$booking->id}/reschedule"), [
+                'starts_at' => $bookingDate->copy()->setTime(18, 0, 0)->toIso8601String(),
+                'ends_at' => $bookingDate->copy()->setTime(19, 0, 0)->toIso8601String(),
+            ]);
+
+        $response->assertStatus(409)
+            ->assertJsonPath('message', 'The requested time slot is not available.');
+
+        $booking->refresh();
+        $this->assertSame('09:00:00', $booking->starts_at->format('H:i:s'));
+        $this->assertSame('10:00:00', $booking->ends_at->format('H:i:s'));
     }
 }

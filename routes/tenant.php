@@ -214,6 +214,7 @@ Route::middleware([
                 Route::get('bookings', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'index']);
                 Route::get('bookings/{id}', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'show'])->whereNumber('id');
                 Route::patch('bookings/{id}/cancel', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'cancel'])->whereNumber('id');
+                Route::patch('bookings/{id}/reschedule', [\App\Http\Controllers\Api\Booking\GuestBookingController::class, 'reschedule'])->whereNumber('id');
             });
 
             Route::middleware('addon:estimates_quotes')->group(function () {

@@ -147,6 +147,7 @@ describe('guestPortalService', () => {
           ends_at: null,
           cancelled_at: null,
           can_cancel: true,
+          can_reschedule: true,
           service: null,
           resource: null,
           payment: null,
@@ -164,6 +165,7 @@ describe('guestPortalService', () => {
           ends_at: null,
           cancelled_at: null,
           can_cancel: false,
+          can_reschedule: false,
           service: null,
           resource: null,
           payment: null,
@@ -189,5 +191,47 @@ describe('guestPortalService', () => {
 
     const cancelHeaders = fetchMock.mock.calls[2][1]?.headers as Headers;
     expect(cancelHeaders.get('Authorization')).toBe('Bearer verified-token');
+  });
+
+  it('uses the verified guest token for reschedule requests', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse({
+        guest: { id: 9, email: 'verify@example.com', name: 'Verified Guest' },
+        token: 'verified-token',
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        data: {
+          id: 42,
+          status: 'confirmed',
+          customer_name: 'Verified Guest',
+          customer_email: 'verify@example.com',
+          customer_phone: null,
+          customer_notes: null,
+          starts_at: '2026-06-01T11:00:00.000Z',
+          ends_at: '2026-06-01T12:00:00.000Z',
+          cancelled_at: null,
+          can_cancel: true,
+          can_reschedule: true,
+          service: null,
+          resource: null,
+          payment: null,
+        },
+      }));
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    await guestPortalService.verifyMagicLink('magic-token-123');
+    await guestPortalService.rescheduleBooking(42, '2026-06-01T11:00:00.000Z', '2026-06-01T12:00:00.000Z');
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/guest-auth/bookings/42/reschedule',
+      expect.objectContaining({
+        method: 'PATCH',
+      })
+    );
+
+    const headers = fetchMock.mock.calls[1][1]?.headers as Headers;
+    expect(headers.get('Authorization')).toBe('Bearer verified-token');
   });
 });

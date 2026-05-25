@@ -171,8 +171,12 @@ resolved by 2026-05-12.
 
 Current booking follow-ups worth tracking now are:
 
-- guest-facing self-service rescheduling is still missing; guest surfaces can
-  cancel bookings but cannot yet move them into a new valid slot
+- guest-facing self-service rescheduling is now implemented on the current
+  working tree: backend guest-auth reschedule support, the shared slot/range
+  availability fix, guest portal UI wiring, focused backend + Vitest coverage,
+  and Playwright guest-portal happy-path + rejection-path specs are in place;
+  both browser flows have been validated against the configured tenant host,
+  and merge/push still remain
 - the next concrete booking feature slice is now documented in
   [plans/BOOKING_GUEST_RESCHEDULING_PLAN.md](plans/BOOKING_GUEST_RESCHEDULING_PLAN.md),
   grounded in the current guest portal and native tenant-side reschedule flow

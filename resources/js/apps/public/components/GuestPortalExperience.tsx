@@ -17,6 +17,9 @@ export function GuestPortalExperience({
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRescheduleFormOpen, setIsRescheduleFormOpen] = useState(false);
+  const [rescheduleStartsAt, setRescheduleStartsAt] = useState('');
+  const [rescheduleEndsAt, setRescheduleEndsAt] = useState('');
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -76,6 +79,12 @@ export function GuestPortalExperience({
     };
   }, [selectedBookingId, selectedQuoteId]);
 
+  useEffect(() => {
+    setIsRescheduleFormOpen(false);
+    setRescheduleStartsAt(toDateTimeLocalValue(selectedBooking?.starts_at ?? null));
+    setRescheduleEndsAt(toDateTimeLocalValue(selectedBooking?.ends_at ?? null));
+  }, [selectedBooking?.id, selectedBooking?.starts_at, selectedBooking?.ends_at]);
+
   const handleRequestLink = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -122,6 +131,31 @@ export function GuestPortalExperience({
       setInfoMessage('Your booking was cancelled.');
     } catch (cancellationError) {
       setErrorMessage(cancellationError instanceof Error ? cancellationError.message : 'Failed to cancel your booking.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRescheduleBooking = async (bookingId: number) => {
+    if (!rescheduleStartsAt || !rescheduleEndsAt) {
+      setErrorMessage('Choose both a new start and end time before rescheduling.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setErrorMessage(null);
+      const updatedBooking = await guestPortalService.rescheduleBooking(
+        bookingId,
+        new Date(rescheduleStartsAt).toISOString(),
+        new Date(rescheduleEndsAt).toISOString(),
+      );
+      setBookings((current) => current.map((booking) => booking.id === updatedBooking.id ? updatedBooking : booking));
+      setSelectedBooking((current) => current?.id === updatedBooking.id ? updatedBooking : current);
+      setInfoMessage('Your booking was rescheduled.');
+      setIsRescheduleFormOpen(false);
+    } catch (rescheduleError) {
+      setErrorMessage(rescheduleError instanceof Error ? rescheduleError.message : 'Failed to reschedule your booking.');
     } finally {
       setIsSubmitting(false);
     }
@@ -328,6 +362,16 @@ export function GuestPortalExperience({
                           Cancel booking
                         </button>
                       ) : null}
+                      {booking.can_reschedule ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleViewBooking(booking)}
+                          disabled={isSubmitting}
+                          style={styles.secondaryButton}
+                        >
+                          Reschedule booking
+                        </button>
+                      ) : null}
                     </div>
                   </article>
                 ))
@@ -453,6 +497,66 @@ export function GuestPortalExperience({
                   </dl>
 
                   {selectedBooking.customer_notes ? <p style={styles.notes}>{selectedBooking.customer_notes}</p> : null}
+
+                  {selectedBooking.can_reschedule ? (
+                    <div style={styles.rescheduleSection}>
+                      <div style={styles.rescheduleHeader}>
+                        <div>
+                          <p style={styles.panelLabel}>Reschedule</p>
+                          <p style={styles.textMuted}>Choose a new time for this booking.</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setIsRescheduleFormOpen((current) => !current)}
+                          disabled={isSubmitting}
+                          style={styles.secondaryButton}
+                        >
+                          {isRescheduleFormOpen ? 'Hide reschedule form' : 'Reschedule booking'}
+                        </button>
+                      </div>
+
+                      {isRescheduleFormOpen ? (
+                        <div style={styles.rescheduleForm}>
+                          <label style={styles.label} htmlFor="guest-reschedule-start">New start time</label>
+                          <input
+                            id="guest-reschedule-start"
+                            type="datetime-local"
+                            value={rescheduleStartsAt}
+                            onChange={(event) => setRescheduleStartsAt(event.target.value)}
+                            style={styles.input}
+                          />
+
+                          <label style={styles.label} htmlFor="guest-reschedule-end">New end time</label>
+                          <input
+                            id="guest-reschedule-end"
+                            type="datetime-local"
+                            value={rescheduleEndsAt}
+                            onChange={(event) => setRescheduleEndsAt(event.target.value)}
+                            style={styles.input}
+                          />
+
+                          <div style={styles.inlineActions}>
+                            <button
+                              type="button"
+                              onClick={() => void handleRescheduleBooking(selectedBooking.id)}
+                              disabled={isSubmitting}
+                              style={styles.primaryButton}
+                            >
+                              Confirm reschedule
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setIsRescheduleFormOpen(false)}
+                              disabled={isSubmitting}
+                              style={styles.secondaryButton}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
 
                   <div style={styles.detailActions}>
                     <Link to="/guest-portal" style={styles.secondaryLink}>Back to all bookings</Link>
@@ -597,6 +701,18 @@ function formatOptionalDate(value: string | null, fallback: string): string {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value));
+}
+
+function toDateTimeLocalValue(value: string | null): string {
+  if (!value) {
+    return '';
+  }
+
+  const date = new Date(value);
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60_000);
+
+  return localDate.toISOString().slice(0, 16);
 }
 
 function statusStyle(status: GuestPortalBooking['status']): React.CSSProperties {
@@ -745,6 +861,11 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#475569',
     lineHeight: 1.7,
   },
+  textMuted: {
+    margin: '0.45rem 0 0',
+    color: '#64748b',
+    lineHeight: 1.6,
+  },
   form: {
     display: 'grid',
     gap: '0.85rem',
@@ -886,6 +1007,30 @@ const styles: Record<string, React.CSSProperties> = {
     flexWrap: 'wrap',
     gap: '0.75rem',
     alignItems: 'center',
+  },
+  rescheduleSection: {
+    marginTop: '1.5rem',
+    padding: '1rem',
+    borderRadius: '1rem',
+    background: '#f8fafc',
+    border: '1px solid #e2e8f0',
+  },
+  rescheduleHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: '1rem',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  rescheduleForm: {
+    display: 'grid',
+    gap: '0.75rem',
+    marginTop: '1rem',
+  },
+  inlineActions: {
+    display: 'flex',
+    gap: '0.75rem',
+    flexWrap: 'wrap',
   },
   lineItemRow: {
     display: 'flex',

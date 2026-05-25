@@ -235,11 +235,12 @@ class BookingManagementController extends Controller
         $startsAt = Carbon::parse($validated['starts_at']);
         $endsAt   = Carbon::parse($validated['ends_at']);
 
-        $isAvailable = $this->availability->isRangeAvailable(
+        $isAvailable = $this->availability->isBookingWindowAvailable(
             $service,
             $resource,
             $startsAt,
             $endsAt,
+            $booking->id,
         );
 
         if (! $isAvailable) {
