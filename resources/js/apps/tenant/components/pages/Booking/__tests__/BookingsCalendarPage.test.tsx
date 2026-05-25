@@ -14,11 +14,23 @@ const {
   createBookingMock,
   listServicesMock,
   listResourcesMock,
+  listPublicSlotsMock,
+  listPublicAvailabilityMock,
+  tenantSettingsGetMock,
 } = vi.hoisted(() => ({
   listBookingsMock: vi.fn(),
   createBookingMock: vi.fn(),
   listServicesMock: vi.fn(),
   listResourcesMock: vi.fn(),
+  listPublicSlotsMock: vi.fn(),
+  listPublicAvailabilityMock: vi.fn(),
+  tenantSettingsGetMock: vi.fn(),
+}));
+
+vi.mock('@/shared/services/api', () => ({
+  tenantSettings: {
+    get: tenantSettingsGetMock,
+  },
 }));
 
 vi.mock('@/shared/hooks/usePermissions', () => ({
@@ -33,6 +45,8 @@ vi.mock('@/shared/services/api/booking', () => ({
     createBooking: createBookingMock,
     listServices: listServicesMock,
     listResources: listResourcesMock,
+    listPublicSlots: listPublicSlotsMock,
+    getPublicAvailability: listPublicAvailabilityMock,
   },
 }));
 
@@ -94,6 +108,14 @@ describe('BookingsCalendarPage', () => {
     });
     listServicesMock.mockResolvedValue({ data: [] });
     listResourcesMock.mockResolvedValue({ data: [] });
+    listPublicSlotsMock.mockResolvedValue({ data: [] });
+    listPublicAvailabilityMock.mockResolvedValue({ available: false });
+    tenantSettingsGetMock.mockResolvedValue({
+      data: {
+        booking_checkin_time: '15:00',
+        booking_checkout_time: '11:00',
+      },
+    });
     createBookingMock.mockResolvedValue({ data: { id: 99 } });
   });
 
@@ -161,6 +183,15 @@ describe('BookingsCalendarPage', () => {
         },
       ],
     });
+    listPublicSlotsMock.mockResolvedValue({
+      data: [
+        {
+          starts_at: '2026-05-15T10:00:00Z',
+          ends_at: '2026-05-15T11:00:00Z',
+          available: true,
+        },
+      ],
+    });
 
     renderPage();
 
@@ -174,8 +205,21 @@ describe('BookingsCalendarPage', () => {
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'VIP Client' } });
     fireEvent.change(screen.getByLabelText('E-post'), { target: { value: 'vip@example.com' } });
     fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '0701234567' } });
-    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-05-15T10:00' } });
-    fireEvent.change(screen.getByLabelText('Slut'), { target: { value: '2026-05-15T11:00' } });
+
+    expect(screen.queryByLabelText('Start')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Slut')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Datum'), { target: { value: '2026-05-15' } });
+
+    await waitFor(() => {
+      expect(listPublicSlotsMock).toHaveBeenCalledWith({
+        serviceId: 7,
+        resourceId: 3,
+        date: '2026-05-15',
+      });
+    });
+
+    fireEvent.change(screen.getByLabelText('Tillgängliga tider'), { target: { value: '2026-05-15T10:00:00Z' } });
 
     fireEvent.click(screen.getByRole('button', { name: 'Skapa bokning' }));
 
@@ -183,8 +227,8 @@ describe('BookingsCalendarPage', () => {
       expect(createBookingMock).toHaveBeenCalledWith({
         service_id: 7,
         resource_id: 3,
-        starts_at: '2026-05-15T10:00',
-        ends_at: '2026-05-15T11:00',
+        starts_at: '2026-05-15T10:00:00Z',
+        ends_at: '2026-05-15T11:00:00Z',
         customer_name: 'VIP Client',
         customer_email: 'vip@example.com',
         customer_phone: '0701234567',
@@ -238,6 +282,15 @@ describe('BookingsCalendarPage', () => {
         },
       ],
     });
+    listPublicSlotsMock.mockResolvedValue({
+      data: [
+        {
+          starts_at: '2026-05-15T10:00:00Z',
+          ends_at: '2026-05-15T11:00:00Z',
+          available: true,
+        },
+      ],
+    });
 
     renderPage([
       {
@@ -268,13 +321,20 @@ describe('BookingsCalendarPage', () => {
       expect(screen.getByLabelText('Resurs')).toHaveValue('3');
     });
 
-    fireEvent.change(screen.getByLabelText('Start'), { target: { value: '2026-05-15T10:00' } });
-    fireEvent.change(screen.getByLabelText('Slut'), { target: { value: '2026-05-15T11:00' } });
+    expect(screen.queryByLabelText('Start')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Slut')).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Datum'), { target: { value: '2026-05-15' } });
 
     await waitFor(() => {
-      expect(screen.getByLabelText('Start')).toHaveValue('2026-05-15T10:00');
-      expect(screen.getByLabelText('Slut')).toHaveValue('2026-05-15T11:00');
+      expect(listPublicSlotsMock).toHaveBeenCalledWith({
+        serviceId: 7,
+        resourceId: 3,
+        date: '2026-05-15',
+      });
     });
+
+    fireEvent.change(screen.getByLabelText('Tillgängliga tider'), { target: { value: '2026-05-15T10:00:00Z' } });
 
     const createButton = screen.getByRole('button', { name: 'Skapa bokning' });
     await waitFor(() => {
@@ -288,13 +348,111 @@ describe('BookingsCalendarPage', () => {
         quote_id: 99,
         service_id: 7,
         resource_id: 3,
-        starts_at: '2026-05-15T10:00',
-        ends_at: '2026-05-15T11:00',
+        starts_at: '2026-05-15T10:00:00Z',
+        ends_at: '2026-05-15T11:00:00Z',
         customer_name: 'Anna Andersson',
         customer_email: 'anna@example.com',
         customer_phone: '0701234567',
         customer_notes: 'Estimate after inspection.',
         internal_notes: 'Complex restorative treatment.',
+        force: false,
+      });
+    });
+  });
+
+  it('submits a new range-mode manual booking from the dashboard using availability-guided stay dates', async () => {
+    listServicesMock.mockResolvedValue({
+      data: [
+        {
+          id: 8,
+          name: 'Cabin stay',
+          description: null,
+          booking_mode: 'range',
+          duration_minutes: null,
+          slot_interval_minutes: null,
+          min_nights: 1,
+          max_nights: 10,
+          buffer_minutes: 0,
+          advance_notice_hours: 0,
+          max_advance_days: null,
+          price: null,
+          currency: 'SEK',
+          requires_payment: false,
+          is_active: true,
+          resources: [{ id: 4, name: 'Cabin A', type: 'space' }],
+          created_at: '2026-05-01T08:00:00Z',
+          updated_at: '2026-05-01T08:00:00Z',
+        },
+      ],
+    });
+    listResourcesMock.mockResolvedValue({
+      data: [
+        {
+          id: 4,
+          name: 'Cabin A',
+          type: 'space',
+          description: null,
+          checkin_time: null,
+          checkout_time: null,
+          capacity: 4,
+          resource_label: null,
+          user_id: null,
+          is_active: true,
+          created_at: '2026-05-01T08:00:00Z',
+          updated_at: '2026-05-01T08:00:00Z',
+        },
+      ],
+    });
+    listPublicAvailabilityMock.mockResolvedValue({
+      available: true,
+    });
+
+    renderPage();
+
+    const newBookingButton = await screen.findByRole('button', { name: 'Ny bokning' });
+    await waitFor(() => {
+      expect(newBookingButton).toBeEnabled();
+    });
+
+    fireEvent.click(newBookingButton);
+
+    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Range Client' } });
+    fireEvent.change(screen.getByLabelText('E-post'), { target: { value: 'range@example.com' } });
+    fireEvent.change(screen.getByLabelText('Telefon'), { target: { value: '0707654321' } });
+
+    expect(screen.queryByLabelText('Tillgängliga tider')).not.toBeInTheDocument();
+    expect(screen.getByText('Standardtider för vistelse: 15:00 incheckning · 11:00 utcheckning')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Incheckning'), { target: { value: '2026-05-18' } });
+    fireEvent.change(screen.getByLabelText('Utcheckning'), { target: { value: '2026-05-20' } });
+
+    await waitFor(() => {
+      expect(listPublicAvailabilityMock).toHaveBeenCalledWith({
+        serviceId: 8,
+        resourceId: 4,
+        checkIn: '2026-05-18',
+        checkOut: '2026-05-20',
+      });
+    });
+
+    const createButton = screen.getByRole('button', { name: 'Skapa bokning' });
+    await waitFor(() => {
+      expect(createButton).toBeEnabled();
+    });
+
+    fireEvent.click(createButton);
+
+    await waitFor(() => {
+      expect(createBookingMock).toHaveBeenCalledWith({
+        service_id: 8,
+        resource_id: 4,
+        starts_at: '2026-05-18T15:00',
+        ends_at: '2026-05-20T11:00',
+        customer_name: 'Range Client',
+        customer_email: 'range@example.com',
+        customer_phone: '0707654321',
+        customer_notes: null,
+        internal_notes: null,
         force: false,
       });
     });

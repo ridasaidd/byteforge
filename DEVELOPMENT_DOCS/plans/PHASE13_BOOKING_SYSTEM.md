@@ -32,11 +32,13 @@ code and should not be treated as open work anymore.
 
 Current follow-ups that still matter:
 
-- guest-facing self-service rescheduling is still missing; the guest side can
-     cancel but not yet move a booking into a new valid slot
-- tenant dashboard manual booking creation is now implemented, but the first
-     version still relies on direct datetime entry instead of an
-     availability-driven slot or date-range selector
+- guest-facing self-service rescheduling is now merged on `main`; the guest
+     portal can move a linked booking into a new valid slot and reject
+     unavailable reschedule attempts with browser coverage in place
+- tenant dashboard manual booking creation is now availability-guided for both
+     slot-mode and range-mode services instead of relying on direct datetime
+     entry, with focused tenant browser coverage now in place for the
+     range-mode creation path
 - reminder/notification delivery should stay paired with explicit queue-worker
      and scheduler expectations in environment and deployment documentation
 - focused regression coverage should continue to expand as guest reschedule and

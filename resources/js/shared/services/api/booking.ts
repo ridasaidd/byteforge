@@ -130,6 +130,17 @@ export interface BookingAvailabilityWindow {
   is_blocked: boolean;
 }
 
+export interface BookingSlotOption {
+  starts_at: string;
+  ends_at: string;
+  available: boolean;
+}
+
+export interface BookingRangeAvailability {
+  available: boolean;
+  message?: string;
+}
+
 export interface BookingListParams {
   date?: string;
   starts_from?: string;
@@ -221,4 +232,23 @@ export const cmsBookingApi = {
     http.post<ApiResponse<BookingAvailabilityWindow>>(`/booking/resources/${resourceId}/availability`, data),
   deleteAvailability: (windowId: number) =>
     http.delete(`/booking/availability/${windowId}`),
+
+  // Tenant-side booking creation helpers reuse the public availability contract.
+  listPublicSlots: (params: { serviceId: number; resourceId: number; date: string }) =>
+    http.get<ApiResponse<BookingSlotOption[]>>('/public/booking/slots', {
+      params: {
+        service_id: params.serviceId,
+        resource_id: params.resourceId,
+        date: params.date,
+      },
+    }),
+  getPublicAvailability: (params: { serviceId: number; resourceId: number; checkIn: string; checkOut: string }) =>
+    http.get<BookingRangeAvailability>('/public/booking/availability', {
+      params: {
+        service_id: params.serviceId,
+        resource_id: params.resourceId,
+        check_in: params.checkIn,
+        check_out: params.checkOut,
+      },
+    }),
 };
