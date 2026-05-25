@@ -135,60 +135,44 @@ jobs:
 
             # Staging should keep host-only auth cookies but still behave like
             # HTTPS production for session transport and cookie policy.
-            php <<'PHP'
-            <?php
-            require __DIR__.'/vendor/autoload.php';
-
-            $app = require __DIR__.'/bootstrap/app.php';
+            php -r 'require "vendor/autoload.php";
+            $app = require "bootstrap/app.php";
             $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-
             $failures = [];
-
-            $appUrl = (string) config('app.url', '');
-            if (! str_starts_with($appUrl, 'https://')) {
-              $failures[] = 'config(app.url) must use https on staging.';
+            $appUrl = (string) config("app.url", "");
+            if (! str_starts_with($appUrl, "https://")) {
+              $failures[] = "config(app.url) must use https on staging.";
             }
-
-            if (config('session.secure') !== true) {
-              $failures[] = 'config(session.secure) must be true on staging.';
+            if (config("session.secure") !== true) {
+              $failures[] = "config(session.secure) must be true on staging.";
             }
-
-            if (config('session.http_only') !== true) {
-              $failures[] = 'config(session.http_only) must be true on staging.';
+            if (config("session.http_only") !== true) {
+              $failures[] = "config(session.http_only) must be true on staging.";
             }
-
-            if ((string) config('session.same_site', '') !== 'lax') {
-              $failures[] = 'config(session.same_site) must remain lax on staging.';
+            if ((string) config("session.same_site", "") !== "lax") {
+              $failures[] = "config(session.same_site) must remain lax on staging.";
             }
-
-            $sessionDomain = config('session.domain');
-            if (! is_null($sessionDomain) && $sessionDomain !== '' && strtolower((string) $sessionDomain) !== 'null') {
-              $failures[] = 'config(session.domain) must stay unset for host-only cookies.';
+            $sessionDomain = config("session.domain");
+            if (! is_null($sessionDomain) && $sessionDomain !== "" && strtolower((string) $sessionDomain) !== "null") {
+              $failures[] = "config(session.domain) must stay unset for host-only cookies.";
             }
-
-            if ((string) config('auth_sessions.refresh_cookie_path', '') !== '/api/auth') {
-              $failures[] = 'config(auth_sessions.refresh_cookie_path) must remain /api/auth on staging.';
+            if ((string) config("auth_sessions.refresh_cookie_path", "") !== "/api/auth") {
+              $failures[] = "config(auth_sessions.refresh_cookie_path) must remain /api/auth on staging.";
             }
-
-            if ((string) config('auth_sessions.refresh_cookie_same_site', '') !== 'lax') {
-              $failures[] = 'config(auth_sessions.refresh_cookie_same_site) must remain lax on staging.';
+            if ((string) config("auth_sessions.refresh_cookie_same_site", "") !== "lax") {
+              $failures[] = "config(auth_sessions.refresh_cookie_same_site) must remain lax on staging.";
             }
-
-            if ((string) config('guest_auth.refresh_cookie_path', '') !== '/api/guest-auth') {
-              $failures[] = 'config(guest_auth.refresh_cookie_path) must remain /api/guest-auth on staging.';
+            if ((string) config("guest_auth.refresh_cookie_path", "") !== "/api/guest-auth") {
+              $failures[] = "config(guest_auth.refresh_cookie_path) must remain /api/guest-auth on staging.";
             }
-
-            if ((string) config('guest_auth.refresh_cookie_same_site', '') !== 'lax') {
-              $failures[] = 'config(guest_auth.refresh_cookie_same_site) must remain lax on staging.';
+            if ((string) config("guest_auth.refresh_cookie_same_site", "") !== "lax") {
+              $failures[] = "config(guest_auth.refresh_cookie_same_site) must remain lax on staging.";
             }
-
             if ($failures !== []) {
               fwrite(STDERR, "Staging auth/session config audit failed:\n- ".implode("\n- ", $failures)."\n");
               exit(1);
             }
-
-            fwrite(STDOUT, "✓ Staging auth/session config audit passed\n");
-            PHP
+            fwrite(STDOUT, "Staging auth/session config audit passed\n");'
 
             # Restart queue worker
             php artisan queue:restart
