@@ -72,6 +72,9 @@ Primary branch: `main`
 - The staging deploy workflow now performs an explicit auth/session config
   audit after `config:cache` and fails if HTTPS staging drifts away from the
   expected secure, host-only cookie posture.
+- The staging deploy workflow now also fails early when the deploy user cannot
+  read the GitHub deploy key or when staging runtime paths and Passport OAuth
+  keys do not meet the expected ownership/permission baseline.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
   booking customer fields, payment human-text fields, auth name/email

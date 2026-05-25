@@ -44,16 +44,61 @@ jobs:
 
           # Deploy via SSH
           ssh -o BatchMode=yes -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" << 'ENDSSH'
-            cd /var/www/byteforge
+            APP_PATH=/var/www/byteforge
+            DEPLOY_GIT_KEY="$HOME/.ssh/github_deploy_key"
+
+            abort() {
+              echo "Deployment aborted: $1"
+              exit 1
+            }
+
+            require_group_access() {
+              local path="$1"
+              local expected_group="$2"
+              local minimum_group_digit="$3"
+              local mode group_digit actual_group
+
+              actual_group=$(stat -c '%G' "$path")
+              mode=$(stat -c '%a' "$path")
+              group_digit=${mode: -2:1}
+
+              if [ "$actual_group" != "$expected_group" ]; then
+                abort "$APP_PATH/$path must be group-owned by $expected_group (found: $actual_group)"
+              fi
+
+              if (( group_digit < minimum_group_digit )); then
+                abort "$APP_PATH/$path must grant group permission >= $minimum_group_digit (mode: $mode)"
+              fi
+            }
+
+            require_not_world_accessible() {
+              local path="$1"
+              local mode other_digit
+
+              mode=$(stat -c '%a' "$path")
+              other_digit=${mode: -1}
+
+              if (( other_digit > 0 )); then
+                abort "$APP_PATH/$path must not be world-accessible (mode: $mode)"
+              fi
+            }
+
+            cd "$APP_PATH"
+
+            if [ ! -r "$DEPLOY_GIT_KEY" ]; then
+              abort "deploy user cannot read $DEPLOY_GIT_KEY"
+            fi
 
             # Normalize ownership/permissions for deploy user and web group.
             # This prevents composer/npm/build/cache permission drift.
             if sudo -n true >/dev/null 2>&1; then
               if getent group www-data >/dev/null 2>&1; then
-                sudo chown -R "$USER":www-data /var/www/byteforge || true
+                sudo chown -R "$USER":www-data "$APP_PATH" || true
               else
-                sudo chown -R "$USER":"$USER" /var/www/byteforge || true
+                sudo chown -R "$USER":"$USER" "$APP_PATH" || true
               fi
+            else
+              echo "Sudo unavailable; relying on pre-provisioned ownership baseline."
             fi
 
             mkdir -p storage/framework/{sessions,views,cache/data} storage/logs bootstrap/cache
@@ -67,7 +112,7 @@ jobs:
             fi
 
             # Fail early with a clear reason when the deploy user still cannot write.
-            for path in /var/www/byteforge /var/www/byteforge/storage /var/www/byteforge/bootstrap/cache; do
+            for path in "$APP_PATH" "$APP_PATH/storage" "$APP_PATH/bootstrap/cache"; do
               if [ ! -w "$path" ]; then
                 echo "Deployment aborted: deploy user lacks write permission on $path"
                 exit 1
@@ -75,7 +120,7 @@ jobs:
             done
 
             # Ensure git trusts this directory (safe.directory for deploy user)
-            git config --global --add safe.directory /var/www/byteforge 2>/dev/null || true
+            git config --global --add safe.directory "$APP_PATH" 2>/dev/null || true
 
             # Add GitHub host key to known_hosts for SSH verification
             ssh-keyscan -H github.com >> ~/.ssh/known_hosts 2>/dev/null || true
@@ -124,6 +169,21 @@ jobs:
               sudo chmod 660 storage/oauth-private.key storage/oauth-public.key || true
             else
               echo "Skipping OAuth key chmod normalization (sudo unavailable)."
+            fi
+
+            for key in storage/oauth-private.key storage/oauth-public.key; do
+              if [ ! -r "$key" ]; then
+                abort "deploy user cannot read $APP_PATH/$key"
+              fi
+
+              require_not_world_accessible "$key"
+            done
+
+            if getent group www-data >/dev/null 2>&1; then
+              require_group_access "storage" "www-data" 6
+              require_group_access "bootstrap/cache" "www-data" 6
+              require_group_access "storage/oauth-private.key" "www-data" 4
+              require_group_access "storage/oauth-public.key" "www-data" 4
             fi
 
             # Ensure storage symlink exists

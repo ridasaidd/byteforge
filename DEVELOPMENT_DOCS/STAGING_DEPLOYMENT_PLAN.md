@@ -32,6 +32,8 @@ What exists today:
 - deploy workflow now also audits the deployed auth/session config after
   `config:cache` so HTTPS staging fails loudly if session or refresh-cookie
   settings drift away from the documented secure host-only posture
+- deploy workflow now also validates deploy-user bootstrap prerequisites and
+  runtime path permissions before continuing with build/cache steps
 - deploy workflow now also runs non-destructive seeders for global permissions
   and billing catalog rows so newly shipped capabilities become usable on
   staging without a full reseed
@@ -112,6 +114,28 @@ Current workflow expects:
 
 Server-side secrets should remain on the server and not be injected from GitHub
 unless there is a clear reason.
+
+### Deploy User Bootstrap Requirements
+
+The staging deploy user is now treated as part of the deployment contract, not
+as an implicit server detail.
+
+Required baseline on the staging host:
+
+- the deploy user can read `~/.ssh/github_deploy_key`
+- `git` trusts the app path as a safe directory for the deploy user
+- the app tree is writable by the deploy user
+- `storage` and `bootstrap/cache` are group-owned by `www-data` when that
+  group exists and remain group-writable for runtime writes
+- `storage/oauth-private.key` and `storage/oauth-public.key` are readable by
+  the deploy user, group-readable by `www-data` when that group exists, and not
+  world-accessible
+
+Operational note:
+
+- if passwordless `sudo` is unavailable for the deploy user, those ownership
+  and group-permission expectations must already be provisioned on the server
+  before CI deploys run
 
 ---
 
