@@ -173,6 +173,9 @@ Current booking follow-ups worth tracking now are:
 
 - guest-facing self-service rescheduling is still missing; guest surfaces can
   cancel bookings but cannot yet move them into a new valid slot
+- the next concrete booking feature slice is now documented in
+  [plans/BOOKING_GUEST_RESCHEDULING_PLAN.md](plans/BOOKING_GUEST_RESCHEDULING_PLAN.md),
+  grounded in the current guest portal and native tenant-side reschedule flow
 - tenant dashboard manual booking creation now exists, but it still uses raw
   datetime entry rather than an availability-driven slot or range picker
 - booking reminder/queue-worker operational expectations should stay explicit
