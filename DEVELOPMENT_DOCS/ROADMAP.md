@@ -146,7 +146,7 @@ Primary docs:
 Likely focus areas:
 
 - guest self-service reschedule flow
-- availability-guided tenant manual booking creation instead of raw datetime entry
+- booking reminder/queue-worker operational verification and documentation refresh after the booking UX slices landed
 - booking flow UX improvements that reuse existing availability and notification paths
 - notification consistency improvements
 - reminder and queue-worker operational verification/documentation
