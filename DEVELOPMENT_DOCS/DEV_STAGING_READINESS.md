@@ -453,8 +453,6 @@ This is the current engineering view based on the repository state.
 
 - example env defaults do not reflect the actual shared development setup
 - mail delivery is still log-based instead of QA-friendly
-- queue-worker expectations are not yet documented as part of normal setup
-- scheduler expectations are not yet documented as part of normal setup
 - auth cookie/session settings are now documented, but the actual owned staging
   and production env templates still need to carry those values explicitly
 - staging server filesystem ownership/permissions still need a stable baseline
@@ -484,7 +482,8 @@ This is the current engineering view based on the repository state.
   mail verification checklist.
 4. Decide and document the development queue mode: `sync` or worker-backed
   `database`.
-5. Capture scheduler/queue runtime expectations in a short runbook snippet.
+5. Verify the staging queue worker and scheduler against the new runtime
+  checklist in `STAGING_DEPLOYMENT_PLAN.md`.
 
 ### Before Creating Staging
 
@@ -499,6 +498,21 @@ This is the current engineering view based on the repository state.
 1. Write a real staging-to-production deployment runbook.
 2. Validate remaining deferred auth/customer-account scope boundaries again
    before exposing new public auth surfaces.
+
+### Operations Checklist
+
+Use this as the short remaining checklist for the current staging baseline:
+
+- deploy-user bootstrap: deploy key readable, `safe.directory` trusted, app path writable
+- runtime permissions: `storage`, `bootstrap/cache`, and OAuth keys match the expected ownership and mode baseline
+- queue runtime: persistent worker or Horizon process present, `php artisan queue:failed` checked after deploys
+- scheduler runtime: cron or equivalent scheduler invocation present and understood by the team
+- env ownership: staging auth/session values, mail settings, and hostnames explicitly owned outside the repo
+
+Reference:
+
+- use the bootstrap and runtime command snippet in `STAGING_DEPLOYMENT_PLAN.md`
+  as the minimum staging runbook until a fuller production runbook exists
 
 ---
 

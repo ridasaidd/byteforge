@@ -137,6 +137,81 @@ Operational note:
   and group-permission expectations must already be provisioned on the server
   before CI deploys run
 
+### Runtime Verification Snippet
+
+The deploy workflow now checks some of this automatically, but staging still
+needs a short human-owned runtime checklist.
+
+Minimum commands to own operationally:
+
+```bash
+pgrep -fa "artisan queue:work|artisan horizon"
+php artisan queue:failed
+crontab -l
+ls -l storage/oauth-private.key storage/oauth-public.key
+stat -c '%U %G %a %n' storage bootstrap/cache storage/oauth-private.key storage/oauth-public.key
+```
+
+Expected outcomes:
+
+- a persistent queue worker or Horizon process is running when the queue is async
+- `php artisan queue:failed` is empty or intentionally triaged
+- scheduler invocation exists through cron or an equivalent supervisor/timer
+- runtime paths and OAuth keys still match the deploy-user baseline above
+
+### Bootstrap Runbook Snippet
+
+Use this when provisioning a new staging host or when repairing the deploy
+user baseline after permission drift.
+
+Assumptions:
+
+- app path: `/var/www/byteforge`
+- deploy user: replace `DEPLOY_USER` below with the real staging deploy account
+- web group: `www-data`
+
+Minimum host bootstrap commands:
+
+```bash
+export DEPLOY_USER=deploy
+export APP_PATH=/var/www/byteforge
+
+sudo usermod -aG www-data "$DEPLOY_USER"
+sudo install -d -m 2775 -o "$DEPLOY_USER" -g www-data "$APP_PATH/storage" "$APP_PATH/bootstrap/cache"
+sudo chgrp -R www-data "$APP_PATH/storage" "$APP_PATH/bootstrap/cache"
+sudo chmod -R ug+rwX "$APP_PATH/storage" "$APP_PATH/bootstrap/cache"
+
+if [ -f "$APP_PATH/storage/oauth-private.key" ] && [ -f "$APP_PATH/storage/oauth-public.key" ]; then
+  sudo chown "$DEPLOY_USER":www-data "$APP_PATH/storage/oauth-private.key" "$APP_PATH/storage/oauth-public.key"
+  sudo chmod 640 "$APP_PATH/storage/oauth-private.key" "$APP_PATH/storage/oauth-public.key"
+fi
+
+sudo -u "$DEPLOY_USER" git config --global --add safe.directory "$APP_PATH"
+sudo -u "$DEPLOY_USER" test -r "/home/$DEPLOY_USER/.ssh/github_deploy_key"
+```
+
+Minimum scheduler bootstrap:
+
+```bash
+(crontab -l 2>/dev/null; echo '* * * * * cd /var/www/byteforge && php artisan schedule:run >> /dev/null 2>&1') | crontab -
+```
+
+Minimum runtime checks after bootstrap:
+
+```bash
+sudo -u "$DEPLOY_USER" test -w "$APP_PATH"
+sudo -u "$DEPLOY_USER" test -w "$APP_PATH/storage"
+sudo -u "$DEPLOY_USER" test -w "$APP_PATH/bootstrap/cache"
+stat -c '%U %G %a %n' "$APP_PATH/storage" "$APP_PATH/bootstrap/cache" "$APP_PATH/storage/oauth-private.key" "$APP_PATH/storage/oauth-public.key"
+pgrep -fa 'artisan queue:work|artisan horizon'
+crontab -l
+```
+
+Operational note:
+
+- if the queue is async, also ensure a persistent worker or Horizon service is
+  enabled through `systemd`, Supervisor, or an equivalent process manager
+
 ---
 
 ## Deployment Method
@@ -265,6 +340,37 @@ Operational note:
 - if `QUEUE_CONNECTION` is async (`database` or `redis`), staging must run a
   persistent queue worker or Horizon; otherwise queued notifications may be
   accepted by the app but never delivered
+
+---
+
+## Remaining Closeout Checklist
+
+These are the highest-value remaining staging/ops items after the now-green
+deploy/auth baseline.
+
+### Server Bootstrap
+
+- [ ] confirm the deploy user can read `~/.ssh/github_deploy_key`
+- [ ] confirm the app path is trusted by git as `safe.directory`
+- [ ] confirm `storage` and `bootstrap/cache` keep the expected writable group baseline
+- [ ] confirm Passport OAuth keys are not world-accessible and stay readable by the app runtime
+
+### Runtime Services
+
+- [ ] confirm the queue worker or Horizon process is supervised and restarts on reboot
+- [ ] confirm scheduler invocation is present and documented for staging
+- [ ] confirm `php artisan queue:failed` is part of normal post-deploy triage
+
+### Environment Ownership
+
+- [ ] keep staging auth/session env values explicitly owned outside the repo
+- [ ] keep Mailtrap Sandbox as the staging mail target unless a safer equivalent replaces it
+- [ ] keep staging hostnames, HTTPS, and tenant URLs aligned with the environment matrix
+
+### Follow-Up Noise Reduction
+
+- [ ] suppress non-actionable SSH login noise for the deploy user if it starts obscuring real deploy failures
+- [ ] only revisit on-server asset builds if build time or memory becomes a recurring deploy risk
 
 ---
 
