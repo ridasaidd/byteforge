@@ -3,13 +3,15 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PublicPage } from '../PublicPage';
 
+const translate = (key: string) => key;
+
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>();
 
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string) => key,
+      t: translate,
     }),
   };
 });

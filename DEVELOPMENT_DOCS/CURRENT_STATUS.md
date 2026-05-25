@@ -171,17 +171,15 @@ resolved by 2026-05-12.
 
 Current booking follow-ups worth tracking now are:
 
-- guest-facing self-service rescheduling is now implemented on the current
-  working tree: backend guest-auth reschedule support, the shared slot/range
-  availability fix, guest portal UI wiring, focused backend + Vitest coverage,
-  and Playwright guest-portal happy-path + rejection-path specs are in place;
-  both browser flows have been validated against the configured tenant host,
-  and merge/push still remain
-- the next concrete booking feature slice is now documented in
-  [plans/BOOKING_GUEST_RESCHEDULING_PLAN.md](plans/BOOKING_GUEST_RESCHEDULING_PLAN.md),
-  grounded in the current guest portal and native tenant-side reschedule flow
-- tenant dashboard manual booking creation now exists, but it still uses raw
-  datetime entry rather than an availability-driven slot or range picker
+- guest-facing self-service rescheduling is now merged on `main`: backend
+  guest-auth reschedule support, the shared slot/range availability fix,
+  guest portal UI wiring, focused backend + Vitest coverage, and Playwright
+  guest-portal happy-path + rejection-path specs are all in place
+- tenant dashboard manual booking creation is now availability-guided for both
+  slot-mode and range-mode services; slot mode uses selectable slots while
+  range mode uses check-in/check-out dates resolved through tenant/resource
+  stay-time defaults plus availability checks, and focused Playwright browser
+  coverage now exists for the tenant range-mode create flow
 - booking reminder/queue-worker operational expectations should stay explicit
   in environment and deployment docs so reminder delivery remains reliable
 

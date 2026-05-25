@@ -7,6 +7,7 @@ import {
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
+  addDays,
   addWeeks,
   subWeeks,
   isSameDay,
@@ -22,8 +23,9 @@ import {
 import { arSA, enUS, sv as svDateLocale } from 'date-fns/locale';
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, List, Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { tenantSettings, type TenantSettings } from '@/shared/services/api';
 import { cmsBookingApi } from '@/shared/services/api/booking';
-import type { CmsBooking, CmsBookingResource, CmsBookingService, BookingStatus, CreateCmsBookingData } from '@/shared/services/api/booking';
+import type { BookingRangeAvailability, BookingSlotOption, CmsBooking, CmsBookingResource, CmsBookingService, BookingStatus, CreateCmsBookingData } from '@/shared/services/api/booking';
 import type { BookingConversionPrefill } from '@/shared/services/api/quotes';
 import { usePermissions } from '@/shared/hooks/usePermissions';
 import { useToast } from '@/shared/hooks/useToast';
@@ -149,6 +151,52 @@ function toDateTimeLocalValue(date: Date): string {
   return format(date, "yyyy-MM-dd'T'HH:mm");
 }
 
+function toDateValue(date: Date): string {
+  return format(date, 'yyyy-MM-dd');
+}
+
+function formatSlotLabel(slot: BookingSlotOption, dateLocale: ReturnType<typeof getDateLocale>): string {
+  try {
+    return `${format(parseISO(slot.starts_at), 'HH:mm', { locale: dateLocale })} - ${format(parseISO(slot.ends_at), 'HH:mm', { locale: dateLocale })}`;
+  } catch {
+    return `${slot.starts_at} - ${slot.ends_at}`;
+  }
+}
+
+function normalizeTimeValue(value: string | null | undefined, fallback: string): string {
+  const nextValue = value?.trim();
+
+  if (!nextValue) {
+    return fallback;
+  }
+
+  return nextValue.slice(0, 5);
+}
+
+function resolveCheckinTime(resource: CmsBookingResource | undefined, settings: TenantSettings | null): string {
+  if (resource?.type === 'space' && resource.checkin_time) {
+    return normalizeTimeValue(resource.checkin_time, '15:00');
+  }
+
+  return normalizeTimeValue(settings?.booking_checkin_time, '15:00');
+}
+
+function resolveCheckoutTime(resource: CmsBookingResource | undefined, settings: TenantSettings | null): string {
+  if (resource?.type === 'space' && resource.checkout_time) {
+    return normalizeTimeValue(resource.checkout_time, '11:00');
+  }
+
+  return normalizeTimeValue(settings?.booking_checkout_time, '11:00');
+}
+
+function formatBookingWindowLabel(value: string, dateLocale: ReturnType<typeof getDateLocale>): string {
+  try {
+    return format(parseISO(value), 'PPp', { locale: dateLocale });
+  } catch {
+    return value;
+  }
+}
+
 type CreateBookingFormState = {
   serviceId: string;
   resourceId: string;
@@ -160,6 +208,9 @@ type CreateBookingFormState = {
   customerNotes: string;
   internalNotes: string;
   force: boolean;
+  slotDate: string;
+  checkInDate: string;
+  checkOutDate: string;
 };
 
 function makeDefaultBookingForm(
@@ -173,6 +224,9 @@ function makeDefaultBookingForm(
 
   const endsAt = new Date(startsAt);
   endsAt.setHours(endsAt.getHours() + 1);
+  const checkInDate = new Date(referenceDate);
+  checkInDate.setHours(0, 0, 0, 0);
+  const checkOutDate = addDays(checkInDate, 1);
 
   const requestedService = overrides.serviceId
     ? services.find((service) => String(service.id) === overrides.serviceId)
@@ -192,6 +246,9 @@ function makeDefaultBookingForm(
     customerName: '',
     customerEmail: '',
     customerPhone: '',
+    slotDate: toDateValue(referenceDate),
+    checkInDate: toDateValue(checkInDate),
+    checkOutDate: toDateValue(checkOutDate),
     startsAt: toDateTimeLocalValue(startsAt),
     endsAt: toDateTimeLocalValue(endsAt),
     customerNotes: '',
@@ -472,6 +529,7 @@ function CreateBookingDialog({
   resources,
   referenceDate,
   t,
+  dateLocale,
 }: {
   open: boolean;
   onClose: () => void;
@@ -482,6 +540,7 @@ function CreateBookingDialog({
   resources: CmsBookingResource[];
   referenceDate: Date;
   t: (key: string, options?: Record<string, unknown>) => string;
+  dateLocale: ReturnType<typeof getDateLocale>;
 }) {
   const [form, setForm] = useState<CreateBookingFormState>(() => makeDefaultBookingForm(
     referenceDate,
@@ -502,6 +561,7 @@ function CreateBookingDialog({
   }, [open, referenceDate, services, resources, initialPrefill]);
 
   const selectedService = services.find((service) => String(service.id) === form.serviceId);
+  const isSlotMode = selectedService?.booking_mode === 'slot';
   const availableResources = useMemo(() => {
     if (!selectedService?.resources?.length) {
       return resources;
@@ -510,6 +570,59 @@ function CreateBookingDialog({
     const allowedIds = new Set(selectedService.resources.map((resource) => resource.id));
     return resources.filter((resource) => allowedIds.has(resource.id));
   }, [resources, selectedService]);
+  const selectedResource = availableResources.find((resource) => String(resource.id) === form.resourceId)
+    ?? resources.find((resource) => String(resource.id) === form.resourceId);
+
+  const { data: tenantSettingsData } = useQuery({
+    queryKey: ['tenant-settings'],
+    queryFn: async () => {
+      try {
+        return (await tenantSettings.get()).data;
+      } catch {
+        return null;
+      }
+    },
+    enabled: open,
+    retry: false,
+  });
+
+  const slotQueryKey = `${form.serviceId}:${form.resourceId}:${form.slotDate}`;
+  const previousSlotQueryKeyRef = useRef<string | null>(null);
+
+  const { data: slotData, isLoading: isLoadingSlots } = useQuery({
+    queryKey: ['cms-booking-create-slots', form.serviceId, form.resourceId, form.slotDate],
+    enabled: open && isSlotMode && Boolean(form.serviceId && form.resourceId && form.slotDate),
+    queryFn: () => cmsBookingApi.listPublicSlots({
+      serviceId: parseInt(form.serviceId, 10),
+      resourceId: parseInt(form.resourceId, 10),
+      date: form.slotDate,
+    }),
+  });
+
+  const slots = slotData?.data ?? [];
+  const selectableSlots = useMemo(
+    () => slots.filter((slot) => slot.available || form.force),
+    [form.force, slots],
+  );
+  const rangeCheckinTime = resolveCheckinTime(selectedResource, tenantSettingsData ?? null);
+  const rangeCheckoutTime = resolveCheckoutTime(selectedResource, tenantSettingsData ?? null);
+  const hasValidRangeDates = Boolean(form.checkInDate && form.checkOutDate && form.checkOutDate > form.checkInDate);
+  const resolvedRangeStartsAt = form.checkInDate ? `${form.checkInDate}T${rangeCheckinTime}` : '';
+  const resolvedRangeEndsAt = hasValidRangeDates ? `${form.checkOutDate}T${rangeCheckoutTime}` : '';
+
+  const { data: rangeAvailability, isLoading: isLoadingRangeAvailability } = useQuery<BookingRangeAvailability>({
+    queryKey: ['cms-booking-create-availability', form.serviceId, form.resourceId, form.checkInDate, form.checkOutDate],
+    enabled: open && !isSlotMode && Boolean(form.serviceId && form.resourceId && hasValidRangeDates),
+    queryFn: () => cmsBookingApi.getPublicAvailability({
+      serviceId: parseInt(form.serviceId, 10),
+      resourceId: parseInt(form.resourceId, 10),
+      checkIn: form.checkInDate,
+      checkOut: form.checkOutDate,
+    }),
+  });
+
+  const selectedStartsAt = isSlotMode ? form.startsAt : resolvedRangeStartsAt;
+  const selectedEndsAt = isSlotMode ? form.endsAt : resolvedRangeEndsAt;
 
   useEffect(() => {
     if (!form.resourceId && availableResources[0]) {
@@ -525,8 +638,76 @@ function CreateBookingDialog({
     }
   }, [availableResources, form.resourceId]);
 
+  useEffect(() => {
+    if (!isSlotMode) {
+      previousSlotQueryKeyRef.current = null;
+      return;
+    }
+
+    if (previousSlotQueryKeyRef.current === slotQueryKey) {
+      return;
+    }
+
+    previousSlotQueryKeyRef.current = slotQueryKey;
+
+    setForm((previous) => ({
+      ...previous,
+      startsAt: '',
+      endsAt: '',
+    }));
+  }, [isSlotMode, slotQueryKey]);
+
+  useEffect(() => {
+    if (!isSlotMode) {
+      return;
+    }
+
+    const currentSlot = slots.find((slot) => slot.starts_at === form.startsAt);
+
+    if (currentSlot && (currentSlot.available || form.force)) {
+      return;
+    }
+
+    const nextSlot = selectableSlots[0];
+
+    if (!nextSlot) {
+      setForm((previous) => {
+        if (!previous.startsAt && !previous.endsAt) {
+          return previous;
+        }
+
+        return {
+          ...previous,
+          startsAt: '',
+          endsAt: '',
+        };
+      });
+      return;
+    }
+
+    setForm((previous) => {
+      if (previous.startsAt === nextSlot.starts_at && previous.endsAt === nextSlot.ends_at) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        startsAt: nextSlot.starts_at,
+        endsAt: nextSlot.ends_at,
+      };
+    });
+  }, [form.force, form.startsAt, isSlotMode, selectableSlots, slots]);
+
   const canSubmit = Boolean(
-    form.serviceId && form.resourceId && form.customerName.trim() && form.customerEmail.trim() && form.startsAt && form.endsAt,
+    form.serviceId
+      && form.resourceId
+      && form.customerName.trim()
+      && form.customerEmail.trim()
+      && selectedStartsAt
+      && selectedEndsAt
+      && (isSlotMode
+        ? !isLoadingSlots
+        : (hasValidRangeDates && !isLoadingRangeAvailability && (form.force || rangeAvailability?.available === true))),
   );
 
   function updateField<K extends keyof CreateBookingFormState>(key: K, value: CreateBookingFormState[K]) {
@@ -543,8 +724,8 @@ function CreateBookingDialog({
     onSave({
       service_id: parseInt(form.serviceId, 10),
       resource_id: parseInt(form.resourceId, 10),
-      starts_at: form.startsAt,
-      ends_at: form.endsAt,
+      starts_at: selectedStartsAt,
+      ends_at: selectedEndsAt,
       customer_name: form.customerName.trim(),
       customer_email: form.customerEmail.trim(),
       customer_phone: form.customerPhone.trim() || null,
@@ -606,6 +787,56 @@ function CreateBookingDialog({
             <p className="text-sm text-muted-foreground">{t('no_resources_available')}</p>
           )}
 
+          {isSlotMode ? (
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-booking-slot-date">{t('date')}</Label>
+                <Input
+                  id="create-booking-slot-date"
+                  type="date"
+                  value={form.slotDate}
+                  onChange={(event) => updateField('slotDate', event.target.value)}
+                  required
+                />
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="create-booking-slot-select">{t('available_slots')}</Label>
+                <select
+                  id="create-booking-slot-select"
+                  className="h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  value={form.startsAt}
+                  onChange={(event) => {
+                    const nextSlot = slots.find((slot) => slot.starts_at === event.target.value);
+
+                    setForm((previous) => ({
+                      ...previous,
+                      startsAt: nextSlot?.starts_at ?? '',
+                      endsAt: nextSlot?.ends_at ?? '',
+                    }));
+                  }}
+                  disabled={isLoadingSlots || slots.length === 0}
+                  required
+                >
+                  <option value="">{t('select_slot')}</option>
+                  {slots.map((slot) => (
+                    <option key={slot.starts_at} value={slot.starts_at} disabled={!slot.available && !form.force}>
+                      {formatSlotLabel(slot, dateLocale)}{slot.available ? '' : ` (${t('slot_unavailable')})`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                {isLoadingSlots ? (
+                  <p className="text-sm text-muted-foreground">{t('loading_slots')}</p>
+                ) : selectableSlots.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t('no_slots_for_selected_date')}</p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-4">
             <div className="grid gap-1.5">
               <Label htmlFor="create-booking-customer-name">{t('customer_name')}</Label>
@@ -640,28 +871,53 @@ function CreateBookingDialog({
             </div>
           </div>
 
-          <div className="grid gap-4">
-            <div className="grid gap-1.5">
-              <Label htmlFor="create-booking-starts-at">{t('start')}</Label>
-              <Input
-                id="create-booking-starts-at"
-                type="datetime-local"
-                value={form.startsAt}
-                onChange={(event) => updateField('startsAt', event.target.value)}
-                required
-              />
+          {!isSlotMode ? (
+            <div className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="create-booking-check-in">{t('check_in')}</Label>
+                  <Input
+                    id="create-booking-check-in"
+                    type="date"
+                    value={form.checkInDate}
+                    onChange={(event) => updateField('checkInDate', event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="create-booking-check-out">{t('check_out')}</Label>
+                  <Input
+                    id="create-booking-check-out"
+                    type="date"
+                    value={form.checkOutDate}
+                    min={form.checkInDate || undefined}
+                    onChange={(event) => updateField('checkOutDate', event.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground">
+                {t('default_stay_times', { checkin: rangeCheckinTime, checkout: rangeCheckoutTime })}
+              </p>
+
+              <div className="rounded-md border p-3 space-y-2">
+                <p className="text-sm font-medium text-foreground">{t('booking_window_preview')}</p>
+                <p className="text-sm text-muted-foreground">{t('start')}: {selectedStartsAt ? formatBookingWindowLabel(selectedStartsAt, dateLocale) : '-'}</p>
+                <p className="text-sm text-muted-foreground">{t('end')}: {selectedEndsAt ? formatBookingWindowLabel(selectedEndsAt, dateLocale) : '-'}</p>
+              </div>
+
+              {!hasValidRangeDates ? (
+                <p className="text-sm text-muted-foreground">{t('range_dates_invalid')}</p>
+              ) : isLoadingRangeAvailability ? (
+                <p className="text-sm text-muted-foreground">{t('loading_availability')}</p>
+              ) : rangeAvailability ? (
+                <p className={`text-sm ${rangeAvailability.available ? 'text-emerald-700' : 'text-amber-700'}`}>
+                  {rangeAvailability.available ? t('range_available') : (rangeAvailability.message ?? t('range_unavailable'))}
+                </p>
+              ) : null}
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="create-booking-ends-at">{t('end')}</Label>
-              <Input
-                id="create-booking-ends-at"
-                type="datetime-local"
-                value={form.endsAt}
-                onChange={(event) => updateField('endsAt', event.target.value)}
-                required
-              />
-            </div>
-          </div>
+          ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-1.5">
@@ -1098,6 +1354,7 @@ export function BookingsCalendarPage() {
         services={services}
         resources={resources}
         referenceDate={currentDate}
+        dateLocale={dateLocale}
         t={t}
       />
     </div>

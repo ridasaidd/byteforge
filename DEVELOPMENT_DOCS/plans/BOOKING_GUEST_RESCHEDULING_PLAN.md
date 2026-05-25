@@ -1,6 +1,6 @@
 # Booking Guest Rescheduling Plan
 
-Status: implementation in progress
+Status: implemented on `main`
 Audience: human + AI agent
 Last updated: 2026-05-25
 
@@ -19,11 +19,10 @@ It is intentionally grounded in the current codebase, not in the older Phase
 
 ## Current Reality
 
-The guest booking flow already exists, but it stops at list, detail, and
-cancel in the merged baseline, while the current working tree extends it
-through guest-owned rescheduling.
+The guest booking flow in the merged baseline now includes list, detail,
+cancel, and guest-owned rescheduling.
 
-Implementation progress on the current working tree:
+Implemented state on `main`:
 
 - backend guest-owned reschedule support is now implemented under the existing
   guest-auth boundary
@@ -33,9 +32,8 @@ Implementation progress on the current working tree:
 - tenant-side rescheduling now uses that shared mode-aware availability path,
   closing a slot-mode correctness gap
 - guest portal service/UI support and focused Vitest coverage are now in place
-- Playwright happy-path and rejection-path coverage now exist in the working
-  tree and have been validated against the configured tenant browser-test
-  environment
+- Playwright happy-path and rejection-path coverage now exist and have been
+  validated against the configured tenant browser-test environment
 
 Current implementation anchors:
 

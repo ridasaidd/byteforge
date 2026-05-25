@@ -16,6 +16,7 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 import { submitLoginAndCaptureToken, tenantOwnerCredentials } from './support/auth';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
@@ -24,9 +25,21 @@ const EDIT_BUTTON_NAME = /edit|redigera|تحرير/i;
 const NAME_FIELD_LABEL = /name|namn|اسم/i;
 const BOOKING_DETAIL_HEADING = /booking #|bokning #|الحجز #/i;
 const MONTH_BUTTON = /^(month|månad|شهر)$/i;
+const LIST_BUTTON = /^(list|lista|قائمة)$/i;
+const NEW_BOOKING_BUTTON = /new booking|ny bokning|حجز جديد/i;
+const CREATE_BOOKING_BUTTON = /create booking|skapa bokning|إنشاء الحجز/i;
 const LOCALIZED_TWELVE_HOUR_TIME = /\b\d{1,2}:\d{2}\s*(AM|PM|am|pm|fm|em|ص|م)\b/;
 const MORE_OVERFLOW_BUTTON = /\+\d+\s+(more|fler|أخرى)/i;
 const NEXT_MONTH_BUTTON = /next month|nästa månad|الشهر التالي/i;
+const BOOKING_CREATED_TOAST = /booking created|bokningen skapades|تم إنشاء الحجز/i;
+
+function formatDateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -57,11 +70,13 @@ test.describe('Booking CMS — regression', () => {
   let ownerToken = '';
   let sharedPage: import('@playwright/test').Page;
   let sharedContext: import('@playwright/test').BrowserContext;
+  let runtimeIssues: ReturnType<typeof attachRuntimeGuards>;
 
   test.beforeAll(async ({ browser }) => {
     if (!tenantBaseUrl) return;
     sharedContext = await browser.newContext();
     sharedPage = await sharedContext.newPage();
+    runtimeIssues = attachRuntimeGuards(sharedPage);
     await sharedPage.goto(`${tenantBaseUrl}/login`);
     ownerToken = await submitLoginAndCaptureToken(sharedPage, tenantOwnerCredentials);
     await sharedPage.waitForURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`), { timeout: 30_000 });
@@ -435,6 +450,155 @@ test.describe('Booking CMS — regression', () => {
       await request.delete(`${tenantBaseUrl}/api/booking/services/${service.id}`, {
         headers: authHeaders(ownerToken),
       });
+    }
+  });
+
+  test('tenant owner can create a range-mode manual booking from the dashboard dialog', async ({ request }) => {
+    const issueStart = runtimeIssues.length;
+    const addonActive = await isBookingAddonActive(request, ownerToken);
+    test.skip(!addonActive, 'Booking addon not active — skipping regression test.');
+
+    const headers = authHeaders(ownerToken);
+    const seed = `${Date.now()}`;
+    const serviceName = `Range Booking ${seed}`;
+    const resourceName = `Range Cabin ${seed}`;
+    const customerName = `Range Customer ${seed}`;
+    const customerEmail = `range-booking-${seed}@example.com`;
+    const customerPhone = '0709990000';
+
+    const serviceRes = await request.post(`${tenantBaseUrl}/api/booking/services`, {
+      headers,
+      data: {
+        name: serviceName,
+        booking_mode: 'range',
+        min_nights: 1,
+        max_nights: 7,
+        advance_notice_hours: 0,
+      },
+    });
+    expect(serviceRes.status()).toBe(201);
+    const { data: service } = await serviceRes.json() as { data: { id: number } };
+
+    const resourceRes = await request.post(`${tenantBaseUrl}/api/booking/resources`, {
+      headers,
+      data: {
+        name: resourceName,
+        type: 'space',
+        checkin_time: '16:00',
+        checkout_time: '10:00',
+        is_active: true,
+      },
+    });
+    expect(resourceRes.status()).toBe(201);
+    const { data: resource } = await resourceRes.json() as { data: { id: number } };
+
+    const attachRes = await request.post(`${tenantBaseUrl}/api/booking/services/${service.id}/resources`, {
+      headers,
+      data: { resource_id: resource.id },
+    });
+    expect(attachRes.ok()).toBeTruthy();
+
+    const checkInDate = new Date();
+    checkInDate.setDate(checkInDate.getDate() + 2);
+    checkInDate.setHours(0, 0, 0, 0);
+
+    const checkOutDate = new Date(checkInDate);
+    checkOutDate.setDate(checkOutDate.getDate() + 2);
+
+    const checkIn = formatDateInputValue(checkInDate);
+    const checkOut = formatDateInputValue(checkOutDate);
+    const nightDates = [
+      formatDateInputValue(checkInDate),
+      formatDateInputValue(new Date(checkInDate.getFullYear(), checkInDate.getMonth(), checkInDate.getDate() + 1)),
+    ];
+
+    const availabilityWindowIds: number[] = [];
+    let bookingId: number | null = null;
+
+    try {
+      for (const specificDate of nightDates) {
+        const availabilityRes = await request.post(`${tenantBaseUrl}/api/booking/resources/${resource.id}/availability`, {
+          headers,
+          data: {
+            specific_date: specificDate,
+            starts_at: '00:00:00',
+            ends_at: '23:59:00',
+            is_blocked: false,
+          },
+        });
+
+        expect(availabilityRes.status()).toBe(201);
+        const { data: window } = await availabilityRes.json() as { data: { id: number } };
+        availabilityWindowIds.push(window.id);
+      }
+
+      await sharedPage.goto(`${tenantBaseUrl}/cms/bookings`);
+      await sharedPage.getByRole('button', { name: NEW_BOOKING_BUTTON }).click();
+
+      const dialog = sharedPage.getByRole('dialog');
+      await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+      await dialog.locator('#create-booking-service').selectOption(String(service.id));
+      await dialog.locator('#create-booking-resource').selectOption(String(resource.id));
+
+      await dialog.getByLabel(/name|namn|الاسم/i).fill(customerName);
+      await dialog.getByLabel(/email|e-post|البريد الإلكتروني/i).fill(customerEmail);
+      await dialog.getByLabel(/phone|telefon|الهاتف/i).fill(customerPhone);
+      await dialog.locator('#create-booking-check-in').fill(checkIn);
+      await dialog.locator('#create-booking-check-out').fill(checkOut);
+
+      await expect(dialog.getByText(/default stay times: 16:00 check-in/i)).toBeVisible();
+      await expect(dialog.getByText(/default stay times: .*10:00 check-out/i)).toBeVisible();
+      await expect(dialog.getByText(/^start:/i)).toBeVisible();
+      await expect(dialog.getByText(/^end:/i)).toBeVisible();
+
+      const createResponsePromise = sharedPage.waitForResponse((response) => {
+        try {
+          const url = new URL(response.url());
+
+          return response.request().method() === 'POST'
+            && url.pathname.endsWith('/api/booking/bookings');
+        } catch {
+          return false;
+        }
+      });
+
+      await dialog.getByRole('button', { name: CREATE_BOOKING_BUTTON }).click();
+
+      const createResponse = await createResponsePromise;
+      expect(createResponse.ok()).toBeTruthy();
+      expect(createResponse.request().postDataJSON()).toMatchObject({
+        service_id: service.id,
+        resource_id: resource.id,
+        starts_at: `${checkIn}T16:00`,
+        ends_at: `${checkOut}T10:00`,
+        customer_name: customerName,
+        customer_email: customerEmail,
+        customer_phone: customerPhone,
+        force: false,
+      });
+
+      const createBody = await createResponse.json() as { data: { id: number } };
+      bookingId = createBody.data.id;
+
+      await expect(sharedPage.getByText(BOOKING_CREATED_TOAST)).toBeVisible({ timeout: 10_000 });
+
+      await sharedPage.getByRole('button', { name: LIST_BUTTON }).click();
+      await expect(sharedPage.getByText(customerName)).toBeVisible({ timeout: 15_000 });
+
+      const issues = runtimeIssues.slice(issueStart);
+      expect(issues, `Runtime issues detected in range-mode manual booking create flow:\n${formatIssues(issues)}`).toEqual([]);
+    } finally {
+      if (bookingId !== null) {
+        await request.delete(`${tenantBaseUrl}/api/booking/bookings/${bookingId}`, { headers });
+      }
+
+      for (const windowId of availabilityWindowIds) {
+        await request.delete(`${tenantBaseUrl}/api/booking/availability/${windowId}`, { headers });
+      }
+
+      await request.delete(`${tenantBaseUrl}/api/booking/resources/${resource.id}`, { headers });
+      await request.delete(`${tenantBaseUrl}/api/booking/services/${service.id}`, { headers });
     }
   });
 });
