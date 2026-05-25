@@ -69,6 +69,9 @@ Primary branch: `main`
 - The tenant Playwright auth flow, including reload-based session restore,
   was verified against both `http://tenant-one.dev.byteforge.se` and
   `https://tenant-one.stage.byteforge.se` on 2026-05-25.
+- The staging deploy workflow now performs an explicit auth/session config
+  audit after `config:cache` and fails if HTTPS staging drifts away from the
+  expected secure, host-only cookie posture.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
   booking customer fields, payment human-text fields, auth name/email

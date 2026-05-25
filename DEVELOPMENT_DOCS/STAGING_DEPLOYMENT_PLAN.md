@@ -29,6 +29,9 @@ What exists today:
 - staging deployment workflow now exists on `main`: `.github/workflows/deploy-staging.yml`
 - deploy workflow performs SSH deployment, database migration, asset build,
   cache refresh, queue restart, and post-deploy API smoke checks
+- deploy workflow now also audits the deployed auth/session config after
+  `config:cache` so HTTPS staging fails loudly if session or refresh-cookie
+  settings drift away from the documented secure host-only posture
 - deploy workflow now also runs non-destructive seeders for global permissions
   and billing catalog rows so newly shipped capabilities become usable on
   staging without a full reseed
@@ -169,6 +172,9 @@ Current mail baseline:
 - no production recipient delivery is expected from staging
 - deploy workflow now performs one post-deploy guest magic-link mail smoke
   request against the staging tenant host and expects `{ "sent": true }`
+- deploy workflow also asserts that central login on HTTPS staging returns the
+  staff refresh cookie with `Secure`, `HttpOnly`, `SameSite=Lax`, and the
+  expected `/api/auth` path
 
 ---
 
