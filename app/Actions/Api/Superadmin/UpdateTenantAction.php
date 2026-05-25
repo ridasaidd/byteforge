@@ -2,6 +2,7 @@
 
 namespace App\Actions\Api\Superadmin;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
@@ -10,6 +11,10 @@ use Lorisleiva\Actions\Concerns\AsAction;
 class UpdateTenantAction
 {
     use AsAction;
+
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
 
     public function handle(Tenant $tenant, array $data): array
     {
@@ -20,7 +25,10 @@ class UpdateTenantAction
     {
         $domainId = $tenant->domains->first()->id ?? 'NULL';
 
-        $validated = Validator::make($data, [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $data,
+            singleLineFields: ['name', 'domain'],
+        ), [
             'name' => 'sometimes|required|string|max:255',
             'domain' => 'sometimes|required|string|max:255|unique:domains,domain,'.$domainId,
         ])->validate();

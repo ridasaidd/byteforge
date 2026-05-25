@@ -1,6 +1,6 @@
 # Auth HttpOnly Migration Plan
 
-Last updated: April 19, 2026
+Last updated: May 25, 2026
 Status: In progress by incremental slices
 Recommended branch later: `feature/auth-httponly-migration`
 
@@ -94,12 +94,42 @@ Backend groundwork already completed:
 - host-scoped refresh-session validation and rotation
 - HttpOnly refresh cookie issuance on login/register/refresh
 - cookie clearing on logout
+- staff password changes revoke outstanding refresh sessions and clear the
+  current refresh cookie
 
 Remaining migration work:
 
 - document operational cookie/session settings and complete migration closeout
-- broaden manual QA around session expiry, multi-tab behavior, and logout/login
-  edge cases
+- broaden manual QA around session expiry, host-scoping, and remaining
+  multi-tab/logout edge cases
+
+Operational settings now documented in this planning track:
+
+- `.env.example` exposes the session and refresh-cookie knobs used by the
+  hybrid auth model
+- `ENVIRONMENT_MATRIX.md` now captures the expected session and refresh-cookie
+  values for development, staging, and production
+
+Remaining closeout after that documentation pass:
+
+- ensure owned staging/production env templates or secret stores carry those
+  values explicitly
+- focused regressions now cover host-scoped staff and guest refresh-cookie use
+  across central and tenant hosts
+- focused guest-auth regressions also cover expired refresh-session bootstrap
+  handling
+- focused regressions now also cover stale refresh-cookie reuse after a
+  successful rotation across central, tenant, and guest flows
+- focused regressions now also cover logout invalidation of the current bearer
+  token and refresh cookie across central, tenant, and guest flows
+- the shared frontend HTTP auth client now has focused unit coverage for
+  silent refresh retry, concurrent refresh deduplication, and failed-refresh
+  in-memory token cleanup
+- Playwright auth coverage now also checks reload-based session restore for
+  central and tenant dashboard flows when the configured environment serves the
+  login page correctly
+- broaden manual QA around session expiry and remaining multi-tab/logout edge
+  cases
 
 ### Why This Model Fits ByteForge
 

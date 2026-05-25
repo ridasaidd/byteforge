@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\Tenant;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateNavigationRequest extends FormRequest
@@ -43,5 +44,13 @@ class UpdateNavigationRequest extends FormRequest
             'structure.array' => 'Navigation structure must be an array.',
             'status.in' => 'Status must be either draft or published.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->replace(app(NormalizeInputFieldsAction::class)(
+            $this->all(),
+            singleLineFields: ['name'],
+        ));
     }
 }

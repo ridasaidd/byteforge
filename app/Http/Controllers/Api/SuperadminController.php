@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Actions\Api\Superadmin\CreateTenantAction;
 use App\Actions\Api\Superadmin\CreateUserAction;
 use App\Actions\Api\Superadmin\DeleteTenantAction;
@@ -28,6 +29,10 @@ use Illuminate\Validation\Rule;
 
 class SuperadminController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     public function tenantUsers(Tenant $tenant)
     {
         $memberships = Membership::query()
@@ -223,12 +228,15 @@ class SuperadminController extends Controller
     // Add user to tenant
     public function addUserToTenant(Request $request, Tenant $tenant)
     {
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['email', 'name'],
+        ), [
             'email' => ['required', 'email', 'max:255'],
             'name' => ['nullable', 'string', 'max:120'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'role' => ['sometimes', 'string', Rule::in(['owner', 'editor', 'viewer'])],
-        ]);
+        ])->validate();
 
         $role = $validated['role'] ?? 'owner';
         $email = strtolower((string) $validated['email']);
@@ -636,7 +644,12 @@ class SuperadminController extends Controller
 
     public function updateSettings(Request $request)
     {
-        $validator = Validator::make($request->all(), [
+        $normalizedInput = ($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['site_name', 'support_email', 'company_name'],
+        );
+
+        $validator = Validator::make($normalizedInput, [
             'site_name' => 'sometimes|required|string|max:255',
             'site_active' => 'sometimes|required|boolean',
             'support_email' => 'nullable|email|max:255',
@@ -668,18 +681,18 @@ class SuperadminController extends Controller
         // Evaluate final state (incoming values override existing settings)
         $settings = app(GeneralSettings::class);
 
-        $ga4Enabled = $request->has('ga4_enabled') ? (bool) $request->ga4_enabled : (bool) $settings->ga4_enabled;
-        $gtmEnabled = $request->has('gtm_enabled') ? (bool) $request->gtm_enabled : (bool) $settings->gtm_enabled;
-        $clarityEnabled = $request->has('clarity_enabled') ? (bool) $request->clarity_enabled : (bool) $settings->clarity_enabled;
-        $plausibleEnabled = $request->has('plausible_enabled') ? (bool) $request->plausible_enabled : (bool) $settings->plausible_enabled;
-        $metaPixelEnabled = $request->has('meta_pixel_enabled') ? (bool) $request->meta_pixel_enabled : (bool) $settings->meta_pixel_enabled;
+        $ga4Enabled = array_key_exists('ga4_enabled', $normalizedInput) ? (bool) $normalizedInput['ga4_enabled'] : (bool) $settings->ga4_enabled;
+        $gtmEnabled = array_key_exists('gtm_enabled', $normalizedInput) ? (bool) $normalizedInput['gtm_enabled'] : (bool) $settings->gtm_enabled;
+        $clarityEnabled = array_key_exists('clarity_enabled', $normalizedInput) ? (bool) $normalizedInput['clarity_enabled'] : (bool) $settings->clarity_enabled;
+        $plausibleEnabled = array_key_exists('plausible_enabled', $normalizedInput) ? (bool) $normalizedInput['plausible_enabled'] : (bool) $settings->plausible_enabled;
+        $metaPixelEnabled = array_key_exists('meta_pixel_enabled', $normalizedInput) ? (bool) $normalizedInput['meta_pixel_enabled'] : (bool) $settings->meta_pixel_enabled;
 
-        $ga4Id = $request->has('ga4_measurement_id') ? $request->ga4_measurement_id : $settings->ga4_measurement_id;
-        $gtmId = $request->has('gtm_container_id') ? $request->gtm_container_id : $settings->gtm_container_id;
-        $clarityId = $request->has('clarity_project_id') ? $request->clarity_project_id : $settings->clarity_project_id;
-        $plausibleDomain = $request->has('plausible_domain') ? $request->plausible_domain : $settings->plausible_domain;
-        $metaPixelId = $request->has('meta_pixel_id') ? $request->meta_pixel_id : $settings->meta_pixel_id;
-        $cookiePolicyUrl = $request->has('cookie_policy_url') ? $request->cookie_policy_url : $settings->cookie_policy_url;
+        $ga4Id = array_key_exists('ga4_measurement_id', $normalizedInput) ? $normalizedInput['ga4_measurement_id'] : $settings->ga4_measurement_id;
+        $gtmId = array_key_exists('gtm_container_id', $normalizedInput) ? $normalizedInput['gtm_container_id'] : $settings->gtm_container_id;
+        $clarityId = array_key_exists('clarity_project_id', $normalizedInput) ? $normalizedInput['clarity_project_id'] : $settings->clarity_project_id;
+        $plausibleDomain = array_key_exists('plausible_domain', $normalizedInput) ? $normalizedInput['plausible_domain'] : $settings->plausible_domain;
+        $metaPixelId = array_key_exists('meta_pixel_id', $normalizedInput) ? $normalizedInput['meta_pixel_id'] : $settings->meta_pixel_id;
+        $cookiePolicyUrl = array_key_exists('cookie_policy_url', $normalizedInput) ? $normalizedInput['cookie_policy_url'] : $settings->cookie_policy_url;
 
         $crossFieldErrors = [];
 
@@ -711,58 +724,58 @@ class SuperadminController extends Controller
         }
 
         try {
-            if ($request->has('site_name')) {
-                $settings->site_name = $request->site_name;
+            if (array_key_exists('site_name', $normalizedInput)) {
+                $settings->site_name = $normalizedInput['site_name'];
             }
-            if ($request->has('site_active')) {
-                $settings->site_active = $request->site_active;
+            if (array_key_exists('site_active', $normalizedInput)) {
+                $settings->site_active = (bool) $normalizedInput['site_active'];
             }
-            if ($request->has('support_email')) {
-                $settings->support_email = $request->support_email;
+            if (array_key_exists('support_email', $normalizedInput)) {
+                $settings->support_email = $normalizedInput['support_email'];
             }
-            if ($request->has('company_name')) {
-                $settings->company_name = $request->company_name;
+            if (array_key_exists('company_name', $normalizedInput)) {
+                $settings->company_name = $normalizedInput['company_name'];
             }
-            if ($request->has('max_tenants_per_user')) {
-                $settings->max_tenants_per_user = $request->max_tenants_per_user;
+            if (array_key_exists('max_tenants_per_user', $normalizedInput)) {
+                $settings->max_tenants_per_user = (int) $normalizedInput['max_tenants_per_user'];
             }
             // Phase 9.6 — Analytics integrations
-            if ($request->has('ga4_measurement_id')) {
-                $settings->ga4_measurement_id = $request->ga4_measurement_id;
+            if (array_key_exists('ga4_measurement_id', $normalizedInput)) {
+                $settings->ga4_measurement_id = $normalizedInput['ga4_measurement_id'];
             }
-            if ($request->has('gtm_container_id')) {
-                $settings->gtm_container_id = $request->gtm_container_id;
+            if (array_key_exists('gtm_container_id', $normalizedInput)) {
+                $settings->gtm_container_id = $normalizedInput['gtm_container_id'];
             }
-            if ($request->has('clarity_project_id')) {
-                $settings->clarity_project_id = $request->clarity_project_id;
+            if (array_key_exists('clarity_project_id', $normalizedInput)) {
+                $settings->clarity_project_id = $normalizedInput['clarity_project_id'];
             }
-            if ($request->has('plausible_domain')) {
-                $settings->plausible_domain = $request->plausible_domain;
+            if (array_key_exists('plausible_domain', $normalizedInput)) {
+                $settings->plausible_domain = $normalizedInput['plausible_domain'];
             }
-            if ($request->has('meta_pixel_id')) {
-                $settings->meta_pixel_id = $request->meta_pixel_id;
+            if (array_key_exists('meta_pixel_id', $normalizedInput)) {
+                $settings->meta_pixel_id = $normalizedInput['meta_pixel_id'];
             }
             // Phase 13 — Cookie consent controls
-            if ($request->has('privacy_policy_url')) {
-                $settings->privacy_policy_url = $request->privacy_policy_url;
+            if (array_key_exists('privacy_policy_url', $normalizedInput)) {
+                $settings->privacy_policy_url = $normalizedInput['privacy_policy_url'];
             }
-            if ($request->has('cookie_policy_url')) {
-                $settings->cookie_policy_url = $request->cookie_policy_url;
+            if (array_key_exists('cookie_policy_url', $normalizedInput)) {
+                $settings->cookie_policy_url = $normalizedInput['cookie_policy_url'];
             }
-            if ($request->has('ga4_enabled')) {
-                $settings->ga4_enabled = $request->boolean('ga4_enabled');
+            if (array_key_exists('ga4_enabled', $normalizedInput)) {
+                $settings->ga4_enabled = (bool) $normalizedInput['ga4_enabled'];
             }
-            if ($request->has('gtm_enabled')) {
-                $settings->gtm_enabled = $request->boolean('gtm_enabled');
+            if (array_key_exists('gtm_enabled', $normalizedInput)) {
+                $settings->gtm_enabled = (bool) $normalizedInput['gtm_enabled'];
             }
-            if ($request->has('clarity_enabled')) {
-                $settings->clarity_enabled = $request->boolean('clarity_enabled');
+            if (array_key_exists('clarity_enabled', $normalizedInput)) {
+                $settings->clarity_enabled = (bool) $normalizedInput['clarity_enabled'];
             }
-            if ($request->has('plausible_enabled')) {
-                $settings->plausible_enabled = $request->boolean('plausible_enabled');
+            if (array_key_exists('plausible_enabled', $normalizedInput)) {
+                $settings->plausible_enabled = (bool) $normalizedInput['plausible_enabled'];
             }
-            if ($request->has('meta_pixel_enabled')) {
-                $settings->meta_pixel_enabled = $request->boolean('meta_pixel_enabled');
+            if (array_key_exists('meta_pixel_enabled', $normalizedInput)) {
+                $settings->meta_pixel_enabled = (bool) $normalizedInput['meta_pixel_enabled'];
             }
 
             $settings->save();

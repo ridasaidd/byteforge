@@ -112,6 +112,33 @@ Notes:
 - for this app, staging should already behave like production with queue worker,
   scheduler, and HTTPS enabled
 
+## Auth And Cookie Settings Matrix
+
+These are the auth/session settings that should stay explicit per environment
+while the HttpOnly refresh-session model is in use.
+
+| Variable | Development | Staging | Production |
+| --- | --- | --- | --- |
+| `SESSION_SECURE_COOKIE` | `false` on plain HTTP dev, `true` once dev uses HTTPS | `true` | `true` |
+| `SESSION_HTTP_ONLY` | `true` | `true` | `true` |
+| `SESSION_SAME_SITE` | `lax` | `lax` | `lax` |
+| `AUTH_REFRESH_COOKIE_NAME` | `byteforge_refresh` | `byteforge_refresh` | `byteforge_refresh` |
+| `AUTH_REFRESH_COOKIE_PATH` | `/api/auth` | `/api/auth` | `/api/auth` |
+| `AUTH_REFRESH_TTL_MINUTES` | `20160` unless shortened for testing | `20160` | `20160` unless policy changes |
+| `AUTH_REFRESH_COOKIE_SAME_SITE` | `lax` | `lax` | `lax` |
+| `GUEST_AUTH_REFRESH_COOKIE_NAME` | `byteforge_guest_refresh` | `byteforge_guest_refresh` | `byteforge_guest_refresh` |
+| `GUEST_AUTH_REFRESH_COOKIE_PATH` | `/api/guest-auth` | `/api/guest-auth` | `/api/guest-auth` |
+| `GUEST_AUTH_REFRESH_TTL_MINUTES` | `20160` unless shortened for testing | `20160` | `20160` unless policy changes |
+| `GUEST_AUTH_REFRESH_COOKIE_SAME_SITE` | `lax` | `lax` | `lax` |
+
+Notes:
+
+- keep both refresh cookies host-only by leaving `SESSION_DOMAIN` unset unless a
+    future auth design explicitly changes cross-host behavior
+- do not widen the refresh-cookie paths to `/` unless a new route surface
+    genuinely requires it
+- staging and production should only issue refresh cookies over HTTPS
+
 ---
 
 ## Process Expectations By Environment

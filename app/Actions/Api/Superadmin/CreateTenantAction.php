@@ -2,6 +2,7 @@
 
 namespace App\Actions\Api\Superadmin;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Models\Tenant;
 use App\Services\ThemeService;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,7 @@ class CreateTenantAction
 
     public function __construct(
         private readonly ThemeService $themeService,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
     ) {}
 
     public function handle(array $data): array
@@ -25,7 +27,10 @@ class CreateTenantAction
 
     public function execute(array $data): array
     {
-        $validated = Validator::make($data, [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $data,
+            singleLineFields: ['name', 'domain'],
+        ), [
             'name' => 'required|string|max:255',
             'domain' => 'required|string|max:255|unique:domains,domain',
         ])->validate();

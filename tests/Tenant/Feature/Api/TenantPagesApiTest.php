@@ -42,4 +42,33 @@ class TenantPagesApiTest extends TestCase
 
         $this->assertSame($pageCss, $page->fresh()->page_css);
     }
+
+    #[Test]
+    public function tenant_page_title_is_normalized_on_create_and_update(): void
+    {
+        $createResponse = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/pages'), [
+                'title' => '  <b>Landing   Page</b>  ',
+                'page_type' => 'general',
+                'status' => 'draft',
+            ]);
+
+        $createResponse->assertCreated()
+            ->assertJsonPath('data.title', 'Landing Page')
+            ->assertJsonPath('data.slug', 'landing-page');
+
+        $page = Page::findOrFail($createResponse->json('data.id'));
+        $this->assertSame('Landing Page', $page->title);
+
+        $updateResponse = $this->actingAsTenantOwner('tenant-one')
+            ->putJson($this->tenantUrl("/api/pages/{$page->id}"), [
+                'title' => "\t<p>Updated   Landing</p>\n",
+            ]);
+
+        $updateResponse->assertOk()
+            ->assertJsonPath('data.title', 'Updated Landing');
+
+        $page->refresh();
+        $this->assertSame('Updated Landing', $page->title);
+    }
 }

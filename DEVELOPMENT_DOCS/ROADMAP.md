@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-15
+Last verified: 2026-05-25
 
 This roadmap is intentionally future-facing. Completed work should live in
 [CURRENT_STATUS.md](CURRENT_STATUS.md) and archived phase documents, not here.
@@ -47,15 +47,32 @@ Key constraints:
 Current implemented slice:
 
 - booking customer-field normalization now delegates to the shared layer
+- booking CMS resource/service text fields and cancellation notes now use the shared layer at the request boundary
+- tenant user-management create name/email fields now use the shared layer at the request boundary
+- tenant settings site title/description fields now use the shared layer at the request boundary
+- shared media-folder name/description fields now use the shared layer at the request boundary
+- shared media upload metadata text fields now use the shared layer at the request boundary
+- central theme metadata fields now use the shared layer at the request boundary
+- central page-template name/description fields now use the shared layer at the request boundary
+- central and tenant theme-part name fields now use the shared layer at the request boundary
+- central and tenant page title fields now use the shared layer at the request boundary
+- central and tenant navigation name fields now use the shared layer at the request boundary
+- central and tenant layout name fields now use the shared layer at the request boundary
 - payment customer display fields and refund reason now use the shared layer
 - auth name/email normalization now uses the shared layer without touching
   passwords or tokens
+- central admin user/tenant/settings/support-access text fields and tenant CMS quote request/draft text fields now use the shared layer or field-family sanitizers
 
 Next likely targets:
 
+- additional tenant-facing ordinary text fields in booking or adjacent operational flows with clear tests nearby
 - other suitable payment human-text fields with clear test surfaces
 - additional ordinary auth profile inputs as they are introduced
-- later guest-auth human-input fields once that track begins
+- newly introduced CMS write boundaries that remain clearly separate from slugs, CSS, structured JSON, and nested builder payloads
+
+Practical note:
+
+- the strongest currently shipped CMS-adjacent metadata surfaces are now covered; remaining nearby matches are mostly structured payloads, identifier-like names, or dead/unwired requests and should not be forced into this phase
 
 ## Planned Work Tracks
 
@@ -79,9 +96,26 @@ Current state before that migration:
 - frontend bootstrap and silent refresh now use the HttpOnly cookie
 - central and tenant refresh flows are both verified against the cookie-backed
   path
+- focused regressions now cover host-scoped staff and guest refresh-cookie use
+  across central and tenant hosts
+- focused guest-auth regressions now cover expired refresh-session bootstrap
+  handling as well
+- focused auth regressions now also cover stale refresh-cookie reuse after a
+  successful rotation in central, tenant, and guest flows
+- focused auth regressions now also cover logout invalidation of the current
+  bearer token and refresh cookie in central, tenant, and guest flows
+- the shared frontend auth client now has focused unit coverage for silent
+  refresh retry, concurrent refresh deduplication, and failed-refresh token
+  cleanup
+- Playwright auth coverage now also checks reload-based session restore for
+  central and tenant dashboard flows when the configured environment serves the
+  login page correctly
+- staff password changes now revoke outstanding refresh sessions and clear the
+  current refresh cookie
 - transitional bearer-refresh fallback has been removed
 - the remaining auth work is closeout and hardening: operational cookie/session
-  settings, broader manual QA, and guest-auth prep
+  ownership in real env templates plus broader manual QA around session expiry
+  and remaining multi-tab/logout edge cases
 
 ### 3. Guest Authentication System
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Booking;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\BookingResource;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +13,10 @@ use Illuminate\Support\Facades\Validator;
 
 class BookingResourceController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     public function index(): JsonResponse
     {
         $tenantId = (string) tenant('id');
@@ -26,7 +31,11 @@ class BookingResourceController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name', 'resource_label'],
+            multilineFields: ['description'],
+        ), [
             'name'           => ['required', 'string', 'max:120'],
             'type'           => ['required', 'string', 'in:person,space,equipment'],
             'description'    => ['nullable', 'string', 'max:1000'],
@@ -69,7 +78,11 @@ class BookingResourceController extends Controller
     {
         $resource = $this->resolveResource($id);
 
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name', 'resource_label'],
+            multilineFields: ['description'],
+        ), [
             'name'           => ['sometimes', 'string', 'max:120'],
             'type'           => ['sometimes', 'string', 'in:person,space,equipment'],
             'description'    => ['nullable', 'string', 'max:1000'],

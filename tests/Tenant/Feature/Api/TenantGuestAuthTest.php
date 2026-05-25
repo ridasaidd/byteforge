@@ -41,8 +41,17 @@ class TenantGuestAuthTest extends TestCase
         return $this->tenant->domains()->first()?->domain ?? 'tenant-one.dev.byteforge.se';
     }
 
-    private function activateBookingAddon(): void
+    private function otherTenantHost(string $tenantSlug = 'tenant-two'): string
     {
+        $tenant = TestUsers::tenant($tenantSlug);
+
+        return $tenant->domains()->first()?->domain ?? "{$tenantSlug}.dev.byteforge.se";
+    }
+
+    private function activateBookingAddon(?Tenant $tenant = null): void
+    {
+        $tenant ??= $this->tenant;
+
         $addon = Addon::query()->updateOrCreate(
             ['slug' => 'booking'],
             [
@@ -58,7 +67,7 @@ class TenantGuestAuthTest extends TestCase
         );
 
         TenantAddon::query()->updateOrCreate(
-            ['tenant_id' => (string) $this->tenant->id, 'addon_id' => $addon->id],
+            ['tenant_id' => (string) $tenant->id, 'addon_id' => $addon->id],
             ['activated_at' => now(), 'deactivated_at' => null],
         );
     }
@@ -246,6 +255,144 @@ class TenantGuestAuthTest extends TestCase
     }
 
     #[Test]
+    public function guest_session_rejects_a_stale_cookie_after_rotation(): void
+    {
+        $this->activateBookingAddon();
+
+        $verifyResponse = $this->postJson($this->tenantUrl('/api/guest-auth/verify'), [
+            'token' => app(GuestMagicLinkService::class)->issue(
+                'guest.stale@example.com',
+                (string) $this->tenant->id,
+                $this->tenantUrl('/guest/magic'),
+            )['plainToken'],
+        ]);
+
+        $verifyResponse->assertOk();
+
+        $issuedCookie = $this->guestRefreshCookieFromResponse($verifyResponse);
+        $this->assertNotNull($issuedCookie);
+
+        $sessionResponse = $this->call(
+            'GET',
+            '/api/guest-auth/session',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost(),
+            ],
+        );
+
+        $sessionResponse->assertOk();
+
+        $staleResponse = $this->call(
+            'GET',
+            '/api/guest-auth/session',
+            [],
+            [$issuedCookie->getName() => (string) $issuedCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost(),
+            ],
+        );
+
+        $staleResponse->assertOk()
+            ->assertJson([
+                'guest' => null,
+                'token' => null,
+            ]);
+
+        $expiredCookie = $this->guestRefreshCookieFromResponse($staleResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
+    public function guest_session_rejects_refresh_cookie_on_another_tenant_host(): void
+    {
+        $this->activateBookingAddon();
+        $this->activateBookingAddon(TestUsers::tenant('tenant-two'));
+
+        $verifyResponse = $this->postJson($this->tenantUrl('/api/guest-auth/verify'), [
+            'token' => app(GuestMagicLinkService::class)->issue(
+                'guest.wrong-host@example.com',
+                (string) $this->tenant->id,
+                $this->tenantUrl('/guest/magic'),
+            )['plainToken'],
+        ]);
+
+        $verifyResponse->assertOk();
+
+        $refreshCookie = $this->guestRefreshCookieFromResponse($verifyResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $sessionResponse = $this->withCookie($refreshCookie->getName(), (string) $refreshCookie->getValue())
+            ->getJson("http://{$this->otherTenantHost()}/api/guest-auth/session");
+
+        $sessionResponse->assertOk()
+            ->assertJson([
+                'guest' => null,
+                'token' => null,
+            ]);
+
+        $expiredCookie = $this->guestRefreshCookieFromResponse($sessionResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+    }
+
+    #[Test]
+    public function guest_session_returns_empty_payload_and_clears_cookie_for_expired_refresh_session(): void
+    {
+        $this->activateBookingAddon();
+
+        $verifyResponse = $this->postJson($this->tenantUrl('/api/guest-auth/verify'), [
+            'token' => app(GuestMagicLinkService::class)->issue(
+                'guest.expired@example.com',
+                (string) $this->tenant->id,
+                $this->tenantUrl('/guest/magic'),
+            )['plainToken'],
+        ]);
+
+        $verifyResponse->assertOk();
+
+        $refreshCookie = $this->guestRefreshCookieFromResponse($verifyResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $session = WebRefreshSession::query()->latest('id')->firstOrFail();
+        $session->forceFill([
+            'expires_at' => now()->subMinute(),
+            'revoked_at' => null,
+        ])->save();
+
+        $sessionResponse = $this->call(
+            'GET',
+            '/api/guest-auth/session',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost(),
+            ],
+        );
+
+        $sessionResponse->assertOk()
+            ->assertJson([
+                'guest' => null,
+                'token' => null,
+            ]);
+
+        $expiredCookie = $this->guestRefreshCookieFromResponse($sessionResponse);
+        $this->assertNotNull($expiredCookie);
+        $this->assertSame('', (string) $expiredCookie->getValue());
+
+        $session->refresh();
+        $this->assertNotNull($session->revoked_at);
+    }
+
+    #[Test]
     public function guest_can_logout_with_valid_guest_bearer_token(): void
     {
         $this->activateBookingAddon();
@@ -283,6 +430,77 @@ class TenantGuestAuthTest extends TestCase
 
         $session->refresh();
         $this->assertNotNull($session->revoked_at);
+    }
+
+    #[Test]
+    public function guest_logout_invalidates_current_bearer_token_and_refresh_cookie(): void
+    {
+        $this->activateBookingAddon();
+
+        $verifyResponse = $this->postJson($this->tenantUrl('/api/guest-auth/verify'), [
+            'token' => app(GuestMagicLinkService::class)->issue(
+                'guest.logout.invalidate@example.com',
+                (string) $this->tenant->id,
+                $this->tenantUrl('/guest/magic'),
+            )['plainToken'],
+        ]);
+
+        $verifyResponse->assertOk();
+
+        $token = (string) $verifyResponse->json('token');
+        $refreshCookie = $this->guestRefreshCookieFromResponse($verifyResponse);
+        $this->assertNotNull($refreshCookie);
+
+        $logoutResponse = $this->call(
+            'POST',
+            '/api/guest-auth/logout',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost(),
+                'HTTP_AUTHORIZATION' => 'Bearer '.$token,
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $logoutResponse->assertOk();
+
+        $sessionResponse = $this->call(
+            'GET',
+            '/api/guest-auth/session',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost(),
+            ],
+        );
+
+        $sessionResponse->assertOk()
+            ->assertJson([
+                'guest' => null,
+                'token' => null,
+            ]);
+
+        $repeatLogoutResponse = $this->call(
+            'POST',
+            '/api/guest-auth/logout',
+            [],
+            [$refreshCookie->getName() => (string) $refreshCookie->getValue()],
+            [],
+            [
+                'CONTENT_TYPE' => 'application/json',
+                'HTTP_HOST' => $this->tenantHost(),
+                'HTTP_AUTHORIZATION' => 'Bearer '.$token,
+            ],
+            json_encode([], JSON_THROW_ON_ERROR),
+        );
+
+        $repeatLogoutResponse->assertUnauthorized()
+            ->assertJsonPath('message', 'Unauthenticated.');
     }
 
     #[Test]

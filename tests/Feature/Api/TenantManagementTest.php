@@ -62,6 +62,22 @@ class TenantManagementTest extends TestCase
         $this->assertDatabaseHas('domains', ['domain' => 'newtest.example.com']);
     }
 
+    public function test_can_create_tenant_with_normalized_name_and_domain(): void
+    {
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/tenants', [
+            'name' => '  <b>New   Test Tenant</b>  ',
+            'domain' => "  normalized.example.com\t",
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'New Test Tenant')
+            ->assertJsonPath('data.domain', 'normalized.example.com')
+            ->assertJsonPath('data.slug', 'new-test-tenant');
+
+        $this->assertDatabaseHas('tenants', ['name' => 'New Test Tenant', 'slug' => 'new-test-tenant']);
+        $this->assertDatabaseHas('domains', ['domain' => 'normalized.example.com']);
+    }
+
     public function test_newly_created_tenant_gets_a_default_active_theme_when_system_themes_exist(): void
     {
         Theme::factory()->create([
@@ -173,6 +189,32 @@ class TenantManagementTest extends TestCase
         $this->assertDatabaseHas('domains', ['tenant_id' => $tenant->id, 'domain' => 'new.test']);
     }
 
+    public function test_can_update_tenant_with_normalized_name_and_domain(): void
+    {
+        $tenant = Tenant::create(['id' => 'normalize-update', 'name' => 'Old Name', 'slug' => 'old-name']);
+        Domain::create(['domain' => 'old-normalize.test', 'tenant_id' => $tenant->id]);
+
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/tenants/{$tenant->id}", [
+            'name' => '  <i>Updated   Tenant</i>  ',
+            'domain' => "  updated-normalize.test\n",
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.name', 'Updated Tenant')
+            ->assertJsonPath('data.domain', 'updated-normalize.test')
+            ->assertJsonPath('data.slug', 'updated-tenant');
+
+        $this->assertDatabaseHas('tenants', [
+            'id' => $tenant->id,
+            'name' => 'Updated Tenant',
+            'slug' => 'updated-tenant',
+        ]);
+        $this->assertDatabaseHas('domains', [
+            'tenant_id' => $tenant->id,
+            'domain' => 'updated-normalize.test',
+        ]);
+    }
+
     public function test_can_delete_tenant(): void
     {
 
@@ -243,6 +285,37 @@ class TenantManagementTest extends TestCase
             ->first();
 
         $this->assertNotNull($membership);
+    }
+
+    public function test_can_add_owner_user_to_tenant_with_normalized_name_and_email(): void
+    {
+        $tenant = Tenant::create(['name' => 'Tenant Normalized', 'slug' => 'tenant-normalized']);
+        Domain::create(['domain' => 'tenant-normalized.example.com', 'tenant_id' => $tenant->id]);
+
+        $response = $this->actingAsSuperadmin()->postJson("/api/superadmin/tenants/{$tenant->id}/users", [
+            'name' => '  <b>Tenant   Owner</b>  ',
+            'email' => "  OWNER@tenant-normalized.example.com\n",
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'owner',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.user.name', 'Tenant Owner')
+            ->assertJsonPath('data.user.email', 'owner@tenant-normalized.example.com')
+            ->assertJsonPath('data.membership.role', 'owner');
+
+        $user = User::query()->where('email', 'owner@tenant-normalized.example.com')->first();
+
+        $this->assertNotNull($user);
+        $this->assertSame('Tenant Owner', $user->name);
+
+        $this->assertDatabaseHas('memberships', [
+            'tenant_id' => (string) $tenant->id,
+            'user_id' => $user->id,
+            'role' => 'owner',
+            'status' => 'active',
+        ]);
     }
 
     public function test_adding_tenant_user_notifies_existing_owner_and_logs_tenant_activity(): void

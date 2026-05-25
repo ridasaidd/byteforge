@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Tenant;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -51,5 +52,16 @@ class CreateFolderRequest extends FormRequest
             'name.max' => 'Folder name must not exceed 255 characters.',
             'parent_id.exists' => 'The selected parent folder does not exist.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $normalized = app(NormalizeInputFieldsAction::class)(
+            $this->all(),
+            singleLineFields: ['name'],
+            multilineFields: ['description'],
+        );
+
+        $this->replace($normalized);
     }
 }

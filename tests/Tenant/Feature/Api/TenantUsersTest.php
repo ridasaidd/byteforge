@@ -111,6 +111,34 @@ class TenantUsersTest extends TestCase
     }
 
     #[Test]
+    public function tenant_owner_create_staff_user_input_is_normalized(): void
+    {
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/users', 'tenant-one'), [
+                'name' => '  <b>Tenant   Staff</b>  ',
+                'email' => "  STAFF-CREATED@tenant-one.dev.byteforge.se\t",
+                'password' => 'password123',
+                'password_confirmation' => 'password123',
+                'role' => 'support',
+            ]);
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.name', 'Tenant Staff');
+        $response->assertJsonPath('data.email', 'STAFF-CREATED@tenant-one.dev.byteforge.se');
+        $response->assertJsonPath('data.roles.0.name', 'support');
+
+        $created = User::where('email', 'STAFF-CREATED@tenant-one.dev.byteforge.se')->first();
+
+        $this->assertNotNull($created);
+        $this->assertSame('Tenant Staff', $created->name);
+        $this->assertDatabaseHas('memberships', [
+            'user_id' => $created->id,
+            'tenant_id' => TestUsers::tenant('tenant-one')->id,
+            'status' => 'active',
+        ]);
+    }
+
+    #[Test]
     public function tenant_editor_cannot_create_staff_user(): void
     {
         $response = $this->actingAsTenantEditor('tenant-one')

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Booking;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Actions\Api\SanitizeBookingCustomerInputAction;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
@@ -31,6 +32,7 @@ class BookingManagementController extends Controller
     public function __construct(
         private readonly BookingAvailabilityService $availability,
         private readonly BookingPaymentService $bookingPayment,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
         private readonly SanitizeBookingCustomerInputAction $sanitizeBookingCustomerInput,
         private readonly QuoteWorkflowService $quoteWorkflow,
     ) {}
@@ -140,7 +142,10 @@ class BookingManagementController extends Controller
             ], 422);
         }
 
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['note'],
+        ), [
             'note' => ['nullable', 'string', 'max:500'],
         ])->validate();
 

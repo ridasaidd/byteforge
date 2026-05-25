@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\Layout;
 use Illuminate\Http\JsonResponse;
@@ -11,6 +12,10 @@ use Illuminate\Validation\Rule;
 
 class LayoutController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     /**
      * Get tenant ID
      */
@@ -106,7 +111,10 @@ class LayoutController extends Controller
     {
         $tenantId = $this->getTenantId();
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+        ), [
             'name' => 'required|string|max:255',
             'slug' => [
                 'nullable',
@@ -133,7 +141,7 @@ class LayoutController extends Controller
                 return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
             })],
             'status' => 'required|string|in:draft,published',
-        ]);
+        ])->validate();
 
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
@@ -254,7 +262,10 @@ class LayoutController extends Controller
 
         $layout = $query->findOrFail($id);
 
-        $validated = $request->validate([
+        $validated = validator(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+        ), [
             'name' => 'sometimes|required|string|max:255',
             'slug' => [
                 'sometimes',
@@ -282,7 +293,7 @@ class LayoutController extends Controller
                 return $tenantId === null ? $query->whereNull('tenant_id') : $query->where('tenant_id', $tenantId);
             })],
             'status' => 'sometimes|required|string|in:draft,published',
-        ]);
+        ])->validate();
 
         $layout->update($validated);
         $layout->load(['header', 'footer', 'sidebarLeft', 'sidebarRight']);

@@ -52,6 +52,26 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseHas('users', ['email' => 'newuser@example.com']);
     }
 
+    public function test_create_user_normalizes_name_and_email(): void
+    {
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/users', [
+            'name' => '  <b>New   User</b>  ',
+            'email' => "  NEWUSER@example.com\t",
+            'password' => 'password123',
+            'password_confirmation' => 'password123',
+            'role' => 'admin',
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.name', 'New User')
+            ->assertJsonPath('data.email', 'NEWUSER@example.com');
+
+        $this->assertDatabaseHas('users', [
+            'name' => 'New User',
+            'email' => 'NEWUSER@example.com',
+        ]);
+    }
+
     public function test_cannot_create_user_without_name(): void
     {
 
@@ -142,6 +162,29 @@ class UserManagementTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'name' => 'New Name']);
+    }
+
+    public function test_update_user_normalizes_name_and_email(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Old Name',
+            'email' => 'old@example.com',
+        ]);
+
+        $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/users/{$user->id}", [
+            'name' => '  <i>Updated   Name</i>  ',
+            'email' => "  updated@example.com\n",
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJsonPath('data.name', 'Updated Name')
+            ->assertJsonPath('data.email', 'updated@example.com');
+
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'name' => 'Updated Name',
+            'email' => 'updated@example.com',
+        ]);
     }
 
     public function test_can_update_user_password(): void

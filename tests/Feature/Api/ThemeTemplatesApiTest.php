@@ -118,6 +118,43 @@ class ThemeTemplatesApiTest extends TestCase
         $response->assertJsonPath('data.0.name', 'Active Theme Template');
     }
 
+    public function test_page_template_create_and_update_normalize_human_text_fields(): void
+    {
+        $this->actingAsSuperadmin();
+
+        $createResponse = $this->postJson('/api/superadmin/page-templates', [
+            'name' => '  <b>Landing   Page</b>  ',
+            'description' => "\n<p>Lead capture layout.</p>\r\nUsed for campaigns.\t",
+            'category' => 'marketing',
+            'puck_data' => [
+                'root' => ['props' => []],
+                'content' => [],
+            ],
+        ]);
+
+        $createResponse->assertStatus(201)
+            ->assertJsonPath('data.name', 'Landing Page')
+            ->assertJsonPath('data.slug', 'landing-page')
+            ->assertJsonPath('data.description', "Lead capture layout.\nUsed for campaigns.");
+
+        $pageTemplate = PageTemplate::findOrFail($createResponse->json('data.id'));
+        $this->assertSame('Landing Page', $pageTemplate->name);
+        $this->assertSame("Lead capture layout.\nUsed for campaigns.", $pageTemplate->description);
+
+        $updateResponse = $this->putJson("/api/superadmin/page-templates/{$pageTemplate->id}", [
+            'name' => '  <b>Updated   Landing</b>  ',
+            'description' => "\n<p>Updated brief.</p>\r\nFor spring launch.\t",
+        ]);
+
+        $updateResponse->assertStatus(200)
+            ->assertJsonPath('data.name', 'Updated Landing')
+            ->assertJsonPath('data.description', "Updated brief.\nFor spring launch.");
+
+        $pageTemplate->refresh();
+        $this->assertSame('Updated Landing', $pageTemplate->name);
+        $this->assertSame("Updated brief.\nFor spring launch.", $pageTemplate->description);
+    }
+
     /**
      * Test that empty array is returned when no templates exist
      */

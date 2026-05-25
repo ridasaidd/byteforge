@@ -2,6 +2,7 @@
 
 namespace Tests\Tenant\Feature\Api;
 
+use App\Settings\TenantSettings;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
@@ -49,6 +50,39 @@ class TenantSettingsDisplayFormatTest extends TestCase
                 'date_format' => $originalDateFormat,
                 'time_format' => $originalTimeFormat,
             ])->assertOk();
+        }
+    }
+
+    #[Test]
+    public function owner_update_normalizes_site_title_and_description(): void
+    {
+        $this->actingAsTenantOwner('tenant-one');
+
+        $getBefore = $this->getJson($this->tenantUrl('/api/settings', 'tenant-one'));
+        $getBefore->assertOk();
+
+        $originalSiteTitle = $getBefore->json('data.site_title');
+        $originalSiteDescription = $getBefore->json('data.site_description');
+
+        try {
+            $update = $this->putJson($this->tenantUrl('/api/settings', 'tenant-one'), [
+                'site_title' => '  <b>Tenant   One</b>  ',
+                'site_description' => "\n<p>Friendly storefront.</p>\r\nBuilt for appointments.\t",
+            ]);
+
+            $update->assertOk()
+                ->assertJsonPath('data.site_title', 'Tenant One')
+                ->assertJsonPath('data.site_description', "Friendly storefront.\nBuilt for appointments.");
+
+            $getAfter = $this->getJson($this->tenantUrl('/api/settings', 'tenant-one'));
+            $getAfter->assertOk()
+                ->assertJsonPath('data.site_title', 'Tenant One')
+                ->assertJsonPath('data.site_description', "Friendly storefront.\nBuilt for appointments.");
+        } finally {
+            $settings = app(TenantSettings::class);
+            $settings->site_title = is_string($originalSiteTitle) ? $originalSiteTitle : '';
+            $settings->site_description = is_string($originalSiteDescription) ? $originalSiteDescription : null;
+            $settings->save();
         }
     }
 }

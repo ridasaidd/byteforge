@@ -30,3 +30,44 @@ test('tenant owner can login and logout without runtime errors', async ({ page }
 
   expect(issues, `Runtime issues detected in tenant auth flow:\n${formatIssues(issues)}`).toEqual([]);
 });
+
+test('tenant owner session restores on reload without browser token storage', async ({ page }) => {
+  test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable tenant-domain auth flow test.');
+  const tenantHostname = hostnameFromUrl(tenantBaseUrl!);
+  const isTenantHostResolvable = await canResolveHostname(tenantHostname);
+  test.skip(
+    !isTenantHostResolvable,
+    `Tenant hostname ${tenantHostname} is not resolvable from this environment.`,
+  );
+
+  const issues = attachRuntimeGuards(page);
+
+  await page.goto(`${tenantBaseUrl}/login`);
+  await loginWithCredentials(page, tenantOwnerCredentials);
+
+  await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('auth_token'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
+
+  const refreshResponsePromise = page.waitForResponse((response) => {
+    try {
+      const url = new URL(response.url());
+
+      return response.request().method() === 'POST'
+        && url.pathname.endsWith('/api/auth/refresh');
+    } catch {
+      return false;
+    }
+  });
+
+  await page.reload();
+
+  const refreshResponse = await refreshResponsePromise;
+  expect(refreshResponse.ok()).toBe(true);
+
+  await expect(page).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
+  await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('auth_token'))).toBeNull();
+  await expect.poll(async () => page.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
+
+  expect(issues, `Runtime issues detected in tenant auth reload flow:\n${formatIssues(issues)}`).toEqual([]);
+});

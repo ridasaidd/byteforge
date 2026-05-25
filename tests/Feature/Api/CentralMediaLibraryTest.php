@@ -68,6 +68,36 @@ class CentralMediaLibraryTest extends TestCase
     }
 
     #[Test]
+    public function upload_media_metadata_is_normalized()
+    {
+        $file = UploadedFile::fake()->image('meta-image.jpg', 800, 600)->size(1024);
+
+        $response = $this->actingAsSuperadmin()
+            ->postJson('/api/superadmin/media', [
+                'file' => $file,
+                'custom_properties' => [
+                    'title' => '  <b>Hero   Banner</b>  ',
+                    'alt_text' => "\t<p>Front page   image</p>\r\n",
+                    'description' => "\n<p>Main campaign asset.</p>\r\nUsed across pages.\t",
+                ],
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.custom_properties.title', 'Hero Banner')
+            ->assertJsonPath('data.custom_properties.alt_text', 'Front page image')
+            ->assertJsonPath('data.custom_properties.description', "Main campaign asset.\nUsed across pages.");
+
+        $media = Media::findOrFail($response->json('data.id'));
+
+        $this->assertSame('Hero Banner', $media->custom_properties['title']);
+        $this->assertSame('Front page image', $media->custom_properties['alt_text']);
+        $this->assertSame("Main campaign asset.\nUsed across pages.", $media->custom_properties['description']);
+
+        $mediaLibrary = MediaLibrary::findOrFail($media->model_id);
+        $this->assertSame("Main campaign asset.\nUsed across pages.", $mediaLibrary->description);
+    }
+
+    #[Test]
     public function user_can_upload_media_to_specific_folder()
     {
         $folder = MediaFolder::create([
@@ -254,6 +284,26 @@ class CentralMediaLibraryTest extends TestCase
     }
 
     #[Test]
+    public function folder_create_input_is_normalized()
+    {
+        $response = $this->actingAsSuperadmin()->postJson('/api/superadmin/media-folders', [
+            'name' => '  <b>New   Folder</b>  ',
+            'description' => "\n<p>Shared assets.</p>\r\nUsed by editors.\t",
+        ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('folder.name', 'New Folder')
+            ->assertJsonPath('folder.description', "Shared assets.\nUsed by editors.");
+
+        $this->assertDatabaseHas('media_folders', [
+            'name' => 'New Folder',
+            'description' => "Shared assets.\nUsed by editors.",
+            'tenant_id' => null,
+            'parent_id' => null,
+        ]);
+    }
+
+    #[Test]
     public function user_can_create_nested_folder()
     {
         $parentFolder = MediaFolder::create([
@@ -329,7 +379,8 @@ class CentralMediaLibraryTest extends TestCase
         ]);
 
         $response = $this->actingAsSuperadmin()->putJson("/api/superadmin/media-folders/{$folder->id}", [
-            'name' => 'New Name',
+            'name' => '  <b>New   Name</b>  ',
+            'description' => "\n<p>Updated folder.</p>\r\nFor shared media.\t",
         ]);
 
         $response->assertStatus(200)
@@ -337,12 +388,14 @@ class CentralMediaLibraryTest extends TestCase
                 'message' => 'Folder updated successfully.',
                 'folder' => [
                     'name' => 'New Name',
+                    'description' => "Updated folder.\nFor shared media.",
                 ],
             ]);
 
         $this->assertDatabaseHas('media_folders', [
             'id' => $folder->id,
             'name' => 'New Name',
+            'description' => "Updated folder.\nFor shared media.",
         ]);
     }
 

@@ -99,6 +99,43 @@ class ThemeApiCssAttributesTest extends TestCase
         }
     }
 
+    public function test_theme_create_and_update_normalize_human_text_fields(): void
+    {
+        $createResponse = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
+            ->postJson('/api/superadmin/themes', [
+                'name' => '  <b>Salon   Editorial</b>  ',
+                'description' => "\n<p>Shared palette.</p>\r\nUsed across launches.\t",
+                'theme_data' => [
+                    'colors' => ['primary' => '#0f766e'],
+                ],
+            ]);
+
+        $createResponse->assertStatus(201)
+            ->assertJsonPath('data.name', 'Salon Editorial')
+            ->assertJsonPath('data.description', "Shared palette.\nUsed across launches.")
+            ->assertJsonPath('data.slug', 'salon-editorial');
+
+        $createdTheme = Theme::findOrFail($createResponse->json('data.id'));
+        $this->assertSame('Salon Editorial', $createdTheme->name);
+        $this->assertSame("Shared palette.\nUsed across launches.", $createdTheme->description);
+
+        $updateResponse = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
+            ->putJson("/api/superadmin/themes/{$this->theme->id}", [
+                'name' => '  <b>Updated   Theme</b>  ',
+                'description' => "\n<p>Updated notes.</p>\r\nFor launch week.\t",
+            ]);
+
+        $updateResponse->assertStatus(200)
+            ->assertJsonPath('data.name', 'Updated Theme')
+            ->assertJsonPath('data.description', "Updated notes.\nFor launch week.");
+
+        $this->theme->refresh();
+        $this->assertSame('Updated Theme', $this->theme->name);
+        $this->assertSame("Updated notes.\nFor launch week.", $this->theme->description);
+    }
+
     /**
      * Test that css_url updates when theme is modified
      */
