@@ -1,6 +1,6 @@
 # Environment Matrix
 
-Last updated: 2026-04-26
+Last updated: 2026-05-26
 Status: proposed baseline
 Audience: engineering
 
@@ -73,6 +73,7 @@ Notes:
 
 - staging should serve built assets, not rely on `npm run dev`
 - `VITE_DEV_SERVER_*` vars are normally unused on staging
+- `.env.staging.example` is the repo-owned starting point for these values
 
 ### Production
 
@@ -167,6 +168,6 @@ Notes:
 ## Immediate Follow-Up
 
 1. Update the shared development `.env` to match the chosen dev hostname.
-2. Add a staging `.env` template owned outside the repository.
+2. Keep `.env.staging.example` aligned with the actual staging runtime contract.
 3. Patch remaining test/config references that still assume `byteforge.se` where they should use env variables instead.
 4. Use [STAGING_DEPLOYMENT_PLAN.md](STAGING_DEPLOYMENT_PLAN.md) when wiring GitHub Actions deployment.

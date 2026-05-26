@@ -1,6 +1,6 @@
 # Staging Deployment Plan
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 Status: active baseline
 Audience: engineering
 
@@ -34,6 +34,9 @@ What exists today:
   settings drift away from the documented secure host-only posture
 - deploy workflow now also validates deploy-user bootstrap prerequisites and
   runtime path permissions before continuing with build/cache steps
+- the repo now also owns `.env.staging.example` for the expected staging
+  auth/session/queue/mail posture and `scripts/staging/bootstrap_runtime.sh`
+  for repeatable host bootstrap and runtime verification
 - deploy workflow now also runs non-destructive seeders for global permissions
   and billing catalog rows so newly shipped capabilities become usable on
   staging without a full reseed
@@ -112,6 +115,10 @@ Current workflow expects:
 - `STAGING_SSH_KEY`
 - optional: `STAGING_BASE_URL`, `STAGING_SMOKE_EMAIL`, `STAGING_SMOKE_PASSWORD`
 
+Repo-owned starting point for the server-side `.env`:
+
+- `.env.staging.example`
+
 Server-side secrets should remain on the server and not be injected from GitHub
 unless there is a clear reason.
 
@@ -136,6 +143,8 @@ Operational note:
 - if passwordless `sudo` is unavailable for the deploy user, those ownership
   and group-permission expectations must already be provisioned on the server
   before CI deploys run
+- for repeatable provisioning or repair, use
+  `scripts/staging/bootstrap_runtime.sh` from the checked-out repo on the host
 
 ### Runtime Verification Snippet
 
@@ -163,6 +172,12 @@ Expected outcomes:
 
 Use this when provisioning a new staging host or when repairing the deploy
 user baseline after permission drift.
+
+Preferred repo-owned helper:
+
+```bash
+APP_PATH=/var/www/byteforge DEPLOY_USER=deploy WEB_GROUP=www-data bash scripts/staging/bootstrap_runtime.sh
+```
 
 Assumptions:
 
