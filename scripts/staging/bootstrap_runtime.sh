@@ -27,6 +27,11 @@ as_root() {
 }
 
 as_deploy() {
+    if [[ "$(id -un)" == "$DEPLOY_USER" ]]; then
+        "$@"
+        return
+    fi
+
     if command -v sudo >/dev/null 2>&1; then
         sudo -u "$DEPLOY_USER" "$@"
         return
