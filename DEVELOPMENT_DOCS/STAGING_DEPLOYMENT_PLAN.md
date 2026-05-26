@@ -43,7 +43,8 @@ What exists today:
 - deploy workflow now also runs post-deploy Playwright central auth browser smoke
 - deploy workflow now also runs a remote post-deploy runtime audit that checks
   scheduler registration, performs one explicit `schedule:run` pass, and fails
-  if `failed_jobs` is non-empty afterward
+  if `failed_jobs` increases during that smoke pass (while still logging any
+  pre-existing backlog)
 
 Implication:
 
