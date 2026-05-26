@@ -187,6 +187,7 @@ class AuthApiTest extends TestCase
         ]);
 
         $loginResponse->assertOk();
+        $originalToken = (string) $loginResponse->json('token');
         $issuedCookie = $this->refreshCookieFromResponse($loginResponse);
 
         $this->assertNotNull($issuedCookie);
@@ -209,6 +210,8 @@ class AuthApiTest extends TestCase
         $refreshResponse->assertOk()
             ->assertJsonStructure(['token', 'user']);
 
+        $rotatedToken = (string) $refreshResponse->json('token');
+
         $this->assertNoStoreHeaders($refreshResponse);
 
         $rotatedCookie = $this->refreshCookieFromResponse($refreshResponse);
@@ -222,6 +225,17 @@ class AuthApiTest extends TestCase
         $rotatedSession = WebRefreshSession::query()->latest('id')->firstOrFail();
         $this->assertSame($originalSession->id, $rotatedSession->rotated_from_id);
         $this->assertNull($rotatedSession->revoked_at);
+
+        Auth::forgetGuards();
+
+        $this->withHeader('Authorization', "Bearer {$originalToken}")
+            ->getJson('/api/auth/user')
+            ->assertUnauthorized();
+
+        $this->withHeader('Authorization', "Bearer {$rotatedToken}")
+            ->getJson('/api/auth/user')
+            ->assertOk()
+            ->assertJsonPath('email', $this->centralEmail('superadmin'));
     }
 
     #[Test]
@@ -548,6 +562,12 @@ class AuthApiTest extends TestCase
 
         $session->refresh();
         $this->assertNotNull($session->revoked_at);
+
+        Auth::forgetGuards();
+
+        $this->withHeader('Authorization', "Bearer {$token}")
+            ->getJson('/api/auth/user')
+            ->assertUnauthorized();
 
         $refreshResponse = $this->call(
             'POST',

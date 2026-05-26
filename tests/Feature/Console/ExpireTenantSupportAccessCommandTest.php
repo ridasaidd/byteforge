@@ -8,6 +8,7 @@ use App\Models\TenantSupportAccessGrant;
 use App\Models\WebRefreshSession;
 use App\Notifications\TenantSupportAccessOwnerNotification;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Passport\Token as PassportToken;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
@@ -54,6 +55,9 @@ class ExpireTenantSupportAccessCommandTest extends TestCase
             'last_used_at' => now()->subHour(),
             'expires_at' => now()->addDay(),
         ]);
+        $passportToken = PassportToken::query()->findOrFail(
+            $supportUser->createToken("web-session:{$session->id}")->token->id
+        );
 
         $this->artisan('support-access:expire')
             ->assertExitCode(0);
@@ -70,6 +74,8 @@ class ExpireTenantSupportAccessCommandTest extends TestCase
         ]);
 
         $this->assertNotNull($session->fresh()?->revoked_at);
+        $passportToken->refresh();
+        $this->assertTrue((bool) $passportToken->revoked);
 
         Notification::assertSentTo(
             $owner,

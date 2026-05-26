@@ -1,16 +1,33 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios, { AxiosInstance } from 'axios';
-import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
+import { getCentralAdminEmail, getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
+
+const describeHttpIntegration = process.env.RUN_HTTP_INTEGRATION === '1' ? describe : describe.skip;
 
 // E2E Test - Requires a live backend at the configured central base URL.
 // Run with: npx vitest run tests/integration/authorization.test.ts --no-coverage
 // Backend is tested via PHPUnit
-describe.skip('Authorization & Permissions Integration', () => {
+describeHttpIntegration('Authorization & Permissions Integration', () => {
   let client: AxiosInstance;
   let superadminToken: string;
   let regularUserToken: string;
   let regularUserId: string;
   const BASE_URL = getCentralBaseUrl();
+
+  const buildUserPayload = (overrides: Record<string, unknown> = {}) => ({
+    name: 'Regular User',
+    email: `regular-${Date.now()}@example.com`,
+    password: 'Password123!',
+    password_confirmation: 'Password123!',
+    role: 'viewer',
+    ...overrides,
+  });
+
+  const extractNames = (items: Array<string | { name?: string }>) =>
+    items.map((item) => typeof item === 'string' ? item : item.name ?? '');
+
+  const extractRolePermissionNames = (roles: Array<{ permissions?: Array<{ name?: string }> }>) =>
+    roles.flatMap((role) => extractNames(role.permissions ?? []));
 
   beforeAll(async () => {
     client = axios.create({
@@ -27,21 +44,18 @@ describe.skip('Authorization & Permissions Integration', () => {
       email: getCentralSuperadminEmail(),
       password: 'password',
     });
+    expect(superadminLogin.status).toBe(200);
     superadminToken = superadminLogin.data.token;
 
     // Create a regular user
     const createUserResponse = await client.post(
       '/api/superadmin/users',
-      {
-        name: 'Regular User',
-        email: `regular-${Date.now()}@example.com`,
-        password: 'Password123!',
-        password_confirmation: 'Password123!',
-      },
+      buildUserPayload(),
       {
         headers: { Authorization: `Bearer ${superadminToken}` },
       }
     );
+    expect(createUserResponse.status).toBe(201);
     regularUserId = createUserResponse.data.data.id;
 
     // Login as regular user
@@ -49,6 +63,7 @@ describe.skip('Authorization & Permissions Integration', () => {
       email: createUserResponse.data.data.email,
       password: 'Password123!',
     });
+    expect(regularLogin.status).toBe(200);
     regularUserToken = regularLogin.data.token;
   });
 
@@ -92,10 +107,8 @@ describe.skip('Authorization & Permissions Integration', () => {
       expect(Array.isArray(response.data.roles)).toBe(true);
 
       // Superadmin should have superadmin role
-      const hasSuperadminRole = response.data.roles.some(
-        (role: any) => role.name === 'superadmin'
-      );
-      expect(hasSuperadminRole).toBe(true);
+      expect(extractNames(response.data.roles)).toContain('superadmin');
+      expect(extractRolePermissionNames(response.data.roles)).toContain('users.manage');
     });
 
     it('should show different roles for different users', async () => {
@@ -113,10 +126,11 @@ describe.skip('Authorization & Permissions Integration', () => {
       expect(regularResponse.status).toBe(200);
 
       // Roles should be different
-      const superadminRoles = superadminResponse.data.roles.map((r: any) => r.name);
-      const regularRoles = regularResponse.data.roles.map((r: any) => r.name);
+      const superadminRoles = extractNames(superadminResponse.data.roles);
+      const regularRoles = extractNames(regularResponse.data.roles);
 
       expect(superadminRoles).toContain('superadmin');
+      expect(regularRoles).toContain('viewer');
       expect(regularRoles).not.toContain('superadmin');
     });
   });
@@ -174,12 +188,11 @@ describe.skip('Authorization & Permissions Integration', () => {
       // Create user
       const createResponse = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'Auth Test User',
           email: `auth-test-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+          role: 'admin',
+        }),
         {
           headers: { Authorization: `Bearer ${superadminToken}` },
         }
@@ -205,9 +218,7 @@ describe.skip('Authorization & Permissions Integration', () => {
       expect(deleteResponse.status).toBe(200);
     });
 
-    it('regular user may have restricted access to tenant creation', async () => {
-      // Depending on your permission setup, regular users might not be able to create tenants
-      // This test documents the expected behavior
+    it('regular user cannot create tenants', async () => {
       const response = await client.post(
         '/api/superadmin/tenants',
         {
@@ -219,28 +230,22 @@ describe.skip('Authorization & Permissions Integration', () => {
         }
       );
 
-      // This might be 403 (Forbidden) or 201 (Created) depending on your permission setup
-      // For now, we just verify the user can make authenticated requests
-      expect([200, 201, 403]).toContain(response.status);
+      expect(response.status).toBe(403);
     });
 
-    it('regular user may have restricted access to user management', async () => {
-      // Regular users typically shouldn't create other users
+    it('regular user cannot manage users', async () => {
       const response = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'Unauthorized User',
           email: `unauthorized-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${regularUserToken}` },
         }
       );
 
-      // Depending on permissions, this might be forbidden
-      expect([201, 403]).toContain(response.status);
+      expect(response.status).toBe(403);
     });
   });
 
@@ -277,9 +282,10 @@ describe.skip('Authorization & Permissions Integration', () => {
     it('should reject access with expired/revoked token', async () => {
       // Login, logout, then try to use the token
       const loginResponse = await client.post('/api/auth/login', {
-        email: 'lullrich@example.org',
+        email: getCentralAdminEmail(),
         password: 'password',
       });
+      expect(loginResponse.status).toBe(200);
       const token = loginResponse.data.token;
 
       // Logout (revokes token)
@@ -305,30 +311,28 @@ describe.skip('Authorization & Permissions Integration', () => {
       // Create two users
       const user1Response = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'User One',
           email: `user1-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${superadminToken}` },
         }
       );
+      expect(user1Response.status).toBe(201);
       const user1Id = user1Response.data.data.id;
 
       const user2Response = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'User Two',
           email: `user2-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${superadminToken}` },
         }
       );
+      expect(user2Response.status).toBe(201);
       const user2Id = user2Response.data.data.id;
 
       // Login as user1
@@ -336,6 +340,7 @@ describe.skip('Authorization & Permissions Integration', () => {
         email: user1Response.data.data.email,
         password: 'Password123!',
       });
+      expect(user1Login.status).toBe(200);
       const user1Token = user1Login.data.token;
 
       // Try to update user2 as user1 (should fail unless user1 has admin permissions)
@@ -347,9 +352,7 @@ describe.skip('Authorization & Permissions Integration', () => {
         }
       );
 
-      // Should be forbidden (403) or unauthorized (401)
-      // Note: Actual behavior depends on your permission setup
-      expect([401, 403]).toContain(updateResponse.status);
+      expect(updateResponse.status).toBe(403);
 
       // Cleanup
       await client.delete(`/api/superadmin/users/${user1Id}`, {
@@ -369,7 +372,7 @@ describe.skip('Authorization & Permissions Integration', () => {
       });
 
       expect(response.status).toBe(200);
-      expect(response.data.email).not.toBe('admin@superadmin.com');
+      expect(response.data.email).not.toBe(getCentralSuperadminEmail());
       expect(response.data.email).toContain('regular-');
     });
 
@@ -384,7 +387,7 @@ describe.skip('Authorization & Permissions Integration', () => {
       });
 
       expect(superadminUser.data.id).not.toBe(regularUser.data.id);
-      expect(superadminUser.data.email).toBe('lullrich@example.org');
+      expect(superadminUser.data.email).toBe(getCentralSuperadminEmail());
       expect(regularUser.data.email).toContain('regular-');
     });
   });

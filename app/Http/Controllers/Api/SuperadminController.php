@@ -21,6 +21,7 @@ use App\Models\WebRefreshSession;
 use App\Services\TenantRbacService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Passport\Token as PassportToken;
 use App\Settings\GeneralSettings;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -29,6 +30,8 @@ use Illuminate\Validation\Rule;
 
 class SuperadminController extends Controller
 {
+    private const BROWSER_TOKEN_NAME_PREFIX = 'web-session:';
+
     public function __construct(
         private readonly NormalizeInputFieldsAction $normalizeInputFields,
     ) {}
@@ -531,11 +534,30 @@ class SuperadminController extends Controller
 
     private function revokeTenantRefreshSessions(int $userId, string $tenantId, \Illuminate\Support\Carbon $revokedAt): void
     {
-        WebRefreshSession::query()
+        $sessionIds = WebRefreshSession::query()
             ->where('user_id', $userId)
             ->where('tenant_id', $tenantId)
+            ->pluck('id');
+
+        WebRefreshSession::query()
+            ->whereIn('id', $sessionIds)
             ->whereNull('revoked_at')
             ->update(['revoked_at' => $revokedAt]);
+
+        if ($sessionIds->isEmpty()) {
+            return;
+        }
+
+        PassportToken::query()
+            ->where('user_id', $userId)
+            ->whereIn(
+                'name',
+                $sessionIds
+                    ->map(fn (int $sessionId): string => self::BROWSER_TOKEN_NAME_PREFIX.$sessionId)
+                    ->all(),
+            )
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
     }
 
     private function logCentralTenantUserAction(string $event, Tenant $tenant, User $subjectUser, User $actor, string $description, array $properties = []): void

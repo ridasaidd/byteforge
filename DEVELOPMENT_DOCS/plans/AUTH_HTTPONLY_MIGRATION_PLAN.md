@@ -120,15 +120,23 @@ Remaining closeout after that documentation pass:
   handling
 - focused regressions now also cover stale refresh-cookie reuse after a
   successful rotation across central, tenant, and guest flows
+- focused staff-auth regressions now also cover refresh-session rotation
+  invalidating the prior bearer token across central and tenant hosts
+- tenant support-access revoke and expiry paths now revoke the associated
+  refresh sessions and any session-tied tenant bearer tokens for that support
+  user
 - focused regressions now also cover logout invalidation of the current bearer
   token and refresh cookie across central, tenant, and guest flows
+- a dedicated CI-aligned Node HTTP integration lane now exercises the live
+  central auth, authorization, and central admin tenant/user CRUD contracts
+  against a booted Laravel server
 - the shared frontend HTTP auth client now has focused unit coverage for
   silent refresh retry, concurrent refresh deduplication, and failed-refresh
   in-memory token cleanup
-- Playwright auth coverage now also checks reload-based session restore for
-  central and tenant dashboard flows when the configured environment serves the
-  login page correctly
-- broaden manual QA around session expiry and remaining multi-tab/logout edge
+- Playwright auth coverage now also checks reload-based session restore and
+  multi-tab logout invalidation for central and tenant dashboard flows when
+  the configured environment serves the login page correctly
+- broaden manual QA around session expiry and any remaining host-scoping edge
   cases
 
 ### Why This Model Fits ByteForge

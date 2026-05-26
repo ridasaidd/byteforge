@@ -71,3 +71,41 @@ test('tenant owner session restores on reload without browser token storage', as
 
   expect(issues, `Runtime issues detected in tenant auth reload flow:\n${formatIssues(issues)}`).toEqual([]);
 });
+
+test('tenant logout invalidates session restore in another tab', async ({ browser }) => {
+  test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable tenant-domain auth flow test.');
+  const tenantHostname = hostnameFromUrl(tenantBaseUrl!);
+  const isTenantHostResolvable = await canResolveHostname(tenantHostname);
+  test.skip(
+    !isTenantHostResolvable,
+    `Tenant hostname ${tenantHostname} is not resolvable from this environment.`,
+  );
+
+  const context = await browser.newContext();
+  const primaryPage = await context.newPage();
+  const secondaryPage = await context.newPage();
+  const primaryIssues = attachRuntimeGuards(primaryPage);
+  const secondaryIssues = attachRuntimeGuards(secondaryPage);
+
+  await primaryPage.goto(`${tenantBaseUrl}/login`);
+  await loginWithCredentials(primaryPage, tenantOwnerCredentials);
+
+  await expect(primaryPage).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
+  await secondaryPage.goto(`${tenantBaseUrl}/cms`);
+  await expect(secondaryPage).toHaveURL(new RegExp(`${tenantBaseUrl}/cms(/|$)`));
+
+  await logoutFromUserMenu(primaryPage);
+  await expect(primaryPage).toHaveURL(new RegExp(`${tenantBaseUrl}/login(/|$)`));
+
+  await secondaryPage.reload();
+  await expect(secondaryPage).toHaveURL(new RegExp(`${tenantBaseUrl}/login(/|$)`));
+  await expect.poll(async () => secondaryPage.evaluate(() => window.localStorage.getItem('auth_token'))).toBeNull();
+  await expect.poll(async () => secondaryPage.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
+
+  expect(
+    [...primaryIssues, ...secondaryIssues],
+    `Runtime issues detected in tenant multi-tab logout flow:\n${formatIssues([...primaryIssues, ...secondaryIssues])}`,
+  ).toEqual([]);
+
+  await context.close();
+});
