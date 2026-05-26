@@ -340,6 +340,10 @@ Operational note:
 - if `QUEUE_CONNECTION` is async (`database` or `redis`), staging must run a
   persistent queue worker or Horizon; otherwise queued notifications may be
   accepted by the app but never delivered
+- staging booking verification on 2026-05-26 confirmed that the supervised
+  worker must also subscribe to `notifications,default`; a worker listening
+  only to the default queue left booking reminders undelivered even though the
+  app accepted them
 
 ---
 
@@ -358,6 +362,9 @@ deploy/auth baseline.
 ### Runtime Services
 
 - [ ] confirm the queue worker or Horizon process is supervised and restarts on reboot
+- [ ] confirm the supervised queue worker listens to `notifications,default`
+- [ ] confirm the runtime user for that worker can write `storage`,
+  `storage/logs`, and `bootstrap/cache`
 - [ ] confirm scheduler invocation is present and documented for staging
 - [ ] confirm `php artisan queue:failed` is part of normal post-deploy triage
 

@@ -1,6 +1,6 @@
 # ByteForge Testing Guide
 
-Last updated: May 14, 2026
+Last updated: May 25, 2026
 
 ---
 
@@ -87,12 +87,36 @@ PLAYWRIGHT_TENANT_OWNER_PASSWORD="<password>" \
 npx playwright test tests/e2e/tenant-auth-flow.spec.ts
 ```
 
+Focused booking examples:
+
+```bash
+# Tenant booking create dialog coverage (slot + range availability-guided flows)
+npm run test:run -- resources/js/apps/tenant/components/pages/Booking/__tests__/BookingsCalendarPage.test.tsx
+
+# Guest portal booking management coverage
+npm run test:run -- resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx resources/js/apps/public/components/__tests__/guestPortal.service.test.ts
+
+# Booking backend slices used during recent booking UX work
+php artisan test tests/Feature/Api/Booking/PublicBookingApiTest.php tests/Feature/Api/Booking/BookingHoldTest.php tests/Feature/Api/Booking/BookingCmsApiTest.php
+php artisan test tests/Tenant/Feature/Api/TenantGuestBookingsTest.php
+
+# Guest booking reschedule browser regression
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.dev.byteforge.se \
+npx playwright test tests/e2e/guest-portal-shell.spec.ts -g "authenticated guest can reschedule a linked booking from the guest portal"
+
+# Tenant manual booking browser regression
+PLAYWRIGHT_TENANT_BASE_URL=http://tenant-one.dev.byteforge.se \
+npx playwright test tests/e2e/booking-cms-regression.spec.ts -g "tenant owner can create a range-mode manual booking from the dashboard dialog"
+```
+
 Notes:
 
 - the central auth spec now covers both login/logout and reload-based session restore through the HttpOnly refresh cookie
 - the tenant auth spec now covers both login/logout and reload-based session restore through the HttpOnly refresh cookie
 - the central auth spec skips cleanly when the configured base URL does not actually serve the login page, which avoids false-negative localhost/Apache 404 failures
 - when running the tenant spec locally, only the owner credentials are required for this suite
+- the focused booking Playwright commands above assume the tenant dev host is
+  resolvable and seeded with the usual tenant fixtures
 
 > Linux host note: if Playwright reports missing browser dependencies, install them once with:
 > `sudo npx playwright install-deps`
@@ -104,6 +128,17 @@ Notes:
 - Optional secret: `STAGING_MAIL_SMOKE_RECIPIENT` (defaults to `qa-mail-smoke@byteforge.se`).
 - The smoke step validates that `POST /api/guest-auth/request-link` returns HTTP 200 and `{ "sent": true }`.
 - The staging Playwright auth smoke can now also exercise reload-based tenant session restore when `STAGING_TENANT_BASE_URL` and the tenant owner credentials are present.
+- Manual staging booking-operations verification (2026-05-26) succeeded once
+  `laravel-queue.service` was configured with
+  `queue:work --queue=notifications,default ...` under the writable
+  `www-data` runtime user.
+- For future staging booking checks, verify the worker configuration first:
+
+```bash
+sudo systemctl show laravel-queue.service -p User -p Group -p ExecStart
+ps -ww -o cmd= -p "$(systemctl show -p MainPID --value laravel-queue.service)"
+sudo -u www-data bash -lc 'cd /var/www/byteforge && test -w storage && test -w storage/logs && test -w bootstrap/cache && echo "www-data runtime paths writable"'
+```
 
 ---
 
@@ -371,6 +406,8 @@ Playwright smoke coverage lives in `tests/e2e/` and is focused on browser-runtim
 - Central auth flow (`/login` -> `/dashboard` -> logout -> `/login`)
 - Tenant owner auth flow (`/login` -> `/cms` -> logout -> `/login`)
 - Tenant viewer permission gate (`/cms/settings` -> Access Denied)
+- Focused booking regressions for guest portal booking management and tenant
+  manual booking creation on the tenant host
 - Runtime guardrails for:
   - Browser console errors
   - Uncaught page errors

@@ -324,6 +324,8 @@ Required outcomes:
 - queued mail is delivered reliably
 - media conversions complete reliably
 - failures are visible and diagnosable
+- booking confirmation, cancellation, and reminder notifications are processed
+  by the worker rather than only appearing successful in the UI
 
 Minimum commands to own operationally:
 
@@ -332,6 +334,15 @@ php artisan queue:work
 php artisan queue:failed
 php artisan queue:retry all
 ```
+
+Minimum booking operations check:
+
+- confirm a worker is continuously running in staging before treating booking
+  notification behavior as verified
+- after a deploy or booking slice, create or update one booking flow that
+  emits queued work and confirm the expected jobs leave the queue cleanly
+- check `php artisan queue:failed` after that pass so reminder or mail jobs are
+  not silently stuck behind an otherwise green UI flow
 
 ### 4. Scheduler-Backed Features Must Be Verified
 
@@ -342,12 +353,21 @@ Required outcomes:
 - booking hold expiry runs correctly
 - booking reminders run correctly
 - support-access expiry runs correctly
+- one manual scheduler pass is understood well enough to prove that reminder
+  and hold-expiry paths enqueue the expected jobs in a non-cron environment
 
 Minimum command to own operationally:
 
 ```bash
 php artisan schedule:run
 ```
+
+Minimum booking scheduler check:
+
+- exercise one hold-expiry path and one reminder-eligible booking in a safe
+  environment
+- run `php artisan schedule:run` when validating manually
+- confirm the expected queued jobs are created and then consumed by the worker
 
 ### 5. Deferred Auth Surfaces Must Stay Deliberately Deferred
 
@@ -448,6 +468,10 @@ This is the current engineering view based on the repository state.
   guest-auth and system-surface work
 - backend + frontend + Playwright auth smoke are now first-class CI gates on `main`
 - staging deployment workflow now exists and has been validated end-to-end
+- staging booking operations were manually verified on 2026-05-26: expired
+  holds were cleaned up, reminder jobs were processed, and Mailtrap received a
+  real booking reminder once `laravel-queue.service` was aligned to
+  `--queue=notifications,default`
 
 ### Not Ready Yet
 
@@ -506,7 +530,14 @@ Use this as the short remaining checklist for the current staging baseline:
 - deploy-user bootstrap: deploy key readable, `safe.directory` trusted, app path writable
 - runtime permissions: `storage`, `bootstrap/cache`, and OAuth keys match the expected ownership and mode baseline
 - queue runtime: persistent worker or Horizon process present, `php artisan queue:failed` checked after deploys
+- queue runtime detail: the supervised staging worker currently runs as
+  `www-data`; keep `storage`, `storage/logs`, and `bootstrap/cache` writable by
+  that runtime user and keep the worker subscribed to
+  `notifications,default`
 - scheduler runtime: cron or equivalent scheduler invocation present and understood by the team
+- booking runtime: one explicit post-deploy pass covers guest-facing booking
+  mail, tenant-side booking changes, reminder/hold-expiry scheduling, and a
+  clean failed-jobs check
 - env ownership: staging auth/session values, mail settings, and hostnames explicitly owned outside the repo
 
 Reference:
