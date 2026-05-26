@@ -45,6 +45,8 @@ What exists today:
   scheduler registration, performs one explicit `schedule:run` pass, and fails
   if `failed_jobs` increases during that smoke pass (while still logging any
   pre-existing backlog)
+- when backlog exists, the runtime audit now prints a compact triage summary
+  (total rows, oldest/newest `failed_at`, and top recent failed job classes)
 
 Implication:
 
@@ -394,6 +396,8 @@ deploy/auth baseline.
   `storage/logs`, and `bootstrap/cache`
 - [ ] confirm scheduler invocation is present and documented for staging
 - [ ] confirm `php artisan queue:failed` is part of normal post-deploy triage
+- [ ] keep failed-jobs backlog trending to zero; treat runtime-audit backlog
+  warnings as triage work, not as ignorable noise
 
 ### Environment Ownership
 
