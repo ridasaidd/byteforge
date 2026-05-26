@@ -136,6 +136,24 @@ class ThemeApiCssAttributesTest extends TestCase
         $this->assertSame("Updated notes.\nFor launch week.", $this->theme->description);
     }
 
+    public function test_theme_duplicate_normalizes_human_text_fields(): void
+    {
+        $response = $this->actingAsSuperadmin()
+            ->withServerVariables(['HTTP_HOST' => 'localhost'])
+            ->postJson("/api/superadmin/themes/{$this->theme->id}/duplicate", [
+                'name' => "  <b>Launch   Copy</b>\t",
+            ]);
+
+        $response->assertStatus(201)
+            ->assertJsonPath('data.name', 'Launch Copy')
+            ->assertJsonPath('data.slug', 'launch-copy');
+
+        $duplicateTheme = Theme::findOrFail($response->json('data.id'));
+
+        $this->assertSame('Launch Copy', $duplicateTheme->name);
+        $this->assertSame('launch-copy', $duplicateTheme->slug);
+    }
+
     /**
      * Test that css_url updates when theme is modified
      */

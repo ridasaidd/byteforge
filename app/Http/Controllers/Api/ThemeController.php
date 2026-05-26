@@ -369,7 +369,10 @@ class ThemeController extends Controller
             ], 404);
         }
 
-        $validator = Validator::make($request->all(), [
+        $validator = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['name'],
+        ), [
             'name' => 'required|string|max:255',
         ]);
 
@@ -380,7 +383,7 @@ class ThemeController extends Controller
             ], 422);
         }
 
-        $newTheme = $this->themeService->duplicateTheme($theme, $request->name);
+        $newTheme = $this->themeService->duplicateTheme($theme, $validator->validated()['name']);
 
         return response()->json([
             'data' => $newTheme,
