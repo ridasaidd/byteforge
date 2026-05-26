@@ -30,6 +30,7 @@ php artisan test tests/Feature/Api/        # Specific directory
 # Frontend only
 npm run test           # Watch mode
 npm run test:run       # Single run (CI mode)
+npm run test:http-integration  # Live HTTP integration specs against a booted Laravel server
 npm run test:ui        # Interactive UI
 npm run test:coverage  # With coverage report
 
@@ -111,8 +112,9 @@ npx playwright test tests/e2e/booking-cms-regression.spec.ts -g "tenant owner ca
 
 Notes:
 
-- the central auth spec now covers both login/logout and reload-based session restore through the HttpOnly refresh cookie
-- the tenant auth spec now covers both login/logout and reload-based session restore through the HttpOnly refresh cookie
+- the central auth spec now covers login/logout, reload-based session restore, and multi-tab logout invalidation through the HttpOnly refresh cookie
+- the tenant auth spec now covers login/logout, reload-based session restore, and multi-tab logout invalidation through the HttpOnly refresh cookie
+- `npm run test:http-integration` is the CI-aligned Node HTTP lane; it now exercises the live central auth, authorization/permissions, superadmin user-management, and tenant admin API specs under `tests/integration/` against a booted Laravel server
 - the central auth spec skips cleanly when the configured base URL does not actually serve the login page, which avoids false-negative localhost/Apache 404 failures
 - when running the tenant spec locally, only the owner credentials are required for this suite
 - the focused booking Playwright commands above assume the tenant dev host is

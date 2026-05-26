@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\WebRefreshSession;
 use App\Notifications\TenantUserManagementOwnerNotification;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Passport\Token as PassportToken;
 use Stancl\Tenancy\Database\Models\Domain;
 use Tests\TestCase;
 
@@ -515,6 +516,9 @@ class TenantManagementTest extends TestCase
             'ip_address' => '127.0.0.1',
             'expires_at' => now()->addDay(),
         ]);
+        $passportToken = PassportToken::query()->findOrFail(
+            $viewer->createToken("web-session:{$session->id}")->token->id
+        );
 
         $response = $this->actingAsSuperadmin()->deleteJson("/api/superadmin/tenants/{$tenant->id}/users/{$viewer->id}");
 
@@ -522,6 +526,8 @@ class TenantManagementTest extends TestCase
             ->assertJsonPath('message', 'User removed from tenant successfully.');
 
         $this->assertNotNull($session->fresh()?->revoked_at);
+        $passportToken->refresh();
+        $this->assertTrue((bool) $passportToken->revoked);
         $this->assertDatabaseHas('memberships', [
             'tenant_id' => (string) $tenant->id,
             'user_id' => $viewer->id,

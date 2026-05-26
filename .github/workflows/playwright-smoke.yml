@@ -156,6 +156,9 @@ jobs:
           touch database/database.sqlite
           php artisan migrate --force
 
+      - name: Generate Passport keys
+        run: php artisan passport:keys --force
+
       - name: Seed tenant fixtures for tenant smoke
         run: php artisan db:seed --class=Database\\Seeders\\TestFixturesSeeder --force
 
@@ -198,7 +201,7 @@ jobs:
           PLAYWRIGHT_TENANT_BASE_URL: ${{ vars.PLAYWRIGHT_TENANT_BASE_URL }}
           PLAYWRIGHT_TENANT_OWNER_EMAIL: owner@tenant-one.byteforge.se
           PLAYWRIGHT_TENANT_OWNER_PASSWORD: password
-        run: npx playwright test tests/e2e/tenant-login-shell.spec.ts --project=chromium
+        run: npm run test:e2e:auth:tenant
 
       - name: Upload Playwright report (tenant)
         if: always()

@@ -5,6 +5,7 @@ namespace Tests\Tenant\Feature\Api;
 use App\Models\TenantSupportAccessGrant;
 use App\Services\TenantSupportAccessService;
 use App\Models\WebRefreshSession;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Collection;
 use Illuminate\Testing\TestResponse;
 use Laravel\Passport\Token as PassportToken;
@@ -245,6 +246,7 @@ class TenantAuthTest extends TestCase
         ]);
 
         $loginResponse->assertOk();
+        $originalToken = (string) $loginResponse->json('token');
 
         $refreshCookie = $this->refreshCookieFromResponse($loginResponse);
         $this->assertNotNull($refreshCookie);
@@ -268,6 +270,8 @@ class TenantAuthTest extends TestCase
             ->assertJsonStructure(['token', 'user'])
             ->assertJsonPath('user.email', $this->ownerEmail('tenant-one'));
 
+        $rotatedToken = (string) $refreshResponse->json('token');
+
         $rotatedCookie = $this->refreshCookieFromResponse($refreshResponse);
         $this->assertNotNull($rotatedCookie);
         $this->assertNotSame($refreshCookie->getValue(), $rotatedCookie->getValue());
@@ -277,6 +281,15 @@ class TenantAuthTest extends TestCase
 
         $rotatedSession = WebRefreshSession::query()->latest('id')->firstOrFail();
         $this->assertSame($originalSession->id, $rotatedSession->rotated_from_id);
+
+        $this->getJson($this->tenantUrl('/api/auth/user', 'tenant-one'), [
+            'Authorization' => "Bearer {$originalToken}",
+        ])->assertUnauthorized();
+
+        $this->getJson($this->tenantUrl('/api/auth/user', 'tenant-one'), [
+            'Authorization' => "Bearer {$rotatedToken}",
+        ])->assertOk()
+            ->assertJsonPath('email', $this->ownerEmail('tenant-one'));
     }
 
     #[Test]
@@ -413,6 +426,10 @@ class TenantAuthTest extends TestCase
         $this->assertNotNull($refreshCookie);
 
         $session = WebRefreshSession::query()->latest('id')->firstOrFail();
+        $passportToken = PassportToken::query()
+            ->where('user_id', TestUsers::tenantOwner('tenant-one')->id)
+            ->latest('created_at')
+            ->firstOrFail();
 
         $passwordResponse = $this->call(
             'PUT',
@@ -445,6 +462,15 @@ class TenantAuthTest extends TestCase
 
         $session->refresh();
         $this->assertNotNull($session->revoked_at);
+
+        $passportToken->refresh();
+        $this->assertTrue((bool) $passportToken->revoked);
+
+        Auth::forgetGuards();
+
+        $this->getJson($this->tenantUrl('/api/auth/user', 'tenant-one'), [
+            'Authorization' => "Bearer {$token}",
+        ])->assertUnauthorized();
 
         $refreshResponse = $this->call(
             'POST',

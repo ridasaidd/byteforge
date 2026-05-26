@@ -16,27 +16,29 @@ This roadmap is intentionally future-facing. Completed work should live in
 
 ## Next Up
 
-### 0. Consolidate CI and Staging Operations Baseline
+### 0. Continue Auth HttpOnly Migration
 
 Goal:
 
-- keep the newly-green backend/frontend/auth-smoke/deploy pipeline reliable as
-  a non-regression baseline for upcoming feature work
+- finish invalidation, silent-refresh, and operational hardening around the
+  hybrid in-memory access token plus host-scoped HttpOnly refresh-cookie model
 
 Likely focus areas:
 
-- remove remaining staging deploy permission drift (app/storage/cache ownership)
-- keep `.env.staging.example` and `scripts/staging/bootstrap_runtime.sh`
-  aligned with the real staging runtime contract
+- close any remaining staff or guest token invalidation gaps outside the main
+  login-refresh-logout loop
+- keep frontend silent-refresh behavior and session restore stable under
+  concurrent or stale-cookie edge cases
 - preserve test-domain parity across backend tests and Playwright auth smoke
-- avoid adding new skipped tests in default CI suites
+- leave customer accounts, password recovery, and SSO outside this phase
 
-### 1. Continue Shared Input Normalization Rollout
+### 1. Shared Input Normalization Maintenance
 
 Goal:
 
-- expand the reusable normalization layer for ordinary text/contact fields
-  across suitable booking, payment, and auth flows
+- keep the reusable normalization layer opportunistic and bounded for newly
+  introduced ordinary text/contact fields without expanding it into blanket
+  middleware
 
 Key constraints:
 
@@ -103,6 +105,13 @@ Current state before that migration:
   handling as well
 - focused auth regressions now also cover stale refresh-cookie reuse after a
   successful rotation in central, tenant, and guest flows
+- focused staff-auth regressions now also cover refresh-session rotation
+  invalidating the prior bearer token across central and tenant hosts
+- tenant membership removal now revokes both tenant refresh sessions and the
+  corresponding session-tied bearer tokens for that removed user
+- tenant support-access revoke and expiry paths now revoke the associated
+  refresh sessions and any session-tied tenant bearer tokens for that support
+  user
 - focused auth regressions now also cover logout invalidation of the current
   bearer token and refresh cookie in central, tenant, and guest flows
 - the shared frontend auth client now has focused unit coverage for silent

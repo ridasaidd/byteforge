@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import axios, { AxiosInstance } from 'axios';
 import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtimeTestConfig';
 
+const describeHttpIntegration = process.env.RUN_HTTP_INTEGRATION === '1' ? describe : describe.skip;
+
 /**
  * E2E Tests for Users API
  *
@@ -14,11 +16,20 @@ import { getCentralBaseUrl, getCentralSuperadminEmail } from '../support/runtime
  * Backend API is already tested via PHPUnit.
  */
 
-describe.skip('Users API Integration', () => {
+describeHttpIntegration('Users API Integration', () => {
   let client: AxiosInstance;
   let authToken: string;
   let createdUserId: string;
   const BASE_URL = getCentralBaseUrl();
+
+  const buildUserPayload = (overrides: Record<string, unknown> = {}) => ({
+    name: 'Integration Test User',
+    email: `test-${Date.now()}@example.com`,
+    password: 'Password123!',
+    password_confirmation: 'Password123!',
+    role: 'admin',
+    ...overrides,
+  });
 
   beforeAll(async () => {
     client = axios.create({
@@ -106,12 +117,7 @@ describe.skip('Users API Integration', () => {
 
   describe('POST /api/users', () => {
     it('should create a new user', async () => {
-      const newUser = {
-        name: 'Integration Test User',
-        email: `test-${Date.now()}@example.com`,
-        password: 'Password123!',
-        password_confirmation: 'Password123!',
-      };
+      const newUser = buildUserPayload();
 
       const response = await client.post('/api/superadmin/users', newUser, {
         headers: { Authorization: `Bearer ${authToken}` },
@@ -122,6 +128,7 @@ describe.skip('Users API Integration', () => {
       expect(response.data.data).toHaveProperty('id');
       expect(response.data.data).toHaveProperty('name', newUser.name);
       expect(response.data.data).toHaveProperty('email', newUser.email);
+      expect(response.data.data.roles).toContain('admin');
       expect(response.data.data).not.toHaveProperty('password');
 
       createdUserId = response.data.data.id;
@@ -180,12 +187,10 @@ describe.skip('Users API Integration', () => {
     });
 
     it('should reject creation with duplicate email', async () => {
-      const newUser = {
+      const newUser = buildUserPayload({
         name: 'Duplicate Test',
         email: `duplicate-${Date.now()}@example.com`,
-        password: 'Password123!',
-        password_confirmation: 'Password123!',
-      };
+      });
 
       // Create first user
       const firstResponse = await client.post('/api/superadmin/users', newUser, {
@@ -243,12 +248,10 @@ describe.skip('Users API Integration', () => {
       // First create a user
       const createResponse = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'Single User Test',
           email: `single-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -294,12 +297,10 @@ describe.skip('Users API Integration', () => {
       // First create a user
       const createResponse = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'Update Test User',
           email: `update-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -331,12 +332,12 @@ describe.skip('Users API Integration', () => {
       // First create a user
       const createResponse = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'Password Update Test',
           email: `password-${Date.now()}@example.com`,
           password: 'OldPassword123!',
           password_confirmation: 'OldPassword123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -400,12 +401,10 @@ describe.skip('Users API Integration', () => {
       // First create a user
       const createResponse = await client.post(
         '/api/superadmin/users',
-        {
+        buildUserPayload({
           name: 'Delete Test User',
           email: `delete-${Date.now()}@example.com`,
-          password: 'Password123!',
-          password_confirmation: 'Password123!',
-        },
+        }),
         {
           headers: { Authorization: `Bearer ${authToken}` },
         }
@@ -447,10 +446,10 @@ describe.skip('Users API Integration', () => {
     it('should complete full CRUD lifecycle', async () => {
       // 1. Create
       const createData = {
-        name: 'CRUD Flow Test',
-        email: `crud-${Date.now()}@example.com`,
-        password: 'Password123!',
-        password_confirmation: 'Password123!',
+        ...buildUserPayload({
+          name: 'CRUD Flow Test',
+          email: `crud-${Date.now()}@example.com`,
+        }),
       };
 
       const createResponse = await client.post('/api/superadmin/users', createData, {

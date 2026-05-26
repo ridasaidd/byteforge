@@ -139,7 +139,7 @@ jobs:
 
   backend-integration-tests:
     runs-on: ubuntu-latest
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: backend-tests
     timeout-minutes: 35
 
     services:
@@ -234,13 +234,34 @@ jobs:
       - name: Seed test fixtures
         run: php artisan db:seed --class=TestFixturesSeeder --force
 
-      - name: Run backend Integration suite
-        run: php artisan test --testsuite=Integration
+      - name: Start Laravel server for Node HTTP integration specs
+        run: php artisan serve --host=0.0.0.0 --port=8000 > /tmp/laravel-integration.log 2>&1 &
+
+      - name: Wait for Laravel server
+        run: |
+          for i in {1..40}; do
+            if curl -sSf http://localhost:8000/login >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Laravel server did not start in time"
+          cat /tmp/laravel-integration.log || true
+          exit 1
+
+      - name: Run Node HTTP integration specs
+        env:
+          CI: '1'
+          RUN_HTTP_INTEGRATION: '1'
+          PLAYWRIGHT_BASE_URL: http://localhost:8000
+        run: npm run test:http-integration
 
       - name: Upload Laravel log on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: backend-laravel-log-integration
-          path: storage/logs/laravel.log
+          path: |
+            storage/logs/laravel.log
+            /tmp/laravel-integration.log
           if-no-files-found: ignore

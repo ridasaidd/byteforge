@@ -5,8 +5,10 @@ namespace Tests\Feature\Api;
 use App\Models\Page;
 use App\Models\TenantActivity;
 use App\Models\Theme;
+use App\Models\WebRefreshSession;
 use App\Notifications\TenantSupportAccessOwnerNotification;
 use Illuminate\Support\Facades\Notification;
+use Laravel\Passport\Token as PassportToken;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\Support\TestUsers;
 use Tests\TestCase;
@@ -258,6 +260,21 @@ class CentralTenantOperationsTest extends TestCase
             'status' => 'active',
         ]);
 
+        $supportHost = $tenant->domains()->first()?->domain ?? 'tenant-one.dev.byteforge.se';
+        $session = WebRefreshSession::query()->create([
+            'user_id' => $supportUser->id,
+            'tenant_id' => (string) $tenant->id,
+            'host' => $supportHost,
+            'token_hash' => hash('sha256', 'support-access-revoke-session'),
+            'user_agent' => 'PHPUnit',
+            'ip_address' => '127.0.0.1',
+            'last_used_at' => now(),
+            'expires_at' => now()->addDay(),
+        ]);
+        $passportToken = PassportToken::query()->findOrFail(
+            $supportUser->createToken("web-session:{$session->id}")->token->id
+        );
+
         $this->actingAsCentralAdmin()
             ->withServerVariables($this->central())
             ->getJson("/api/superadmin/tenants/{$tenant->id}/support-access")
@@ -292,6 +309,10 @@ class CentralTenantOperationsTest extends TestCase
             'id' => $grantId,
             'status' => 'revoked',
         ]);
+
+        $this->assertNotNull($session->fresh()?->revoked_at);
+        $passportToken->refresh();
+        $this->assertTrue((bool) $passportToken->revoked);
 
         $this->assertTrue(
             TenantActivity::query()

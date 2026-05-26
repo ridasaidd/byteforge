@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 import { centralAdminCredentials, loginWithCredentials, logoutFromUserMenu } from './support/auth';
 
+function isExpectedPostLogoutAuthIssue(message: string): boolean {
+  return message.includes('/api/auth/logout') || message.includes('/api/auth/refresh');
+}
+
 async function ensureCentralLoginPageIsReachable(page: import('@playwright/test').Page): Promise<void> {
   await page.goto('/login');
 
@@ -63,4 +67,38 @@ test('central user session restores on reload without browser token storage', as
   const authRelevantIssues = issues.filter((issue) => !issue.message.includes('/api/themes/active'));
 
   expect(authRelevantIssues, `Runtime issues detected in central auth reload flow:\n${formatIssues(authRelevantIssues)}`).toEqual([]);
+});
+
+test('central logout invalidates session restore in another tab', async ({ browser }) => {
+  const context = await browser.newContext();
+  const primaryPage = await context.newPage();
+  const secondaryPage = await context.newPage();
+  const primaryIssues = attachRuntimeGuards(primaryPage);
+  const secondaryIssues = attachRuntimeGuards(secondaryPage);
+
+  await ensureCentralLoginPageIsReachable(primaryPage);
+  await loginWithCredentials(primaryPage, centralAdminCredentials);
+
+  await expect(primaryPage).toHaveURL(/\/dashboard(\/|$)/);
+  await secondaryPage.goto('/dashboard');
+  await expect(secondaryPage).toHaveURL(/\/dashboard(\/|$)/);
+
+  await logoutFromUserMenu(primaryPage);
+  await expect(primaryPage).toHaveURL(/\/login(\/|$)/);
+
+  await secondaryPage.reload();
+  await expect(secondaryPage).toHaveURL(/\/login(\/|$)/);
+  await expect.poll(async () => secondaryPage.evaluate(() => window.localStorage.getItem('auth_token'))).toBeNull();
+  await expect.poll(async () => secondaryPage.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
+
+  const authRelevantIssues = [...primaryIssues, ...secondaryIssues]
+    .filter((issue) => !issue.message.includes('/api/themes/active'))
+    .filter((issue) => !isExpectedPostLogoutAuthIssue(issue.message));
+
+  expect(
+    authRelevantIssues,
+    `Runtime issues detected in central multi-tab logout flow:\n${formatIssues(authRelevantIssues)}`,
+  ).toEqual([]);
+
+  await context.close();
 });

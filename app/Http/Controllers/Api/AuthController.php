@@ -22,6 +22,8 @@ use Laravel\Passport\Token as PassportToken;
 
 class AuthController extends Controller
 {
+    private const BROWSER_TOKEN_NAME_PREFIX = 'web-session:';
+
     public function __construct(
         private readonly TenantRbacService $tenantRbac,
         private readonly TenantSupportAccessService $tenantSupportAccess,
@@ -187,6 +189,38 @@ class AuthController extends Controller
         }
     }
 
+    private function issueBrowserAccessToken(User $user, WebRefreshSession $refreshSession): string
+    {
+        return $user->createToken($this->browserAccessTokenName($refreshSession))->accessToken;
+    }
+
+    private function revokeAccessTokensForRefreshSession(?WebRefreshSession $refreshSession): void
+    {
+        if (! $refreshSession instanceof WebRefreshSession || ! is_int($refreshSession->user_id)) {
+            return;
+        }
+
+        PassportToken::query()
+            ->where('user_id', $refreshSession->user_id)
+            ->where('name', $this->browserAccessTokenName($refreshSession))
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
+    }
+
+    private function revokeBrowserAccessTokensForUser(User $user): void
+    {
+        PassportToken::query()
+            ->where('user_id', $user->id)
+            ->where('name', 'like', self::BROWSER_TOKEN_NAME_PREFIX.'%')
+            ->where('revoked', false)
+            ->update(['revoked' => true]);
+    }
+
+    private function browserAccessTokenName(WebRefreshSession $refreshSession): string
+    {
+        return self::BROWSER_TOKEN_NAME_PREFIX.$refreshSession->id;
+    }
+
     /**
      * Login user and return token
      */
@@ -232,9 +266,8 @@ class AuthController extends Controller
             $this->syncTenantRole($user, $tenantId);
         }
 
-        // Create access token
-        $token = $user->createToken('web-token')->accessToken;
-        [, $refreshCookie] = $this->webRefreshSessionService->issue($user, $request, $tenantId);
+        [$refreshSession, $refreshCookie] = $this->webRefreshSessionService->issue($user, $request, $tenantId);
+        $token = $this->issueBrowserAccessToken($user, $refreshSession);
 
         return $this->tokenResponse([
             'user' => $this->userPayload($user),
@@ -265,8 +298,8 @@ class AuthController extends Controller
         // Assign default role if needed
         // $user->assignRole('user');
 
-        $token = $user->createToken('web-token')->accessToken;
-        [, $refreshCookie] = $this->webRefreshSessionService->issue($user, $request, $this->currentTenantId());
+        [$refreshSession, $refreshCookie] = $this->webRefreshSessionService->issue($user, $request, $this->currentTenantId());
+        $token = $this->issueBrowserAccessToken($user, $refreshSession);
 
         return $this->tokenResponse([
             'user' => $this->userPayload($user),
@@ -284,6 +317,7 @@ class AuthController extends Controller
 
         $refreshSession = $this->webRefreshSessionService->resolveFromRequest($request, $this->currentTenantId());
         $this->webRefreshSessionService->revoke($refreshSession);
+        $this->revokeAccessTokensForRefreshSession($refreshSession);
 
         return response()->json([
             'message' => __('Successfully logged out'),
@@ -304,8 +338,10 @@ class AuthController extends Controller
             ], 401)->withCookie($this->webRefreshSessionService->expireCookie($request));
         }
 
-        $token = $user->createToken('web-token')->accessToken;
-        [, $refreshCookie] = $this->webRefreshSessionService->rotate($refreshSession, $request);
+        [$rotatedSession, $refreshCookie] = $this->webRefreshSessionService->rotate($refreshSession, $request);
+        $this->revokeAccessTokensForRefreshSession($refreshSession);
+        $this->revokeCurrentAccessToken($user);
+        $token = $this->issueBrowserAccessToken($user, $rotatedSession);
 
         return $this->tokenResponse([
             'token' => $token,
@@ -404,6 +440,8 @@ class AuthController extends Controller
                 'revoked_at' => now(),
                 'last_used_at' => now(),
             ]);
+
+        $this->revokeBrowserAccessTokensForUser($user);
 
         // Log activity
         $causer = auth('api')->user();

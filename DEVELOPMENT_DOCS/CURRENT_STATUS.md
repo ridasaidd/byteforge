@@ -40,9 +40,19 @@ Primary branch: `main`
 - Staff password changes now revoke outstanding `web_refresh_sessions` rows
   and clear the current refresh cookie, reducing stale multi-tab/browser
   continuity after credential rotation.
+- Staff bearer tokens are now tied to refresh-session IDs, so central and
+  tenant refresh rotation invalidates the prior bearer token and tenant
+  support-access or membership removal also kills the affected session-tied
+  bearer tokens.
 - Central and tenant dashboard refresh flows are both verified against the
   cookie-backed path, and the transitional bearer-based refresh fallback has
   been removed.
+- Playwright auth coverage now also checks session restore on reload and
+  multi-tab logout invalidation for the central and tenant dashboard flows
+  when the configured environment serves the login page correctly.
+- Backend CI now also has a dedicated Node HTTP integration lane for the
+  live central auth, authorization/permissions, superadmin user-management,
+  and tenant admin API contracts.
 - Focused auth regressions now verify that staff and guest refresh cookies do
   not restore sessions on the wrong host or tenant host.
 - Guest session bootstrap now also has focused regression coverage for expired
@@ -137,14 +147,16 @@ Primary branch: `main`
 ## Current Recommended Work Order
 
 1. Keep CI and staging deploy parity stable (backend suites + Vitest + Playwright auth smoke + deploy smoke checks).
-2. Continue the shared, field-family input normalization rollout without
-   expanding it into blanket middleware.
-3. Continue HttpOnly auth migration closeout and operational hardening.
+2. Continue HttpOnly auth migration closeout and operational hardening.
+3. Keep shared, field-family input normalization as bounded maintenance for
+  newly introduced safe text fields rather than a standalone front-of-queue
+  phase.
 4. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
 5. Do not expand support beyond the current bounded read-only workflow before launch.
 6. Keep central tenant user management narrow: membership add/change/remove
   only, with explicit permissions, tenant-visible audit entries, owner
-  notifications, and immediate tenant refresh-session revocation on removal.
+  notifications, and immediate tenant refresh-session plus session-tied bearer
+  token revocation on removal.
 
 ## Current Reality Checks
 
