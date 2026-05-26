@@ -9,6 +9,7 @@ use App\Models\BookingService;
 use App\Models\TenantAddon;
 use App\Notifications\Booking\BookingReminderNotification;
 use App\Settings\TenantSettings;
+use Illuminate\Support\Str;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
@@ -87,6 +88,49 @@ class SendBookingRemindersCommandTest extends TestCase
                     && $mailRoute === ['target@example.com' => 'Reminder Target'];
             }
         );
+    }
+
+    #[Test]
+    public function reminder_email_copy_uses_the_configured_hour_window(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+        $this->activateBookingAddon($tenant);
+
+        tenancy()->initialize($tenant);
+
+        try {
+            $service = BookingService::factory()->create([
+                'tenant_id' => (string) $tenant->id,
+                'name' => 'Reminder Copy Service',
+            ]);
+
+            $resource = BookingResource::factory()->create([
+                'tenant_id' => (string) $tenant->id,
+            ]);
+
+            $booking = Booking::factory()->create([
+                'tenant_id' => (string) $tenant->id,
+                'service_id' => $service->id,
+                'resource_id' => $resource->id,
+                'status' => Booking::STATUS_CONFIRMED,
+                'starts_at' => now()->addHours(2)->subMinutes(5),
+                'ends_at' => now()->addHours(3)->subMinutes(5),
+                'customer_name' => 'Reminder Copy Target',
+                'customer_email' => 'copy-target@example.com',
+                'management_token' => Booking::generateToken(),
+                'token_expires_at' => now()->addMonth(),
+            ]);
+
+            $notification = new BookingReminderNotification($booking, 'tenant-one.dev.byteforge.se', '2h');
+            $mailMessage = $notification->toMail(new AnonymousNotifiable());
+
+            $rendered = (string) $mailMessage->render();
+        } finally {
+            tenancy()->end();
+        }
+
+        $this->assertTrue(Str::contains($rendered, 'in about 2 hours'));
+        $this->assertFalse(Str::contains($rendered, 'in about 1 hour'));
     }
 
     private function activateBookingAddon(\App\Models\Tenant $tenant): void
