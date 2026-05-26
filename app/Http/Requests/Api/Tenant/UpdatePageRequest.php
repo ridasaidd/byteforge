@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api\Tenant;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +21,8 @@ class UpdatePageRequest extends FormRequest
      */
     public function rules(): array
     {
-        $page = $this->route('page');
+        $tenantId = $this->currentTenantId();
+        $pageId = $this->currentPageId();
 
         return [
             'title' => 'sometimes|required|string|max:255',
@@ -29,16 +31,22 @@ class UpdatePageRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('pages')->where(function ($query) {
-                    return $query->where('tenant_id', tenancy()->tenant->id);
-                })->ignore($page->id),
+                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                Rule::unique('pages')->where(function ($query) use ($tenantId) {
+                    if ($tenantId === null) {
+                        return $query->whereNull('tenant_id');
+                    }
+
+                    return $query->where('tenant_id', $tenantId);
+                })->ignore($pageId),
             ],
-            'page_type' => 'sometimes|required|string|in:general,home,about,contact',
+            'page_type' => 'sometimes|required|string|in:general,home,about,contact,blog,service,product,custom',
             'puck_data' => 'nullable|array',
+            'page_css' => 'nullable|string',
             'meta_data' => 'nullable|array',
             'status' => 'sometimes|required|string|in:draft,published,archived',
             'is_homepage' => 'boolean',
-            'sort_order' => 'integer',
+            'sort_order' => 'nullable|integer',
             'published_at' => 'nullable|date',
         ];
     }
@@ -53,9 +61,29 @@ class UpdatePageRequest extends FormRequest
             'slug.required' => 'The page slug is required.',
             'slug.unique' => 'A page with this slug already exists for this tenant.',
             'page_type.required' => 'The page type is required.',
-            'page_type.in' => 'The page type must be one of: general, home, about, contact.',
+            'page_type.in' => 'The page type must be one of: general, home, about, contact, blog, service, product, custom.',
             'status.required' => 'The page status is required.',
             'status.in' => 'The page status must be one of: draft, published, archived.',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $this->replace(app(NormalizeInputFieldsAction::class)(
+            $this->all(),
+            singleLineFields: ['title'],
+        ));
+    }
+
+    private function currentTenantId(): ?string
+    {
+        return tenancy()->initialized ? (string) tenancy()->tenant->id : null;
+    }
+
+    private function currentPageId(): mixed
+    {
+        $page = $this->route('page');
+
+        return is_object($page) && isset($page->id) ? $page->id : $page;
     }
 }
