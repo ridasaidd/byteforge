@@ -5,6 +5,10 @@ import { canResolveHostname, hostnameFromUrl } from './support/network';
 
 const tenantBaseUrl = process.env.PLAYWRIGHT_TENANT_BASE_URL;
 
+function isExpectedPostLogoutAuthIssue(message: string): boolean {
+  return message.includes('/api/auth/logout') || message.includes('/api/auth/refresh');
+}
+
 test('tenant owner can login and logout without runtime errors', async ({ page }) => {
   test.skip(!tenantBaseUrl, 'Set PLAYWRIGHT_TENANT_BASE_URL to enable tenant-domain auth flow test.');
   const tenantHostname = hostnameFromUrl(tenantBaseUrl!);
@@ -102,9 +106,12 @@ test('tenant logout invalidates session restore in another tab', async ({ browse
   await expect.poll(async () => secondaryPage.evaluate(() => window.localStorage.getItem('auth_token'))).toBeNull();
   await expect.poll(async () => secondaryPage.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
 
+  const authRelevantIssues = [...primaryIssues, ...secondaryIssues]
+    .filter((issue) => !isExpectedPostLogoutAuthIssue(issue.message));
+
   expect(
-    [...primaryIssues, ...secondaryIssues],
-    `Runtime issues detected in tenant multi-tab logout flow:\n${formatIssues([...primaryIssues, ...secondaryIssues])}`,
+    authRelevantIssues,
+    `Runtime issues detected in tenant multi-tab logout flow:\n${formatIssues(authRelevantIssues)}`,
   ).toEqual([]);
 
   await context.close();

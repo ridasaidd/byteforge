@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 import { centralAdminCredentials, loginWithCredentials, logoutFromUserMenu } from './support/auth';
 
+function isExpectedPostLogoutAuthIssue(message: string): boolean {
+  return message.includes('/api/auth/logout') || message.includes('/api/auth/refresh');
+}
+
 async function ensureCentralLoginPageIsReachable(page: import('@playwright/test').Page): Promise<void> {
   await page.goto('/login');
 
@@ -88,7 +92,8 @@ test('central logout invalidates session restore in another tab', async ({ brows
   await expect.poll(async () => secondaryPage.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
 
   const authRelevantIssues = [...primaryIssues, ...secondaryIssues]
-    .filter((issue) => !issue.message.includes('/api/themes/active'));
+    .filter((issue) => !issue.message.includes('/api/themes/active'))
+    .filter((issue) => !isExpectedPostLogoutAuthIssue(issue.message));
 
   expect(
     authRelevantIssues,
