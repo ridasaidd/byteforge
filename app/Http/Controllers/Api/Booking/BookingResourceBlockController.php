@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api\Booking;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingResource;
@@ -15,6 +16,10 @@ use Illuminate\Support\Facades\Validator;
 
 class BookingResourceBlockController extends Controller
 {
+    public function __construct(
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
+
     public function index(int $resourceId): JsonResponse
     {
         $resource = $this->resolveResource($resourceId);
@@ -31,7 +36,10 @@ class BookingResourceBlockController extends Controller
     {
         $resource = $this->resolveResource($resourceId);
 
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make(($this->normalizeInputFields)(
+            $request->all(),
+            singleLineFields: ['reason'],
+        ), [
             'start_date' => ['required', 'date_format:Y-m-d'],
             'end_date'   => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date'],
             'reason'     => ['nullable', 'string', 'max:120'],
