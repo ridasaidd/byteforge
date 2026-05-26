@@ -525,7 +525,41 @@ jobs:
 
             echo "failed_jobs after scheduler smoke: $failed_jobs_after"
 
-            php artisan queue:failed --no-ansi || true
+            if [ "$failed_jobs_after" -gt 0 ]; then
+              echo "failed_jobs triage summary:"
+              php -r 'require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              if (! Illuminate\Support\Facades\Schema::hasTable("failed_jobs")) {
+                echo "- failed_jobs table not present\n";
+                exit(0);
+              }
+              $total = (int) Illuminate\Support\Facades\DB::table("failed_jobs")->count();
+              $oldest = Illuminate\Support\Facades\DB::table("failed_jobs")->min("failed_at");
+              $newest = Illuminate\Support\Facades\DB::table("failed_jobs")->max("failed_at");
+              echo "- total rows: {$total}\n";
+              echo "- oldest failed_at: " . ($oldest ?? "n/a") . "\n";
+              echo "- newest failed_at: " . ($newest ?? "n/a") . "\n";
+
+              $rows = Illuminate\Support\Facades\DB::table("failed_jobs")
+                ->orderByDesc("failed_at")
+                ->limit(50)
+                ->get(["payload"]);
+
+              $classes = [];
+              foreach ($rows as $row) {
+                $payload = json_decode((string) $row->payload, true);
+                $name = $payload["displayName"] ?? ($payload["data"]["commandName"] ?? "unknown");
+                $classes[$name] = ($classes[$name] ?? 0) + 1;
+              }
+              arsort($classes);
+              echo "- top recent failed job classes (up to 5):\n";
+              foreach (array_slice($classes, 0, 5, true) as $name => $count) {
+                echo "  * {$name}: {$count}\n";
+              }'
+
+              php artisan queue:failed --no-ansi || true
+            fi
 
             if [ "$failed_jobs_after" -gt "$failed_jobs_before" ]; then
               new_failed_jobs=$((failed_jobs_after - failed_jobs_before))
