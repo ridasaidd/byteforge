@@ -5,6 +5,17 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      run_closeout_verification:
+        description: Run the host-level staging closeout verification after deploy and smoke checks
+        required: false
+        type: boolean
+        default: false
+      clear_failed_jobs_backlog:
+        description: Flush the already-triaged staging failed_jobs backlog after recording it in the workflow log
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   deploy:
@@ -572,6 +583,279 @@ jobs:
             fi
 
             echo "✓ Failed-jobs audit passed"
+          ENDSSH
+
+      - name: Manual staging closeout verification
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_closeout_verification }}
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_APP_PATH: /var/www/byteforge
+          CLEAR_FAILED_JOBS_BACKLOG: ${{ inputs.clear_failed_jobs_backlog }}
+        run: |
+          missing=0
+          for var in STAGING_HOST STAGING_USER STAGING_SSH_KEY; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Missing required secret: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Closeout verification aborted: configure required staging SSH secrets in GitHub Actions settings."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$STAGING_SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          closeout_clear_flag=$(printf '%q' "$CLEAR_FAILED_JOBS_BACKLOG")
+          closeout_scheduler_unit=$(printf '%q' "${SCHEDULER_TIMER_UNIT:-laravel-scheduler.timer}")
+
+          ssh -T -o BatchMode=yes -o LogLevel=ERROR -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" "CLEAR_FAILED_JOBS_BACKLOG=$closeout_clear_flag SCHEDULER_TIMER_UNIT=$closeout_scheduler_unit bash -se" << 'ENDSSH'
+            set -euo pipefail
+
+            APP_PATH=/var/www/byteforge
+            CLEAR_FAILED_JOBS_BACKLOG="${CLEAR_FAILED_JOBS_BACKLOG:-false}"
+            expected_queue_list="notifications,default"
+            expected_scheduler_cron="* * * * * cd $APP_PATH && php artisan schedule:run >> /dev/null 2>&1"
+            scheduler_timer_unit="${SCHEDULER_TIMER_UNIT:-laravel-scheduler.timer}"
+
+            abort() {
+              echo "Closeout verification failed: $1"
+              exit 1
+            }
+
+            require_group_access() {
+              local path="$1"
+              local expected_group="$2"
+              local minimum_group_digit="$3"
+              local mode group_digit actual_group
+
+              actual_group=$(stat -c '%G' "$path")
+              mode=$(stat -c '%a' "$path")
+              group_digit=${mode: -2:1}
+
+              if [ "$actual_group" != "$expected_group" ]; then
+                abort "$APP_PATH/$path must be group-owned by $expected_group (found: $actual_group)"
+              fi
+
+              if (( group_digit < minimum_group_digit )); then
+                abort "$APP_PATH/$path must grant group permission >= $minimum_group_digit (mode: $mode)"
+              fi
+            }
+
+            require_not_world_accessible() {
+              local path="$1"
+              local mode other_digit
+
+              mode=$(stat -c '%a' "$path")
+              other_digit=${mode: -1}
+
+              if (( other_digit > 0 )); then
+                abort "$APP_PATH/$path must not be world-accessible (mode: $mode)"
+              fi
+            }
+
+            queue_subscription_is_valid() {
+              local details="$1"
+
+              printf '%s\n' "$details" | grep -Eq -- "--queue(=|[[:space:]])${expected_queue_list}([[:space:]]|$)"
+            }
+
+            scheduler_is_configured() {
+              local deploy_user_crontab=""
+
+              deploy_user_crontab=$(crontab -l 2>/dev/null || true)
+              if printf '%s\n' "$deploy_user_crontab" | grep -Fqx "$expected_scheduler_cron"; then
+                echo "✓ Scheduler crontab entry detected"
+                return 0
+              fi
+
+              if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files "$scheduler_timer_unit" >/dev/null 2>&1; then
+                if systemctl is-active --quiet "$scheduler_timer_unit"; then
+                  echo "✓ Scheduler timer is active: $scheduler_timer_unit"
+                  systemctl show "$scheduler_timer_unit" -p LoadState -p ActiveState -p SubState -p UnitFileState
+                  return 0
+                fi
+              fi
+
+              return 1
+            }
+
+            failed_jobs_count() {
+              php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo Illuminate\Support\Facades\Schema::hasTable("failed_jobs") ? Illuminate\Support\Facades\DB::table("failed_jobs")->count() : 0;'
+            }
+
+            print_failed_jobs_summary() {
+              php -r 'require "vendor/autoload.php";
+              $app = require "bootstrap/app.php";
+              $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+              if (! Illuminate\Support\Facades\Schema::hasTable("failed_jobs")) {
+                echo "- failed_jobs table not present\n";
+                exit(0);
+              }
+
+              $total = (int) Illuminate\Support\Facades\DB::table("failed_jobs")->count();
+              $oldest = Illuminate\Support\Facades\DB::table("failed_jobs")->min("failed_at");
+              $newest = Illuminate\Support\Facades\DB::table("failed_jobs")->max("failed_at");
+              echo "- total rows: {$total}\n";
+              echo "- oldest failed_at: " . ($oldest ?? "n/a") . "\n";
+              echo "- newest failed_at: " . ($newest ?? "n/a") . "\n";
+
+              $rows = Illuminate\Support\Facades\DB::table("failed_jobs")
+                ->orderByDesc("failed_at")
+                ->limit(20)
+                ->get(["uuid", "payload", "failed_at"]);
+
+              $classes = [];
+              foreach ($rows as $row) {
+                $payload = json_decode((string) $row->payload, true);
+                $name = $payload["displayName"] ?? ($payload["data"]["commandName"] ?? "unknown");
+                $classes[$name] = ($classes[$name] ?? 0) + 1;
+              }
+              arsort($classes);
+              echo "- top recent failed job classes (up to 5):\n";
+              foreach (array_slice($classes, 0, 5, true) as $name => $count) {
+                echo "  * {$name}: {$count}\n";
+              }
+              echo "- most recent failed job rows (up to 10):\n";
+              foreach ($rows->take(10) as $row) {
+                $payload = json_decode((string) $row->payload, true);
+                $name = $payload["displayName"] ?? ($payload["data"]["commandName"] ?? "unknown");
+                echo "  * {$row->failed_at} | {$row->uuid} | {$name}\n";
+              }'
+            }
+
+            verify_runtime_path_writable() {
+              local runtime_user="$1"
+              local path="$2"
+              local owner group mode owner_digit group_digit runtime_groups
+
+              owner=$(stat -c '%U' "$path")
+              group=$(stat -c '%G' "$path")
+              mode=$(stat -c '%a' "$path")
+              owner_digit=${mode:0:1}
+              group_digit=${mode: -2:1}
+
+              if [ "$owner" = "$runtime_user" ] && (( owner_digit >= 6 )); then
+                return 0
+              fi
+
+              runtime_groups=$(id -nG "$runtime_user" 2>/dev/null || true)
+              if printf '%s\n' "$runtime_groups" | tr ' ' '\n' | grep -Fxq "$group" && (( group_digit >= 6 )); then
+                return 0
+              fi
+
+              return 1
+            }
+
+            verify_runtime_writability() {
+              local runtime_user="$1"
+
+              if command -v sudo >/dev/null 2>&1 && sudo -n -u "$runtime_user" true >/dev/null 2>&1; then
+                sudo -n -u "$runtime_user" bash -lc "cd '$APP_PATH' && test -w storage && test -w storage/logs && test -w bootstrap/cache && echo runtime paths writable for $runtime_user"
+                return
+              fi
+
+              if [ "$(id -un)" = "$runtime_user" ]; then
+                bash -lc "cd '$APP_PATH' && test -w storage && test -w storage/logs && test -w bootstrap/cache && echo runtime paths writable for $runtime_user"
+                return
+              fi
+
+              for runtime_path in storage storage/logs bootstrap/cache; do
+                verify_runtime_path_writable "$runtime_user" "$runtime_path" || abort "unable to verify runtime writability for [$runtime_user] on $APP_PATH/$runtime_path"
+              done
+
+              echo "runtime paths writable for $runtime_user (verified from ownership/group mode baseline)"
+            }
+
+            cd "$APP_PATH" || abort "app path does not exist: $APP_PATH"
+
+            echo "Closeout checklist: deploy-user bootstrap"
+            [ -r "$HOME/.ssh/github_deploy_key" ] || abort "deploy user cannot read $HOME/.ssh/github_deploy_key"
+            echo "✓ Deploy user can read $HOME/.ssh/github_deploy_key"
+
+            safe_directories=$(git config --global --get-all safe.directory || true)
+            printf '%s\n' "$safe_directories"
+            printf '%s\n' "$safe_directories" | grep -Fqx "$APP_PATH" || abort "git safe.directory does not include $APP_PATH"
+            echo "✓ Git safe.directory includes $APP_PATH"
+
+            stat -c '%U %G %a %n' storage storage/logs bootstrap/cache storage/oauth-private.key storage/oauth-public.key
+
+            if getent group www-data >/dev/null 2>&1; then
+              require_group_access "storage" "www-data" 6
+              require_group_access "bootstrap/cache" "www-data" 6
+              require_group_access "storage/oauth-private.key" "www-data" 4
+              require_group_access "storage/oauth-public.key" "www-data" 4
+            fi
+            require_not_world_accessible "storage/oauth-private.key"
+            require_not_world_accessible "storage/oauth-public.key"
+            echo "✓ Storage/bootstrap and OAuth key permission baseline verified"
+
+            echo "Closeout checklist: runtime services"
+            queue_connection=$(php artisan tinker --execute="echo config('queue.default');" | tr -d '[:space:]')
+            echo "queue.default=$queue_connection"
+
+            if [ "$queue_connection" != "sync" ]; then
+              if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files laravel-queue.service >/dev/null 2>&1; then
+                systemctl is-active --quiet laravel-queue.service || abort "laravel-queue.service is not active"
+                queue_details=$(systemctl show laravel-queue.service -p LoadState -p ActiveState -p SubState -p MainPID -p ExecStart -p User -p Group || true)
+                printf '%s\n' "$queue_details"
+
+                main_pid=$(systemctl show -p MainPID --value laravel-queue.service)
+                [ -n "$main_pid" ] && [ "$main_pid" != "0" ] || abort "laravel-queue.service does not have a running main PID"
+                process_details=$(ps -ww -o user=,group=,pid=,cmd= -p "$main_pid")
+                printf '%s\n' "$process_details"
+
+                queue_subscription_is_valid "$queue_details"$'\n'"$process_details" || abort "laravel-queue.service is not subscribed to [${expected_queue_list}]"
+                echo "✓ laravel-queue.service subscribes to [${expected_queue_list}]"
+
+                runtime_user=$(printf '%s\n' "$queue_details" | sed -n 's/^User=//p' | tr -d '[:space:]')
+                if [ -z "$runtime_user" ]; then
+                  runtime_user=$(printf '%s\n' "$process_details" | awk '{print $1}')
+                fi
+              elif pgrep -fa 'artisan horizon' >/tmp/horizon-closeout.out; then
+                cat /tmp/horizon-closeout.out
+                runtime_user=$(ps -o user= -p "$(pgrep -f 'artisan horizon' | head -n 1)" | tr -d '[:space:]')
+                echo "✓ Horizon detected; explicit queue subscription audit skipped"
+              else
+                abort "no supervised queue worker or Horizon process detected"
+              fi
+
+              [ -n "$runtime_user" ] || abort "unable to determine runtime user for queue worker verification"
+              verify_runtime_writability "$runtime_user"
+            else
+              echo "Queue connection is sync; runtime worker verification skipped"
+            fi
+
+            echo "Scheduler verification"
+            crontab -l || true
+            scheduler_is_configured || abort "scheduler must be configured via the expected crontab entry or active timer [$scheduler_timer_unit]"
+
+            echo "Failed-jobs triage"
+            failed_jobs_before=$(failed_jobs_count | tr -d '[:space:]')
+            echo "failed_jobs before cleanup: $failed_jobs_before"
+            print_failed_jobs_summary
+            php artisan queue:failed --no-ansi || true
+
+            if [ "$CLEAR_FAILED_JOBS_BACKLOG" = "true" ] && [ "$failed_jobs_before" -gt 0 ]; then
+              echo "Clearing previously triaged failed_jobs backlog"
+              php artisan queue:flush --no-interaction
+            else
+              echo "Failed-jobs backlog clear skipped"
+            fi
+
+            failed_jobs_after=$(failed_jobs_count | tr -d '[:space:]')
+            echo "failed_jobs after cleanup: $failed_jobs_after"
+
+            if [ "$CLEAR_FAILED_JOBS_BACKLOG" = "true" ] && [ "$failed_jobs_before" -gt 0 ] && [ "$failed_jobs_after" -ne 0 ]; then
+              abort "failed_jobs backlog was not fully cleared"
+            fi
+
+            echo "✓ Manual staging closeout verification passed"
           ENDSSH
 
       - name: Setup Node for browser smoke
