@@ -843,7 +843,7 @@ jobs:
 
             if [ "$CLEAR_FAILED_JOBS_BACKLOG" = "true" ] && [ "$failed_jobs_before" -gt 0 ]; then
               echo "Clearing previously triaged failed_jobs backlog"
-              php artisan queue:flush --force --no-interaction
+              php artisan queue:flush --no-interaction
             else
               echo "Failed-jobs backlog clear skipped"
             fi
