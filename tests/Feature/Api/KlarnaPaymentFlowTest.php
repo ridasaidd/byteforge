@@ -63,6 +63,26 @@ class KlarnaPaymentFlowTest extends TestCase
     }
 
     #[Test]
+    public function create_session_normalizes_order_line_names(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activatePaymentsAddonForTenant($tenant);
+        $this->upsertKlarnaProvider($tenant);
+
+        $payload = $this->sessionPayload();
+        $payload['order_lines'][0]['name'] = "  <b>Order   item</b>\t";
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/payments/klarna/create-session'), $payload);
+
+        $response->assertOk();
+
+        $payment = Payment::query()->findOrFail((int) $response->json('payment_id'));
+
+        $this->assertSame('Order item', data_get($payment->metadata, 'order_lines.0.name'));
+    }
+
+    #[Test]
     public function authorize_and_capture_flow_updates_payment_status_and_records_analytics(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();

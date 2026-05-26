@@ -248,7 +248,7 @@ class PaymentController extends Controller
 
     public function createKlarnaSession(Request $request): JsonResponse
     {
-        $validated = Validator::make($request->all(), [
+        $validated = Validator::make($this->normalizeKlarnaSessionInput($request->all()), [
             'amount' => ['required', 'integer', 'min:1'],
             'currency' => ['required', 'string', 'size:3'],
             'locale' => ['required', 'string', 'max:10'],
@@ -403,6 +403,30 @@ class PaymentController extends Controller
             ->where('provider', $provider)
             ->active()
             ->firstOrFail();
+    }
+
+    /**
+     * @param  array<string, mixed>  $input
+     * @return array<string, mixed>
+     */
+    private function normalizeKlarnaSessionInput(array $input): array
+    {
+        if (! isset($input['order_lines']) || ! is_array($input['order_lines'])) {
+            return $input;
+        }
+
+        $input['order_lines'] = array_map(function (mixed $line): mixed {
+            if (! is_array($line)) {
+                return $line;
+            }
+
+            return ($this->normalizeInputFields)(
+                $line,
+                singleLineFields: ['name'],
+            );
+        }, $input['order_lines']);
+
+        return $input;
     }
 
     private function resolveCurrentTenant(): Tenant
