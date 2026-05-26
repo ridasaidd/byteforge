@@ -81,6 +81,11 @@ Primary branch: `main`
 - The staging deployment plan now also includes a minimum bootstrap runbook
   snippet with concrete commands for deploy-user provisioning, writable
   runtime paths, OAuth key modes, and scheduler setup.
+- Staging booking operations were manually verified on 2026-05-26: expired
+  booking holds were cleaned up, `booking.reminder_24h` notifications were
+  queued and delivered to Mailtrap, and the staging systemd worker was
+  confirmed healthy once `laravel-queue.service` subscribed to
+  `notifications,default` under the writable `www-data` runtime user.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
   booking customer fields, payment human-text fields, auth name/email
@@ -181,7 +186,10 @@ Current booking follow-ups worth tracking now are:
   stay-time defaults plus availability checks, and focused Playwright browser
   coverage now exists for the tenant range-mode create flow
 - booking reminder/queue-worker operational expectations should stay explicit
-  in environment and deployment docs so reminder delivery remains reliable
+  in environment and deployment docs so reminder delivery remains reliable;
+  staging verification on 2026-05-26 confirmed the path works when the
+  supervised worker listens to `notifications,default` and the runtime user
+  can write Laravel log/cache paths
 
 ### Quotes follow-ups
 

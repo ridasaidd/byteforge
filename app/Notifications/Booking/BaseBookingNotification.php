@@ -20,8 +20,9 @@ use Illuminate\Notifications\Notification;
  *  - buildMailMessage() — return a configured MailMessage
  *
  * Idempotency: via() returns [] if a booking_notifications row for this
- * (booking_id, type, email) already exists — preventing duplicate sends.
- * On first send, toMail() records the row then returns the MailMessage.
+ * booking/type/channel combination already exists — preventing duplicate sends.
+ * Successful mail delivery records the row via a NotificationSent listener,
+ * so failed queued sends remain retryable.
  *
  * The tenant domain is passed at construction so it survives queue serialisation.
  */
@@ -55,25 +56,22 @@ abstract class BaseBookingNotification extends Notification implements ShouldQue
      */
     final public function via(mixed $notifiable): array
     {
-        $alreadySent = BookingNotification::where('booking_id', $this->booking->id)
-            ->where('type', $this->notificationType())
-            ->where('channel', BookingNotification::CHANNEL_EMAIL)
-            ->exists();
+        $alreadySent = $this->sentNotificationQuery()->exists();
 
         return $alreadySent ? [] : ['mail'];
     }
 
     final public function toMail(mixed $notifiable): MailMessage
     {
-        BookingNotification::create([
-            'booking_id' => $this->booking->id,
-            'type'       => $this->notificationType(),
-            'channel'    => BookingNotification::CHANNEL_EMAIL,
-            'recipient'  => $this->recipientType(),
-            'sent_at'    => now(),
-        ]);
-
         return $this->buildMailMessage($notifiable);
+    }
+
+    public function recordSentNotification(): void
+    {
+        BookingNotification::query()->firstOrCreate(
+            $this->sentNotificationAttributes(),
+            ['sent_at' => now()]
+        );
     }
 
     /** URL for the customer's "manage my booking" page. */
@@ -81,5 +79,23 @@ abstract class BaseBookingNotification extends Notification implements ShouldQue
     {
         $token = $this->booking->management_token;
         return "https://{$this->tenantDomain}/booking/manage/{$token}";
+    }
+
+    private function sentNotificationQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return BookingNotification::query()->where($this->sentNotificationAttributes());
+    }
+
+    /**
+     * @return array{booking_id: int, type: string, channel: string, recipient: string}
+     */
+    private function sentNotificationAttributes(): array
+    {
+        return [
+            'booking_id' => $this->booking->id,
+            'type' => $this->notificationType(),
+            'channel' => BookingNotification::CHANNEL_EMAIL,
+            'recipient' => $this->recipientType(),
+        ];
     }
 }
