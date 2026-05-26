@@ -41,6 +41,9 @@ What exists today:
   and billing catalog rows so newly shipped capabilities become usable on
   staging without a full reseed
 - deploy workflow now also runs post-deploy Playwright central auth browser smoke
+- deploy workflow now also runs a remote post-deploy runtime audit that checks
+  scheduler registration, performs one explicit `schedule:run` pass, and fails
+  if `failed_jobs` is non-empty afterward
 
 Implication:
 
@@ -167,6 +170,8 @@ Expected outcomes:
 - `php artisan queue:failed` is empty or intentionally triaged
 - scheduler invocation exists through cron or an equivalent supervisor/timer
 - runtime paths and OAuth keys still match the deploy-user baseline above
+- one explicit post-deploy `php artisan schedule:run` pass completes and the
+  expected booking/support scheduled commands are present in `schedule:list`
 
 ### Bootstrap Runbook Snippet
 
@@ -178,6 +183,12 @@ Preferred repo-owned helper:
 ```bash
 APP_PATH=/var/www/byteforge DEPLOY_USER=deploy WEB_GROUP=www-data bash scripts/staging/bootstrap_runtime.sh
 ```
+
+The helper also audits detected `queue:work` processes against the staging
+baseline queue list and defaults that expectation to `notifications,default`.
+It also requires either the repo-owned scheduler crontab entry or an active
+systemd timer, defaulting to `laravel-scheduler.timer` when a timer-based
+setup is used.
 
 Assumptions:
 
