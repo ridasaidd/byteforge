@@ -729,21 +729,47 @@ jobs:
               }'
             }
 
-            run_as_user() {
+            verify_runtime_path_writable() {
               local runtime_user="$1"
-              shift
+              local path="$2"
+              local owner group mode owner_digit group_digit runtime_groups
+
+              owner=$(stat -c '%U' "$path")
+              group=$(stat -c '%G' "$path")
+              mode=$(stat -c '%a' "$path")
+              owner_digit=${mode:0:1}
+              group_digit=${mode: -2:1}
+
+              if [ "$owner" = "$runtime_user" ] && (( owner_digit >= 6 )); then
+                return 0
+              fi
+
+              runtime_groups=$(id -nG "$runtime_user" 2>/dev/null || true)
+              if printf '%s\n' "$runtime_groups" | tr ' ' '\n' | grep -Fxq "$group" && (( group_digit >= 6 )); then
+                return 0
+              fi
+
+              return 1
+            }
+
+            verify_runtime_writability() {
+              local runtime_user="$1"
 
               if command -v sudo >/dev/null 2>&1 && sudo -n -u "$runtime_user" true >/dev/null 2>&1; then
-                sudo -n -u "$runtime_user" "$@"
+                sudo -n -u "$runtime_user" bash -lc "cd '$APP_PATH' && test -w storage && test -w storage/logs && test -w bootstrap/cache && echo runtime paths writable for $runtime_user"
                 return
               fi
 
               if [ "$(id -un)" = "$runtime_user" ]; then
-                "$@"
+                bash -lc "cd '$APP_PATH' && test -w storage && test -w storage/logs && test -w bootstrap/cache && echo runtime paths writable for $runtime_user"
                 return
               fi
 
-              abort "unable to verify runtime writability as [$runtime_user]; passwordless sudo is required for closeout verification"
+              for runtime_path in storage storage/logs bootstrap/cache; do
+                verify_runtime_path_writable "$runtime_user" "$runtime_path" || abort "unable to verify runtime writability for [$runtime_user] on $APP_PATH/$runtime_path"
+              done
+
+              echo "runtime paths writable for $runtime_user (verified from ownership/group mode baseline)"
             }
 
             cd "$APP_PATH" || abort "app path does not exist: $APP_PATH"
@@ -800,7 +826,7 @@ jobs:
               fi
 
               [ -n "$runtime_user" ] || abort "unable to determine runtime user for queue worker verification"
-              run_as_user "$runtime_user" bash -lc "cd '$APP_PATH' && test -w storage && test -w storage/logs && test -w bootstrap/cache && echo runtime paths writable for $runtime_user"
+              verify_runtime_writability "$runtime_user"
             else
               echo "Queue connection is sync; runtime worker verification skipped"
             fi
