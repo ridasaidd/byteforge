@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Notifications\Booking\BaseBookingNotification;
 use App\Models\Navigation;
 use App\Models\Tenant;
 use App\Models\TenantAddon;
@@ -9,6 +10,8 @@ use App\Models\ThemePart;
 use App\Observers\NavigationObserver;
 use App\Observers\TenantAddonObserver;
 use App\Observers\ThemePartObserver;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -87,6 +90,18 @@ class AppServiceProvider extends ServiceProvider
                 ->forTenant((string) $scope->id)
                 ->whereHas('addon', fn ($q) => $q->where('feature_flag', 'estimates_quotes'))
                 ->exists();
+        });
+
+        Event::listen(NotificationSent::class, function (NotificationSent $event): void {
+            if ($event->channel !== 'mail') {
+                return;
+            }
+
+            if (! $event->notification instanceof BaseBookingNotification) {
+                return;
+            }
+
+            $event->notification->recordSentNotification();
         });
 
         // Identity-aware login rate limiter.

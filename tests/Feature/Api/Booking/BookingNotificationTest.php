@@ -19,6 +19,8 @@ use App\Notifications\Booking\BookingConfirmedNotification;
 use App\Notifications\Booking\BookingReceivedNotification;
 use App\Notifications\Booking\BookingRescheduledNotification;
 use App\Notifications\Booking\TenantNewBookingNotification;
+use Illuminate\Notifications\AnonymousNotifiable;
+use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Support\Facades\Notification;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -299,6 +301,55 @@ class BookingNotificationTest extends TestCase
         $channels = $notification->via(new \Illuminate\Notifications\AnonymousNotifiable);
 
         $this->assertEmpty($channels, 'via() should return [] when notification already sent');
+    }
+
+    #[Test]
+    public function booking_notification_row_is_recorded_only_after_successful_mail_send_event(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $service  = $this->makeService((string) $tenant->id);
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $booking = Booking::factory()->create([
+            'tenant_id'        => (string) $tenant->id,
+            'service_id'       => $service->id,
+            'resource_id'      => $resource->id,
+            'status'           => Booking::STATUS_PENDING,
+            'starts_at'        => now()->addDay(),
+            'ends_at'          => now()->addDay()->addHour(),
+            'customer_email'   => 'alice@example.com',
+            'customer_name'    => 'Alice Test',
+            'management_token' => Booking::generateToken(),
+            'token_expires_at' => now()->addMonth(),
+        ]);
+
+        $notification = new BookingReceivedNotification($booking, 'tenant-one.dev.byteforge.se');
+        $notifiable = new AnonymousNotifiable();
+        $notifiable->route('mail', ['alice@example.com' => 'Alice Test']);
+
+        $notification->toMail($notifiable);
+
+        $this->assertDatabaseMissing('booking_notifications', [
+            'booking_id' => $booking->id,
+            'type' => 'booking.received',
+            'channel' => BookingNotification::CHANNEL_EMAIL,
+            'recipient' => BookingNotification::RECIPIENT_CUSTOMER,
+        ]);
+
+        $this->assertSame(['mail'], $notification->via($notifiable));
+
+        event(new NotificationSent($notifiable, $notification, 'mail'));
+
+        $this->assertDatabaseHas('booking_notifications', [
+            'booking_id' => $booking->id,
+            'type' => 'booking.received',
+            'channel' => BookingNotification::CHANNEL_EMAIL,
+            'recipient' => BookingNotification::RECIPIENT_CUSTOMER,
+        ]);
+
+        $this->assertEmpty($notification->via($notifiable));
     }
 
     // ─── Payment-path notifications ───────────────────────────────────────────
