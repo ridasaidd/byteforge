@@ -1,6 +1,6 @@
 # Development and Staging Readiness
 
-Last updated: 2026-05-25
+Last updated: 2026-05-26
 Status: working baseline
 Audience: engineering
 
@@ -125,8 +125,8 @@ Actions:
 
 1. Move Vite dev-server host, CORS, and allowed-host settings behind env vars.
 2. Make `TENANCY_CENTRAL_DOMAINS` explicit in each environment.
-3. Update `.env.example` so shared-development defaults no longer suggest
-   sqlite-only local assumptions.
+3. Keep `.env.example` and `.env.staging.example` aligned with the actual
+  shared-development and staging assumptions.
 4. Add a minimal environment matrix for dev, staging, and production.
 
 Expected result:
@@ -218,6 +218,9 @@ These points are verified from the current repository and active environment.
 Implication:
 
 - sqlite is an example/default bootstrap convenience only
+- the repo now also owns `.env.staging.example` as the canonical starting
+  template for staging host-only auth cookies, async queue delivery, and
+  staging Mailtrap SMTP settings
 - the example env no longer matches the actual shared development server
 
 ### Mail

@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-25
+Last verified: 2026-05-26
 
 This roadmap is intentionally future-facing. Completed work should live in
 [CURRENT_STATUS.md](CURRENT_STATUS.md) and archived phase documents, not here.
@@ -26,7 +26,8 @@ Goal:
 Likely focus areas:
 
 - remove remaining staging deploy permission drift (app/storage/cache ownership)
-- keep deploy-user SSH/Git bootstrap assumptions explicit
+- keep `.env.staging.example` and `scripts/staging/bootstrap_runtime.sh`
+  aligned with the real staging runtime contract
 - preserve test-domain parity across backend tests and Playwright auth smoke
 - avoid adding new skipped tests in default CI suites
 
@@ -143,13 +144,16 @@ Primary docs:
 - [plans/BOOKING_SECURITY_FINDINGS.md](plans/BOOKING_SECURITY_FINDINGS.md)
 - [plans/BOOKING_GUEST_RESCHEDULING_PLAN.md](plans/BOOKING_GUEST_RESCHEDULING_PLAN.md)
 
+Current state on `main`:
+
+- guest self-service reschedule flow is implemented
+- tenant manual booking creation is availability-guided for slot and range modes
+- tenant-configured reminder windows, post-delivery notification recording,
+  and staging reminder/queue-worker verification are implemented and validated
+
 Likely focus areas:
 
-- guest self-service reschedule flow
-- booking reminder/queue-worker operational verification and documentation refresh after the booking UX slices landed
 - booking flow UX improvements that reuse existing availability and notification paths
-- notification consistency improvements
-- reminder and queue-worker operational verification/documentation
 - ongoing security hardening and focused regression coverage
 
 ### 5. Environment Hardening and Production-Like Staging

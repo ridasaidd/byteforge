@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-25
+Last verified: 2026-05-26
 Primary branch: `main`
 
 ## Snapshot
@@ -81,11 +81,16 @@ Primary branch: `main`
 - The staging deployment plan now also includes a minimum bootstrap runbook
   snippet with concrete commands for deploy-user provisioning, writable
   runtime paths, OAuth key modes, and scheduler setup.
+- The repo now also owns `.env.staging.example` for the expected staging
+  auth/session/queue/mail posture and `scripts/staging/bootstrap_runtime.sh`
+  for repeatable host bootstrap and runtime verification.
 - Staging booking operations were manually verified on 2026-05-26: expired
-  booking holds were cleaned up, `booking.reminder_24h` notifications were
-  queued and delivered to Mailtrap, and the staging systemd worker was
-  confirmed healthy once `laravel-queue.service` subscribed to
-  `notifications,default` under the writable `www-data` runtime user.
+  booking holds were cleaned up, `booking.reminder_24h` and
+  `booking.reminder_2h` notifications were queued and delivered to Mailtrap,
+  booking notification rows were confirmed to be recorded after successful
+  delivery, and the deploy workflow's post-`queue:restart` worker check was
+  validated against the supervised `laravel-queue.service` process using the
+  writable `www-data` runtime user.
 - Shared input normalization now exists via
   `app/Actions/Api/NormalizeInputFieldsAction.php` and is currently reused by
   booking customer fields, payment human-text fields, auth name/email
@@ -185,11 +190,12 @@ Current booking follow-ups worth tracking now are:
   range mode uses check-in/check-out dates resolved through tenant/resource
   stay-time defaults plus availability checks, and focused Playwright browser
   coverage now exists for the tenant range-mode create flow
-- booking reminder/queue-worker operational expectations should stay explicit
-  in environment and deployment docs so reminder delivery remains reliable;
-  staging verification on 2026-05-26 confirmed the path works when the
-  supervised worker listens to `notifications,default` and the runtime user
-  can write Laravel log/cache paths
+- booking reminder delivery semantics and staging queue-worker verification
+  are now merged on `main`: tenant-configured reminder windows, post-delivery
+  notification recording, clean deploy worker detection after
+  `php artisan queue:restart`, and `2h` reminder email copy were all verified
+  on staging on 2026-05-26; keep the worker and runtime-path expectations
+  explicit in environment and deployment docs so this path stays reliable
 
 ### Quotes follow-ups
 

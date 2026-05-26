@@ -132,6 +132,9 @@ Notes:
   `laravel-queue.service` was configured with
   `queue:work --queue=notifications,default ...` under the writable
   `www-data` runtime user.
+- A later 2026-05-26 staging pass also confirmed that the deploy workflow's
+  post-`queue:restart` worker detection stayed green and that a real
+  `booking.reminder_2h` message rendered the expected `in about 2 hours` copy.
 - For future staging booking checks, verify the worker configuration first:
 
 ```bash
