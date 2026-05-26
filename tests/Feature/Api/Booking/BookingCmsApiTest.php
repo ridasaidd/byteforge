@@ -227,6 +227,30 @@ class BookingCmsApiTest extends TestCase
     }
 
     #[Test]
+    public function resource_block_reason_is_normalized_on_create(): void
+    {
+        $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
+        $this->activateBookingAddon($tenant);
+
+        $resource = $this->makeResource((string) $tenant->id);
+
+        $response = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->url("/api/booking/resources/{$resource->id}/blocks"), [
+                'start_date' => '2026-06-10',
+                'end_date' => '2026-06-12',
+                'reason' => "  <b>Staff   vacation</b>\t",
+            ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.reason', 'Staff vacation');
+
+        $this->assertDatabaseHas('booking_resource_blocks', [
+            'resource_id' => $resource->id,
+            'reason' => 'Staff vacation',
+        ]);
+    }
+
+    #[Test]
     public function person_resource_normalizes_capacity_and_label(): void
     {
         $tenant = Tenant::query()->where('slug', 'tenant-one')->firstOrFail();
