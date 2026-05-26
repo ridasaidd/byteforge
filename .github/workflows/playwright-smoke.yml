@@ -34,8 +34,12 @@ jobs:
           echo "APP_URL=http://byteforge.se:8000" >> .env
           echo "TENANCY_CENTRAL_DOMAINS=byteforge.se,localhost,127.0.0.1" >> .env
           echo "TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE=:tenant.byteforge.se" >> .env
+          echo "DB_CONNECTION=sqlite" >> .env
+          echo "DB_DATABASE=$(pwd)/database/database.sqlite" >> .env
           echo "SESSION_DRIVER=file" >> .env
+          echo "SESSION_SECURE_COOKIE=false" >> .env
           echo "CACHE_STORE=file" >> .env
+          echo "QUEUE_CONNECTION=sync" >> .env
           echo "TENANCY_ASSET_HELPER_TENANCY=false" >> .env
 
       - name: Create Laravel storage directories
@@ -130,8 +134,12 @@ jobs:
           echo "APP_URL=http://byteforge.se:8000" >> .env
           echo "TENANCY_CENTRAL_DOMAINS=byteforge.se,localhost,127.0.0.1" >> .env
           echo "TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE=:tenant.byteforge.se" >> .env
+          echo "DB_CONNECTION=sqlite" >> .env
+          echo "DB_DATABASE=$(pwd)/database/database.sqlite" >> .env
           echo "SESSION_DRIVER=file" >> .env
+          echo "SESSION_SECURE_COOKIE=false" >> .env
           echo "CACHE_STORE=file" >> .env
+          echo "QUEUE_CONNECTION=sync" >> .env
           echo "TENANCY_ASSET_HELPER_TENANCY=false" >> .env
 
       - name: Create Laravel storage directories
