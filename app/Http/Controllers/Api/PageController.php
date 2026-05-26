@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Actions\Api\NormalizeInputFieldsAction;
+use App\Http\Requests\Api\Tenant\CreatePageRequest;
+use App\Http\Requests\Api\Tenant\UpdatePageRequest;
 use App\Models\Page;
 use App\Models\Theme;
 use App\Http\Controllers\Controller;
@@ -19,7 +20,6 @@ use Illuminate\Validation\Rule;
 class PageController extends Controller
 {
     public function __construct(
-        private readonly NormalizeInputFieldsAction $normalizeInputFields,
         private readonly PageCssService   $pageCssService,
         private readonly AnalyticsService $analytics
     ) {}
@@ -106,34 +106,11 @@ class PageController extends Controller
     /**
      * Store a newly created page
      */
-    public function store(Request $request): JsonResponse
+    public function store(CreatePageRequest $request): JsonResponse
     {
         $tenantId = $this->getTenantId();
 
-        $validated = validator(($this->normalizeInputFields)(
-            $request->all(),
-            singleLineFields: ['title'],
-        ), [
-            'title' => 'required|string|max:255',
-            'slug' => [
-                'nullable',
-                'string',
-                'max:255',
-                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-                Rule::unique('pages')->where(function ($query) use ($tenantId) {
-                    if ($tenantId === null) {
-                        return $query->whereNull('tenant_id');
-                    }
-                    return $query->where('tenant_id', $tenantId);
-                }),
-            ],
-            'page_type' => 'required|string|in:general,home,about,contact,blog,service,product,custom',
-            'puck_data' => 'nullable|array',
-            'meta_data' => 'nullable|array',
-            'status' => 'required|string|in:draft,published,archived',
-            'is_homepage' => 'boolean',
-            'sort_order' => 'nullable|integer',
-        ])->validate();
+        $validated = $request->validated();
 
         // Auto-generate slug if not provided
         if (empty($validated['slug'])) {
@@ -237,7 +214,7 @@ class PageController extends Controller
     /**
      * Update the specified page
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdatePageRequest $request, $id): JsonResponse
     {
         $tenantId = $this->getTenantId();
         $query = $tenantId === null
@@ -246,32 +223,7 @@ class PageController extends Controller
 
         $page = $query->findOrFail($id);
 
-        $validated = validator(($this->normalizeInputFields)(
-            $request->all(),
-            singleLineFields: ['title'],
-        ), [
-            'title' => 'sometimes|required|string|max:255',
-            'slug' => [
-                'sometimes',
-                'required',
-                'string',
-                'max:255',
-                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-                Rule::unique('pages')->where(function ($query) use ($tenantId) {
-                    if ($tenantId === null) {
-                        return $query->whereNull('tenant_id');
-                    }
-                    return $query->where('tenant_id', $tenantId);
-                })->ignore($id),
-            ],
-            'page_type' => 'sometimes|required|string|in:general,home,about,contact,blog,service,product,custom',
-            'puck_data' => 'nullable|array',
-            'page_css' => 'nullable|string',
-            'meta_data' => 'nullable|array',
-            'status' => 'sometimes|required|string|in:draft,published,archived',
-            'is_homepage' => 'boolean',
-            'sort_order' => 'nullable|integer',
-        ])->validate();
+        $validated = $request->validated();
 
         // Set published_at when status changes to published
         if (isset($validated['status']) && $validated['status'] === 'published' && !$page->published_at) {
