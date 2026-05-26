@@ -47,6 +47,9 @@ What exists today:
   pre-existing backlog)
 - when backlog exists, the runtime audit now prints a compact triage summary
   (total rows, oldest/newest `failed_at`, and top recent failed job classes)
+- deploy workflow SSH now uses explicit non-interactive `ssh -T ... 'bash -se'`
+  with quieter client logging so pseudo-terminal warnings and other low-signal
+  client noise do not obscure real deploy failures
 
 Implication:
 

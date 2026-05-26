@@ -40,10 +40,10 @@ jobs:
           chmod 600 ~/.ssh/staging_key
 
           # Add staging host to known_hosts
-          ssh-keyscan -H $STAGING_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
           # Deploy via SSH
-          ssh -o BatchMode=yes -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" << 'ENDSSH'
+          ssh -T -o BatchMode=yes -o LogLevel=ERROR -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" 'bash -se' << 'ENDSSH'
             APP_PATH=/var/www/byteforge
             DEPLOY_GIT_KEY="$HOME/.ssh/github_deploy_key"
 
@@ -491,7 +491,7 @@ jobs:
           chmod 600 ~/.ssh/staging_key
           ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          ssh -o BatchMode=yes -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" << 'ENDSSH'
+          ssh -T -o BatchMode=yes -o LogLevel=ERROR -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" 'bash -se' << 'ENDSSH'
             APP_PATH=/var/www/byteforge
 
             cd "$APP_PATH" || exit 1
