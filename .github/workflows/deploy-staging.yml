@@ -611,11 +611,14 @@ jobs:
           chmod 600 ~/.ssh/staging_key
           ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-          ssh -T -o BatchMode=yes -o LogLevel=ERROR -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" 'bash -se' <<ENDSSH
+          closeout_clear_flag=$(printf '%q' "$CLEAR_FAILED_JOBS_BACKLOG")
+          closeout_scheduler_unit=$(printf '%q' "${SCHEDULER_TIMER_UNIT:-laravel-scheduler.timer}")
+
+          ssh -T -o BatchMode=yes -o LogLevel=ERROR -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" "CLEAR_FAILED_JOBS_BACKLOG=$closeout_clear_flag SCHEDULER_TIMER_UNIT=$closeout_scheduler_unit bash -se" << 'ENDSSH'
             set -euo pipefail
 
             APP_PATH=/var/www/byteforge
-            CLEAR_FAILED_JOBS_BACKLOG="${CLEAR_FAILED_JOBS_BACKLOG}"
+            CLEAR_FAILED_JOBS_BACKLOG="${CLEAR_FAILED_JOBS_BACKLOG:-false}"
             expected_queue_list="notifications,default"
             expected_scheduler_cron="* * * * * cd $APP_PATH && php artisan schedule:run >> /dev/null 2>&1"
             scheduler_timer_unit="${SCHEDULER_TIMER_UNIT:-laravel-scheduler.timer}"
