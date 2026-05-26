@@ -240,10 +240,53 @@ jobs:
             queue_connection=$(php artisan tinker --execute="dump(config('queue.default'));" | tail -n 1 | tr -d '[:space:]')
 
             if [ "$queue_connection" != "sync" ]; then
-              if pgrep -fa "artisan queue:work" >/tmp/queue-worker.out || pgrep -fa "artisan horizon" >/tmp/queue-worker.out; then
-                echo "✓ Queue worker detected for [$queue_connection]"
-                cat /tmp/queue-worker.out
-              else
+              worker_detected=0
+
+              for attempt in $(seq 1 12); do
+                if pgrep -fa "artisan queue:work" >/tmp/queue-worker.out || pgrep -fa "artisan horizon" >/tmp/queue-worker.out; then
+                  echo "✓ Queue worker process detected for [$queue_connection]"
+                  cat /tmp/queue-worker.out
+                  worker_detected=1
+                  break
+                fi
+
+                if command -v systemctl >/dev/null 2>&1; then
+                  if systemctl is-active --quiet laravel-queue.service; then
+                    echo "✓ laravel-queue.service is active for [$queue_connection]"
+                    systemctl show laravel-queue.service -p ActiveState -p SubState -p MainPID -p ExecStart
+                    main_pid=$(systemctl show -p MainPID --value laravel-queue.service)
+                    if [ -n "$main_pid" ] && [ "$main_pid" != "0" ]; then
+                      ps -ww -o user=,group=,pid=,cmd= -p "$main_pid"
+                    fi
+                    worker_detected=1
+                    break
+                  fi
+
+                  if systemctl is-active --quiet laravel-horizon.service; then
+                    echo "✓ laravel-horizon.service is active for [$queue_connection]"
+                    systemctl show laravel-horizon.service -p ActiveState -p SubState -p MainPID -p ExecStart
+                    main_pid=$(systemctl show -p MainPID --value laravel-horizon.service)
+                    if [ -n "$main_pid" ] && [ "$main_pid" != "0" ]; then
+                      ps -ww -o user=,group=,pid=,cmd= -p "$main_pid"
+                    fi
+                    worker_detected=1
+                    break
+                  fi
+                fi
+
+                if [ "$attempt" -lt 12 ]; then
+                  echo "Waiting for queue worker to come back after queue:restart (attempt $attempt/12)"
+                  sleep 5
+                fi
+              done
+
+              if [ "$worker_detected" -ne 1 ]; then
+                echo "Queue worker diagnostics after queue:restart:"
+                pgrep -fa "artisan queue:work|artisan horizon" || true
+                if command -v systemctl >/dev/null 2>&1; then
+                  systemctl show laravel-queue.service -p LoadState -p ActiveState -p SubState -p MainPID -p ExecStart || true
+                  systemctl show laravel-horizon.service -p LoadState -p ActiveState -p SubState -p MainPID -p ExecStart || true
+                fi
                 echo "Deployment aborted: queue connection [$queue_connection] requires a running worker, but none was detected after queue:restart"
                 exit 1
               fi
