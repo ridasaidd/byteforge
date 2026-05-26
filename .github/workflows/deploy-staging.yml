@@ -238,6 +238,43 @@ jobs:
             php artisan queue:restart
 
             queue_connection=$(php artisan tinker --execute="echo config('queue.default');" | tr -d '[:space:]')
+            expected_queue_list="notifications,default"
+            expected_scheduler_cron="* * * * * cd $APP_PATH && php artisan schedule:run >> /dev/null 2>&1"
+            scheduler_timer_unit="${SCHEDULER_TIMER_UNIT:-laravel-scheduler.timer}"
+
+            queue_subscription_is_valid() {
+              local details="$1"
+
+              printf '%s\n' "$details" | grep -Eq -- "--queue(=|[[:space:]])${expected_queue_list}([[:space:]]|$)"
+            }
+
+            scheduler_is_configured() {
+              local deploy_user_crontab=""
+
+              deploy_user_crontab=$(crontab -l 2>/dev/null || true)
+              if printf '%s\n' "$deploy_user_crontab" | grep -Fqx "$expected_scheduler_cron"; then
+                echo "✓ Scheduler crontab entry detected"
+                return 0
+              fi
+
+              if command -v sudo >/dev/null 2>&1; then
+                deploy_user_crontab=$(sudo -u "$USER" crontab -l 2>/dev/null || true)
+                if printf '%s\n' "$deploy_user_crontab" | grep -Fqx "$expected_scheduler_cron"; then
+                  echo "✓ Scheduler crontab entry detected for deploy user"
+                  return 0
+                fi
+              fi
+
+              if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files "$scheduler_timer_unit" >/dev/null 2>&1; then
+                if systemctl is-active --quiet "$scheduler_timer_unit"; then
+                  echo "✓ Scheduler timer is active: $scheduler_timer_unit"
+                  systemctl show "$scheduler_timer_unit" -p LoadState -p ActiveState -p SubState -p UnitFileState
+                  return 0
+                fi
+              fi
+
+              return 1
+            }
 
             if [ "$queue_connection" != "sync" ]; then
               worker_detected=0
@@ -246,6 +283,19 @@ jobs:
                 if pgrep -fa "artisan queue:work" >/tmp/queue-worker.out || pgrep -fa "artisan horizon" >/tmp/queue-worker.out; then
                   echo "✓ Queue worker process detected for [$queue_connection]"
                   cat /tmp/queue-worker.out
+
+                  if grep -q "artisan horizon" /tmp/queue-worker.out; then
+                    echo "✓ Horizon detected; skipping explicit queue subscription audit"
+                    worker_detected=1
+                    break
+                  fi
+
+                  if ! queue_subscription_is_valid "$(cat /tmp/queue-worker.out)"; then
+                    echo "Deployment aborted: detected queue:work process is not subscribed to [${expected_queue_list}]"
+                    exit 1
+                  fi
+
+                  echo "✓ Queue worker subscribes to [${expected_queue_list}]"
                   worker_detected=1
                   break
                 fi
@@ -253,11 +303,20 @@ jobs:
                 if command -v systemctl >/dev/null 2>&1; then
                   if systemctl is-active --quiet laravel-queue.service; then
                     echo "✓ laravel-queue.service is active for [$queue_connection]"
-                    systemctl show laravel-queue.service -p ActiveState -p SubState -p MainPID -p ExecStart
+                    systemctl show laravel-queue.service -p ActiveState -p SubState -p MainPID -p ExecStart | tee /tmp/queue-service.out
                     main_pid=$(systemctl show -p MainPID --value laravel-queue.service)
                     if [ -n "$main_pid" ] && [ "$main_pid" != "0" ]; then
-                      ps -ww -o user=,group=,pid=,cmd= -p "$main_pid"
+                      ps -ww -o user=,group=,pid=,cmd= -p "$main_pid" | tee /tmp/queue-worker-ps.out
+                    else
+                      : > /tmp/queue-worker-ps.out
                     fi
+
+                    if ! queue_subscription_is_valid "$(cat /tmp/queue-service.out)$(printf '\n')$(cat /tmp/queue-worker-ps.out)"; then
+                      echo "Deployment aborted: laravel-queue.service is running but is not subscribed to [${expected_queue_list}]"
+                      exit 1
+                    fi
+
+                    echo "✓ laravel-queue.service subscribes to [${expected_queue_list}]"
                     worker_detected=1
                     break
                   fi
@@ -292,6 +351,16 @@ jobs:
               fi
             else
               echo "Queue connection is sync; skipping queue worker process check"
+            fi
+
+            if ! scheduler_is_configured; then
+              echo "Scheduler diagnostics:"
+              crontab -l 2>/dev/null || true
+              if command -v systemctl >/dev/null 2>&1; then
+                systemctl show "$scheduler_timer_unit" -p LoadState -p ActiveState -p SubState -p UnitFileState || true
+              fi
+              echo "Deployment aborted: staging requires either the expected scheduler crontab entry or an active scheduler timer [$scheduler_timer_unit]"
+              exit 1
             fi
 
             echo "✓ Deployment to staging complete"
@@ -397,6 +466,67 @@ jobs:
           fi
 
           echo "[mail smoke] Guest magic-link request accepted for $MAIL_RECIPIENT"
+
+      - name: Post-deploy runtime scheduler and failed-jobs audit
+        env:
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_APP_PATH: /var/www/byteforge
+        run: |
+          missing=0
+          for var in STAGING_HOST STAGING_USER STAGING_SSH_KEY; do
+            if [ -z "${!var}" ]; then
+              echo "::error::Missing required secret: $var"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "Runtime audit aborted: configure required staging SSH secrets in GitHub Actions settings."
+            exit 1
+          fi
+
+          mkdir -p ~/.ssh
+          echo "$STAGING_SSH_KEY" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -H "$STAGING_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+          ssh -o BatchMode=yes -i ~/.ssh/staging_key "$STAGING_USER@$STAGING_HOST" << 'ENDSSH'
+            APP_PATH=/var/www/byteforge
+
+            cd "$APP_PATH" || exit 1
+
+            schedule_output=$(php artisan schedule:list --no-ansi 2>&1) || {
+              echo "Scheduler audit failed: php artisan schedule:list returned non-zero"
+              printf '%s\n' "$schedule_output"
+              exit 1
+            }
+
+            printf '%s\n' "$schedule_output"
+
+            for expected_command in bookings:expire-holds bookings:send-reminders support-access:expire; do
+              if ! grep -Fq "$expected_command" <<<"$schedule_output"; then
+                echo "Scheduler audit failed: expected scheduled command [$expected_command] was not listed"
+                exit 1
+              fi
+            done
+
+            echo "✓ Scheduler registration verified"
+
+            php artisan schedule:run --no-ansi
+
+            failed_jobs_count=$(php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo Illuminate\Support\Facades\Schema::hasTable("failed_jobs") ? Illuminate\Support\Facades\DB::table("failed_jobs")->count() : 0;')
+            failed_jobs_count=$(printf '%s' "$failed_jobs_count" | tr -d '[:space:]')
+
+            php artisan queue:failed --no-ansi || true
+
+            if [ "$failed_jobs_count" != "0" ]; then
+              echo "Runtime audit failed: failed_jobs contains $failed_jobs_count row(s) after post-deploy scheduler smoke"
+              exit 1
+            fi
+
+            echo "✓ Failed-jobs audit passed"
+          ENDSSH
 
       - name: Setup Node for browser smoke
         uses: actions/setup-node@v4
