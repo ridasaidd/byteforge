@@ -132,24 +132,17 @@ Primary branch: `main`
 - Phase 14 Payment x Booking Integration: implemented on `main`
 - Phase 15 Guest Authentication: implemented on `main`
 - Phase 19 System Surfaces: partially implemented on `main` (guest portal + tenant login slices)
-- CI + Staging deployment baseline: implemented on `main` (backend + frontend + auth smoke + post-deploy API + browser smoke)
+- CI + Staging deployment baseline: complete on `main` (backend + frontend + auth smoke + post-deploy API + browser smoke, plus 2026-05-26 staging host closeout verification and failed_jobs backlog clear in workflow run `26465691607`)
 
 ## Current Recommended Work Order
 
 1. Keep CI and staging deploy parity stable (backend suites + Vitest + Playwright auth smoke + deploy smoke checks).
-2. Tighten staging host operational permissions so deploy logs stay clean
-  (no intermittent file ownership/permission warnings during build/runtime).
-3. Keep deploy-user SSH/Git/bootstrap assumptions explicit, including
-  safe-directory, GitHub deploy key, queue worker expectations, and required
-  non-destructive seeders.
-4. Execute the remaining staging closeout checklist in
-  `STAGING_DEPLOYMENT_PLAN.md` rather than reopening auth implementation work.
-5. Continue the shared, field-family input normalization rollout without
+2. Continue the shared, field-family input normalization rollout without
    expanding it into blanket middleware.
-6. Continue HttpOnly auth migration closeout and operational hardening.
-7. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
-8. Do not expand support beyond the current bounded read-only workflow before launch.
-9. Keep central tenant user management narrow: membership add/change/remove
+3. Continue HttpOnly auth migration closeout and operational hardening.
+4. Keep customer accounts, password recovery, and cross-tenant SSO in a later dedicated phase rather than extending Phase 15 ad hoc.
+5. Do not expand support beyond the current bounded read-only workflow before launch.
+6. Keep central tenant user management narrow: membership add/change/remove
   only, with explicit permissions, tenant-visible audit entries, owner
   notifications, and immediate tenant refresh-session revocation on removal.
 

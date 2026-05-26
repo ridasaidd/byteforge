@@ -381,37 +381,40 @@ Operational note:
 
 ## Remaining Closeout Checklist
 
-These are the highest-value remaining staging/ops items after the now-green
-deploy/auth baseline.
+Host-level closeout verification was completed on 2026-05-26 via successful
+`Deploy to Staging` workflow_dispatch run #69 (`26465691607`). That run
+verified the deploy-user bootstrap baseline, confirmed the supervised queue and
+scheduler runtime posture, and cleared the historical `failed_jobs` backlog
+from 4 rows to 0 after recording the triage details in the workflow log.
 
 ### Server Bootstrap
 
-- [ ] confirm the deploy user can read `~/.ssh/github_deploy_key`
-- [ ] confirm the app path is trusted by git as `safe.directory`
-- [ ] confirm `storage` and `bootstrap/cache` keep the expected writable group baseline
-- [ ] confirm Passport OAuth keys are not world-accessible and stay readable by the app runtime
+- [x] confirm the deploy user can read `~/.ssh/github_deploy_key`
+- [x] confirm the app path is trusted by git as `safe.directory`
+- [x] confirm `storage` and `bootstrap/cache` keep the expected writable group baseline
+- [x] confirm Passport OAuth keys are not world-accessible and stay readable by the app runtime
 
 ### Runtime Services
 
-- [ ] confirm the queue worker or Horizon process is supervised and restarts on reboot
-- [ ] confirm the supervised queue worker listens to `notifications,default`
-- [ ] confirm the runtime user for that worker can write `storage`,
+- [x] confirm the queue worker or Horizon process is supervised and restarts on reboot
+- [x] confirm the supervised queue worker listens to `notifications,default`
+- [x] confirm the runtime user for that worker can write `storage`,
   `storage/logs`, and `bootstrap/cache`
-- [ ] confirm scheduler invocation is present and documented for staging
-- [ ] confirm `php artisan queue:failed` is part of normal post-deploy triage
-- [ ] keep failed-jobs backlog trending to zero; treat runtime-audit backlog
-  warnings as triage work, not as ignorable noise
+- [x] confirm scheduler invocation is present and documented for staging
+- [x] confirm `php artisan queue:failed` is part of normal post-deploy triage
+- [x] return the historical staging `failed_jobs` backlog to zero and treat any
+  future runtime-audit backlog warnings as triage work, not as ignorable noise
 
-### Environment Ownership
+### Ongoing Environment Ownership Constraints
 
-- [ ] keep staging auth/session env values explicitly owned outside the repo
-- [ ] keep Mailtrap Sandbox as the staging mail target unless a safer equivalent replaces it
-- [ ] keep staging hostnames, HTTPS, and tenant URLs aligned with the environment matrix
+- keep staging auth/session env values explicitly owned outside the repo
+- keep Mailtrap Sandbox as the staging mail target unless a safer equivalent replaces it
+- keep staging hostnames, HTTPS, and tenant URLs aligned with the environment matrix
 
 ### Follow-Up Noise Reduction
 
-- [ ] suppress non-actionable SSH login noise for the deploy user if it starts obscuring real deploy failures
-- [ ] only revisit on-server asset builds if build time or memory becomes a recurring deploy risk
+- suppress non-actionable SSH login noise for the deploy user if it starts obscuring real deploy failures
+- only revisit on-server asset builds if build time or memory becomes a recurring deploy risk
 
 ---
 
@@ -441,7 +444,7 @@ should still surface the exact SHA and failure step clearly.
 
 ## Immediate Next Actions
 
-1. Stabilize server-side ownership/permissions baseline (`/var/www/byteforge`, `storage`, `bootstrap/cache`) so deploy logs stay clean.
-2. Document deploy-user bootstrap requirements (GitHub deploy key path, safe.directory, `known_hosts`, queue worker presence, non-destructive seeders) as a repeatable checklist.
-3. Optionally move deployment secrets to a `staging` environment with manual approval gates.
+1. Treat the CI/staging baseline closeout as complete unless host drift or a new deploy regression reopens it.
+2. Continue the shared, field-family input normalization rollout in bounded slices.
+3. Plan the GitHub Actions JavaScript action runtime update before Node 20 runner support is removed.
 4. Keep post-deploy browser smoke and staging mail smoke green as code changes land.
