@@ -513,16 +513,28 @@ jobs:
 
             echo "✓ Scheduler registration verified"
 
+            failed_jobs_before=$(php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo Illuminate\Support\Facades\Schema::hasTable("failed_jobs") ? Illuminate\Support\Facades\DB::table("failed_jobs")->count() : 0;')
+            failed_jobs_before=$(printf '%s' "$failed_jobs_before" | tr -d '[:space:]')
+
+            echo "failed_jobs before scheduler smoke: $failed_jobs_before"
+
             php artisan schedule:run --no-ansi
 
-            failed_jobs_count=$(php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo Illuminate\Support\Facades\Schema::hasTable("failed_jobs") ? Illuminate\Support\Facades\DB::table("failed_jobs")->count() : 0;')
-            failed_jobs_count=$(printf '%s' "$failed_jobs_count" | tr -d '[:space:]')
+            failed_jobs_after=$(php -r 'require "vendor/autoload.php"; $app = require "bootstrap/app.php"; $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap(); echo Illuminate\Support\Facades\Schema::hasTable("failed_jobs") ? Illuminate\Support\Facades\DB::table("failed_jobs")->count() : 0;')
+            failed_jobs_after=$(printf '%s' "$failed_jobs_after" | tr -d '[:space:]')
+
+            echo "failed_jobs after scheduler smoke: $failed_jobs_after"
 
             php artisan queue:failed --no-ansi || true
 
-            if [ "$failed_jobs_count" != "0" ]; then
-              echo "Runtime audit failed: failed_jobs contains $failed_jobs_count row(s) after post-deploy scheduler smoke"
+            if [ "$failed_jobs_after" -gt "$failed_jobs_before" ]; then
+              new_failed_jobs=$((failed_jobs_after - failed_jobs_before))
+              echo "Runtime audit failed: failed_jobs increased by $new_failed_jobs row(s) during post-deploy scheduler smoke"
               exit 1
+            fi
+
+            if [ "$failed_jobs_after" -gt 0 ]; then
+              echo "Runtime audit warning: failed_jobs backlog exists ($failed_jobs_after row(s)) but did not increase during this deploy"
             fi
 
             echo "✓ Failed-jobs audit passed"
