@@ -237,7 +237,7 @@ jobs:
             # Restart queue worker
             php artisan queue:restart
 
-            queue_connection=$(php artisan tinker --execute="dump(config('queue.default'));" | tail -n 1 | tr -d '[:space:]')
+            queue_connection=$(php artisan tinker --execute="echo config('queue.default');" | tr -d '[:space:]')
 
             if [ "$queue_connection" != "sync" ]; then
               worker_detected=0
