@@ -244,6 +244,7 @@ Outcome:
 Current state on `main`:
 
 - system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on `main`
+- tenant login now also has focused browser coverage proving that system-surface customization and reset preserve the route-owned auth flow
 - `register`, `forgot_password`, and `reset_password` remain deferred implementation work
 - customer-account pages are not part of the delivered Phase 15 guest-auth slice
 

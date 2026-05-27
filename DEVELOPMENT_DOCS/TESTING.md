@@ -43,8 +43,9 @@ npm run test:e2e:report
 
 ### E2E Environment Notes
 
-- Default central base URL: `http://byteforge.se` (override with `PLAYWRIGHT_BASE_URL`)
-- Optional tenant smoke base URL: set `PLAYWRIGHT_TENANT_BASE_URL` (example: `http://tenant-one.byteforge.se`)
+- Default central base URL: loaded from `.env` `APP_URL` when present (fallback: `http://localhost`); override with `PLAYWRIGHT_BASE_URL`
+- Default tenant smoke base URL: derived from `.env` `TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE` using seeded tenant `tenant-one`; override with `PLAYWRIGHT_TENANT_BASE_URL`
+- Optional tenant selector for local defaults: set `PLAYWRIGHT_TENANT_KEY` or `PLAYWRIGHT_TENANT_SLUG` to switch the derived tenant host without exporting a full URL
 - Optional web server command: set `PLAYWRIGHT_WEB_SERVER_COMMAND` if you want Playwright to start the app automatically
 - Console-error allowlist override: set `PLAYWRIGHT_CONSOLE_ALLOWLIST` with comma-separated regex fragments
 - Optional credential overrides for authenticated flows:
@@ -119,6 +120,7 @@ Notes:
 - `npm run test:http-integration` is the CI-aligned Node HTTP lane; it now exercises the live central auth, authorization/permissions, superadmin user-management, and tenant admin API specs under `tests/integration/` against a booted Laravel server
 - the central auth spec skips cleanly when the configured base URL does not actually serve the login page, which avoids false-negative localhost/Apache 404 failures
 - when running the tenant spec locally, only the owner credentials are required for this suite
+- if local tenant or central login returns a Passport key readability error even though the key files exist, check the file mode on `storage/oauth-private.key`; Apache/FPM setups may need it group-readable (for example `0640`) after `php artisan passport:keys --force`
 - the focused booking Playwright commands above assume the tenant dev host is
   resolvable and seeded with the usual tenant fixtures
 

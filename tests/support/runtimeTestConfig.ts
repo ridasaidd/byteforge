@@ -1,7 +1,65 @@
+import { loadEnv } from 'vite';
+
+const loadedEnv = loadEnv(process.env.PLAYWRIGHT_ENV_MODE?.trim() || process.env.NODE_ENV || 'development', process.cwd(), '');
+
+for (const [key, value] of Object.entries(loadedEnv)) {
+  if ((process.env[key] ?? '').trim() === '' && value.trim() !== '') {
+    process.env[key] = value;
+  }
+}
+
+// Playwright workers do not automatically load Laravel's .env, so mirror the
+// repo's URL defaults into process.env once here for config and specs.
+if ((process.env.PLAYWRIGHT_BASE_URL ?? '').trim() === '') {
+  const centralBaseUrl = (process.env.VITE_TEST_BASE_URL ?? process.env.APP_URL ?? '').trim();
+
+  if (centralBaseUrl !== '') {
+    process.env.PLAYWRIGHT_BASE_URL = centralBaseUrl;
+  }
+}
+
+if ((process.env.PLAYWRIGHT_TENANT_BASE_URL ?? '').trim() === '') {
+  const derivedTenantBaseUrl = deriveTenantBaseUrl();
+
+  if (derivedTenantBaseUrl !== '') {
+    process.env.PLAYWRIGHT_TENANT_BASE_URL = derivedTenantBaseUrl;
+  }
+}
+
 function normalizeUrl(value: string | undefined, fallback: string): string {
   const candidate = (value ?? '').trim();
 
   return candidate !== '' ? candidate.replace(/\/$/, '') : fallback;
+}
+
+function deriveTenantBaseUrl(): string {
+  const tenantDomainTemplate = (process.env.TENANCY_FALLBACK_TENANT_DOMAIN_TEMPLATE ?? '').trim();
+  const tenantKey = (process.env.PLAYWRIGHT_TENANT_KEY ?? process.env.PLAYWRIGHT_TENANT_SLUG ?? 'tenant-one').trim();
+
+  if (tenantDomainTemplate === '' || tenantKey === '') {
+    return '';
+  }
+
+  const tenantHost = tenantDomainTemplate.replace(':tenant', tenantKey).trim();
+
+  if (tenantHost === '') {
+    return '';
+  }
+
+  const centralBaseUrl = normalizeUrl(
+    process.env.PLAYWRIGHT_BASE_URL
+      ?? process.env.VITE_TEST_BASE_URL
+      ?? process.env.APP_URL,
+    '',
+  );
+
+  try {
+    const protocol = new URL(centralBaseUrl).protocol || 'http:';
+
+    return `${protocol}//${tenantHost}`.replace(/\/$/, '');
+  } catch {
+    return `http://${tenantHost}`;
+  }
 }
 
 function hostnameFromUrl(url: string): string {
@@ -54,7 +112,8 @@ export function getCentralAdminEmail(): string {
 export function getTenantBaseUrl(): string {
   return normalizeUrl(
     process.env.PLAYWRIGHT_TENANT_BASE_URL
-      ?? process.env.VITE_TEST_TENANT_BASE_URL,
+      ?? process.env.VITE_TEST_TENANT_BASE_URL
+      ?? deriveTenantBaseUrl(),
     '',
   );
 }
