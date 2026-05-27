@@ -304,7 +304,12 @@ class UserController extends Controller
             abort(403, 'Only tenant owners can manage roles.');
         }
 
-        $validated = $request->validate([
+        $validated = validator(
+            ($this->normalizeInputFields)(
+                $request->all(),
+                singleLineFields: ['name'],
+            ),
+            [
             'name' => [
                 'required',
                 'string',
@@ -316,7 +321,8 @@ class UserController extends Controller
             ],
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['string'],
-        ]);
+            ],
+        )->validate();
 
         if (in_array($validated['name'], TenantRbacService::TENANT_ROLE_NAMES, true)) {
             return response()->json([
@@ -371,7 +377,12 @@ class UserController extends Controller
             return response()->json(['message' => 'Fixed tenant roles cannot be modified.'], 422);
         }
 
-        $validated = $request->validate([
+        $validated = validator(
+            ($this->normalizeInputFields)(
+                $request->all(),
+                singleLineFields: ['name'],
+            ),
+            [
             'name' => [
                 'sometimes',
                 'string',
@@ -383,7 +394,8 @@ class UserController extends Controller
             ],
             'permissions' => ['sometimes', 'array'],
             'permissions.*' => ['string'],
-        ]);
+            ],
+        )->validate();
 
         if (isset($validated['name']) && in_array($validated['name'], TenantRbacService::TENANT_ROLE_NAMES, true)) {
             return response()->json(['message' => 'Fixed tenant role names are reserved.'], 422);
