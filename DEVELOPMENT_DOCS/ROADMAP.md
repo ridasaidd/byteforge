@@ -24,14 +24,12 @@ Goal:
   introduced ordinary text/contact fields without expanding it into blanket
   middleware
 
-Likely focus areas:
+Current state:
 
-- additional tenant-facing ordinary text fields in booking or adjacent
-  operational flows with clear tests nearby
-- other suitable payment human-text fields with clear test surfaces
-- additional ordinary auth profile inputs as they are introduced
-- newly introduced CMS write boundaries that remain clearly separate from
-  slugs, CSS, structured JSON, and nested builder payloads
+- the currently shipped repo-side normalization slices are effectively
+  complete; the strongest ordinary human-text write boundaries are now covered
+- future normalization work should be opportunistic when newly introduced
+  ordinary text/contact fields appear with clear request-boundary ownership
 
 Current implemented slice:
 

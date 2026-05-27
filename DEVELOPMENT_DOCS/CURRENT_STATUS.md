@@ -133,6 +133,10 @@ Primary branch: `main`
   are now largely covered. The remaining nearby surfaces are mostly structured
   payloads, identifier-like fields, or dead/unwired request classes and are
   intentionally left outside this normalization family.
+- The current normalization-maintenance track is effectively closed on the
+  repo side: there are no strong remaining request-boundary candidates in the
+  shipped codebase, and future normalization should only be added
+  opportunistically as new ordinary human-text fields are introduced.
 - Booking dashboard localization and booking guest-input hardening were merged
   on 2026-04-19.
 - Tenant booking dashboard manual-booking creation now exists on the current
