@@ -38,6 +38,7 @@ Current implemented slice:
 - booking customer-field normalization now delegates to the shared layer
 - booking CMS resource/service text fields and cancellation notes now use the shared layer at the request boundary
 - tenant user-management create name/email fields now use the shared layer at the request boundary
+- tenant custom-role names now use the shared layer at the request boundary
 - tenant settings site title/description fields now use the shared layer at the request boundary
 - shared media-folder name/description fields now use the shared layer at the request boundary
 - shared media upload metadata text fields now use the shared layer at the request boundary

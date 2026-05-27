@@ -174,6 +174,55 @@ class TenantUsersTest extends TestCase
     }
 
     #[Test]
+    public function tenant_owner_create_custom_role_name_is_normalized(): void
+    {
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/roles', 'tenant-one'), [
+                'name' => "  <b>content   manager</b>  ",
+                'permissions' => ['pages.view', 'pages.edit'],
+            ]);
+
+        $create->assertCreated()
+            ->assertJsonPath('data.name', 'content manager');
+
+        $roleId = (int) $create->json('data.id');
+
+        $this->assertDatabaseHas('roles', [
+            'id' => $roleId,
+            'name' => 'content manager',
+            'team_id' => (string) TestUsers::tenant('tenant-one')->id,
+        ]);
+    }
+
+    #[Test]
+    public function tenant_owner_update_custom_role_name_is_normalized(): void
+    {
+        $create = $this->actingAsTenantOwner('tenant-one')
+            ->postJson($this->tenantUrl('/api/roles', 'tenant-one'), [
+                'name' => 'booking assistant',
+                'permissions' => ['pages.view'],
+            ]);
+
+        $create->assertCreated();
+        $roleId = (int) $create->json('data.id');
+
+        $update = $this->actingAsTenantOwner('tenant-one')
+            ->putJson($this->tenantUrl("/api/roles/{$roleId}", 'tenant-one'), [
+                'name' => "  <i>booking   coordinator</i>\n",
+                'permissions' => ['pages.view', 'pages.edit'],
+            ]);
+
+        $update->assertOk()
+            ->assertJsonPath('data.name', 'booking coordinator');
+
+        $this->assertDatabaseHas('roles', [
+            'id' => $roleId,
+            'name' => 'booking coordinator',
+            'team_id' => (string) TestUsers::tenant('tenant-one')->id,
+        ]);
+    }
+
+    #[Test]
     public function tenant_owner_cannot_delete_assigned_custom_role(): void
     {
         $viewer = TestUsers::tenantViewer('tenant-one');
