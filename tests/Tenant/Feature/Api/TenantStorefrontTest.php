@@ -199,6 +199,32 @@ class TenantStorefrontTest extends TestCase
     }
 
     #[Test]
+    public function analytics_track_normalizes_public_page_title_before_storage(): void
+    {
+        $tenant = TestUsers::tenant('tenant-one');
+
+        $response = $this->postJson($this->tenantUrl('/api/analytics/track', 'tenant-one'), [
+            'event_type' => AnalyticsEvent::TYPE_PAGE_VIEWED,
+            'properties' => [
+                'slug' => 'landing-page',
+                'title' => "  <b>Landing\n Page</b> \t",
+            ],
+        ]);
+
+        $response->assertNoContent();
+
+        $event = AnalyticsEvent::query()
+            ->where('tenant_id', $tenant->id)
+            ->where('event_type', AnalyticsEvent::TYPE_PAGE_VIEWED)
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($event);
+        $this->assertSame('Landing Page', $event->properties['title'] ?? null);
+        $this->assertSame('landing-page', $event->properties['slug'] ?? null);
+    }
+
+    #[Test]
     public function tenant_public_page_endpoint_does_not_leak_other_tenant_page(): void
     {
         $this->createTenantPage('tenant-two', [
