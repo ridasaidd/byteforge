@@ -237,7 +237,7 @@ Primary doc:
 
 Outcome:
 
-- dedicated tenant CMS area for route-bound system pages such as login, forgot password, reset password, and guest portal
+- dedicated tenant CMS area for route-bound system pages such as tenant login and guest portal, with reserved placeholders for any later guest/customer-account auth surfaces
 - fixed application logic with Puck-backed presentation editing and generated storefront-safe CSS
 - widget-capable authenticated guest portal shell for bookings and future add-ons
 
@@ -245,8 +245,8 @@ Current state on `main`:
 
 - system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on `main`
 - tenant login now also has focused browser coverage proving that system-surface customization and reset preserve the route-owned auth flow
-- `register`, `forgot_password`, and `reset_password` remain deferred implementation work
-- customer-account pages are not part of the delivered Phase 15 guest-auth slice
+- `register`, `forgot_password`, and `reset_password` remain reserved future placeholders for guest/customer-account work rather than tenant staff self-service auth
+- customer-account pages are not part of the delivered Phase 15 guest-auth slice and should not be pulled into tenant staff auth by default
 
 ### 10. Customer Accounts and Cross-Tenant SSO
 

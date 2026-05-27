@@ -28,7 +28,7 @@ Implemented on `main`:
 
 Still deferred:
 
-- live `register`, `forgot_password`, and `reset_password` runtime routes and forms
+- any live guest/customer-facing `register`, `forgot_password`, and `reset_password` runtime routes and forms
 - guest portal widget zones beyond the current fixed bookings experience
 - customer-account or password-based customer flows
 - cross-tenant customer identity / SSO architecture
@@ -36,9 +36,11 @@ Still deferred:
 Important scope boundary:
 
 The existence of `register`, `forgot_password`, and `reset_password` as
-system-surface keys does not mean guest users now have customer accounts.
-Those entries are architectural placeholders for later route-owned auth
-surfaces, not delivered customer-account functionality in this branch.
+system-surface keys does not mean guest users now have customer accounts, and
+it does not imply tenant staff should get self-service register or password
+recovery flows. Those entries are architectural placeholders for any later
+guest/customer-account auth surfaces, not delivered customer-account
+functionality or tenant staff-auth requirements in this branch.
 
 ---
 
@@ -52,12 +54,10 @@ ByteForge currently has two strong UI models:
 There is now a third category that does not fit cleanly into either existing bucket:
 
 - tenant login
-- register
-- forgot password
-- reset password
 - guest magic-link handoff
 - authenticated guest portal shell
 - future tokenized public quote review
+- possible future guest/customer-account register, forgot-password, and reset-password surfaces if that later product phase ships
 
 These are not ordinary CMS pages. They are **route-owned system surfaces** tied to fixed application behavior, required inputs, redirects, sessions, and security rules.
 
@@ -102,7 +102,7 @@ System Surfaces are:
 ## Design Principles
 
 1. **Security-sensitive logic stays in code.** Puck may not own login submission, password reset tokens, guest session bootstrap, or redirect rules.
-2. **Required controls are not removable.** Example: login must always contain the username/email field, password field, forgot-password link, and submit action.
+2. **Required controls are not removable.** Example: tenant login must always contain the required sign-in controls; if guest/customer password-recovery surfaces ever ship later, their required controls stay fixed as well.
 3. **Presentation is editable.** Layout, spacing, typography, brand areas, optional side content, and safe supporting copy are editable through Puck.
 4. **Storefront styling stays storefront-native.** No new requirement for Tailwind or shadcn on public runtime surfaces. Styling should continue to rely on Puck controls, generated CSS, theme tokens, and minimal component-owned CSS where required.
 5. **Authenticated content can become widget-driven.** The guest portal shell is fixed, but widgets like bookings, quotes, and estimates should be addable to the authenticated area.
@@ -141,10 +141,8 @@ System Surfaces are:
 Examples:
 
 - tenant login
-- register
-- forgot password
-- reset password
 - guest magic-link callback
+- possible future guest/customer-account register, forgot-password, and reset-password surfaces
 
 Characteristics:
 
@@ -192,10 +190,13 @@ Recommended tenant CMS nav addition:
 
 - `System Pages`
   - `Login`
-  - `Register`
-  - `Forgot Password`
-  - `Reset Password`
   - `Guest Portal`
+
+Reserved future placeholders only if guest/customer accounts are productized later:
+
+- `Register`
+- `Forgot Password`
+- `Reset Password`
 
 Later candidate after Phase 17 stabilization:
 
