@@ -11,6 +11,7 @@ This is the fastest safe entry point for AI agents working in ByteForge.
 - primary branch: `main`
 - implemented on `main`: Phases 9 through 15
 - partially implemented on `main`: early Phase 19 tenant-login and guest-portal/system-surface slices
+- Phase 19 product boundary: tenant login may be tenant-branded and system-surface customizable, but staff register/forgot-password/reset-password flows are not a product requirement; those placeholder keys are reserved for future guest/customer-account work, not tenant staff self-service auth
 - auth storage migration is in progress with the hybrid in-memory access token plus HttpOnly refresh-cookie model already in use
 - staff password changes now revoke outstanding refresh sessions and clear the current refresh cookie
 - staff logout now revokes the current bearer token as well as the current refresh session, including tenant routes where membership middleware refreshes the user model
