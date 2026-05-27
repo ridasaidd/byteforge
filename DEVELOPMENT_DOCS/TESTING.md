@@ -114,6 +114,8 @@ Notes:
 
 - the central auth spec now covers login/logout, reload-based session restore, and multi-tab logout invalidation through the HttpOnly refresh cookie
 - the tenant auth spec now covers login/logout, reload-based session restore, and multi-tab logout invalidation through the HttpOnly refresh cookie
+- the central and tenant auth specs now also cover expired refresh-session restore: a stale host-scoped refresh cookie must fail closed, clear browser auth state, and return the user to the login shell
+- the tenant auth spec now also covers browser-level host scoping by asserting that a valid central refresh cookie cannot restore a tenant-host dashboard session
 - `npm run test:http-integration` is the CI-aligned Node HTTP lane; it now exercises the live central auth, authorization/permissions, superadmin user-management, and tenant admin API specs under `tests/integration/` against a booted Laravel server
 - the central auth spec skips cleanly when the configured base URL does not actually serve the login page, which avoids false-negative localhost/Apache 404 failures
 - when running the tenant spec locally, only the owner credentials are required for this suite

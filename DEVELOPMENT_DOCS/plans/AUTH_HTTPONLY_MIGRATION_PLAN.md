@@ -97,11 +97,12 @@ Backend groundwork already completed:
 - staff password changes revoke outstanding refresh sessions and clear the
   current refresh cookie
 
-Remaining migration work:
+Implementation status:
 
-- document operational cookie/session settings and complete migration closeout
-- broaden manual QA around session expiry, host-scoping, and remaining
-  multi-tab/logout edge cases
+- repo-side HttpOnly migration work is complete: invalidation, silent refresh,
+  browser coverage, and CI alignment now match the chosen hybrid auth model
+- remaining follow-through is operational: keep staging/production-owned env
+  templates or secret stores aligned with the documented cookie/session values
 
 Operational settings now documented in this planning track:
 
@@ -136,8 +137,13 @@ Remaining closeout after that documentation pass:
 - Playwright auth coverage now also checks reload-based session restore and
   multi-tab logout invalidation for central and tenant dashboard flows when
   the configured environment serves the login page correctly
-- broaden manual QA around session expiry and any remaining host-scoping edge
-  cases
+- Playwright auth coverage now also checks expired refresh-session restore for
+  central and tenant dashboard flows when a local Laravel bootstrap is
+  available to seed stale staff refresh-session rows
+- tenant Playwright auth coverage now also checks browser-level host scoping by
+  asserting that a valid central refresh cookie cannot restore a tenant-host
+  dashboard session
+- complete any final deployment-facing env hygiene outside the repo
 
 ### Why This Model Fits ByteForge
 

@@ -1,9 +1,19 @@
 import { test, expect } from '@playwright/test';
 import { attachRuntimeGuards, formatIssues } from './support/consoleGuards';
 import { centralAdminCredentials, loginWithCredentials, logoutFromUserMenu } from './support/auth';
+import {
+  addSeededRefreshCookie,
+  cleanupSeededStaffRefreshSession,
+  laravelBootstrapAvailable,
+  seedExpiredStaffRefreshSession,
+} from './support/staffRefreshSessionBootstrap';
 
 function isExpectedPostLogoutAuthIssue(message: string): boolean {
   return message.includes('/api/auth/logout') || message.includes('/api/auth/refresh');
+}
+
+function isExpectedExpiredRefreshIssue(message: string): boolean {
+  return message.includes('/api/auth/refresh');
 }
 
 async function ensureCentralLoginPageIsReachable(page: import('@playwright/test').Page): Promise<void> {
@@ -101,4 +111,55 @@ test('central logout invalidates session restore in another tab', async ({ brows
   ).toEqual([]);
 
   await context.close();
+});
+
+test('central expired refresh session redirects to login on restore attempt', async ({ page }) => {
+  test.skip(!laravelBootstrapAvailable, 'This central expiry flow requires a local Laravel bootstrap to seed test data.');
+
+  const issues = attachRuntimeGuards(page);
+
+  await ensureCentralLoginPageIsReachable(page);
+
+  const baseUrl = new URL(page.url()).origin;
+  const host = new URL(baseUrl).hostname;
+  const session = seedExpiredStaffRefreshSession(centralAdminCredentials.email, host);
+
+  try {
+    await addSeededRefreshCookie(page.context(), baseUrl, session);
+
+    const refreshResponsePromise = page.waitForResponse((response) => {
+      try {
+        const url = new URL(response.url());
+
+        return response.request().method() === 'POST'
+          && url.pathname.endsWith('/api/auth/refresh');
+      } catch {
+        return false;
+      }
+    });
+
+    await page.goto('/dashboard');
+
+    const refreshResponse = await refreshResponsePromise;
+    expect(refreshResponse.status()).toBe(401);
+
+    await expect(page).toHaveURL(/\/login(\/|$)/);
+    await expect.poll(async () => page.evaluate(() => window.localStorage.getItem('auth_token'))).toBeNull();
+    await expect.poll(async () => page.evaluate(() => window.sessionStorage.getItem('auth_token'))).toBeNull();
+    await expect.poll(async () => {
+      const cookies = await page.context().cookies();
+      return cookies.some((cookie) => cookie.name === session.cookieName && cookie.domain === host);
+    }).toBe(false);
+
+    const authRelevantIssues = issues
+      .filter((issue) => !issue.message.includes('/api/themes/active'))
+      .filter((issue) => !isExpectedExpiredRefreshIssue(issue.message));
+
+    expect(
+      authRelevantIssues,
+      `Runtime issues detected in central expired-session flow:\n${formatIssues(authRelevantIssues)}`,
+    ).toEqual([]);
+  } finally {
+    cleanupSeededStaffRefreshSession(session.sessionId);
+  }
 });

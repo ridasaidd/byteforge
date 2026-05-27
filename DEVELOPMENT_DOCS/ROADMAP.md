@@ -16,23 +16,7 @@ This roadmap is intentionally future-facing. Completed work should live in
 
 ## Next Up
 
-### 0. Continue Auth HttpOnly Migration
-
-Goal:
-
-- finish invalidation, silent-refresh, and operational hardening around the
-  hybrid in-memory access token plus host-scoped HttpOnly refresh-cookie model
-
-Likely focus areas:
-
-- close any remaining staff or guest token invalidation gaps outside the main
-  login-refresh-logout loop
-- keep frontend silent-refresh behavior and session restore stable under
-  concurrent or stale-cookie edge cases
-- preserve test-domain parity across backend tests and Playwright auth smoke
-- leave customer accounts, password recovery, and SSO outside this phase
-
-### 1. Shared Input Normalization Maintenance
+### 0. Shared Input Normalization Maintenance
 
 Goal:
 
@@ -40,12 +24,14 @@ Goal:
   introduced ordinary text/contact fields without expanding it into blanket
   middleware
 
-Key constraints:
+Likely focus areas:
 
-- do not implement this as a blanket request-munging middleware
-- normalize by field family, not by endpoint name alone
-- never mutate passwords, tokens, signatures, webhook payloads, CSS, or
-  structured builder JSON with the same rules used for customer text
+- additional tenant-facing ordinary text fields in booking or adjacent
+  operational flows with clear tests nearby
+- other suitable payment human-text fields with clear test surfaces
+- additional ordinary auth profile inputs as they are introduced
+- newly introduced CMS write boundaries that remain clearly separate from
+  slugs, CSS, structured JSON, and nested builder payloads
 
 Current implemented slice:
 
@@ -66,16 +52,27 @@ Current implemented slice:
   passwords or tokens
 - central admin user/tenant/settings/support-access text fields and tenant CMS quote request/draft text fields now use the shared layer or field-family sanitizers
 
-Next likely targets:
-
-- additional tenant-facing ordinary text fields in booking or adjacent operational flows with clear tests nearby
-- other suitable payment human-text fields with clear test surfaces
-- additional ordinary auth profile inputs as they are introduced
-- newly introduced CMS write boundaries that remain clearly separate from slugs, CSS, structured JSON, and nested builder payloads
-
 Practical note:
 
 - the strongest currently shipped CMS-adjacent metadata surfaces are now covered; remaining nearby matches are mostly structured payloads, identifier-like names, or dead/unwired requests and should not be forced into this phase
+
+### 1. Auth/Session Operational Hygiene
+
+Goal:
+
+- keep the now-implemented HttpOnly auth model aligned across staging and
+  production-owned env templates, secret stores, and deploy/runtime checks
+
+Key constraints:
+
+- treat this as deployment hygiene, not a reason to reopen browser-auth
+  architecture or reintroduce bearer persistence in JavaScript
+- preserve the current secure, host-only cookie posture captured in the env
+  matrix and staging deploy checks
+
+Current state:
+
+- the repo-side HttpOnly migration is complete on `main`; remaining follow-through is deployment-owned env and secret-store hygiene plus keeping existing CI/deploy checks aligned with the documented cookie/session contract
 
 ## Planned Work Tracks
 
