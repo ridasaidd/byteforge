@@ -12,6 +12,7 @@ Primary branch: `main`
   payments, and booking.
 - Phases 9 through 15 are implemented on `main`.
 - Phase 19 system-surface foundations are partially implemented on `main`, specifically tenant login and guest-portal runtime slices.
+- Tenant login system-surface browser coverage now also verifies that tenant-host customization and reset of the shipped login surface keep the auth flow working end to end.
 - Phase 17 guest-authenticated quote continuity is now implemented on the current working tree: guest-auth routes are available when booking or estimates-quotes is active, quote requests now persist guest linkage, and `/guest-portal` can list, view, accept, and reject linked quotes.
 - CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:
   backend tests, frontend Vitest, Playwright auth smoke, and staging deployment
@@ -84,6 +85,9 @@ Primary branch: `main`
   seed stale refresh-session rows and verify redirect-to-login behavior.
 - Browser-level tenant auth coverage now also verifies that a central-host
   refresh session cannot be replayed successfully on a tenant host.
+- Browser-level tenant login system-surface coverage now also verifies that a
+  tenant can customize the shipped login shell, still authenticate through the
+  fixed form, reset the surface, and return to the standard login experience.
 - The remaining HttpOnly closeout work is operational rather than code-facing:
   confirm staging/production-owned env templates or secret stores continue to
   carry the documented cookie/session values.
