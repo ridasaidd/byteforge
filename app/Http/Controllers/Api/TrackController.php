@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\Api\NormalizeInputFieldsAction;
 use App\Http\Controllers\Controller;
 use App\Models\AnalyticsEvent;
 use App\Services\AnalyticsService;
@@ -31,11 +32,23 @@ class TrackController extends Controller
         AnalyticsEvent::TYPE_PAGE_VIEWED,
     ];
 
-    public function __construct(private readonly AnalyticsService $analyticsService) {}
+    public function __construct(
+        private readonly AnalyticsService $analyticsService,
+        private readonly NormalizeInputFieldsAction $normalizeInputFields,
+    ) {}
 
     public function store(Request $request): Response|JsonResponse
     {
-        $validated = $request->validate([
+        $input = $request->all();
+
+        if (isset($input['properties']) && is_array($input['properties'])) {
+            $input['properties'] = ($this->normalizeInputFields)(
+                $input['properties'],
+                singleLineFields: ['title'],
+            );
+        }
+
+        $validated = validator($input, [
             'event_type' => [
                 'required',
                 'string',
@@ -45,7 +58,7 @@ class TrackController extends Controller
             'properties.page_id'   => ['sometimes', 'integer'],
             'properties.slug'      => ['sometimes', 'string', 'max:255'],
             'properties.title'     => ['sometimes', 'string', 'max:255'],
-        ]);
+        ])->validate();
 
         $this->analyticsService->record(
             $validated['event_type'],

@@ -120,7 +120,7 @@ Primary branch: `main`
   booking customer fields, payment human-text fields, auth name/email
   fields, booking CMS resource and service human-text fields, booking tenant
   cancellation notes, tenant user-management create name/email fields, tenant
-  custom role names, tenant
+  custom role names, public analytics page titles, tenant
   settings site title/description fields, shared media-folder name/description
   fields, shared media upload metadata text fields, central theme metadata
   fields, central page-template name/description fields, central admin user
