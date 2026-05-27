@@ -27,7 +27,7 @@ Primary branch: `main`
 - Post-deploy staging mail smoke is now part of the deploy workflow via the
   guest magic-link request path, so each staging deployment verifies one real
   queued email trigger against the staging tenant host.
-- The HttpOnly auth migration is underway in slices and now uses the hybrid
+- The HttpOnly auth migration is now implemented on `main` with the hybrid
   browser model described in
   [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
   in-memory bearer access tokens plus a host-scoped HttpOnly refresh cookie.
@@ -50,6 +50,12 @@ Primary branch: `main`
 - Playwright auth coverage now also checks session restore on reload and
   multi-tab logout invalidation for the central and tenant dashboard flows
   when the configured environment serves the login page correctly.
+- Playwright auth coverage now also checks expired refresh-session restore for
+  the central and tenant dashboards, asserting that a stale host-scoped cookie
+  cannot restore the session and the browser is sent back to the login shell.
+- Tenant Playwright auth coverage now also checks host scoping at the browser
+  level by asserting that a valid central refresh cookie cannot restore a
+  tenant-host dashboard session.
 - Backend CI now also has a dedicated Node HTTP integration lane for the
   live central auth, authorization/permissions, superadmin user-management,
   and tenant admin API contracts.
@@ -73,6 +79,14 @@ Primary branch: `main`
   checks for the central and tenant dashboards, with the central Playwright
   spec cleanly skipping when the configured base URL does not actually serve
   the login page.
+- Browser-level auth coverage for the central and tenant dashboards now also
+  includes expired-session restore checks using a local Laravel bootstrap to
+  seed stale refresh-session rows and verify redirect-to-login behavior.
+- Browser-level tenant auth coverage now also verifies that a central-host
+  refresh session cannot be replayed successfully on a tenant host.
+- The remaining HttpOnly closeout work is operational rather than code-facing:
+  confirm staging/production-owned env templates or secret stores continue to
+  carry the documented cookie/session values.
 - The central Playwright auth flow, including reload-based session restore,
   was verified against both `http://dev.byteforge.se` and
   `https://stage.byteforge.se` on 2026-05-25.
