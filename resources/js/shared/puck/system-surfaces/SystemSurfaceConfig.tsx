@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { type Config, type Data } from '@puckeditor/core';
 import { Logo } from '@/shared/components/atoms/Logo';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
@@ -5,11 +6,68 @@ import { Badge } from '@/shared/components/ui/badge';
 import { TenantLoginFormCard } from '@/apps/tenant/components/auth/TenantLoginFormCard';
 import { GuestPortalExperience } from '@/apps/public/components/GuestPortalExperience';
 import { usePuckEditMode } from '@/shared/hooks';
+import {
+  Box,
+  Heading,
+  Text,
+  Divider,
+  Logo as LogoBlock,
+  RichText,
+  Button,
+  Link,
+  Image,
+} from '@/shared/puck/components';
+import {
+  backgroundFields,
+  backgroundImageFields,
+  fontFamilyField,
+  textColorField,
+  spacingFields,
+} from '@/shared/puck/fields/fieldGroups';
+import { buildLayoutCSS } from '@/shared/puck/fields/cssBuilder';
+import type { ColorValue, ResponsiveSpacingValue } from '@/shared/puck/fields';
+import { getSystemSurfaceAdminTitle } from './systemSurfaceLabels';
 
 export type SystemSurfaceKey = 'tenant_login' | 'register' | 'forgot_password' | 'reset_password' | 'guest_portal';
 
+const guestFacingSurfaceKeys = new Set<SystemSurfaceKey>([
+  'register',
+  'forgot_password',
+  'reset_password',
+  'guest_portal',
+]);
+
+const guestFacingComponents: Config['components'] = {
+  Box: Box as Config['components'][string],
+  Heading: Heading as Config['components'][string],
+  Text: Text as Config['components'][string],
+  Divider: Divider as Config['components'][string],
+  Logo: LogoBlock as Config['components'][string],
+  RichText: RichText as Config['components'][string],
+  Button: Button as Config['components'][string],
+  Link: Link as Config['components'][string],
+  Image: Image as Config['components'][string],
+};
+
+const guestFacingCategories: Config['categories'] = {
+  layout: {
+    components: ['Box'],
+    title: 'Layout',
+    defaultExpanded: true,
+  },
+  content: {
+    components: ['Heading', 'Text', 'Divider', 'Logo', 'RichText', 'Button', 'Link', 'Image'],
+    title: 'Content',
+    defaultExpanded: true,
+  },
+};
+
+export { getSystemSurfaceAdminTitle };
+
 interface SystemSurfaceRootProps {
+  _rootId?: string;
   surfaceKey?: SystemSurfaceKey;
+  children?: ReactNode;
   showLogo?: boolean;
   eyebrow?: string;
   title?: string;
@@ -19,6 +77,17 @@ interface SystemSurfaceRootProps {
   supportText?: string;
   backgroundStyle?: 'soft' | 'contrast' | 'muted';
   contentAlignment?: 'left' | 'center';
+  backgroundColor?: ColorValue;
+  backgroundImage?: string;
+  backgroundSize?: string;
+  backgroundPosition?: string;
+  backgroundRepeat?: string;
+  color?: ColorValue;
+  fontFamily?: string;
+  maxWidth?: string;
+  minHeight?: string;
+  padding?: ResponsiveSpacingValue;
+  margin?: ResponsiveSpacingValue;
 }
 
 const surfaceDefaults: Record<SystemSurfaceKey, Omit<SystemSurfaceRootProps, 'surfaceKey'>> = {
@@ -214,7 +283,9 @@ function LockedSurfacePanel({
 }
 
 function SystemSurfaceRootRenderer({
+  _rootId,
   surfaceKey = 'tenant_login',
+  children,
   showLogo = true,
   eyebrow,
   title,
@@ -224,24 +295,77 @@ function SystemSurfaceRootRenderer({
   supportText,
   backgroundStyle = 'soft',
   contentAlignment = 'left',
+  backgroundColor,
+  backgroundImage,
+  backgroundSize,
+  backgroundPosition,
+  backgroundRepeat,
+  color,
+  fontFamily,
+  maxWidth,
+  minHeight,
+  padding,
+  margin,
 }: SystemSurfaceRootProps) {
-  const colors = palette(backgroundStyle);
+  const paletteColors = palette(backgroundStyle);
   const isGuestPortal = surfaceKey === 'guest_portal';
+  const showGuestBlocks = guestFacingSurfaceKeys.has(surfaceKey) && Boolean(children);
+  const isEditing = usePuckEditMode();
+  const outerClass = _rootId ? `system-surface-root-${_rootId}` : 'system-surface-root';
+  const innerClass = _rootId ? `system-surface-root-${_rootId}-inner` : 'system-surface-root-inner';
+
+  const resolveColorValue = (value: ColorValue | undefined, fallback: string) => {
+    if (!value) return fallback;
+    if (typeof value === 'string') return value;
+    if (value.type === 'theme' && value.value) {
+      return `var(--${value.value.replace(/\./g, '-')}, ${fallback})`;
+    }
+    return value.value || fallback;
+  };
+
+  const pageBackground = backgroundImage
+    ? `url(${backgroundImage})`
+    : resolveColorValue(backgroundColor, paletteColors.pageBackground);
+  const textColor = resolveColorValue(color, paletteColors.textColor);
+  const mutedColor = textColor === paletteColors.textColor
+    ? paletteColors.mutedColor
+    : textColor;
+  const outerRules: string[] = [
+    `background: ${pageBackground}`,
+    `color: ${textColor}`,
+    `font-family: ${fontFamily || 'var(--font-family-sans, system-ui, sans-serif)'}`,
+    `padding: clamp(1.5rem, 4vw, 3rem)`,
+  ];
+
+  if (backgroundImage) {
+    outerRules.push(`background-size: ${backgroundSize || 'cover'}`);
+    outerRules.push(`background-position: ${backgroundPosition || 'center'}`);
+    outerRules.push(`background-repeat: ${backgroundRepeat || 'no-repeat'}`);
+  }
+
+  if (minHeight && minHeight !== 'auto') {
+    outerRules.push(`min-height: ${minHeight}`);
+  } else {
+    outerRules.push('min-height: 100vh');
+  }
+
+  const innerLayoutCss = buildLayoutCSS({ className: innerClass, padding, margin });
+  const rootCss = [
+    `.${outerClass} { ${outerRules.join('; ')}; }`,
+    `.${innerClass} { width: 100%; max-width: ${maxWidth || '1280px'}; margin: 0 auto; }`,
+    innerLayoutCss,
+  ].join('\n');
 
   return (
     <div
-      style={{
-        minHeight: '100vh',
-        background: colors.pageBackground,
-        color: colors.textColor,
-        padding: 'clamp(1.5rem, 4vw, 3rem)',
-      }}
+      className={outerClass}
     >
+      {(isEditing || backgroundImage || backgroundColor || color || fontFamily || maxWidth || minHeight || padding || margin)
+        ? <style>{rootCss}</style>
+        : null}
       <div
+        className={innerClass}
         style={{
-          width: '100%',
-          maxWidth: '1280px',
-          margin: '0 auto',
           display: 'grid',
           gap: '2rem',
           gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
@@ -273,14 +397,19 @@ function SystemSurfaceRootRenderer({
             </h1>
           ) : null}
           {description ? (
-            <p style={{ margin: 0, fontSize: '1.05rem', lineHeight: 1.8, color: colors.mutedColor, maxWidth: '42rem' }}>
+            <p style={{ margin: 0, fontSize: '1.05rem', lineHeight: 1.8, color: mutedColor, maxWidth: '42rem' }}>
               {description}
             </p>
           ) : null}
           {supportText ? (
-            <p style={{ margin: '0.5rem 0 0', fontSize: '0.95rem', lineHeight: 1.7, color: colors.mutedColor, maxWidth: '38rem' }}>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.95rem', lineHeight: 1.7, color: mutedColor, maxWidth: '38rem' }}>
               {supportText}
             </p>
+          ) : null}
+          {showGuestBlocks ? (
+            <div style={{ width: '100%', maxWidth: '42rem' }}>
+              {children}
+            </div>
           ) : null}
         </section>
 
@@ -289,7 +418,7 @@ function SystemSurfaceRootRenderer({
             style={{
               width: '100%',
               maxWidth: isGuestPortal ? '64rem' : '40rem',
-              background: isGuestPortal ? 'transparent' : colors.panelBackground,
+              background: isGuestPortal ? 'transparent' : paletteColors.panelBackground,
               borderRadius: isGuestPortal ? 0 : '1.5rem',
               boxShadow: isGuestPortal ? 'none' : '0 30px 80px rgba(15, 23, 42, 0.14)',
               padding: 0,
@@ -324,65 +453,145 @@ export function buildSystemSurfaceData(surfaceKey: SystemSurfaceKey, puckData?: 
   } as unknown as Data;
 }
 
-export const systemSurfaceConfig: Config = {
-  components: {},
-  categories: {},
-  root: {
-    fields: {
-      showLogo: {
-        type: 'radio',
-        label: 'Show logo',
-        options: [
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
-        ],
-      },
-      eyebrow: {
-        type: 'text',
-        label: 'Eyebrow',
-      },
-      title: {
-        type: 'text',
-        label: 'Main title',
-      },
-      description: {
-        type: 'textarea',
-        label: 'Description',
-      },
-      panelTitle: {
-        type: 'text',
-        label: 'Panel title',
-      },
-      panelDescription: {
-        type: 'textarea',
-        label: 'Panel description',
-      },
-      supportText: {
-        type: 'textarea',
-        label: 'Support text',
-      },
-      backgroundStyle: {
-        type: 'select',
-        label: 'Background style',
-        options: [
-          { label: 'Soft', value: 'soft' },
-          { label: 'Contrast', value: 'contrast' },
-          { label: 'Muted', value: 'muted' },
-        ],
-      },
-      contentAlignment: {
-        type: 'select',
-        label: 'Content alignment',
-        options: [
-          { label: 'Left', value: 'left' },
-          { label: 'Center', value: 'center' },
-        ],
-      },
+let cachedSystemSurfaceConfig: Config | null = null;
+let cachedGuestFacingSystemSurfaceConfig: Config | null = null;
+
+function createSystemSurfaceConfig(): Config {
+  const sharedRootFields = {
+    ...backgroundFields,
+    ...backgroundImageFields,
+    ...textColorField,
+    ...fontFamilyField('sans'),
+    maxWidth: {
+      type: 'select',
+      label: 'Max Width',
+      options: [
+        { label: 'Full', value: '100%' },
+        { label: '1440px', value: '1440px' },
+        { label: '1280px', value: '1280px' },
+        { label: '1024px', value: '1024px' },
+        { label: '768px', value: '768px' },
+      ],
     },
-    defaultProps: {
-      surfaceKey: 'tenant_login',
-      ...surfaceDefaults.tenant_login,
+    minHeight: {
+      type: 'select',
+      label: 'Min Height',
+      options: [
+        { label: 'Auto', value: 'auto' },
+        { label: '100vh (Full Screen)', value: '100vh' },
+        { label: '75vh', value: '75vh' },
+        { label: '50vh', value: '50vh' },
+      ],
     },
-    render: SystemSurfaceRootRenderer as any,
-  },
-};
+    ...spacingFields,
+  };
+
+  const sharedRootDefaults = {
+    backgroundColor: { type: 'custom', value: '#ffffff' },
+    backgroundImage: '',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    color: { type: 'theme', value: 'colors.foreground' },
+    fontFamily: undefined,
+    maxWidth: '100%',
+    minHeight: 'auto',
+    padding: {
+      mobile: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
+    },
+    margin: {
+      mobile: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
+    },
+  } as Record<string, unknown>;
+
+  return {
+    components: {},
+    categories: {},
+    root: {
+      fields: {
+        ...sharedRootFields,
+        showLogo: {
+          type: 'radio',
+          label: 'Show logo',
+          options: [
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ],
+        },
+        eyebrow: {
+          type: 'text',
+          label: 'Eyebrow',
+        },
+        title: {
+          type: 'text',
+          label: 'Main title',
+        },
+        description: {
+          type: 'textarea',
+          label: 'Description',
+        },
+        panelTitle: {
+          type: 'text',
+          label: 'Panel title',
+        },
+        panelDescription: {
+          type: 'textarea',
+          label: 'Panel description',
+        },
+        supportText: {
+          type: 'textarea',
+          label: 'Support text',
+        },
+        backgroundStyle: {
+          type: 'select',
+          label: 'Background style',
+          options: [
+            { label: 'Soft', value: 'soft' },
+            { label: 'Contrast', value: 'contrast' },
+            { label: 'Muted', value: 'muted' },
+          ],
+        },
+        contentAlignment: {
+          type: 'select',
+          label: 'Content alignment',
+          options: [
+            { label: 'Left', value: 'left' },
+            { label: 'Center', value: 'center' },
+          ],
+        },
+      },
+      defaultProps: {
+        ...sharedRootDefaults,
+        surfaceKey: 'tenant_login',
+        ...surfaceDefaults.tenant_login,
+      },
+      render: SystemSurfaceRootRenderer as any,
+    },
+  };
+}
+
+function createGuestFacingSystemSurfaceConfig(baseConfig: Config): Config {
+  return {
+    ...baseConfig,
+    components: guestFacingComponents,
+    categories: guestFacingCategories,
+  };
+}
+
+export function getSystemSurfaceConfig(surfaceKey: SystemSurfaceKey): Config {
+  if (!cachedSystemSurfaceConfig) {
+    cachedSystemSurfaceConfig = createSystemSurfaceConfig();
+  }
+
+  if (!guestFacingSurfaceKeys.has(surfaceKey)) {
+    return cachedSystemSurfaceConfig;
+  }
+
+  if (!cachedGuestFacingSystemSurfaceConfig) {
+    cachedGuestFacingSystemSurfaceConfig = createGuestFacingSystemSurfaceConfig(cachedSystemSurfaceConfig);
+  }
+
+  return guestFacingSurfaceKeys.has(surfaceKey)
+    ? cachedGuestFacingSystemSurfaceConfig
+    : cachedSystemSurfaceConfig;
+}

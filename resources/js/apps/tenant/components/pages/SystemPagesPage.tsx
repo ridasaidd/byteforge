@@ -6,6 +6,7 @@ import { DataTable, type Column } from '@/shared/components/molecules/DataTable'
 import { Badge } from '@/shared/components/ui/badge';
 import { Button } from '@/shared/components/ui/button';
 import { usePermissions, useToast } from '@/shared/hooks';
+import { getSystemSurfaceAdminTitle } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
 import { tenantSystemSurfaces } from '@/shared/services/api/systemSurfaces';
 import type { SystemSurface } from '@/shared/services/api/types';
 
@@ -68,7 +69,7 @@ export function SystemPagesPage() {
       label: 'Title',
       render: (surface) => (
         <div className="space-y-1">
-          <div className="font-medium">{surface.title}</div>
+          <div className="font-medium">{getSystemSurfaceAdminTitle(surface.surface_key, surface.title)}</div>
           <div className="text-xs text-muted-foreground">{surface.surface_key}</div>
         </div>
       ),
@@ -113,7 +114,7 @@ export function SystemPagesPage() {
     <div className="space-y-6">
       <PageHeader
         title="System Pages"
-        description="Manage route-bound surfaces such as login, password recovery, and the guest portal without mixing them into normal CMS pages."
+        description="Manage the tenant staff login and guest-facing portal surfaces without mixing them into normal CMS pages. Reserved guest-account placeholders stay separate from day-to-day staff-auth work."
       />
 
       <DataTable<SystemSurface>

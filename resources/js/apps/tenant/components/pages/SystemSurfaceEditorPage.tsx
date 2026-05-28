@@ -7,7 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { useToast } from '@/shared/hooks';
 import { tenantSystemSurfaces } from '@/shared/services/api/systemSurfaces';
 import type { SystemSurface } from '@/shared/services/api/types';
-import { buildSystemSurfaceData, systemSurfaceConfig, type SystemSurfaceKey } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
+import {
+  buildSystemSurfaceData,
+  getSystemSurfaceConfig,
+  getSystemSurfaceAdminTitle,
+  type SystemSurfaceKey,
+} from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
 
 const supportedSurfaceKeys = new Set<SystemSurfaceKey>([
   'tenant_login',
@@ -109,14 +114,14 @@ export function SystemSurfaceEditorPage() {
 
   return (
     <Puck
-      config={systemSurfaceConfig}
+      config={getSystemSurfaceConfig(surface.surface_key)}
       data={initialData}
       onChange={(data) => {
         puckDataRef.current = data;
       }}
       onPublish={handleSave}
       viewports={viewports}
-      headerTitle={surface.title}
+      headerTitle={getSystemSurfaceAdminTitle(surface.surface_key, surface.title)}
       headerPath={surface.route_path}
     />
   );

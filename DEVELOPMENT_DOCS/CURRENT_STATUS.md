@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-05-26
+Last verified: 2026-05-28
 Primary branch: `main`
 
 ## Snapshot
@@ -13,6 +13,9 @@ Primary branch: `main`
 - Phases 9 through 15 are implemented on `main`.
 - Phase 19 system-surface foundations are partially implemented on `main`, specifically tenant login and guest-portal runtime slices.
 - Within Phase 19, tenant login is the only staff-facing system surface currently intended as a real route-owned product surface; `register`, `forgot_password`, and `reset_password` remain reserved placeholders for possible future guest/customer-account work and are not meant to become tenant staff self-service auth routes.
+- Guest-facing system surfaces now reuse a curated subset of shared Puck presentation blocks, while the tenant staff login surface remains locked to the root-shell editor controls.
+- The remaining Phase 19 follow-on is guest-facing: restore tenant public header/footer chrome where appropriate and evolve the guest portal into a locked shell with add-on-gated widgets such as bookings and quotes.
+- Staff login remains a low-priority branded utility surface rather than a planned deep customization track.
 - Tenant login system-surface browser coverage now also verifies that tenant-host customization and reset of the shipped login surface keep the auth flow working end to end.
 - Phase 17 guest-authenticated quote continuity is now implemented on the current working tree: guest-auth routes are available when booking or estimates-quotes is active, quote requests now persist guest linkage, and `/guest-portal` can list, view, accept, and reject linked quotes.
 - CI and deployment baseline were stabilized on `main` during 2026-05-11 updates:

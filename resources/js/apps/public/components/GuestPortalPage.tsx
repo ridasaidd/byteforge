@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Render } from '@puckeditor/core';
 import { tenantSystemSurfaces } from '@/shared/services/api/systemSurfaces';
-import { buildSystemSurfaceData, systemSurfaceConfig } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
+import { buildSystemSurfaceData, getSystemSurfaceConfig } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
 import type { SystemSurface } from '@/shared/services/api/types';
 import { GuestPortalExperience } from './GuestPortalExperience';
 
@@ -33,7 +33,7 @@ export function GuestPortalPage() {
   }, []);
 
   if (surface?.puck_data) {
-    return <Render config={systemSurfaceConfig} data={buildSystemSurfaceData('guest_portal', surface.puck_data)} />;
+    return <Render config={getSystemSurfaceConfig('guest_portal')} data={buildSystemSurfaceData('guest_portal', surface.puck_data)} />;
   }
 
   return <GuestPortalExperience variant="standalone" />;

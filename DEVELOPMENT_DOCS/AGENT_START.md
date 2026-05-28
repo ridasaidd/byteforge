@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: AI agent
-Last verified: 2026-05-25
+Last verified: 2026-05-28
 
 This is the fastest safe entry point for AI agents working in ByteForge.
 
@@ -12,6 +12,7 @@ This is the fastest safe entry point for AI agents working in ByteForge.
 - implemented on `main`: Phases 9 through 15
 - partially implemented on `main`: early Phase 19 tenant-login and guest-portal/system-surface slices
 - Phase 19 product boundary: tenant login may be tenant-branded and system-surface customizable, but staff register/forgot-password/reset-password flows are not a product requirement; those placeholder keys are reserved for future guest/customer-account work, not tenant staff self-service auth
+- current Phase 19 direction: keep staff login as a minimal branded utility surface; guest-facing system surfaces now reuse a curated shared Puck block subset, and the remaining follow-on work is public-shell chrome where appropriate plus add-on-gated guest-portal widgets
 - auth storage migration is in progress with the hybrid in-memory access token plus HttpOnly refresh-cookie model already in use
 - staff password changes now revoke outstanding refresh sessions and clear the current refresh cookie
 - staff logout now revokes the current bearer token as well as the current refresh session, including tenant routes where membership middleware refreshes the user model
@@ -84,9 +85,10 @@ local invariants.
 
 ## Next Likely Work
 
-The shared input normalization layer now exists. The next likely work is to
-expand it deliberately to other suitable human-input fields when new explicit
-write boundaries appear, while keeping structured Puck/placeholder JSON,
-identifier-like fields, and dead request classes out of scope. The strongest
-current CMS candidates are already covered, so the next likely substantial work
-after this track is auth/session foundation hardening and guest-auth follow-up.
+The strongest next likely work is the guest-facing follow-on for Phase 19:
+
+- keep staff login as a lightly branded fixed surface rather than a major CMS investment
+- evolve guest-facing system surfaces beyond root-prop-only shells by reusing a curated subset of the shared Puck block library where route contracts remain safe
+- let guest-facing destination surfaces inherit tenant public header/footer chrome where appropriate
+- add real guest-portal widget zones with add-on-gated widgets such as bookings and quotes
+- keep transient auth handoff routes, such as the guest magic-link callback, minimal and route-owned
