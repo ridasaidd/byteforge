@@ -11,7 +11,6 @@ import {
   buildSystemSurfaceData,
   getSystemSurfaceConfig,
   getSystemSurfaceAdminTitle,
-  systemSurfaceConfig,
   type SystemSurfaceKey,
 } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
 

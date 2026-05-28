@@ -33,7 +33,7 @@ const guestFacingComponentNames = [
 const guestFacingComponents = Object.fromEntries(
   guestFacingComponentNames
     .map((componentName) => [componentName, puckConfig.components[componentName]])
-    .filter((entry): entry is [string, Config['components'][string]] => Boolean(entry[1])),
+    .filter((entry) => Boolean(entry[1])),
 ) as Config['components'];
 
 const guestFacingCategories = Object.fromEntries(
