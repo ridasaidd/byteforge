@@ -245,6 +245,7 @@ Current state on `main`:
 
 - system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on `main`
 - tenant login now also has focused browser coverage proving that system-surface customization and reset preserve the route-owned auth flow
+- the system-surface runtime path was hardened to avoid build-time and browser-module initialization cycles by keeping the system-surface config lazy and separating shared label helpers from shared editor components
 - guest-facing system surfaces now reuse a curated subset of shared Puck presentation blocks, while the staff login editor remains intentionally locked down
 - the next intended Phase 19 follow-on is to restore public header/footer chrome where appropriate and add a real guest-portal widget zone with add-on-gated modules such as bookings and quotes
 - staff login remains a lightweight branded utility surface rather than a planned deep customization track

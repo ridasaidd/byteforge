@@ -414,6 +414,7 @@ Playwright smoke coverage lives in `tests/e2e/` and is focused on browser-runtim
 - Tenant login shell bootstrap (`/login` on tenant domain) when `PLAYWRIGHT_TENANT_BASE_URL` is provided
 - Central auth flow (`/login` -> `/dashboard` -> logout -> `/login`)
 - Tenant owner auth flow (`/login` -> `/cms` -> logout -> `/login`)
+- Tenant login system-surface customization/reset coverage, which verifies the shipped login surface still boots cleanly after tenant edits and can be restored to the default shell
 - Tenant viewer permission gate (`/cms/settings` -> Access Denied)
 - Focused booking regressions for guest portal booking management and tenant
   manual booking creation on the tenant host

@@ -1,7 +1,7 @@
 # Phase 19: System Surfaces
 
 Last updated: May 28, 2026
-Status: Partially implemented on `main`
+Status: Implemented on `main` for the shipped tenant-login and guest-portal slices; follow-on work remains open
 Recommended branch: branch follow-on work from `main`; treat it as its own implementation track
 Depends on:
 
@@ -14,8 +14,7 @@ Depends on:
 
 ## Current Status
 
-`main` currently contains the guest-portal slice of this phase and part of the
-broader system-surface foundation.
+`main` currently contains the shipped tenant-login and guest-portal slices of this phase plus the supporting system-surface foundation.
 
 Implemented on `main`:
 
@@ -24,6 +23,9 @@ Implemented on `main`:
 - tenant login runtime rendered through system-surface data
 - guest portal runtime rendered through `guest_portal` system-surface data
 - guest-facing system surfaces can now reuse a curated subset of shared Puck presentation blocks, while the tenant login surface stays locked to root-shell controls
+- the system-surface runtime is lazy-built and cycle-safe so shared editor components can import the same helpers without causing module-initialization failures in the browser bundle
+- shared admin labels for system surfaces were split into a standalone helper module so shared editors can read them without depending on the config module
+- tenant login browser coverage now verifies that customization, reset, and restore of the shipped login surface still preserve the auth flow end to end
 - route-picker and shell-aware navigation support for public system routes
 - focused guest-portal browser validation for public navigation utility links
 
@@ -35,7 +37,7 @@ Agreed follow-on direction:
 - let guest-facing destination surfaces inherit tenant public header/footer chrome where appropriate
 - evolve the guest portal into a locked shell with explicit add-on-gated widget zones such as bookings and quotes
 - keep transient auth handoff routes, such as the guest magic-link callback, minimal and route-owned rather than fully themed pages
-
+- preserve the lazy config pattern and standalone label helper if additional shared Puck reuse is added later; the earlier build/runtime cycle bug showed that direct config imports from shared editor surfaces can break bundle initialization order
 Still deferred:
 
 - any live guest/customer-facing `register`, `forgot_password`, and `reset_password` runtime routes and forms
@@ -43,6 +45,13 @@ Still deferred:
 - guest portal widget zones beyond the current fixed bookings experience
 - customer-account or password-based customer flows
 - cross-tenant customer identity / SSO architecture
+
+Implementation notes for the next chat:
+
+- tenant login is intentionally constrained and should stay that way unless the product boundary changes; it is not the place to add broad page-builder freedom
+- guest-facing system surfaces should continue to reuse the curated shared block subset instead of duplicating presentation controls surface-by-surface
+- the runtime cycle fix belongs in the shared Puck layer, not in the tenant route pages, because the failure originated from the shared component graph and the built browser bundle
+- the main remaining product work is to make the guest portal feel like a real shell with explicit widget zones and tenant chrome, not to expand staff auth flows
 
 Important scope boundary:
 

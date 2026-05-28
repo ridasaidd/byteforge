@@ -10,9 +10,10 @@ This is the fastest safe entry point for AI agents working in ByteForge.
 
 - primary branch: `main`
 - implemented on `main`: Phases 9 through 15
-- partially implemented on `main`: early Phase 19 tenant-login and guest-portal/system-surface slices
+- implemented on `main`: the shipped Phase 19 system-surface slices for tenant login and guest portal
 - Phase 19 product boundary: tenant login may be tenant-branded and system-surface customizable, but staff register/forgot-password/reset-password flows are not a product requirement; those placeholder keys are reserved for future guest/customer-account work, not tenant staff self-service auth
-- current Phase 19 direction: keep staff login as a minimal branded utility surface; guest-facing system surfaces now reuse a curated shared Puck block subset, and the remaining follow-on work is public-shell chrome where appropriate plus add-on-gated guest-portal widgets
+- current Phase 19 direction: keep staff login as a minimal branded utility surface; guest-facing system surfaces reuse a curated shared Puck block subset, and the remaining follow-on work is public-shell chrome where appropriate plus add-on-gated guest-portal widgets
+- the system-surface runtime was hardened to avoid module-initialization cycles that could break tenant `/login` mounting in the browser bundle
 - auth storage migration is in progress with the hybrid in-memory access token plus HttpOnly refresh-cookie model already in use
 - staff password changes now revoke outstanding refresh sessions and clear the current refresh cookie
 - staff logout now revokes the current bearer token as well as the current refresh session, including tenant routes where membership middleware refreshes the user model
@@ -85,10 +86,11 @@ local invariants.
 
 ## Next Likely Work
 
-The strongest next likely work is the guest-facing follow-on for Phase 19:
+The strongest next likely work is the guest-facing follow-on for Phase 19, with the shipped tenant-login slice now stable and verified:
 
 - keep staff login as a lightly branded fixed surface rather than a major CMS investment
 - evolve guest-facing system surfaces beyond root-prop-only shells by reusing a curated subset of the shared Puck block library where route contracts remain safe
 - let guest-facing destination surfaces inherit tenant public header/footer chrome where appropriate
 - add real guest-portal widget zones with add-on-gated widgets such as bookings and quotes
 - keep transient auth handoff routes, such as the guest magic-link callback, minimal and route-owned
+- preserve the lazy, cycle-safe system-surface config pattern if more shared Puck reuse is added later
