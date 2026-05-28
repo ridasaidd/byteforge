@@ -1,9 +1,13 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, lazy, Suspense } from 'react';
 import { type Config, type Data } from '@puckeditor/core';
 import { Logo } from '@/shared/components/atoms/Logo';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { TenantLoginFormCard } from '@/apps/tenant/components/auth/TenantLoginFormCard';
+
+const PageEditorPreview = lazy(() =>
+  import('@/shared/components/organisms/PageEditorPreview').then((m) => ({ default: m.PageEditorPreview }))
+);
 import { GuestPortalExperience } from '@/apps/public/components/GuestPortalExperience';
 import { usePuckEditMode } from '@/shared/hooks';
 import {
@@ -64,6 +68,45 @@ const guestFacingCategories: Config['categories'] = {
 
 export { getSystemSurfaceAdminTitle };
 
+export function isGuestFacingSurface(surfaceKey: SystemSurfaceKey): boolean {
+  return guestFacingSurfaceKeys.has(surfaceKey);
+}
+
+interface SystemSurfaceChromeOptions {
+  baseConfig: Config;
+  previewConfig?: Config;
+  headerData: Data | null;
+  footerData: Data | null;
+  onEditSection?: (section: 'header' | 'footer') => void;
+}
+
+export function getSystemSurfaceConfigWithChrome(
+  surfaceKey: SystemSurfaceKey,
+  options: SystemSurfaceChromeOptions,
+): Config {
+  if (!isGuestFacingSurface(surfaceKey)) {
+    return options.baseConfig;
+  }
+
+  const { baseConfig, previewConfig, headerData, footerData, onEditSection } = options;
+
+  return {
+    ...baseConfig,
+    root: {
+      ...baseConfig.root,
+      render: (props: SystemSurfaceRootProps & { children?: ReactNode }) => (
+        <SystemSurfaceChromeRenderer
+          {...props}
+          headerData={headerData}
+          footerData={footerData}
+          previewConfig={previewConfig ?? baseConfig}
+          onEditSection={onEditSection}
+        />
+      ),
+    },
+  };
+}
+
 interface SystemSurfaceRootProps {
   _rootId?: string;
   surfaceKey?: SystemSurfaceKey;
@@ -88,6 +131,33 @@ interface SystemSurfaceRootProps {
   minHeight?: string;
   padding?: ResponsiveSpacingValue;
   margin?: ResponsiveSpacingValue;
+  puck?: {
+    renderDropZone?: (props: {
+      zone: string;
+      minEmptyHeight?: string | number;
+      className?: string;
+    }) => ReactNode;
+  };
+}
+
+const legacyGuestRootTextKeys: string[] = [
+  'showLogo',
+  'eyebrow',
+  'title',
+  'description',
+  'panelTitle',
+  'panelDescription',
+  'supportText',
+  'shellSlotTarget',
+  'panelSlotEnabled',
+];
+
+function stripLegacyGuestRootTextProps(inputProps: Record<string, unknown>): Record<string, unknown> {
+  const next = { ...inputProps };
+  for (const key of legacyGuestRootTextKeys) {
+    delete next[key];
+  }
+  return next;
 }
 
 const surfaceDefaults: Record<SystemSurfaceKey, Omit<SystemSurfaceRootProps, 'surfaceKey'>> = {
@@ -103,46 +173,18 @@ const surfaceDefaults: Record<SystemSurfaceKey, Omit<SystemSurfaceRootProps, 'su
     contentAlignment: 'left',
   },
   register: {
-    showLogo: true,
-    eyebrow: 'Registration',
-    title: 'Create your account',
-    description: 'Introduce the benefits of account creation and keep required form logic fixed in code.',
-    panelTitle: 'Register',
-    panelDescription: 'Preview of the locked account creation form.',
-    supportText: 'You can edit the surrounding presentation here. The required registration fields stay fixed.',
     backgroundStyle: 'soft',
     contentAlignment: 'left',
   },
   forgot_password: {
-    showLogo: true,
-    eyebrow: 'Password recovery',
-    title: 'Recover access quickly',
-    description: 'Explain how password recovery works and reassure the user before they submit their email.',
-    panelTitle: 'Forgot password',
-    panelDescription: 'Preview of the locked recovery form.',
-    supportText: 'The recovery field and submit action remain required. This surface only controls the presentation shell.',
     backgroundStyle: 'muted',
     contentAlignment: 'left',
   },
   reset_password: {
-    showLogo: true,
-    eyebrow: 'Secure reset',
-    title: 'Choose a new password',
-    description: 'Set expectations around password rules and reassure users that their reset link is secure.',
-    panelTitle: 'Reset password',
-    panelDescription: 'Preview of the locked reset form.',
-    supportText: 'Token validation and password submission remain route-owned and cannot be removed here.',
     backgroundStyle: 'contrast',
     contentAlignment: 'left',
   },
   guest_portal: {
-    showLogo: true,
-    eyebrow: 'Guest portal',
-    title: 'A single place for guest activity',
-    description: 'Set the introduction and supporting shell copy for the authenticated guest area.',
-    panelTitle: 'Portal shell preview',
-    panelDescription: 'Future widgets like bookings, quotes, and estimates will live inside this route-owned shell.',
-    supportText: 'This editor currently controls the shell presentation. Runtime widget zones come in a later slice.',
     backgroundStyle: 'soft',
     contentAlignment: 'left',
   },
@@ -180,11 +222,13 @@ function PlaceholderSurfaceCard({
   description,
   fields,
   actionLabel,
+  panelSlotContent,
 }: {
   title?: string;
   description?: string;
   fields: string[];
   actionLabel: string;
+  panelSlotContent?: ReactNode;
 }) {
   return (
     <Card className="w-full max-w-md">
@@ -193,6 +237,11 @@ function PlaceholderSurfaceCard({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {panelSlotContent ? (
+          <div className="pb-3 border-b mb-3">
+            {panelSlotContent}
+          </div>
+        ) : null}
         {fields.map((field) => (
           <div key={field} className="space-y-2">
             <div className="text-sm font-medium text-slate-700">{field}</div>
@@ -207,7 +256,7 @@ function PlaceholderSurfaceCard({
   );
 }
 
-function GuestPortalPreviewCard({ title, description }: { title?: string; description?: string }) {
+function GuestPortalPreviewCard({ title, description, panelSlotContent }: { title?: string; description?: string; panelSlotContent?: ReactNode }) {
   return (
     <Card className="w-full max-w-xl">
       <CardHeader>
@@ -224,9 +273,15 @@ function GuestPortalPreviewCard({ title, description }: { title?: string; descri
           <div className="text-sm font-medium text-slate-700">Signed in as</div>
           <div className="mt-2 text-sm text-slate-500">guest@example.com</div>
         </div>
-        <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
-          Widget zone preview
-        </div>
+        {panelSlotContent ? (
+          <div className="rounded-lg border p-4">
+            {panelSlotContent}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed p-6 text-center text-sm text-slate-500">
+            Widget zone preview
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -236,10 +291,12 @@ function LockedSurfacePanel({
   surfaceKey,
   panelTitle,
   panelDescription,
+  panelSlotContent,
 }: {
   surfaceKey: SystemSurfaceKey;
   panelTitle?: string;
   panelDescription?: string;
+  panelSlotContent?: ReactNode;
 }) {
   const isEditing = usePuckEditMode();
 
@@ -253,6 +310,7 @@ function LockedSurfacePanel({
           description={panelDescription}
           fields={['Full name', 'Email', 'Password']}
           actionLabel="Create account"
+          panelSlotContent={panelSlotContent}
         />
       );
     case 'forgot_password':
@@ -262,6 +320,7 @@ function LockedSurfacePanel({
           description={panelDescription}
           fields={['Email']}
           actionLabel="Send recovery link"
+          panelSlotContent={panelSlotContent}
         />
       );
     case 'reset_password':
@@ -271,11 +330,12 @@ function LockedSurfacePanel({
           description={panelDescription}
           fields={['New password', 'Confirm password']}
           actionLabel="Update password"
+          panelSlotContent={panelSlotContent}
         />
       );
     case 'guest_portal':
       return isEditing
-        ? <GuestPortalPreviewCard title={panelTitle} description={panelDescription} />
+        ? <GuestPortalPreviewCard title={panelTitle} description={panelDescription} panelSlotContent={panelSlotContent} />
         : <GuestPortalExperience variant="embedded" />;
     default:
       return null;
@@ -286,7 +346,7 @@ function SystemSurfaceRootRenderer({
   _rootId,
   surfaceKey = 'tenant_login',
   children,
-  showLogo = true,
+  showLogo = false,
   eyebrow,
   title,
   description,
@@ -306,13 +366,38 @@ function SystemSurfaceRootRenderer({
   minHeight,
   padding,
   margin,
+  puck,
 }: SystemSurfaceRootProps) {
   const paletteColors = palette(backgroundStyle);
   const isGuestPortal = surfaceKey === 'guest_portal';
-  const showGuestBlocks = guestFacingSurfaceKeys.has(surfaceKey) && Boolean(children);
+  const isGuestFacing = guestFacingSurfaceKeys.has(surfaceKey);
   const isEditing = usePuckEditMode();
   const outerClass = _rootId ? `system-surface-root-${_rootId}` : 'system-surface-root';
   const innerClass = _rootId ? `system-surface-root-${_rootId}-inner` : 'system-surface-root-inner';
+
+  const renderDropZone = puck?.renderDropZone;
+  const heroSlotContent = isGuestFacing
+    ? (renderDropZone?.({
+      zone: 'hero',
+      minEmptyHeight: 120,
+      className: 'system-surface-hero-slot',
+    }) ?? (children ? <div>{children}</div> : null))
+    : null;
+  const panelSlotContent = isGuestFacing
+    ? (renderDropZone?.({
+      zone: 'panel',
+      minEmptyHeight: 110,
+      className: 'system-surface-panel-slot',
+    }) ?? null)
+    : null;
+  const panelSlotPlaceholder = (isGuestFacing && isEditing && !panelSlotContent)
+    ? (
+      <div className="rounded-lg border border-dashed p-4 text-sm text-slate-500">
+        Panel slot active. Add blocks to place content in this panel area.
+      </div>
+    )
+    : null;
+  const resolvedPanelSlotContent = panelSlotContent ?? panelSlotPlaceholder;
 
   const resolveColorValue = (value: ColorValue | undefined, fallback: string) => {
     if (!value) return fallback;
@@ -406,9 +491,9 @@ function SystemSurfaceRootRenderer({
               {supportText}
             </p>
           ) : null}
-          {showGuestBlocks ? (
+          {heroSlotContent ? (
             <div style={{ width: '100%', maxWidth: '42rem' }}>
-              {children}
+              {heroSlotContent}
             </div>
           ) : null}
         </section>
@@ -428,6 +513,7 @@ function SystemSurfaceRootRenderer({
               surfaceKey={surfaceKey}
               panelTitle={panelTitle}
               panelDescription={panelDescription}
+              panelSlotContent={resolvedPanelSlotContent}
             />
           </div>
         </section>
@@ -436,27 +522,62 @@ function SystemSurfaceRootRenderer({
   );
 }
 
+function SystemSurfaceChromeRenderer({
+  children,
+  headerData,
+  footerData,
+  previewConfig,
+  onEditSection,
+  ...rootProps
+}: SystemSurfaceRootProps & {
+  children?: ReactNode;
+  headerData: Data | null;
+  footerData: Data | null;
+  previewConfig: Config;
+  onEditSection?: (section: 'header' | 'footer') => void;
+}) {
+  return (
+    <Suspense fallback={<SystemSurfaceRootRenderer {...rootProps}>{children}</SystemSurfaceRootRenderer>}>
+      <PageEditorPreview
+        headerData={headerData}
+        footerData={footerData}
+        config={previewConfig}
+        onEditSection={onEditSection}
+      >
+        <SystemSurfaceRootRenderer {...rootProps}>
+          {children}
+        </SystemSurfaceRootRenderer>
+      </PageEditorPreview>
+    </Suspense>
+  );
+}
+
 export function buildSystemSurfaceData(surfaceKey: SystemSurfaceKey, puckData?: Record<string, unknown> | null): Data {
   const input = (puckData ?? {}) as Data;
   const inputRoot = (input.root ?? {}) as { props?: Record<string, unknown> };
+  const rawInputProps = inputRoot.props ?? {};
+  const inputProps = isGuestFacingSurface(surfaceKey)
+    ? stripLegacyGuestRootTextProps(rawInputProps)
+    : rawInputProps;
 
   return {
     content: Array.isArray(input.content) ? input.content : [],
     root: {
       ...inputRoot,
       props: {
-        surfaceKey,
         ...surfaceDefaults[surfaceKey],
-        ...(inputRoot.props ?? {}),
+        ...inputProps,
+        surfaceKey,
       },
     },
   } as unknown as Data;
 }
 
 let cachedSystemSurfaceConfig: Config | null = null;
+let cachedStaffLoginSystemSurfaceConfig: Config | null = null;
 let cachedGuestFacingSystemSurfaceConfig: Config | null = null;
 
-function createSystemSurfaceConfig(): Config {
+function createBaseSystemSurfaceConfig(): Config {
   const sharedRootFields = {
     ...backgroundFields,
     ...backgroundImageFields,
@@ -510,6 +631,39 @@ function createSystemSurfaceConfig(): Config {
     root: {
       fields: {
         ...sharedRootFields,
+        backgroundStyle: {
+          type: 'select',
+          label: 'Background style',
+          options: [
+            { label: 'Soft', value: 'soft' },
+            { label: 'Contrast', value: 'contrast' },
+            { label: 'Muted', value: 'muted' },
+          ],
+        },
+        contentAlignment: {
+          type: 'select',
+          label: 'Content alignment',
+          options: [
+            { label: 'Left', value: 'left' },
+            { label: 'Center', value: 'center' },
+          ],
+        },
+      },
+      defaultProps: {
+        ...sharedRootDefaults,
+      },
+      render: SystemSurfaceRootRenderer as any,
+    },
+  };
+}
+
+function createStaffLoginSystemSurfaceConfig(baseConfig: Config): Config {
+  return {
+    ...baseConfig,
+    root: {
+      ...baseConfig.root,
+      fields: {
+        ...baseConfig.root?.fields,
         showLogo: {
           type: 'radio',
           label: 'Show logo',
@@ -542,30 +696,7 @@ function createSystemSurfaceConfig(): Config {
           type: 'textarea',
           label: 'Support text',
         },
-        backgroundStyle: {
-          type: 'select',
-          label: 'Background style',
-          options: [
-            { label: 'Soft', value: 'soft' },
-            { label: 'Contrast', value: 'contrast' },
-            { label: 'Muted', value: 'muted' },
-          ],
-        },
-        contentAlignment: {
-          type: 'select',
-          label: 'Content alignment',
-          options: [
-            { label: 'Left', value: 'left' },
-            { label: 'Center', value: 'center' },
-          ],
-        },
       },
-      defaultProps: {
-        ...sharedRootDefaults,
-        surfaceKey: 'tenant_login',
-        ...surfaceDefaults.tenant_login,
-      },
-      render: SystemSurfaceRootRenderer as any,
     },
   };
 }
@@ -578,20 +709,38 @@ function createGuestFacingSystemSurfaceConfig(baseConfig: Config): Config {
   };
 }
 
+function applySurfaceRootDefaults(config: Config, surfaceKey: SystemSurfaceKey): Config {
+  const root = config.root;
+  const defaultProps = (root?.defaultProps ?? {}) as Record<string, unknown>;
+
+  return {
+    ...config,
+    root: {
+      ...root,
+      defaultProps: {
+        ...defaultProps,
+        ...surfaceDefaults[surfaceKey],
+        surfaceKey,
+      },
+    },
+  };
+}
+
 export function getSystemSurfaceConfig(surfaceKey: SystemSurfaceKey): Config {
   if (!cachedSystemSurfaceConfig) {
-    cachedSystemSurfaceConfig = createSystemSurfaceConfig();
+    cachedSystemSurfaceConfig = createBaseSystemSurfaceConfig();
   }
 
-  if (!guestFacingSurfaceKeys.has(surfaceKey)) {
-    return cachedSystemSurfaceConfig;
+  if (surfaceKey === 'tenant_login') {
+    if (!cachedStaffLoginSystemSurfaceConfig) {
+      cachedStaffLoginSystemSurfaceConfig = createStaffLoginSystemSurfaceConfig(cachedSystemSurfaceConfig);
+    }
+    return applySurfaceRootDefaults(cachedStaffLoginSystemSurfaceConfig, surfaceKey);
   }
 
   if (!cachedGuestFacingSystemSurfaceConfig) {
     cachedGuestFacingSystemSurfaceConfig = createGuestFacingSystemSurfaceConfig(cachedSystemSurfaceConfig);
   }
 
-  return guestFacingSurfaceKeys.has(surfaceKey)
-    ? cachedGuestFacingSystemSurfaceConfig
-    : cachedSystemSurfaceConfig;
+  return applySurfaceRootDefaults(cachedGuestFacingSystemSurfaceConfig, surfaceKey);
 }
