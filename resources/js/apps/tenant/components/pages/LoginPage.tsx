@@ -4,7 +4,7 @@ import { Logo } from '@/shared/components/atoms/Logo';
 import { TenantLoginFormCard } from '@/apps/tenant/components/auth/TenantLoginFormCard';
 import { tenantSystemSurfaces } from '@/shared/services/api/systemSurfaces';
 import type { SystemSurface } from '@/shared/services/api/types';
-import { buildSystemSurfaceData, systemSurfaceConfig } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
+import { buildSystemSurfaceData, getSystemSurfaceConfig } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
 
 export function LoginPage() {
   const [surface, setSurface] = useState<SystemSurface | null>(null);
@@ -34,7 +34,7 @@ export function LoginPage() {
   }, []);
 
   if (surface?.puck_data) {
-    return <Render config={systemSurfaceConfig} data={buildSystemSurfaceData('tenant_login', surface.puck_data)} />;
+    return <Render config={getSystemSurfaceConfig('tenant_login')} data={buildSystemSurfaceData('tenant_login', surface.puck_data)} />;
   }
 
   return (

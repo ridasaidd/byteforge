@@ -238,13 +238,16 @@ Primary doc:
 Outcome:
 
 - dedicated tenant CMS area for route-bound system pages such as tenant login and guest portal, with reserved placeholders for any later guest/customer-account auth surfaces
-- fixed application logic with Puck-backed presentation editing and generated storefront-safe CSS
+- fixed application logic with Puck-backed presentation editing, curated shared-block reuse where safe, and generated storefront-safe CSS
 - widget-capable authenticated guest portal shell for bookings and future add-ons
 
 Current state on `main`:
 
 - system-surface foundations, tenant login runtime, and guest-portal runtime are implemented on `main`
 - tenant login now also has focused browser coverage proving that system-surface customization and reset preserve the route-owned auth flow
+- guest-facing system surfaces now reuse a curated subset of shared Puck presentation blocks, while the staff login editor remains intentionally locked down
+- the next intended Phase 19 follow-on is to restore public header/footer chrome where appropriate and add a real guest-portal widget zone with add-on-gated modules such as bookings and quotes
+- staff login remains a lightweight branded utility surface rather than a planned deep customization track
 - `register`, `forgot_password`, and `reset_password` remain reserved future placeholders for guest/customer-account work rather than tenant staff self-service auth
 - customer-account pages are not part of the delivered Phase 15 guest-auth slice and should not be pulled into tenant staff auth by default
 

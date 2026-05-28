@@ -1,6 +1,6 @@
 # Phase 19: System Surfaces
 
-Last updated: April 26, 2026
+Last updated: May 28, 2026
 Status: Partially implemented on `main`
 Recommended branch: branch follow-on work from `main`; treat it as its own implementation track
 Depends on:
@@ -23,12 +23,23 @@ Implemented on `main`:
 - tenant CMS list, reset, and editor flow for system pages
 - tenant login runtime rendered through system-surface data
 - guest portal runtime rendered through `guest_portal` system-surface data
+- guest-facing system surfaces can now reuse a curated subset of shared Puck presentation blocks, while the tenant login surface stays locked to root-shell controls
 - route-picker and shell-aware navigation support for public system routes
 - focused guest-portal browser validation for public navigation utility links
+
+Agreed follow-on direction:
+
+- keep the tenant staff login surface as a lightweight branded utility surface
+- put deeper customization effort into guest-facing system surfaces, not staff self-service auth flows
+- guest-facing system surfaces already reuse a curated subset of shared Puck presentation blocks where route contracts remain safe
+- let guest-facing destination surfaces inherit tenant public header/footer chrome where appropriate
+- evolve the guest portal into a locked shell with explicit add-on-gated widget zones such as bookings and quotes
+- keep transient auth handoff routes, such as the guest magic-link callback, minimal and route-owned rather than fully themed pages
 
 Still deferred:
 
 - any live guest/customer-facing `register`, `forgot_password`, and `reset_password` runtime routes and forms
+- tenant public header/footer integration for guest-facing destination system surfaces
 - guest portal widget zones beyond the current fixed bookings experience
 - customer-account or password-based customer flows
 - cross-tenant customer identity / SSO architecture
@@ -54,6 +65,7 @@ ByteForge currently has two strong UI models:
 There is now a third category that does not fit cleanly into either existing bucket:
 
 - tenant login
+- guest portal request-magic-link state
 - guest magic-link handoff
 - authenticated guest portal shell
 - future tokenized public quote review
@@ -74,6 +86,10 @@ The goal of this phase is to introduce a **hybrid system-surface model**:
 - required functional controls stay non-removable,
 - presentation, layout, copy, and safe content zones become Puck-editable,
 - authenticated guest content areas can host true widgets.
+
+In practice, the next slice of that model should lean on the existing shared
+Puck block library for guest-facing presentation instead of growing a bespoke
+field-only editor for every surface.
 
 This removes the need to pull Tailwind or shadcn into the storefront runtime for system pages, while still allowing tenant-level customization.
 
@@ -103,12 +119,13 @@ System Surfaces are:
 
 1. **Security-sensitive logic stays in code.** Puck may not own login submission, password reset tokens, guest session bootstrap, or redirect rules.
 2. **Required controls are not removable.** Example: tenant login must always contain the required sign-in controls; if guest/customer password-recovery surfaces ever ship later, their required controls stay fixed as well.
-3. **Presentation is editable.** Layout, spacing, typography, brand areas, optional side content, and safe supporting copy are editable through Puck.
-4. **Storefront styling stays storefront-native.** No new requirement for Tailwind or shadcn on public runtime surfaces. Styling should continue to rely on Puck controls, generated CSS, theme tokens, and minimal component-owned CSS where required.
-5. **Authenticated content can become widget-driven.** The guest portal shell is fixed, but widgets like bookings, quotes, and estimates should be addable to the authenticated area.
-6. **System Surfaces are not Pages.** They deserve their own CMS navigation item, their own API/resource model, and their own editor constraints.
-7. **Tenant customization must not break route contracts.** The system must remain valid even if a tenant customizes every visual option available.
-8. **Anonymous token-review flows remain route-owned.** If public quote review becomes customizable, it should be its own system page with locked summary and decision controls, not a widget inside the authenticated guest portal.
+3. **Presentation is editable through a curated safe block set.** Guest-facing system surfaces should prefer a curated subset of existing shared Puck presentation blocks such as heading, text, rich text, image, spacing, logo, and box when those blocks do not threaten the route-owned contract.
+4. **Guest-facing destination surfaces can use tenant public chrome.** If a system surface behaves like a navigable public destination page, it should inherit the tenant header/footer shell where appropriate. Transient auth callback routes should stay minimal instead.
+5. **Storefront styling stays storefront-native.** No new requirement for Tailwind or shadcn on public runtime surfaces. Styling should continue to rely on Puck controls, generated CSS, theme tokens, and minimal component-owned CSS where required.
+6. **Authenticated content can become widget-driven.** The guest portal shell is fixed, but widgets like bookings, quotes, and estimates should be addable to the authenticated area.
+7. **System Surfaces are not Pages.** They deserve their own CMS navigation item, their own API/resource model, and their own editor constraints.
+8. **Tenant customization must not break route contracts.** The system must remain valid even if a tenant customizes every visual option available.
+9. **Anonymous token-review flows remain route-owned.** If public quote review becomes customizable, it should be its own system page with locked quote summary and decision controls, not a widget inside the authenticated guest portal.
 
 ---
 
@@ -120,8 +137,10 @@ System Surfaces are:
 - Dedicated CMS navigation for system surfaces
 - Fixed-route rendering for auth and guest surfaces
 - Puck-backed editing for system-surface presentation
+- curated shared Puck presentation-block reuse on guest-facing system surfaces
 - Locked required UI regions for auth flows
 - Widget zones for authenticated guest areas
+- tenant public header/footer integration for guest-facing destination surfaces
 - Storefront-safe CSS generation for system surfaces
 
 ### Out of Scope
@@ -129,6 +148,7 @@ System Surfaces are:
 - Replacing the normal Pages system
 - Making auth inputs individually draggable/removable blocks
 - Letting tenants arbitrarily move critical auth controls out of the required flow
+- Turning staff login into a deeply composable public page-builder surface
 - Adding Tailwind/shadcn as a storefront dependency
 - Designing the quotes/estimates product itself beyond its future portal-zone fit
 
@@ -151,6 +171,11 @@ Characteristics:
 - optional editable presentation shell
 - no arbitrary widget slotting
 
+Direction note:
+
+- tenant staff login stays intentionally constrained and lightly branded
+- the guest magic-link callback stays minimal because it behaves like an auth handoff rather than a browsable storefront page
+
 ### 2. Fixed Shell + Widget Zone Surfaces
 
 Example:
@@ -163,6 +188,7 @@ Characteristics:
 - fixed session/bootstrap and access-control logic
 - fixed shell and guard rails
 - one or more Puck-editable widget zones for authenticated modules
+- guest-facing shell content can use curated shared presentation blocks and tenant public chrome where appropriate
 
 ### 3. Authenticated Portal Widgets
 
@@ -189,7 +215,7 @@ These should not live under the normal Pages menu.
 Recommended tenant CMS nav addition:
 
 - `System Pages`
-  - `Login`
+  - `Staff Login`
   - `Guest Portal`
 
 Reserved future placeholders only if guest/customer accounts are productized later:
@@ -345,6 +371,7 @@ This mirrors the current booking/payment pattern where a React render component 
 #### Locked Required Core
 
 - guest session bootstrap
+- magic-link request state and submission contract
 - logout action
 - authorization/empty-state logic
 - widget-zone contract
@@ -355,7 +382,13 @@ This mirrors the current booking/payment pattern where a React render component 
 - intro copy
 - support/help content
 - widget zone arrangement
+- curated shared presentation blocks around the locked guest experience
 - typography/colors/spacing
+
+#### Public Chrome
+
+- include tenant header/footer when the surface is acting as a normal guest-facing destination page
+- keep the auth callback/handoff route outside the full storefront chrome when brevity and clarity are more important than theming
 
 #### Widget Zone Contents
 
@@ -406,8 +439,8 @@ Recommended behavior:
 
 Example:
 
-- `Login` surface editor allows safe layout/content blocks around a locked auth form
-- `Guest Portal` surface editor allows shell blocks and a portal widget zone
+- `Staff Login` surface editor stays intentionally narrow and allows only light shell customization around a locked auth form
+- `Guest Portal` surface editor allows a curated shared presentation-block set plus a portal widget zone
 - `Forgot Password` allows informational/support content blocks around a locked recovery form
 
 This should be implemented as **surface-specific Puck configs or config extensions**, not as one universal freeform config.
@@ -421,9 +454,16 @@ The authenticated guest portal is where true widgets should be emphasized.
 Recommended first widget list:
 
 1. `GuestBookingsWidget`
-2. `GuestQuotesWidget` (future)
-3. `GuestEstimatesWidget` (future)
+2. `GuestQuotesWidget`
+3. `GuestEstimatesWidget` (if quotes and estimates remain distinct product modules later)
 4. `GuestHelpWidget`
+
+Availability rule:
+
+- surface editor block lists should expose guest-portal widgets only when the corresponding tenant add-on is enabled
+- `GuestBookingsWidget` should appear only when booking is enabled
+- `GuestQuotesWidget` should appear only when estimates/quotes is enabled
+- these widgets belong in the guest-portal surface editor, not in generic public page editing
 
 Important boundary:
 
@@ -436,6 +476,12 @@ This gives ByteForge the right long-term model:
 - safe auth surfaces,
 - customizable authenticated experience,
 - add-on expansion path without inventing a second guest UI system.
+
+It also keeps the product boundary clean:
+
+- staff auth remains operational and lightly brandable
+- guest-facing surfaces carry the richer theming and layout controls
+- customer-account auth pages stay deferred until the later customer-account phase
 
 ---
 
@@ -520,31 +566,41 @@ Deliverables:
 - surface-specific Puck config loading
 - preview with locked regions
 
-### 19.4 Fixed Auth Surfaces
+### 19.4 Guest-Facing Presentation Upgrade
 
 Goal:
 
-- convert auth-related runtime pages into Puck-backed fixed surfaces
-
-Candidates:
-
-- tenant login
-- register
-- forgot password
-- reset password
-- guest magic-link callback
-
-### 19.5 Guest Portal Shell + Widget Zone
-
-Goal:
-
-- convert the guest portal shell into a system surface with portal zones
+- move guest-facing system surfaces from root-prop-only presentation toward curated shared Puck blocks and public-shell integration
 
 Deliverables:
 
-- fixed shell runtime component
-- widget-zone contract
-- first-party bookings widget integration
+- guest-surface-specific config that reuses safe shared presentation blocks
+- public header/footer wrapper for guest-facing destination surfaces
+- preserved minimal callback rendering for the guest magic-link handoff route
+
+### 19.5 Guest Portal Widget Zones
+
+Goal:
+
+- make the guest portal a real locked shell with add-on-gated widget zones
+
+Deliverables:
+
+- explicit guest-portal widget zone contract
+- `GuestBookingsWidget` registration behind the booking add-on
+- `GuestQuotesWidget` registration behind the estimates/quotes add-on
+- editor filtering so guest widgets appear only inside the guest-portal surface editor
+
+---
+
+## Recommended Follow-On From Current `main`
+
+1. Leave the existing staff login surface in place, but treat it as a constrained branded shell rather than a major customization target.
+2. Split system-surface editor behavior into staff-utility versus guest-facing surfaces.
+3. Reuse a curated subset of shared Puck presentation blocks on guest-facing system surfaces instead of growing bespoke field-only shells.
+4. Wrap guest-facing destination surfaces, such as the guest portal request state, in tenant public header/footer chrome where that improves storefront continuity.
+5. Keep transient callback routes, especially the guest magic-link handoff, minimal and route-owned.
+6. Add a real guest-portal widget zone and expose add-on-gated widgets such as bookings and quotes only inside that portal editor.
 
 ### 19.6 Portal Widget Expansion
 
