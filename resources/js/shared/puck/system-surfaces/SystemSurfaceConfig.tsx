@@ -6,8 +6,27 @@ import { Badge } from '@/shared/components/ui/badge';
 import { TenantLoginFormCard } from '@/apps/tenant/components/auth/TenantLoginFormCard';
 import { GuestPortalExperience } from '@/apps/public/components/GuestPortalExperience';
 import { usePuckEditMode } from '@/shared/hooks';
-import { puckConfig } from '@/shared/puck/config';
-import { buildLayoutCSS, type ColorValue, type ResponsiveSpacingValue } from '@/shared/puck/fields';
+import {
+  Box,
+  Heading,
+  Text,
+  Divider,
+  Logo as LogoBlock,
+  RichText,
+  Button,
+  Link,
+  Image,
+} from '@/shared/puck/components';
+import {
+  backgroundFields,
+  backgroundImageFields,
+  fontFamilyField,
+  textColorField,
+  spacingFields,
+} from '@/shared/puck/fields/fieldGroups';
+import { buildLayoutCSS } from '@/shared/puck/fields/cssBuilder';
+import type { ColorValue, ResponsiveSpacingValue } from '@/shared/puck/fields';
+import { getSystemSurfaceAdminTitle } from './systemSurfaceLabels';
 
 export type SystemSurfaceKey = 'tenant_login' | 'register' | 'forgot_password' | 'reset_password' | 'guest_portal';
 
@@ -18,46 +37,32 @@ const guestFacingSurfaceKeys = new Set<SystemSurfaceKey>([
   'guest_portal',
 ]);
 
-const guestFacingComponentNames = [
-  'Box',
-  'Heading',
-  'Text',
-  'Divider',
-  'Logo',
-  'RichText',
-  'Button',
-  'Link',
-  'Image',
-] as const;
-
-const guestFacingComponents = Object.fromEntries(
-  guestFacingComponentNames
-    .map((componentName) => [componentName, puckConfig.components[componentName]])
-    .filter((entry) => Boolean(entry[1])),
-) as Config['components'];
-
-const guestFacingCategories = Object.fromEntries(
-  Object.entries(puckConfig.categories ?? {}).flatMap(([categoryKey, categoryConfig]) => {
-    const nextComponents = (categoryConfig.components ?? []).filter((componentName) =>
-      guestFacingComponentNames.includes(componentName as (typeof guestFacingComponentNames)[number]));
-
-    return nextComponents.length > 0
-      ? [[categoryKey, { ...categoryConfig, components: nextComponents }]]
-      : [];
-  }),
-) as Config['categories'];
-
-const systemSurfaceAdminTitles: Record<SystemSurfaceKey, string> = {
-  tenant_login: 'Staff Login',
-  register: 'Guest Sign Up (Reserved)',
-  forgot_password: 'Guest Password Recovery (Reserved)',
-  reset_password: 'Guest Password Reset (Reserved)',
-  guest_portal: 'Guest Portal',
+const guestFacingComponents: Config['components'] = {
+  Box: Box as Config['components'][string],
+  Heading: Heading as Config['components'][string],
+  Text: Text as Config['components'][string],
+  Divider: Divider as Config['components'][string],
+  Logo: LogoBlock as Config['components'][string],
+  RichText: RichText as Config['components'][string],
+  Button: Button as Config['components'][string],
+  Link: Link as Config['components'][string],
+  Image: Image as Config['components'][string],
 };
 
-export function getSystemSurfaceAdminTitle(surfaceKey: SystemSurfaceKey, fallbackTitle?: string): string {
-  return systemSurfaceAdminTitles[surfaceKey] ?? fallbackTitle ?? surfaceKey;
-}
+const guestFacingCategories: Config['categories'] = {
+  layout: {
+    components: ['Box'],
+    title: 'Layout',
+    defaultExpanded: true,
+  },
+  content: {
+    components: ['Heading', 'Text', 'Divider', 'Logo', 'RichText', 'Button', 'Link', 'Image'],
+    title: 'Content',
+    defaultExpanded: true,
+  },
+};
+
+export { getSystemSurfaceAdminTitle };
 
 interface SystemSurfaceRootProps {
   _rootId?: string;
@@ -448,79 +453,145 @@ export function buildSystemSurfaceData(surfaceKey: SystemSurfaceKey, puckData?: 
   } as unknown as Data;
 }
 
-export const systemSurfaceConfig: Config = {
-  components: {},
-  categories: {},
-  root: {
-    fields: {
-      ...(puckConfig.root?.fields ?? {}),
-      showLogo: {
-        type: 'radio',
-        label: 'Show logo',
-        options: [
-          { label: 'Yes', value: true },
-          { label: 'No', value: false },
-        ],
-      },
-      eyebrow: {
-        type: 'text',
-        label: 'Eyebrow',
-      },
-      title: {
-        type: 'text',
-        label: 'Main title',
-      },
-      description: {
-        type: 'textarea',
-        label: 'Description',
-      },
-      panelTitle: {
-        type: 'text',
-        label: 'Panel title',
-      },
-      panelDescription: {
-        type: 'textarea',
-        label: 'Panel description',
-      },
-      supportText: {
-        type: 'textarea',
-        label: 'Support text',
-      },
-      backgroundStyle: {
-        type: 'select',
-        label: 'Background style',
-        options: [
-          { label: 'Soft', value: 'soft' },
-          { label: 'Contrast', value: 'contrast' },
-          { label: 'Muted', value: 'muted' },
-        ],
-      },
-      contentAlignment: {
-        type: 'select',
-        label: 'Content alignment',
-        options: [
-          { label: 'Left', value: 'left' },
-          { label: 'Center', value: 'center' },
-        ],
-      },
-    },
-    defaultProps: {
-      ...((puckConfig.root?.defaultProps ?? {}) as Record<string, unknown>),
-      surfaceKey: 'tenant_login',
-      ...surfaceDefaults.tenant_login,
-    },
-    render: SystemSurfaceRootRenderer as any,
-  },
-};
+let cachedSystemSurfaceConfig: Config | null = null;
+let cachedGuestFacingSystemSurfaceConfig: Config | null = null;
 
-const guestFacingSystemSurfaceConfig: Config = {
-  ...systemSurfaceConfig,
-  components: guestFacingComponents,
-  categories: guestFacingCategories,
-};
+function createSystemSurfaceConfig(): Config {
+  const sharedRootFields = {
+    ...backgroundFields,
+    ...backgroundImageFields,
+    ...textColorField,
+    ...fontFamilyField('sans'),
+    maxWidth: {
+      type: 'select',
+      label: 'Max Width',
+      options: [
+        { label: 'Full', value: '100%' },
+        { label: '1440px', value: '1440px' },
+        { label: '1280px', value: '1280px' },
+        { label: '1024px', value: '1024px' },
+        { label: '768px', value: '768px' },
+      ],
+    },
+    minHeight: {
+      type: 'select',
+      label: 'Min Height',
+      options: [
+        { label: 'Auto', value: 'auto' },
+        { label: '100vh (Full Screen)', value: '100vh' },
+        { label: '75vh', value: '75vh' },
+        { label: '50vh', value: '50vh' },
+      ],
+    },
+    ...spacingFields,
+  };
+
+  const sharedRootDefaults = {
+    backgroundColor: { type: 'custom', value: '#ffffff' },
+    backgroundImage: '',
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    color: { type: 'theme', value: 'colors.foreground' },
+    fontFamily: undefined,
+    maxWidth: '100%',
+    minHeight: 'auto',
+    padding: {
+      mobile: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
+    },
+    margin: {
+      mobile: { top: '0', right: '0', bottom: '0', left: '0', unit: 'px', linked: true },
+    },
+  } as Record<string, unknown>;
+
+  return {
+    components: {},
+    categories: {},
+    root: {
+      fields: {
+        ...sharedRootFields,
+        showLogo: {
+          type: 'radio',
+          label: 'Show logo',
+          options: [
+            { label: 'Yes', value: true },
+            { label: 'No', value: false },
+          ],
+        },
+        eyebrow: {
+          type: 'text',
+          label: 'Eyebrow',
+        },
+        title: {
+          type: 'text',
+          label: 'Main title',
+        },
+        description: {
+          type: 'textarea',
+          label: 'Description',
+        },
+        panelTitle: {
+          type: 'text',
+          label: 'Panel title',
+        },
+        panelDescription: {
+          type: 'textarea',
+          label: 'Panel description',
+        },
+        supportText: {
+          type: 'textarea',
+          label: 'Support text',
+        },
+        backgroundStyle: {
+          type: 'select',
+          label: 'Background style',
+          options: [
+            { label: 'Soft', value: 'soft' },
+            { label: 'Contrast', value: 'contrast' },
+            { label: 'Muted', value: 'muted' },
+          ],
+        },
+        contentAlignment: {
+          type: 'select',
+          label: 'Content alignment',
+          options: [
+            { label: 'Left', value: 'left' },
+            { label: 'Center', value: 'center' },
+          ],
+        },
+      },
+      defaultProps: {
+        ...sharedRootDefaults,
+        surfaceKey: 'tenant_login',
+        ...surfaceDefaults.tenant_login,
+      },
+      render: SystemSurfaceRootRenderer as any,
+    },
+  };
+}
+
+function createGuestFacingSystemSurfaceConfig(baseConfig: Config): Config {
+  return {
+    ...baseConfig,
+    components: guestFacingComponents,
+    categories: guestFacingCategories,
+  };
+}
 
 export function getSystemSurfaceConfig(surfaceKey: SystemSurfaceKey): Config {
+  if (!cachedSystemSurfaceConfig) {
+    cachedSystemSurfaceConfig = createSystemSurfaceConfig();
+  }
+
+  if (!guestFacingSurfaceKeys.has(surfaceKey)) {
+    return cachedSystemSurfaceConfig;
+  }
+
+  if (!cachedGuestFacingSystemSurfaceConfig) {
+    cachedGuestFacingSystemSurfaceConfig = createGuestFacingSystemSurfaceConfig(cachedSystemSurfaceConfig);
+  }
+
   return guestFacingSurfaceKeys.has(surfaceKey)
-    ? guestFacingSystemSurfaceConfig
-    : systemSurfaceConfig;
+    ? cachedGuestFacingSystemSurfaceConfig
+    : cachedSystemSurfaceConfig;
 }

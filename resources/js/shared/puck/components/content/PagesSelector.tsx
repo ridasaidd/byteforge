@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { getSystemSurfaceAdminTitle } from '@/shared/puck/system-surfaces/SystemSurfaceConfig';
+import { getSystemSurfaceAdminTitle } from '@/shared/puck/system-surfaces/systemSurfaceLabels';
 import { pages, tenantPages } from '@/shared/services/api/pages';
 import { tenantSystemSurfaces } from '@/shared/services/api/systemSurfaces';
 import type { Page, SystemSurface } from '@/shared/services/api/types';
