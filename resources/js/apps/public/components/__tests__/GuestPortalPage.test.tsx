@@ -18,8 +18,8 @@ vi.mock('@puckeditor/core', async (importOriginal) => {
 
   return {
     ...actual,
-    Render: ({ data }: { data: { root?: { props?: { title?: string } } } }) => (
-      <div data-testid="system-surface-render">{data.root?.props?.title}</div>
+    Render: ({ data }: { data: { root?: { props?: { surfaceKey?: string } } } }) => (
+      <div data-testid="system-surface-render">{data.root?.props?.surfaceKey}</div>
     ),
   };
 });
@@ -87,7 +87,7 @@ describe('GuestPortalPage', () => {
 
     renderPage();
 
-    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('Portal from surface'));
+    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('guest_portal'));
     expect(publicGetMock).toHaveBeenCalledWith('guest_portal');
   });
 
