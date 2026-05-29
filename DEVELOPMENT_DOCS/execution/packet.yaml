@@ -1,0 +1,41 @@
+schema_version: 1
+task_ref:
+  packet_id: EP-002
+  phase: PHASE19
+  attempt: 1
+  executor_model: deepseek-v4-pro-medium
+  parent_packet_id: EP-001
+summary: "Add a one-command orchestrator runner that executes packet, parses status, and prints deterministic route output"
+scope:
+  in:
+    - "Add a single shell runner script for the existing broker flow"
+    - "Wire an npm script for the runner"
+    - "Update broker docs with one-command usage"
+  out:
+    - "Do not change OpenCode API transport logic"
+    - "Do not refactor unrelated files"
+doc_allow_list:
+  - "AGENTS.md"
+  - "DEVELOPMENT_DOCS/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
+  - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+code_targets:
+  - "scripts/opencode/"
+  - "package.json"
+  - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+  - "DEVELOPMENT_DOCS/execution/packet.yaml"
+acceptance_criteria:
+  - id: AC-1
+    text: "Running one command can execute run-packet then parse-result and print route outcome"
+  - id: AC-2
+    text: "The runner exits non-zero on failed:* outcomes and zero on success"
+  - id: AC-3
+    text: "Docs include the one-command runner usage example"
+verification:
+  commands:
+    - "npm run opencode:run-loop -- --packet DEVELOPMENT_DOCS/execution/packet.yaml"
+    - "npm run opencode:parse-result --silent"
+stop_conditions:
+  - "OpenCode API unavailable"
+  - "Missing OPENCODE_USER or OPENCODE_PASS"
+  - "Proposed runner behavior conflicts with existing routing contract"
