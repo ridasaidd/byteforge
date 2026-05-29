@@ -34,17 +34,36 @@ export function buildClient() {
   const baseUrl = (process.env.OPENCODE_BASE_URL || "http://100.80.45.13:4096").replace(/\/$/, "");
   const username = requireEnv("OPENCODE_USER");
   const password = requireEnv("OPENCODE_PASS");
+  const timeoutMsRaw = Number.parseInt(String(process.env.OPENCODE_HTTP_TIMEOUT_MS || "120000"), 10);
+  const timeoutMs = Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0 ? timeoutMsRaw : 120000;
   const auth = Buffer.from(`${username}:${password}`, "utf8").toString("base64");
 
   async function request(method, endpoint, body) {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
-      method,
-      headers: {
-        Authorization: `Basic ${auth}`,
-        "content-type": "application/json",
-      },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    const url = `${baseUrl}${endpoint}`;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    let response;
+    try {
+      response = await fetch(url, {
+        method,
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "content-type": "application/json",
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        throw new Error(`Request timed out after ${timeoutMs}ms: ${method} ${endpoint}`);
+      }
+
+      const message = error && error.message ? error.message : String(error);
+      throw new Error(`Request failed: ${method} ${endpoint} (${message})`);
+    } finally {
+      clearTimeout(timer);
+    }
 
     const text = await response.text();
     let data = null;
@@ -86,6 +105,11 @@ export function writeJson(filePath, data) {
 export function extractPacketId(packetText, fallback = "packet") {
   const match = packetText.match(/packet_id:\s*([A-Za-z0-9._-]+)/);
   return match ? match[1] : fallback;
+}
+
+export function extractAttempt(packetText, fallback = null) {
+  const match = packetText.match(/attempt:\s*(\d+)/);
+  return match ? Number.parseInt(match[1], 10) : fallback;
 }
 
 export function normalizeAssistantTextFromV1(message) {
@@ -136,6 +160,14 @@ export function getLatestArtifactPath(cwd = process.cwd()) {
   const artifactsDir = getArtifactsDir(cwd);
   if (!fs.existsSync(artifactsDir)) {
     return null;
+  }
+
+  const latestPointer = path.resolve(artifactsDir, ".latest");
+  if (fs.existsSync(latestPointer)) {
+    const ref = fs.readFileSync(latestPointer, "utf8").trim();
+    if (ref && fs.existsSync(ref)) {
+      return ref;
+    }
   }
 
   const artifacts = fs

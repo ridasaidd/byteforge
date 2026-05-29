@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import {
   buildClient,
@@ -7,12 +8,13 @@ import {
   extractPacketId,
   normalizeAssistantTextFromV1,
   normalizeAssistantTextFromV2,
+  getArtifactsDir,
 } from "./common.mjs";
 
 function usage() {
   console.error([
     "Usage:",
-    "  node scripts/opencode/run-packet.mjs --packet <file> [--session <ses_id>] [--mode auto|v2|v1] [--agent build] [--provider <id>] [--model <id>]",
+    "  node scripts/opencode/run-packet.mjs --packet <file> [--session <ses_id>] [--mode v1|auto|v2] [--agent build] [--provider <id>] [--model <id>] [--variant <id>]",
     "",
     "Environment variables:",
     "  OPENCODE_USER (required)",
@@ -156,7 +158,7 @@ async function main() {
   const sessionID = await createSession(client, args);
 
   let result;
-  const mode = (args.mode || "auto").toLowerCase();
+  const mode = (args.mode || "v1").toLowerCase();
 
   if (mode === "v2" || mode === "auto") {
     const v2 = await tryV2(client, sessionID, promptText);
@@ -176,6 +178,9 @@ async function main() {
     sessionID,
     transport: result.transport,
     packetID,
+    provider: args.provider ? String(args.provider) : null,
+    model: args.model ? String(args.model) : null,
+    variant: args.variant ? String(args.variant) : null,
     assistantText: result.assistantText,
   };
 
@@ -191,6 +196,9 @@ async function main() {
     packetPath,
     raw: result.raw,
   });
+
+  const latestPointer = path.resolve(getArtifactsDir(), ".latest");
+  fs.writeFileSync(latestPointer, `${artifactPath}\n`, "utf8");
 
   output.artifactPath = artifactPath;
   console.log(JSON.stringify(output, null, 2));

@@ -1,41 +1,49 @@
 schema_version: 1
 task_ref:
-  packet_id: EP-002
+  packet_id: EP-003
   phase: PHASE19
   attempt: 1
-  executor_model: deepseek-v4-pro-medium
-  parent_packet_id: EP-001
-summary: "Add a one-command orchestrator runner that executes packet, parses status, and prints deterministic route output"
+  executor_model: deepseek-v4-flash
+  parent_packet_id: EP-002
+summary: "Harden and complete the SQLite orchestration state workflow for token-efficient context retrieval"
+execution_policy:
+  task_class: minor
+  risk_level: low
+  finalize_git: false
 scope:
   in:
-    - "Add a single shell runner script for the existing broker flow"
-    - "Wire an npm script for the runner"
-    - "Update broker docs with one-command usage"
+    - "Ensure SQLite state commands are stable and warning-free"
+    - "Ensure failed executor runs are represented in state and not overwritten by stale success artifacts"
+    - "Document compact context query usage for token-efficient orchestration"
   out:
-    - "Do not change OpenCode API transport logic"
+    - "Do not change OpenCode API authentication model"
     - "Do not refactor unrelated files"
 doc_allow_list:
   - "AGENTS.md"
   - "DEVELOPMENT_DOCS/AGENT_START.md"
   - "DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
   - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+  - "DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md"
 code_targets:
   - "scripts/opencode/"
   - "package.json"
   - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+  - "DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md"
   - "DEVELOPMENT_DOCS/execution/packet.yaml"
 acceptance_criteria:
   - id: AC-1
-    text: "Running one command can execute run-packet then parse-result and print route outcome"
+    text: "state commands init/ingest/context execute without PHP warnings"
   - id: AC-2
-    text: "The runner exits non-zero on failed:* outcomes and zero on success"
+    text: "Failed executor run cannot be ingested as stale success from an older artifact"
   - id: AC-3
-    text: "Docs include the one-command runner usage example"
+    text: "Docs clearly describe compact context query flow for token-efficient orchestration"
 verification:
   commands:
-    - "npm run opencode:run-loop -- --packet DEVELOPMENT_DOCS/execution/packet.yaml"
-    - "npm run opencode:parse-result --silent"
+    - "npm run opencode:state:init"
+    - "npm run opencode:state:ingest-packet -- --packet DEVELOPMENT_DOCS/execution/packet.yaml"
+    - "npm run opencode:state:context -- --packet-id EP-003 --limit 3"
+    - "npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode auto"
 stop_conditions:
   - "OpenCode API unavailable"
   - "Missing OPENCODE_USER or OPENCODE_PASS"
-  - "Proposed runner behavior conflicts with existing routing contract"
+  - "Proposed state changes conflict with workflow schema requirements"

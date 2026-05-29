@@ -49,6 +49,14 @@ function findLatestArtifactPath(string $root): ?string
         return null;
     }
 
+    $pointerFile = $dir . '/.latest';
+    if (is_file($pointerFile)) {
+        $ref = trim((string) file_get_contents($pointerFile));
+        if ($ref !== '' && is_file($ref)) {
+            return $ref;
+        }
+    }
+
     $files = glob($dir . '/*.json') ?: [];
     if (count($files) === 0) {
         return null;

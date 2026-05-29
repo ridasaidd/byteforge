@@ -1,5 +1,9 @@
 # Phase 8: Page System Refactor
 
+Status: historical reference
+Canonical status source: [CURRENT_STATUS.md](../CURRENT_STATUS.md) and [PHASE_STATUS_MATRIX.md](../PHASE_STATUS_MATRIX.md)
+Active planning source: [ROADMAP.md](../ROADMAP.md) and [plans/](../plans/)
+
 ## Overview
 
 Refactor the page creation/editing system to integrate seamlessly with the new Theme System (Phase 6/7). This phase simplifies page management by leveraging theme placeholders for header/footer and page templates created in the Theme Builder.
