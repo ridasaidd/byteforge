@@ -180,3 +180,8 @@ Use this default routing table after failures.
 - no open-ended failure prose; schema only
 - orchestrator sends deltas on retries, not full context repeats
 - max two next-best actions in failure returns, smallest first
+
+## Operational Runbook
+
+- Local OpenCode packet broker usage is documented in
+  `DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md`.
