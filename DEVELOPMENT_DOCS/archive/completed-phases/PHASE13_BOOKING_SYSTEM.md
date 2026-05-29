@@ -1,5 +1,9 @@
 # Phase 13: Booking System
 
+Status class: historical reference with implementation notes
+Canonical status source: [CURRENT_STATUS.md](../CURRENT_STATUS.md) and [PHASE_STATUS_MATRIX.md](../PHASE_STATUS_MATRIX.md)
+Active planning source: [ROADMAP.md](../ROADMAP.md) and [plans/](../plans/)
+
 **Status**: Implemented on `main`; this file now mixes current state with historical planning detail  
 **Historical branch target**: `feature/phase13-booking-system`  
 **Depends on**: Phase 12 (Tenant Runtime Readiness) ✅, Addon Foundation ✅  

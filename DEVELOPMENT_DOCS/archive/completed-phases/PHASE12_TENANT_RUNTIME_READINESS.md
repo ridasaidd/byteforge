@@ -1,5 +1,9 @@
 # Phase 12: Tenant Runtime Readiness
 
+Status class: historical closeout reference
+Canonical status source: [CURRENT_STATUS.md](../CURRENT_STATUS.md) and [PHASE_STATUS_MATRIX.md](../PHASE_STATUS_MATRIX.md)
+Active planning source: [ROADMAP.md](../ROADMAP.md) and [plans/](../plans/)
+
 **Status**: ✅ Complete
 **Branch**: `feature/cookie-consent-gdpr` (final deliverable merged here)
 **Depends on**: Phase 11 Dashboard Translation (complete, merged)

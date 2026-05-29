@@ -26,11 +26,18 @@ This is the fastest safe entry point for AI agents working in ByteForge.
 ## Read Order
 
 1. [CURRENT_STATUS.md](CURRENT_STATUS.md)
-2. [TESTING.md](TESTING.md)
-3. [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
-4. [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
+2. [PHASE_STATUS_MATRIX.md](PHASE_STATUS_MATRIX.md)
+3. [TESTING.md](TESTING.md)
+4. [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
+5. [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
 
 Then read the relevant domain plan or reference doc for the task.
+
+Avoid treating legacy top-level phase docs (for example
+`archive/completed-phases/PHASE7_FONT_SYSTEM.md`, `archive/completed-phases/PHASE8_PAGE_SYSTEM_REFACTOR.md`,
+`archive/completed-phases/PHASE12_TENANT_RUNTIME_READINESS.md`, `archive/completed-phases/PHASE13_BOOKING_SYSTEM.md`) as active
+plans unless [CURRENT_STATUS.md](CURRENT_STATUS.md) or [ROADMAP.md](ROADMAP.md)
+explicitly points to them.
 
 ## Document Precedence
 

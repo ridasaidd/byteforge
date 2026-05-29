@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: human + AI agent
-Last verified: 2026-04-19
+Last verified: 2026-05-29
 
 This folder documents the current ByteForge product, the active implementation
 plan, and the stable reference material needed to work safely in the codebase.
@@ -17,8 +17,8 @@ ByteForge is a multi-tenant Laravel + React CMS with:
 - analytics, payments, and booking subsystems,
 - public storefront runtime on tenant domains.
 
-As of 2026-04-19, Phases 9 through 14 are implemented on `main`. Phase 15
-(guest authentication) is still future work.
+Current canonical status is maintained in [CURRENT_STATUS.md](CURRENT_STATUS.md), with
+phase-by-phase progress summarized in [PHASE_STATUS_MATRIX.md](PHASE_STATUS_MATRIX.md).
 
 ## Read In This Order
 
@@ -37,6 +37,7 @@ before updating supporting or historical material.
 
 - [AGENT_START.md](AGENT_START.md)
 - [CURRENT_STATUS.md](CURRENT_STATUS.md)
+- [PHASE_STATUS_MATRIX.md](PHASE_STATUS_MATRIX.md)
 - [ROADMAP.md](ROADMAP.md)
 - [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md)
 - [TESTING.md](TESTING.md)
@@ -61,17 +62,36 @@ These are current or near-future work tracks. They should reflect the actual
 code state, not just older planning assumptions.
 
 - [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md)
-- [plans/PHASE13_BOOKING_SYSTEM.md](plans/PHASE13_BOOKING_SYSTEM.md)
-- [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md)
-- [plans/PHASE15_GUEST_AUTH.md](plans/PHASE15_GUEST_AUTH.md)
+- [plans/PHASE17_ESTIMATES_AND_QUOTES_ADDON.md](plans/PHASE17_ESTIMATES_AND_QUOTES_ADDON.md)
+- [plans/PHASE19_SYSTEM_SURFACES.md](plans/PHASE19_SYSTEM_SURFACES.md)
+- [plans/PHASE20_CUSTOMER_ACCOUNTS_AND_SSO_ARCHITECTURE.md](plans/PHASE20_CUSTOMER_ACCOUNTS_AND_SSO_ARCHITECTURE.md)
 
 ## Supporting Reference Material
 
 - [reference/THEME_SYSTEM_ARCHITECTURE.md](reference/THEME_SYSTEM_ARCHITECTURE.md)
 - [reference/ACTIVITY_LOGGING_COVERAGE.md](reference/ACTIVITY_LOGGING_COVERAGE.md)
 - [reference/COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md](reference/COOKIE_CONSENT_GDPR_AUDIT_AND_PLAN.md)
-- [PHASE12_TENANT_RUNTIME_READINESS.md](PHASE12_TENANT_RUNTIME_READINESS.md)
 - [TASK_INSTRUCTIONS/README.md](TASK_INSTRUCTIONS/README.md)
+
+## Document Lifecycle
+
+Use this lifecycle so phase tracking stays clean and searchable:
+
+1. Active planning lives in [plans/](plans/) and must align with [CURRENT_STATUS.md](CURRENT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
+2. Canonical truth lives in the canonical docs list above, especially [CURRENT_STATUS.md](CURRENT_STATUS.md) and [PHASE_STATUS_MATRIX.md](PHASE_STATUS_MATRIX.md).
+3. Completed phase narratives should be archived under [archive/completed-phases/](archive/completed-phases/).
+4. Legacy top-level phase docs in this folder are historical references unless explicitly listed as active plans.
+
+## Legacy Top-Level Phase Docs
+
+These files are kept for historical context and migration rationale. Do not treat
+them as active implementation plans unless a canonical doc explicitly says so.
+
+- [PHASE7_FONT_SYSTEM.md](archive/completed-phases/PHASE7_FONT_SYSTEM.md)
+- [PHASE7_FONT_SYSTEM_COMPLETE.md](archive/completed-phases/PHASE7_FONT_SYSTEM_COMPLETE.md)
+- [PHASE8_PAGE_SYSTEM_REFACTOR.md](archive/completed-phases/PHASE8_PAGE_SYSTEM_REFACTOR.md)
+- [PHASE12_TENANT_RUNTIME_READINESS.md](archive/completed-phases/PHASE12_TENANT_RUNTIME_READINESS.md)
+- [PHASE13_BOOKING_SYSTEM.md](archive/completed-phases/PHASE13_BOOKING_SYSTEM.md)
 
 ## Historical Material
 
@@ -94,6 +114,7 @@ If two documents disagree, trust them in this order:
 Use this map instead of guessing.
 
 - Current truth and next work: [CURRENT_STATUS.md](CURRENT_STATUS.md)
+- Phase-by-phase status (done vs left): [PHASE_STATUS_MATRIX.md](PHASE_STATUS_MATRIX.md)
 - Future sequencing: [ROADMAP.md](ROADMAP.md)
 - Safe verification commands: [TESTING.md](TESTING.md)
 - Security-sensitive changes: [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
@@ -101,8 +122,8 @@ Use this map instead of guessing.
 - Auth and session work: [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md), [reference/AUTH_STRATEGY.md](reference/AUTH_STRATEGY.md), [plans/PHASE15_GUEST_AUTH.md](plans/PHASE15_GUEST_AUTH.md)
 - Booking work: [plans/PHASE13_BOOKING_SYSTEM.md](plans/PHASE13_BOOKING_SYSTEM.md), [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md), [plans/BOOKING_SECURITY_FINDINGS.md](plans/BOOKING_SECURITY_FINDINGS.md)
 - Architecture and patterns: [PROJECT_ARCHITECTURE.md](PROJECT_ARCHITECTURE.md), [DESIGN_PATTERNS_AND_BEST_PRACTICES.md](DESIGN_PATTERNS_AND_BEST_PRACTICES.md)
-- Task runbooks: [TASK_INSTRUCTIONS/README.md](TASK_INSTRUCTIONS/README.md), [TASK_INSTRUCTIONS/REMOVE_STATIC_TEXT_SYSTEM_SURFACES_EXCEPT_STAFF_LOGIN.md](TASK_INSTRUCTIONS/REMOVE_STATIC_TEXT_SYSTEM_SURFACES_EXCEPT_STAFF_LOGIN.md)
 - Task runbooks: [TASK_INSTRUCTIONS/README.md](TASK_INSTRUCTIONS/README.md), [TASK_INSTRUCTIONS/REMOVE_STATIC_TEXT_SYSTEM_SURFACES_EXCEPT_STAFF_LOGIN.md](TASK_INSTRUCTIONS/REMOVE_STATIC_TEXT_SYSTEM_SURFACES_EXCEPT_STAFF_LOGIN.md), [TASK_INSTRUCTIONS/REMOVE_TEXT_CONTROLS_AND_ADD_PANEL_SLOT_SYSTEM_SURFACES.md](TASK_INSTRUCTIONS/REMOVE_TEXT_CONTROLS_AND_ADD_PANEL_SLOT_SYSTEM_SURFACES.md)
+- Legacy historical context: [PHASE7_FONT_SYSTEM.md](archive/completed-phases/PHASE7_FONT_SYSTEM.md), [PHASE8_PAGE_SYSTEM_REFACTOR.md](archive/completed-phases/PHASE8_PAGE_SYSTEM_REFACTOR.md), [PHASE12_TENANT_RUNTIME_READINESS.md](archive/completed-phases/PHASE12_TENANT_RUNTIME_READINESS.md), [PHASE13_BOOKING_SYSTEM.md](archive/completed-phases/PHASE13_BOOKING_SYSTEM.md)
 
 ## Maintenance Rules
 

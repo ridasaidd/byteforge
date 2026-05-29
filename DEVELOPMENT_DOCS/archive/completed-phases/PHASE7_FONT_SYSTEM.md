@@ -1,5 +1,9 @@
 # Phase 7: Font System Architecture
 
+Status: historical reference
+Canonical status source: [CURRENT_STATUS.md](../CURRENT_STATUS.md) and [PHASE_STATUS_MATRIX.md](../PHASE_STATUS_MATRIX.md)
+Active planning source: [ROADMAP.md](../ROADMAP.md) and [plans/](../plans/)
+
 Last updated: January 31, 2026
 
 ---

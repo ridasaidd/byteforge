@@ -57,6 +57,10 @@ task_ref:
   executor_model: deepseek-v4-pro-high
   parent_packet_id: null
 summary: "One-sentence task summary"
+execution_policy:
+  task_class: feature # docs|minor|feature|critical|git_plumbing
+  risk_level: medium # low|medium|high
+  finalize_git: false
 scope:
   in:
     - "What is allowed"
@@ -181,7 +185,21 @@ Use this default routing table after failures.
 - orchestrator sends deltas on retries, not full context repeats
 - max two next-best actions in failure returns, smallest first
 
+## Canonical vs SQLite Policy
+
+- Markdown docs and execution packets in git are canonical product/process truth.
+- SQLite state is an operational cache used for compact context, run evidence, and routing calibration.
+- Do not move normative requirements, acceptance criteria text, or roadmap decisions into SQLite-only storage.
+- If SQLite rows and markdown docs diverge, markdown docs win and state should be re-ingested from packet/artifacts.
+
 ## Operational Runbook
 
 - Local OpenCode packet broker usage is documented in
   `DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md`.
+- SQLite state-cache usage is documented in
+  `DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md`.
+- Recommended execution path:
+  - `opencode:dispatch` to choose profile
+  - `opencode:run-auto` to execute packet with selected model
+  - orchestrator audit
+  - optional local `opencode:git-finalize` for git plumbing
