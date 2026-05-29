@@ -2,7 +2,7 @@
 
 Status: canonical
 Audience: AI agent
-Last verified: 2026-05-28
+Last verified: 2026-05-29
 
 This is the fastest safe entry point for AI agents working in ByteForge.
 
@@ -51,6 +51,17 @@ Read these regularly while working:
 - [SECURITY_PLAYBOOK.md](SECURITY_PLAYBOOK.md)
 - [DESIGN_PATTERNS_AND_BEST_PRACTICES.md](DESIGN_PATTERNS_AND_BEST_PRACTICES.md)
 - [AI_COLLABORATION_GUIDE.md](AI_COLLABORATION_GUIDE.md)
+- [AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md](AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md)
+
+## Orchestrator Executor Minimal Read Set
+
+When operating in orchestrator/executor mode, executors should read only:
+
+1. this file
+2. [CURRENT_STATUS.md](CURRENT_STATUS.md)
+3. the assigned execution packet based on [execution/EXECUTION_PACKET_TEMPLATE.md](execution/EXECUTION_PACKET_TEMPLATE.md)
+
+Then read only the domain docs explicitly allow-listed in that packet.
 
 ## Sensitive Areas
 
