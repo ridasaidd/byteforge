@@ -15,13 +15,13 @@ Usage:
   php scripts/opencode/state.php ingest-packet --packet <file>
   php scripts/opencode/state.php ingest-artifact --artifact <file>
   php scripts/opencode/state.php ingest-latest [--packet-id <id>]
-    php scripts/opencode/state.php record-failure --packet-id <id> [--failure-type <type>] [--attempt <n>] [--session-id <id>] [--transport <t>] [--artifact-path <p>] [--model <m>] [--provider <p>] [--variant <v>] [--task-class <c>] [--phase <p>]
+  php scripts/opencode/state.php record-failure --packet-id <id> [--failure-type <type>] [--attempt <n>] [--session-id <id>] [--transport <t>] [--artifact-path <p>] [--model <m>] [--provider <p>] [--variant <v>] [--task-class <c>] [--phase <p>] [--packet-path <p>]
   php scripts/opencode/state.php context --packet-id <id> [--limit <n>]
-    php scripts/opencode/state.php report [--task-class <id>] [--limit <n>]
-    php scripts/opencode/state.php backfill-runs [--packet-id <id>] [--limit <n>] [--dry-run]
-    php scripts/opencode/state.php calibrate-routing [--task-class <id>] [--risk-level <id>] [--min-runs <n>] [--limit <n>] [--apply]
-    php scripts/opencode/state.php route-upsert --task-class <id|*> --risk-level <id|*> --provider <id> --model <id> [--variant <id>] [--priority <n>] [--enabled 0|1]
-    php scripts/opencode/state.php route-list [--task-class <id>]
+  php scripts/opencode/state.php report [--task-class <id>] [--limit <n>]
+  php scripts/opencode/state.php backfill-runs [--packet-id <id>] [--limit <n>] [--dry-run]
+  php scripts/opencode/state.php calibrate-routing [--task-class <id>] [--risk-level <id>] [--min-runs <n>] [--limit <n>] [--apply]
+  php scripts/opencode/state.php route-upsert --task-class <id|*> --risk-level <id|*> --provider <id> --model <id> [--variant <id>] [--priority <n>] [--enabled 0|1]
+  php scripts/opencode/state.php route-list [--task-class <id>]
 
 Environment:
   OPENCODE_STATE_DB (optional, defaults to storage/opencode-state.sqlite)
@@ -153,10 +153,14 @@ SQL
 
 function ensureRunsColumns(PDO $pdo): void
 {
-    $stmt = $pdo->query('PRAGMA table_info(runs);');
-    $columns = $stmt->fetchAll();
-    $existing = [];
+    try {
+        $stmt = $pdo->query('PRAGMA table_info(runs);');
+        $columns = $stmt->fetchAll();
+    } catch (Throwable) {
+        return;
+    }
 
+    $existing = [];
     foreach ($columns as $column) {
         if (is_array($column) && isset($column['name'])) {
             $existing[(string) $column['name']] = true;
@@ -353,6 +357,15 @@ function validateAssistantYaml(string $assistantText): array
         $failureType = normalizeScalar($parsed['failure_type'] ?? null);
         if ($failureType === null) {
             $issues[] = 'missing failure_type for failed status';
+        } elseif (!in_array($failureType, [
+            'requirement_mismatch',
+            'test_failure',
+            'environment_blocker',
+            'ambiguity_in_spec',
+            'unsafe_change_risk',
+            'dependency_gap',
+        ], true)) {
+            $issues[] = 'failure_type is not in allowed set';
         }
     }
 
@@ -475,8 +488,8 @@ function latestArtifactPath(?string $packetID = null): ?string
         }
     }
 
-    $files = glob($dir . '/*.json') ?: [];
-    if (count($files) === 0) {
+    $files = glob($dir . '/*.json');
+    if (!is_array($files) || count($files) === 0) {
         return null;
     }
 
@@ -638,7 +651,7 @@ function ingestLatestCommand(PDO $pdo, array $args): void
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 }
 
-function writeFailureArtifact(PDO $pdo, string $packetID, ?int $attempt, ?string $model, string $failureType): string
+function writeFailureArtifact(PDO $pdo, string $packetID, ?int $attempt, ?string $model, string $failureType, ?string $provider = null, ?string $variant = null, ?string $packetPath = null): string
 {
     $now = nowIso();
     $timestamp = str_replace([':', '.'], '-', $now);
@@ -669,8 +682,11 @@ function writeFailureArtifact(PDO $pdo, string $packetID, ?int $attempt, ?string
         'transport' => null,
         'packetID' => $packetID,
         'attempt' => $attempt ?? 1,
+        'provider' => $provider,
+        'model' => $model,
+        'variant' => $variant,
         'assistantText' => implode(PHP_EOL, $assistantText),
-        'packetPath' => null,
+        'packetPath' => $packetPath,
         'raw' => null,
     ];
 
@@ -709,9 +725,10 @@ function recordFailureCommand(PDO $pdo, array $args): void
     $sessionID = normalizeScalar($args['session-id'] ?? null);
     $transport = normalizeScalar($args['transport'] ?? null);
     $artifactPath = normalizeScalar($args['artifact-path'] ?? null);
+    $packetPath = normalizeScalar($args['packet-path'] ?? null);
 
     if ($artifactPath === null) {
-        $artifactPath = writeFailureArtifact($pdo, $packetID, $attempt, $model, $failureType);
+        $artifactPath = writeFailureArtifact($pdo, $packetID, $attempt, $model, $failureType, $provider, $variant, $packetPath);
     }
 
     $upsertPacketStmt = $pdo->prepare(<<<SQL
@@ -950,11 +967,11 @@ function calibrateRoutingCommand(PDO $pdo, array $args): void
     $where = ['r.model IS NOT NULL'];
     $params = [];
     if ($taskClassFilter !== null) {
-        $where[] = 'COALESCE(r.task_class, p.task_class, \"unknown\") = :task_class';
+        $where[] = "COALESCE(r.task_class, p.task_class, 'unknown') = :task_class";
         $params[':task_class'] = $taskClassFilter;
     }
     if ($riskLevelFilter !== null) {
-        $where[] = 'COALESCE(p.risk_level, \"*\") = :risk_level';
+        $where[] = "COALESCE(p.risk_level, '*') = :risk_level";
         $params[':risk_level'] = $riskLevelFilter;
     }
 

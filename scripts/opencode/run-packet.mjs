@@ -9,6 +9,7 @@ import {
   normalizeAssistantTextFromV1,
   normalizeAssistantTextFromV2,
   getArtifactsDir,
+  validateExecutorResponseSchema,
 } from "./common.mjs";
 
 function usage() {
@@ -35,6 +36,60 @@ function buildPrompt(packetText) {
     "Execution packet:",
     packetText,
   ].join("\n");
+}
+
+function isTimeoutError(error) {
+  const message = error && error.message ? String(error.message) : String(error || "");
+  return message.includes("Request timed out after");
+}
+
+async function readAssistantFromSession(client, sessionID) {
+  let messagesResponse;
+  try {
+    messagesResponse = await client.request("GET", `/api/session/${sessionID}/message?order=asc&limit=50`);
+  } catch {
+    return null;
+  }
+
+  if (!messagesResponse.ok) {
+    return null;
+  }
+
+  const assistantText = normalizeAssistantTextFromV2(messagesResponse.data);
+  if (!assistantText || !assistantText.trim()) {
+    return null;
+  }
+
+  return {
+    transport: "v1-recovered",
+    assistantText,
+    raw: messagesResponse.data,
+  };
+}
+
+async function recoverAfterTimeout(client, sessionID) {
+  const totalWaitMsRaw = Number.parseInt(String(process.env.OPENCODE_RECOVERY_WAIT_MS || "240000"), 10);
+  const pollMsRaw = Number.parseInt(String(process.env.OPENCODE_RECOVERY_POLL_MS || "2000"), 10);
+
+  const totalWaitMs = Number.isFinite(totalWaitMsRaw) && totalWaitMsRaw > 0 ? totalWaitMsRaw : 240000;
+  const pollMs = Number.isFinite(pollMsRaw) && pollMsRaw > 0 ? pollMsRaw : 2000;
+  const deadline = Date.now() + totalWaitMs;
+
+  while (Date.now() < deadline) {
+    const recovered = await readAssistantFromSession(client, sessionID);
+    if (recovered) {
+      return recovered;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+  }
+
+  throw new Error(`v1 timeout recovery exceeded ${totalWaitMs}ms with no assistant response in session history`);
+}
+
+async function recoverAfterEmptyResponse(client, sessionID) {
+  console.error(`warning: empty assistant payload; attempting session-history recovery for ${sessionID}`);
+  return recoverAfterTimeout(client, sessionID);
 }
 
 async function createSession(client, args) {
@@ -129,17 +184,30 @@ async function runV1(client, sessionID, promptText, args) {
     };
   }
 
-  const response = await client.request("POST", `/session/${sessionID}/message`, payload);
-  if (!response.ok) {
-    throw new Error(`v1 prompt failed: status=${response.status} body=${JSON.stringify(response.data)}`);
-  }
+  try {
+    const response = await client.request("POST", `/session/${sessionID}/message`, payload);
+    if (!response.ok) {
+      throw new Error(`v1 prompt failed: status=${response.status} body=${JSON.stringify(response.data)}`);
+    }
 
-  const assistantText = normalizeAssistantTextFromV1(response.data);
-  return {
-    transport: "v1",
-    assistantText,
-    raw: response.data,
-  };
+    const assistantText = normalizeAssistantTextFromV1(response.data);
+    if (!assistantText || !assistantText.trim()) {
+      return recoverAfterEmptyResponse(client, sessionID);
+    }
+
+    return {
+      transport: "v1",
+      assistantText,
+      raw: response.data,
+    };
+  } catch (error) {
+    if (!isTimeoutError(error)) {
+      throw error;
+    }
+
+    console.error(`warning: v1 prompt timed out; attempting session-history recovery for ${sessionID}`);
+    return recoverAfterTimeout(client, sessionID);
+  }
 }
 
 async function main() {
@@ -156,6 +224,7 @@ async function main() {
 
   const client = buildClient();
   const sessionID = await createSession(client, args);
+  console.error(`session_id=${sessionID} packet_id=${packetID}`);
 
   let result;
   const mode = (args.mode || "v1").toLowerCase();
@@ -171,6 +240,15 @@ async function main() {
 
   if (!result) {
     result = await runV1(client, sessionID, promptText, args);
+  }
+
+  if (!result.assistantText || !result.assistantText.trim()) {
+    throw new Error(`No assistant payload available for session ${sessionID}`);
+  }
+
+  const validation = validateExecutorResponseSchema(result.assistantText);
+  if (!validation.valid) {
+    throw new Error(`Recovered assistant payload failed schema validation: ${validation.issues.join("; ")}`);
   }
 
   const output = {

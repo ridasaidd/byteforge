@@ -56,6 +56,29 @@ Stop automatically after N printed events:
 
 npm run opencode:event -- --max 50
 
+Use a dedicated event endpoint (for example port 4096) without changing API calls:
+
+OPENCODE_EVENT_BASE_URL=http://100.80.45.13:4096 npm run opencode:event
+
+## Live Run Monitoring (Two-Terminal Flow)
+
+When `run-auto` or `run-loop` may take an unknown amount of time, monitor progress in a second terminal instead of waiting blind.
+
+`run-auto` now auto-attaches broker-side event tailing when it detects `session_id=` in runner output.
+This is enabled by default (`OPENCODE_TAIL_EVENTS=1`). Set `OPENCODE_TAIL_EVENTS=0` to disable auto-tail.
+
+Terminal A (execute packet):
+
+`npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode v1`
+
+`run-packet` prints `session_id=<id> packet_id=<id>` as soon as the session is created.
+
+Terminal B (watch events for that session):
+
+`OPENCODE_EVENT_BASE_URL=http://100.80.45.13:4096 npm run opencode:event -- --session <session_id> --include session.updated,session.diff,message.completed`
+
+This gives live visibility into edits/diffs and completion status without waiting for the run command to finish.
+
 ## One-Command Runner (run-packet + parse-result)
 
 npm run opencode:run-loop -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
@@ -102,6 +125,15 @@ Inspect dispatcher decision only:
 
 npm run opencode:dispatch -- --packet DEVELOPMENT_DOCS/execution/packet.yaml
 
+## Operator Default (No Reminder Mode)
+
+To keep token spend low without repeating instructions each run:
+
+- prepare a packet for non-trivial tasks and run `opencode:run-auto`
+- keep orchestrator preflight minimal (health, status, tiny scope check)
+- let executor perform deep reads, edits, and validation inside packet scope
+- only bypass executor for tiny operational checks or explicit local git plumbing
+
 ## SQLite State Cache (Token Reduction)
 
 Initialize DB once:
@@ -137,6 +169,56 @@ failure artifact is written to `storage/opencode-runs` and the `.latest` pointer
 is updated. This prevents a stale success from an older run from being picked up
 by `ingest-latest` or `context`.
 
+## Compact Context Query Flow (Token-Efficient Orchestration)
+
+The compact context query flow is the recommended way to give executors run-history
+awareness without burning tokens on full artifact text. See
+`DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md#compact-context-query-flow-token-efficient-orchestration`
+for the detailed schema, prompt example, and stale-artifact protection design.
+
+### Typical orchestrator flow
+
+1. Before dispatching a new executor run, pull compact context for the target packet:
+   ```
+   npm run opencode:state:context -- --packet-id EP-002 --limit 5
+   ```
+2. The returned JSON has up to four keys: `packet` (metadata), `stats` (run counts),
+   `recent_runs` (last N results), and `db_path` (informational, strip before embedding).
+3. Extract the `stats` + `recent_runs` (and optionally `packet` for routing awareness)
+   and embed as a single compact JSON line in the orchestrator prompt preamble.
+   **Do not paste the full context JSON** — strip `db_path` first.
+4. The executor receives only the summary (~150 tokens vs ~1500+ for full artifact text).
+
+### Stale-success protection
+
+Two layers prevent stale success artifacts from being returned in `--packet-id` queries:
+
+**Layer 1 — `record-failure` fallback:** When `run-auto` detects a run that failed
+without producing a new artifact (non-zero exit, same `.latest` pointer), it calls
+`record-failure`, which writes a minimal failure artifact and updates `.latest`. This
+ensures the failure is immediately visible to every subsequent `context` query.
+
+**Layer 2 — packet-scoped failure-first sort:** When `ingest-latest --packet-id` is
+used, `state.php` scans all artifacts matching that packet ID and sorts them with
+**failures first** (newest failure), then successes (newest success). This guarantees
+that even if `.latest` was left pointing to a stale success artifact, the
+packet-scoped query will return the most recent failure instead.
+
+### Prompt fragment example
+
+For a retry of EP-003, the orchestrator prepends this to the preamble instead of
+pasting the full `context` output, prior artifact YAML, or markdown doc:
+
+```
+Recent context for EP-003:
+{"stats":{"total_runs":3,"success_runs":1,"failed_runs":2},"recent_runs":[{"status":"failed:environment_blocker","attempt":2},{"status":"success","attempt":1}]}
+
+This is a retry of attempt 2. The previous run failed with environment_blocker.
+```
+
+This replaces ~2500+ tokens of raw artifact JSON with ~150 tokens of structured
+summary.
+
 Query compact context for orchestrator prompts (token-efficient orchestration):
 
 ```bash
@@ -168,24 +250,28 @@ Enforcement policy:
 - Routing changes should be done through `opencode:state:route-upsert` (or `opencode:state:calibrate -- --apply`) so decisions are auditable.
 - Keep markdown docs canonical for requirements and plans; SQLite is operational memory.
 
-Use this compact JSON context in prompts instead of pasting full historical
-markdown. The output includes:
-- `packet` — packet metadata
-- `stats` — total/success/failure run counts
-- `recent_runs` — last N runs with `status`, `attempt`, `model`, `failure_type`
+## Gate 0 Clarification Short-Circuit
 
-Embed the compact context directly in orchestrator prompts to give executors
-run-history awareness without burning tokens on full artifact text.
+If a packet or orchestrator response is marked `status: clarify`, the broker must stop before executor dispatch.
 
-The orchestrator prompt fragment should include the compact context JSON as a
-brief preamble, not the full artifact YAML or raw log output. For example:
+Behavior:
 
-> Recent context for EP-003: {"stats":{"total_runs":3,"success_runs":1,"failed_runs":2},"recent_runs":[{"status":"failed:environment_blocker","attempt":2},{"status":"success","attempt":1}]}
+- print the clarification packet so the operator can answer the questions
+- do not call `dispatch` or `run-loop`
+- do not create an executor artifact
+- keep the clarification packet available for ingestion or later reuse if the operator resumes with a refined packet
 
-Keep markdown docs as canonical source-of-truth in git.
+Operational safeguards:
 
-See `DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md` for detailed context output
-schema, prompt formatting recommendations, and the orchestrator prompt example.
+- clarify mode exits non-zero by default (`OPENCODE_CLARIFY_EXIT_CODE=2`) so shell chains like `cmd && next-step` do not proceed accidentally
+- if the clarification `packet_id` already exists in SQLite state, `run-auto` skips packet ingest to avoid mutating historical packet metadata
+- set `OPENCODE_CLARIFY_EXIT_CODE=0` only when intentionally running clarify mode in a standalone interactive shell flow
+
+Unblocking routine:
+
+- keep the clarify packet as an audit artifact
+- create a new execution packet from the answers (do not convert clarify packet to a pseudo-`pending` packet)
+- prefer a new `packet_id`; if continuing the same logical task, link with `parent_packet_id`
 
 ## Optional Git Finalizer Step
 

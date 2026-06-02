@@ -1,7 +1,22 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { parseArgs, readUtf8, extractPacketId, extractAttempt } from "./common.mjs";
+import {
+  buildClient,
+  parseArgs,
+  readUtf8,
+  extractPacketId,
+  extractAttempt,
+  parseClarifyPacket,
+  formatClarifyPacket,
+  tailEventStream,
+  resolveEventBaseUrl,
+  summarizeEventForConsole,
+  detectTerminalEvent,
+  normalizeAssistantTextFromV2,
+  writeJson,
+  validateExecutorResponseSchema,
+} from "./common.mjs";
 
 function usage() {
   console.error([
@@ -40,6 +55,42 @@ function runCommand(command, args, options = {}) {
 
 function ensureDir(dirPath) {
   fs.mkdirSync(dirPath, { recursive: true });
+}
+
+function sessionStateDir(projectRoot) {
+  return path.resolve(projectRoot, "storage/opencode-runs/.sessions");
+}
+
+function sessionStatePath(projectRoot, packetID) {
+  const safeID = String(packetID || "packet").replace(/[^A-Za-z0-9._-]/g, "_");
+  return path.resolve(sessionStateDir(projectRoot), `${safeID}.session`);
+}
+
+function readStoredSession(projectRoot, packetID) {
+  const filePath = sessionStatePath(projectRoot, packetID);
+  if (!fs.existsSync(filePath)) {
+    return null;
+  }
+
+  const value = fs.readFileSync(filePath, "utf8").trim();
+  return value || null;
+}
+
+function writeStoredSession(projectRoot, packetID, sessionID) {
+  if (!sessionID) {
+    return;
+  }
+
+  const normalizedSessionID = String(sessionID).trim();
+  const filePath = sessionStatePath(projectRoot, packetID);
+  const previousSessionID = fs.existsSync(filePath) ? fs.readFileSync(filePath, "utf8").trim() : null;
+
+  ensureDir(sessionStateDir(projectRoot));
+  fs.writeFileSync(filePath, `${normalizedSessionID}\n`, "utf8");
+
+  if (previousSessionID !== normalizedSessionID) {
+    console.error(`session-cache: wrote session=${normalizedSessionID} for packet ${packetID}`);
+  }
 }
 
 function lockPathForPacket(projectRoot, packetID) {
@@ -165,7 +216,400 @@ function dispatchDecision(projectRoot, packetPath) {
   return JSON.parse(result.stdout);
 }
 
-function main() {
+function packetExistsInState(projectRoot, packetID) {
+  const result = runCommand("php", [
+    path.resolve(projectRoot, "scripts/opencode/state.php"),
+    "context",
+    "--packet-id",
+    String(packetID),
+    "--limit",
+    "1",
+  ], { capture: true, cwd: projectRoot });
+
+  if (result.status !== 0) {
+    return false;
+  }
+
+  try {
+    const parsed = JSON.parse(String(result.stdout || "{}"));
+    return Boolean(parsed && parsed.packet);
+  } catch {
+    return false;
+  }
+}
+
+function clarifyExitCode() {
+  const raw = Number.parseInt(String(process.env.OPENCODE_CLARIFY_EXIT_CODE || "2"), 10);
+  return Number.isFinite(raw) && raw >= 0 && raw <= 255 ? raw : 2;
+}
+
+function terminalRecoveryGraceMs() {
+  const raw = Number.parseInt(String(process.env.OPENCODE_TERMINAL_RECOVERY_GRACE_MS || "5000"), 10);
+  return Number.isFinite(raw) && raw >= 0 ? raw : 5000;
+}
+
+function recoveryWaitMs() {
+  const raw = Number.parseInt(String(process.env.OPENCODE_RECOVERY_WAIT_MS || "240000"), 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 240000;
+}
+
+function recoveryPollMs() {
+  const raw = Number.parseInt(String(process.env.OPENCODE_RECOVERY_POLL_MS || "2000"), 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : 2000;
+}
+
+function isEventTailEnabled() {
+  const value = String(process.env.OPENCODE_TAIL_EVENTS || "1").trim().toLowerCase();
+  return value !== "0" && value !== "false" && value !== "off" && value !== "no";
+}
+
+function extractSessionIdFromLine(line) {
+  const match = String(line || "").match(/session_id=(\S+)/);
+  return match ? match[1] : null;
+}
+
+function shouldSuppressFailureRecord({ loopResult, reusedSessionID, artifactBefore, artifactAfter }) {
+  if (!reusedSessionID) {
+    return false;
+  }
+
+  if (artifactAfter && artifactAfter !== artifactBefore) {
+    return false;
+  }
+
+  const terminalReason = String(loopResult?.terminalEvent?.reason || "").toLowerCase();
+  if (terminalReason.includes("idle") || terminalReason.includes("aborted") || terminalReason.includes("cancelled") || terminalReason.includes("canceled")) {
+    return true;
+  }
+
+  const status = Number(loopResult?.status || 0);
+  return status === 124 || status === 130 || status === 143;
+}
+
+async function runLoopWithTelemetry(projectRoot, runLoopArgs) {
+  const child = spawn("bash", runLoopArgs, {
+    cwd: projectRoot,
+    env: process.env,
+    stdio: ["inherit", "pipe", "pipe"],
+  });
+
+  let stdoutBuffer = "";
+  let stderrBuffer = "";
+  let sessionID = null;
+  let eventTailPromise = null;
+  let eventAbortController = null;
+  let transcriptPath = null;
+  let recoveredArtifactPath = null;
+  const assistantMessageIDs = new Set();
+  const assistantPartBuffers = new Map();
+
+  const packetArgIndex = runLoopArgs.findIndex((value) => value === "--packet");
+  const packetPathArg = packetArgIndex >= 0 ? runLoopArgs[packetArgIndex + 1] : null;
+  const packetText = packetPathArg ? readUtf8(packetPathArg) : "";
+  const telemetryPacketID = extractPacketId(packetText, "packet");
+  const providerArgIndex = runLoopArgs.findIndex((value) => value === "--provider");
+  const modelArgIndex = runLoopArgs.findIndex((value) => value === "--model");
+  const variantArgIndex = runLoopArgs.findIndex((value) => value === "--variant");
+  const telemetryProvider = providerArgIndex >= 0 ? runLoopArgs[providerArgIndex + 1] : null;
+  const telemetryModel = modelArgIndex >= 0 ? runLoopArgs[modelArgIndex + 1] : null;
+  const telemetryVariant = variantArgIndex >= 0 ? runLoopArgs[variantArgIndex + 1] : null;
+
+  if (telemetryPacketID) {
+    transcriptPath = path.resolve(projectRoot, "storage/opencode-runs", `${telemetryPacketID}-transcript.md`);
+    fs.writeFileSync(
+      transcriptPath,
+      [
+        `# Executor Session Transcript for ${telemetryPacketID}`,
+        `- Date: ${new Date().toISOString()}`,
+        "",
+        "## Live Execution Log",
+        "```text",
+      ].join("\n") + "\n",
+      "utf8",
+    );
+  }
+
+  const appendTranscript = (line) => {
+    if (!transcriptPath) {
+      return;
+    }
+    fs.appendFileSync(transcriptPath, `${line}\n`, "utf8");
+  };
+
+  const closeTranscript = (footerLine) => {
+    if (!transcriptPath) {
+      return;
+    }
+    fs.appendFileSync(transcriptPath, `\n` + "```" + `\n\n## Execution Concluded\n${footerLine}\n`, "utf8");
+    transcriptPath = null;
+  };
+
+  const eventRecoveredAssistantText = () => {
+    const text = [...assistantPartBuffers.values()].join("");
+    return text.trim();
+  };
+
+  const writeRecoveredArtifact = ({ assistantText, transport, raw }) => {
+    if (!assistantText || !assistantText.trim() || !telemetryPacketID || !packetPathArg) {
+      return null;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const artifactPath = path.resolve(projectRoot, "storage/opencode-runs", `${timestamp}-${telemetryPacketID}.json`);
+
+    writeJson(artifactPath, {
+      ok: true,
+      sessionID,
+      transport,
+      packetID: telemetryPacketID,
+      provider: telemetryProvider ? String(telemetryProvider) : null,
+      model: telemetryModel ? String(telemetryModel) : null,
+      variant: telemetryVariant ? String(telemetryVariant) : null,
+      assistantText,
+      packetPath: packetPathArg,
+      raw,
+    });
+
+    appendTranscript(`recovery: wrote artifact ${artifactPath} (${transport})`);
+    return artifactPath;
+  };
+
+  const recoverArtifactFromSession = async () => {
+    if (!sessionID || !telemetryPacketID || !packetPathArg) {
+      return null;
+    }
+
+    const client = buildClient();
+    const deadline = Date.now() + recoveryWaitMs();
+
+    while (Date.now() < deadline) {
+      let messagesResponse = null;
+      try {
+        messagesResponse = await client.request("GET", `/api/session/${sessionID}/message?order=asc&limit=50`);
+      } catch (error) {
+        appendTranscript(`recovery: session history unavailable (${error.message || String(error)})`);
+      }
+
+      if (messagesResponse?.ok) {
+        const assistantText = normalizeAssistantTextFromV2(messagesResponse.data);
+        if (assistantText && assistantText.trim()) {
+          const validation = validateExecutorResponseSchema(assistantText);
+          if (!validation.valid) {
+            appendTranscript(`recovery: session-history assistant text schema invalid (${validation.issues.join('; ')})`);
+          }
+
+          return writeRecoveredArtifact({
+            assistantText,
+            transport: validation.valid ? "event-recovered-session" : "event-recovered-session-invalid",
+            raw: messagesResponse.data,
+          });
+        }
+      }
+
+      const deltaAssistantText = eventRecoveredAssistantText();
+      if (deltaAssistantText) {
+        const validation = validateExecutorResponseSchema(deltaAssistantText);
+        if (!validation.valid) {
+          appendTranscript(`recovery: event-delta assistant text schema invalid (${validation.issues.join('; ')})`);
+        }
+
+        return writeRecoveredArtifact({
+          assistantText: deltaAssistantText,
+          transport: validation.valid ? "event-recovered-delta" : "event-recovered-delta-invalid",
+          raw: {
+            source: "event-stream",
+            assistantMessageIDs: [...assistantMessageIDs],
+            partCount: assistantPartBuffers.size,
+          },
+        });
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, recoveryPollMs()));
+    }
+
+    appendTranscript(`recovery: no assistant artifact found within ${recoveryWaitMs()}ms after terminal event`);
+    return null;
+  };
+
+  const maybeStartEventTail = (line) => {
+    const detected = extractSessionIdFromLine(line);
+    if (detected && detected !== sessionID) {
+      sessionID = detected;
+      writeStoredSession(projectRoot, telemetryPacketID, sessionID);
+    }
+
+    if (!detected || !isEventTailEnabled() || eventTailPromise) {
+      return;
+    }
+
+    const eventBaseUrl = resolveEventBaseUrl();
+    eventAbortController = new AbortController();
+
+    console.error(`event-tail: attached session=${sessionID} endpoint=${eventBaseUrl}/event`);
+    appendTranscript(`event-tail: attached session=${sessionID} endpoint=${eventBaseUrl}/event`);
+
+    eventTailPromise = tailEventStream({
+      baseUrl: eventBaseUrl,
+      sessionID,
+      signal: eventAbortController.signal,
+      onEvent: (event) => {
+        const eventType = String(event?.type || "");
+        const properties = event?.properties && typeof event.properties === "object" ? event.properties : {};
+
+        if (eventType === "message.updated") {
+          const info = properties.info && typeof properties.info === "object" ? properties.info : {};
+          if (info.role === "assistant" && typeof info.id === "string" && info.id.trim()) {
+            assistantMessageIDs.add(info.id.trim());
+          }
+        }
+
+        if (assistantMessageIDs.has(String(properties.messageID || ""))) {
+          if (eventType === "message.part.updated") {
+            const part = properties.part && typeof properties.part === "object" ? properties.part : {};
+            const partID = String(part.id || properties.partID || "").trim();
+            const partText = typeof part.text === "string" ? part.text : "";
+            if (partID && partText && (!assistantPartBuffers.has(partID) || assistantPartBuffers.get(partID).length < partText.length)) {
+              assistantPartBuffers.set(partID, partText);
+            }
+          }
+
+          if (eventType === "message.part.delta" && properties.field === "text") {
+            const partID = String(properties.partID || "").trim();
+            const delta = typeof properties.delta === "string" ? properties.delta : "";
+            if (partID && delta) {
+              assistantPartBuffers.set(partID, `${assistantPartBuffers.get(partID) || ""}${delta}`);
+            }
+          }
+        }
+
+        const summary = summarizeEventForConsole(event);
+        if (summary) {
+          console.error(`[event] ${summary}`);
+          appendTranscript(`[event] ${summary}`);
+        }
+
+        const terminalEvent = detectTerminalEvent(event);
+        if (terminalEvent.terminal) {
+          console.error(`event-tail: terminal event detected (${terminalEvent.reason})`);
+          appendTranscript(`event-tail: terminal event detected (${terminalEvent.reason})`);
+          return terminalEvent;
+        }
+      },
+    }).catch((error) => {
+      if (error && error.name === "AbortError") {
+        return null;
+      }
+      const message = error && error.message ? error.message : String(error);
+      console.error(`warning: event tail unavailable (${message})`);
+      appendTranscript(`warning: event tail unavailable (${message})`);
+      return null;
+    });
+  };
+
+  const processLines = (chunk, stream, bufferRef) => {
+    const text = String(chunk || "");
+    if (stream === "stdout") {
+      process.stdout.write(text);
+    } else {
+      process.stderr.write(text);
+    }
+
+    bufferRef.value += text;
+    const lines = bufferRef.value.split(/\r?\n/);
+    bufferRef.value = lines.pop() || "";
+
+    for (const line of lines) {
+      maybeStartEventTail(line);
+    }
+  };
+
+  if (child.stdout) {
+    child.stdout.on("data", (chunk) => processLines(chunk, "stdout", { get value() { return stdoutBuffer; }, set value(v) { stdoutBuffer = v; } }));
+  }
+
+  if (child.stderr) {
+    child.stderr.on("data", (chunk) => processLines(chunk, "stderr", { get value() { return stderrBuffer; }, set value(v) { stderrBuffer = v; } }));
+  }
+
+  let childExited = false;
+  const childClosePromise = new Promise((resolve, reject) => {
+    child.on("error", reject);
+    child.on("close", (code, signal) => {
+      childExited = true;
+      if (signal) {
+        resolve(128 + 15);
+        return;
+      }
+      resolve(code ?? 1);
+    });
+  });
+
+  let terminalEvent = null;
+  if (eventTailPromise) {
+    terminalEvent = await Promise.race([
+      eventTailPromise,
+      childClosePromise.then(() => null),
+    ]);
+  }
+
+  if (terminalEvent?.reason && !childExited) {
+    appendTranscript(`recovery: waiting ${terminalRecoveryGraceMs()}ms for child exit after terminal event`);
+    const graceResult = await Promise.race([
+      childClosePromise.then((code) => ({ type: "child_exit", code })),
+      new Promise((resolve) => setTimeout(() => resolve({ type: "timeout" }), terminalRecoveryGraceMs())),
+    ]);
+
+    if (graceResult.type === "timeout") {
+      recoveredArtifactPath = await recoverArtifactFromSession();
+      if (recoveredArtifactPath) {
+        console.error(`recovery: terminating child after artifact recovery (${recoveredArtifactPath})`);
+        appendTranscript(`recovery: terminating child after artifact recovery (${recoveredArtifactPath})`);
+        child.kill("SIGTERM");
+      }
+    }
+  }
+
+  const exitCode = await childClosePromise;
+
+  if (!recoveredArtifactPath) {
+    const deltaAssistantText = eventRecoveredAssistantText();
+    if (deltaAssistantText) {
+      const validation = validateExecutorResponseSchema(deltaAssistantText);
+      if (!validation.valid) {
+        appendTranscript(`recovery: post-exit event-delta assistant text schema invalid (${validation.issues.join('; ')})`);
+      }
+
+      recoveredArtifactPath = writeRecoveredArtifact({
+        assistantText: deltaAssistantText,
+        transport: validation.valid ? "event-recovered-delta-post-exit" : "event-recovered-delta-post-exit-invalid",
+        raw: {
+          source: "event-stream-post-exit",
+          assistantMessageIDs: [...assistantMessageIDs],
+          partCount: assistantPartBuffers.size,
+        },
+      });
+    }
+  }
+
+  if (eventAbortController) {
+    eventAbortController.abort();
+  }
+
+  if (terminalEvent?.reason) {
+    closeTranscript(`Terminal event: ${terminalEvent.reason}`);
+  } else {
+    closeTranscript(`Process exit code: ${exitCode}`);
+  }
+
+  return {
+    status: exitCode,
+    sessionID,
+    terminalEvent,
+    recoveredArtifactPath,
+  };
+}
+
+async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (!args.packet) {
     usage();
@@ -178,6 +622,25 @@ function main() {
   const packetID = extractPacketId(packetText, "packet");
   const packetAttempt = extractAttempt(packetText);
   const packetPhase = extractPacketField(packetText, "phase");
+  const clarification = parseClarifyPacket(packetText);
+
+  if (clarification) {
+    const alreadyExists = packetExistsInState(projectRoot, packetID);
+    if (alreadyExists) {
+      console.error(`warning: packet_id ${packetID} already exists in state; skipping clarify ingest to avoid mutating historical packet metadata`);
+    } else {
+      ingestState(projectRoot, [
+        path.resolve(projectRoot, "scripts/opencode/state.php"),
+        "ingest-packet",
+        "--packet",
+        packetPath,
+      ]);
+    }
+
+    console.error(`Gate 0 clarification required for packet ${packetID}; execution paused.`);
+    process.stdout.write(formatClarifyPacket(clarification));
+    process.exit(clarifyExitCode());
+  }
 
   const lockHandle = acquirePacketLock(projectRoot, packetID);
   if (!lockHandle.acquired) {
@@ -215,6 +678,7 @@ function main() {
     const provider = args.provider ? String(args.provider) : String(decision.provider || "");
     const model = args.model ? String(args.model) : String(decision.model || "");
     const variant = args.variant ? String(args.variant) : String(decision.variant || decision.profile || "");
+    const storedSessionID = !args.session ? readStoredSession(projectRoot, packetID) : null;
 
     const runLoopArgs = [
       path.resolve(projectRoot, "scripts/opencode/run-loop.sh"),
@@ -226,6 +690,9 @@ function main() {
 
     if (args.session) {
       runLoopArgs.push("--session", String(args.session));
+    } else if (storedSessionID) {
+      console.error(`session-cache: reusing session=${storedSessionID} for packet ${packetID}`);
+      runLoopArgs.push("--session", storedSessionID);
     }
     if (args.title) {
       runLoopArgs.push("--title", String(args.title));
@@ -241,9 +708,12 @@ function main() {
     }
 
     const artifactBefore = getLatestArtifactPath(projectRoot);
-    const loopResult = runCommand("bash", runLoopArgs, { cwd: projectRoot });
+    const loopResult = await runLoopWithTelemetry(projectRoot, runLoopArgs);
+    if (loopResult.sessionID) {
+      writeStoredSession(projectRoot, packetID, loopResult.sessionID);
+    }
 
-    const artifactAfter = getLatestArtifactPath(projectRoot);
+    const artifactAfter = loopResult.recoveredArtifactPath || getLatestArtifactPath(projectRoot);
     if (artifactAfter && artifactAfter !== artifactBefore) {
       ingestState(projectRoot, [
         path.resolve(projectRoot, "scripts/opencode/state.php"),
@@ -252,6 +722,16 @@ function main() {
         artifactAfter,
       ]);
     } else if (loopResult.status !== 0) {
+      if (shouldSuppressFailureRecord({
+        loopResult,
+        reusedSessionID: storedSessionID,
+        artifactBefore,
+        artifactAfter,
+      })) {
+        console.error(`state: skipping failure record for interrupted reused session ${packetID}`);
+        process.exit(loopResult.status || 1);
+      }
+
       console.error("state: run failed with no new artifact; recording failure for packet " + packetID);
       const recordArgs = [
         path.resolve(projectRoot, "scripts/opencode/state.php"),
@@ -260,6 +740,12 @@ function main() {
         packetID,
         "--failure-type",
         "environment_blocker",
+        "--session-id",
+        loopResult.sessionID || storedSessionID || "",
+        "--transport",
+        loopResult.terminalEvent?.reason || "run-loop",
+        "--packet-path",
+        packetPath,
       ];
       if (packetAttempt != null) {
         recordArgs.push("--attempt", String(packetAttempt));
@@ -324,9 +810,7 @@ function main() {
   }
 }
 
-try {
-  main();
-} catch (error) {
+main().catch((error) => {
   console.error(error.message || String(error));
   process.exit(1);
-}
+});

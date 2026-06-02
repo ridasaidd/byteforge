@@ -89,6 +89,233 @@ export function buildClient() {
   };
 }
 
+export function resolveEventBaseUrl() {
+  return (process.env.OPENCODE_EVENT_BASE_URL || process.env.OPENCODE_BASE_URL || "http://100.80.45.13:4096").replace(/\/$/, "");
+}
+
+function extractSessionIdFromEvent(event) {
+  if (!event || typeof event !== "object") {
+    return null;
+  }
+
+  const direct = event.sessionID;
+  if (typeof direct === "string" && direct.trim()) {
+    return direct.trim();
+  }
+
+  const props = event.properties;
+  if (props && typeof props === "object" && typeof props.sessionID === "string" && props.sessionID.trim()) {
+    return props.sessionID.trim();
+  }
+
+  return null;
+}
+
+export function summarizeEventForConsole(event) {
+  const type = String(event?.type || "unknown");
+  const properties = event?.properties && typeof event.properties === "object" ? event.properties : {};
+
+  const formatFieldValue = (value) => {
+    if (value === undefined || value === null) {
+      return "";
+    }
+
+    if (typeof value === "object") {
+      try {
+        return JSON.stringify(value);
+      } catch {
+        return "[object]";
+      }
+    }
+
+    return String(value);
+  };
+
+  if (type === "message.part.delta") {
+    return null;
+  }
+
+  if (type === "session.diff") {
+    const diff = Array.isArray(properties.diff) ? properties.diff : [];
+    const fileCount = diff.length;
+    return `${type} files=${fileCount}`;
+  }
+
+  const fields = [
+    ["session", properties.sessionID || event?.sessionID],
+    ["message", properties.messageID],
+    ["status", properties.status],
+    ["error", properties.error || event?.error],
+  ];
+
+  const compact = fields
+    .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "")
+    .map(([key, value]) => `${key}=${formatFieldValue(value)}`)
+    .join(" ");
+
+  return compact ? `${type} ${compact}` : type;
+}
+
+function collectTerminalStatusHints(value, output) {
+  if (value === undefined || value === null) {
+    return;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (normalized) {
+      output.add(normalized);
+    }
+    return;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectTerminalStatusHints(item, output);
+    }
+    return;
+  }
+
+  if (typeof value === "object") {
+    for (const nested of Object.values(value)) {
+      collectTerminalStatusHints(nested, output);
+    }
+  }
+}
+
+export function detectTerminalEvent(event) {
+  const type = String(event?.type || "").trim().toLowerCase();
+  const hints = new Set();
+  collectTerminalStatusHints(event?.properties?.status, hints);
+  collectTerminalStatusHints(event?.status, hints);
+  collectTerminalStatusHints(event?.properties?.state, hints);
+  collectTerminalStatusHints(event?.properties?.result, hints);
+
+  const terminalHint = [...hints].find((hint) => (
+    hint === "completed"
+    || hint === "complete"
+    || hint === "finished"
+    || hint === "done"
+    || hint === "idle"
+    || hint === "success"
+    || hint === "failed"
+    || hint === "error"
+    || hint === "aborted"
+    || hint === "cancelled"
+    || hint === "canceled"
+  ));
+
+  if (type === "message.completed" || type === "session.completed") {
+    return {
+      terminal: true,
+      reason: type,
+    };
+  }
+
+  if ((type === "session.status" || type === "message.updated" || type === "session.updated") && terminalHint) {
+    return {
+      terminal: true,
+      reason: `${type}:${terminalHint}`,
+    };
+  }
+
+  return {
+    terminal: false,
+    reason: null,
+  };
+}
+
+export async function tailEventStream({
+  baseUrl,
+  sessionID = null,
+  onEvent,
+  signal,
+  includeTypes = null,
+  excludeTypes = null,
+} = {}) {
+  const streamBaseUrl = (baseUrl || resolveEventBaseUrl()).replace(/\/$/, "");
+  const url = `${streamBaseUrl}/event`;
+
+  const username = requireEnv("OPENCODE_USER");
+  const password = requireEnv("OPENCODE_PASS");
+  const auth = Buffer.from(`${username}:${password}`, "utf8").toString("base64");
+
+  const include = includeTypes instanceof Set ? includeTypes : null;
+  const exclude = excludeTypes instanceof Set ? excludeTypes : null;
+
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      Accept: "text/event-stream",
+    },
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to connect to event stream: status=${response.status}`);
+  }
+
+  if (!response.body) {
+    throw new Error("Event stream response body is empty");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      return null;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split(/\r?\n/);
+    buffer = lines.pop() || "";
+
+    for (const line of lines) {
+      if (!line.startsWith("data:")) {
+        continue;
+      }
+
+      const payload = line.slice(5).trim();
+      if (!payload || payload === "[DONE]") {
+        continue;
+      }
+
+      let event;
+      try {
+        event = JSON.parse(payload);
+      } catch {
+        continue;
+      }
+
+      const eventType = String(event?.type || "unknown");
+      const eventSessionID = extractSessionIdFromEvent(event);
+
+      if (sessionID && (!eventSessionID || eventSessionID !== sessionID)) {
+        continue;
+      }
+
+      if (include && include.size > 0 && !include.has(eventType)) {
+        continue;
+      }
+
+      if (exclude && exclude.has(eventType)) {
+        continue;
+      }
+
+      if (typeof onEvent === "function") {
+        const result = await onEvent(event, payload);
+        if (result !== undefined && result !== null) {
+          return result;
+        }
+      }
+    }
+  }
+}
+
 export function readUtf8(filePath) {
   return fs.readFileSync(filePath, "utf8");
 }
@@ -128,14 +355,20 @@ export function normalizeAssistantTextFromV2(messages) {
     return "";
   }
 
-  const latest = assistant[assistant.length - 1];
-  const content = Array.isArray(latest.content) ? latest.content : [];
-  const chunks = content
-    .filter((part) => part && part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text.trim())
-    .filter(Boolean);
+  for (let index = assistant.length - 1; index >= 0; index -= 1) {
+    const content = Array.isArray(assistant[index].content) ? assistant[index].content : [];
+    const chunks = content
+      .filter((part) => part && part.type === "text" && typeof part.text === "string")
+      .map((part) => part.text.trim())
+      .filter(Boolean);
 
-  return stripCodeFence(chunks.join("\n\n"));
+    const normalized = stripCodeFence(chunks.join("\n\n"));
+    if (normalized) {
+      return normalized;
+    }
+  }
+
+  return "";
 }
 
 export function stripCodeFence(text) {
@@ -249,6 +482,108 @@ function parseNestedMap(text, key) {
   }
 
   return Object.keys(result).length > 0 ? result : null;
+}
+
+function parseListSection(text, key) {
+  const lines = String(text || "").replace(/\r\n/g, "\n").split("\n");
+  const parentPattern = new RegExp(`^([ ]*)${key}:\\s*$`);
+  let parentIndex = -1;
+  let parentIndent = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const match = lines[i].match(parentPattern);
+    if (match) {
+      parentIndex = i;
+      parentIndent = match[1].length;
+      break;
+    }
+  }
+
+  if (parentIndex < 0) {
+    return null;
+  }
+
+  const items = [];
+
+  for (let i = parentIndex + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (!line.trim()) {
+      continue;
+    }
+
+    const indent = line.match(/^ */)[0].length;
+    if (indent <= parentIndent) {
+      break;
+    }
+
+    const itemMatch = line.match(/^\s*-\s*(.+)$/);
+    if (itemMatch) {
+      items.push(stripQuotedValue(itemMatch[1]));
+    }
+  }
+
+  return items.length > 0 ? items : null;
+}
+
+export function parseClarifyPacket(packetText) {
+  const normalized = String(packetText || "");
+  const status = parseTopLevelScalar(normalized, "status");
+
+  if (status !== "clarify") {
+    return null;
+  }
+
+  const taskRef = parseNestedMap(normalized, "task_ref");
+  if (!taskRef) {
+    return null;
+  }
+
+  return {
+    schemaVersion: parseTopLevelScalar(normalized, "schema_version"),
+    status,
+    taskRef,
+    gapsIdentified: parseListSection(normalized, "gaps_identified") || [],
+    clarifyingQuestions: parseListSection(normalized, "clarifying_questions") || [],
+  };
+}
+
+function yamlQuote(value) {
+  return `'${String(value ?? "").replace(/'/g, "''")}'`;
+}
+
+export function formatClarifyPacket(packet) {
+  const taskRef = packet?.taskRef || {};
+  const gaps = Array.isArray(packet?.gapsIdentified) ? packet.gapsIdentified : [];
+  const questions = Array.isArray(packet?.clarifyingQuestions) ? packet.clarifyingQuestions : [];
+
+  const lines = [
+    "schema_version: 1",
+    "status: clarify",
+    "task_ref:",
+    `  packet_id: ${String(taskRef.packet_id ?? "packet")}`,
+    `  phase: ${String(taskRef.phase ?? "PHASE19")}`,
+    `  attempt: ${String(taskRef.attempt ?? 1)}`,
+  ];
+
+  if (gaps.length > 0) {
+    lines.push("gaps_identified:");
+    for (const gap of gaps) {
+      lines.push(`  - ${yamlQuote(gap)}`);
+    }
+  } else {
+    lines.push("gaps_identified: []");
+  }
+
+  if (questions.length > 0) {
+    lines.push("clarifying_questions:");
+    for (const question of questions) {
+      lines.push(`  - ${yamlQuote(question)}`);
+    }
+  } else {
+    lines.push("clarifying_questions: []");
+  }
+
+  return `${lines.join("\n")}\n`;
 }
 
 export function validateExecutorResponseSchema(assistantText) {

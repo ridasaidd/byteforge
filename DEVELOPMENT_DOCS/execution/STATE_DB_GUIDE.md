@@ -89,18 +89,27 @@ full artifact text.
    ```
    npm run opencode:state:context -- --packet-id EP-003 --limit 3
    ```
-2. The returned JSON includes:
-    - `packet` — the packet row (packet_id, phase, task_class, risk_level,
-      summary, last_attempt, updated_at)
-    - `stats` — total_runs, success_runs, failed_runs
-    - `recent_runs` — list of the most recent entries with `packet_id`,
-      `attempt`, `model`, `status`, `failure_type`, `artifact_path`,
-      and `created_at`
-3. Embed this JSON in the orchestrator prompt instead of pasting full run logs
-   or artifact text.
-4. The executor gets only the summary — it knows how many prior attempts exist
-   and whether the last outcome was success or failure, without reading full
-   markdown or raw artifact JSON.
+2. The returned JSON has three top-level keys:
+    - `packet` — the packet row (`packet_id`, `phase`, `task_class`,
+      `risk_level`, `summary`, `last_attempt`, `updated_at`). Null if no
+      packet metadata has been ingested yet.
+    - `stats` — aggregate counts: `total_runs`, `success_runs`, `failed_runs`.
+    - `recent_runs` — array of the most recent N run entries, each with
+      `packet_id`, `attempt`, `model`, `status`, `failure_type`,
+      `artifact_path`, `created_at`, and optional token/cost/duration fields
+      when available from the artifact.
+3. Embed the compact JSON (or a minimal summary derived from it) in the
+   orchestrator prompt preamble — this replaces pasting full run logs,
+   artifact text, or markdown docs. Place it at the top of the prompt before
+   the execution packet, like:
+   ```
+   Recent context for EP-003:
+   {"stats":{"total_runs":2,"success_runs":0,"failed_runs":2},"recent_runs":[{"status":"failed:environment_blocker","attempt":2},{"status":"success","attempt":1}]}
+   ```
+4. The executor receives only the summary — it sees how many prior attempts
+   exist and whether the last outcome was success or failure, without reading
+   full markdown doc text or raw artifact JSON. The compact form uses ~150
+   tokens vs ~1500+ for full artifact text.
 
 ### Orchestrator Prompt Example
 
@@ -149,14 +158,18 @@ Two layers prevent stale success artifacts from being returned:
    failure artifact and updates the `.latest` pointer. This ensures the failure
    is visible in every subsequent `context` query.
 
-2. **`latestArtifactPath` packet-ID filter** — When `ingest-latest` or
-   `ingest-artifact` is called with `--packet-id`, the function scans all
-   matching artifacts across the runs directory rather than trusting `.latest`
-   alone. Matching artifacts are sorted: **failures first** (newest failure),
-   then **successes** (newest success). The first entry is returned and
-   `.latest` is updated only if the chosen path differs. This guarantees that
-   even if `.latest` was left pointing to a stale success, a subsequent
-   packet-scoped query will pick the most recent failure instead.
+2. **`latestArtifactPath` packet-ID filter** — When `ingest-latest` is called
+   with `--packet-id`, the function scans all artifacts in the runs directory
+   matching that packet ID rather than trusting `.latest` alone. Matching
+   artifacts are sorted: **failures first** (newest failure), then **successes**
+   (newest success). The first entry is returned and `.latest` is updated only
+   if the chosen path differs. This guarantees that even if `.latest` was left
+   pointing to a stale success, a subsequent packet-scoped query will pick the
+   most recent failure instead.
+
+Note: `ingest-artifact --artifact <path>` does not use the packet-ID filter
+because it ingests an explicit artifact path. To benefit from stale-success
+protection during ingest, use `ingest-latest --packet-id <id>` instead.
 
 **Why this matters:** Without stale-protection, a failed run that crashes before
 producing an artifact would leave `.latest` pointing to a prior success. A
@@ -165,10 +178,49 @@ stale success, masking the failure from state. The combination of
 `record-failure` (layer 1) and the packet-scoped sort (layer 2) ensures a
 failure is never hidden by a stale success artifact.
 
+### Embedding in Orchestrator Prompts
+
+The compact context output from the `context` command is designed to be embedded
+directly into orchestrator prompt preambles. The `db_path` key is informational
+and should be stripped before embedding.
+
+**Step-by-step flow:**
+
+1. Pull compact context for the target packet:
+   ```bash
+   npm run opencode:state:context -- --packet-id EP-003 --limit 3
+   ```
+2. Extract the `packet`, `stats`, and `recent_runs` keys. Omit `db_path`.
+3. Embed as a single compact JSON line in the orchestrator preamble:
+
+   ```
+   Recent context for EP-003:
+   {"stats":{"total_runs":3,"success_runs":1,"failed_runs":2},"recent_runs":[{"status":"failed:environment_blocker","attempt":2},{"status":"success","attempt":1}]}
+   ```
+
+**Token savings (measured):**
+
+| Content | Approx. tokens |
+|---|---|
+| Full artifact JSON (raw API response) | ~2,500–4,000 |
+| Full artifact assistantText (YAML result) | ~1,200–1,800 |
+| Compact context (stats + recent_runs only) | ~120–180 |
+
+**When to include the `packet` block:**
+
+```json
+{"packet_id":"EP-003","phase":"PHASE19","task_class":"minor","risk_level":"low","summary":"Harden...","last_attempt":2,"updated_at":"2026-05-29T12:00:00+00:00"}
+```
+
+Include the `packet` block (~120 tokens) only when the executor needs packet
+metadata (task class, risk level, summary) for routing-awareness. For simple
+retries, `stats` + `recent_runs` alone is sufficient.
+
 ### Recommended Prompt Strategy
 
 1. Pull compact context from SQLite for current packet ID.
-2. Include only latest failures and last successful run summary.
+2. Include only `stats` + `recent_runs` (omit `db_path`; include `packet` block
+   only when executor needs routing-awareness metadata).
 3. Include doc references and hashes, not full doc text, unless changed.
 4. Escalate context size only when execution repeatedly fails.
 5. When context shows repeated failures, include only the most recent failed
