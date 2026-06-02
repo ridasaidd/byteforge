@@ -301,6 +301,52 @@ jobs:
               fi
             }
 
+            queue_service_runtime_diagnostic() {
+              if ! command -v systemctl >/dev/null 2>&1; then
+                return
+              fi
+
+              if ! systemctl list-unit-files laravel-queue.service >/dev/null 2>&1; then
+                return
+              fi
+
+              service_user=$(systemctl show laravel-queue.service -p User --value 2>/dev/null | tr -d '[:space:]')
+              service_group=$(systemctl show laravel-queue.service -p Group --value 2>/dev/null | tr -d '[:space:]')
+
+              echo "Queue service runtime identity: user=${service_user:-n/a}, group=${service_group:-n/a}"
+              stat -c '%U %G %a %n' storage storage/logs bootstrap/cache || true
+
+              if [ -n "$service_user" ] && id "$service_user" >/dev/null 2>&1; then
+                service_groups=$(id -nG "$service_user" 2>/dev/null || true)
+                echo "Queue service user groups: ${service_groups:-unknown}"
+              fi
+
+              for runtime_path in storage storage/logs bootstrap/cache; do
+                path_owner=$(stat -c '%U' "$runtime_path" 2>/dev/null || echo unknown)
+                path_group=$(stat -c '%G' "$runtime_path" 2>/dev/null || echo unknown)
+                path_mode=$(stat -c '%a' "$runtime_path" 2>/dev/null || echo 000)
+
+                owner_digit=${path_mode:0:1}
+                group_digit=${path_mode: -2:1}
+                other_digit=${path_mode: -1}
+                writable=no
+
+                if [ -n "$service_user" ] && [ "$path_owner" = "$service_user" ] && (( owner_digit >= 6 )); then
+                  writable=yes
+                elif [ -n "$service_user" ] && id "$service_user" >/dev/null 2>&1; then
+                  if id -nG "$service_user" | tr ' ' '\n' | grep -Fxq "$path_group" && (( group_digit >= 6 )); then
+                    writable=yes
+                  fi
+                fi
+
+                if [ "$writable" = "no" ] && (( other_digit >= 6 )); then
+                  writable=yes
+                fi
+
+                echo "Queue service writable check: $runtime_path owner=$path_owner group=$path_group mode=$path_mode writable=$writable"
+              done
+            }
+
             scheduler_is_configured() {
               local deploy_user_crontab=""
 
@@ -360,6 +406,7 @@ jobs:
                       echo "Deployment aborted: laravel-queue.service is failed after queue:restart and deploy user cannot manage systemd units."
                       echo "Grant passwordless sudo for 'systemctl reset-failed/restart/status/show laravel-queue.service' (or run deploy as root-compatible service account)."
                       systemctl show laravel-queue.service -p LoadState -p ActiveState -p SubState -p MainPID -p ExecStart || true
+                      queue_service_runtime_diagnostic
                       queue_bootstrap_diagnostic
                       exit 1
                     fi
@@ -417,6 +464,7 @@ jobs:
                   echo "Recent laravel-queue.service logs (last 40 lines):"
                   journalctl_cmd -u laravel-queue.service -n 40 --no-pager || true
                 fi
+                queue_service_runtime_diagnostic
                 queue_bootstrap_diagnostic
                 echo "Deployment aborted: queue connection [$queue_connection] requires a running worker, but none was detected after queue:restart"
                 exit 1
