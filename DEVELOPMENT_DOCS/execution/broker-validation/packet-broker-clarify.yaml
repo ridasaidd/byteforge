@@ -1,0 +1,10 @@
+schema_version: 1
+status: clarify
+task_ref:
+  packet_id: EP-BROKER-CLARIFY
+  phase: BROKER_VALIDATION
+  attempt: 1
+gaps_identified:
+  - "Clarification short-circuit behavior must be verified without executor dispatch."
+clarifying_questions:
+  - "Should this packet proceed to executor or pause at Gate 0?"
