@@ -1,0 +1,51 @@
+schema_version: 1
+task_ref:
+  packet_id: EP-005
+  phase: STAGING_DEPLOY_HARDENING
+  attempt: 1
+  executor_model: deepseek-v4-flash
+  parent_packet_id: EP-004
+summary: "Fix staging deploy runtime audit so failed_jobs growth is accurately attributed (mail smoke vs scheduler smoke)"
+execution_policy:
+  task_class: minor
+  risk_level: medium
+  finalize_git: false
+  delegate_to_executor: true
+  orchestrator_preflight_budget:
+    max_file_reads: 2
+    max_diff_inspections: 1
+    allow_deep_analysis: false
+scope:
+  in:
+    - "Update .github/workflows/deploy-staging.yml to classify failed_jobs increase cause with clear message"
+    - "Keep deployment failing when new failed_jobs rows appear during post-deploy checks"
+    - "Improve triage output so GuestMagicLinkNotification failures are explicitly identified as mail-path failures"
+    - "Update relevant staging docs if behavior/wording changed"
+  out:
+    - "Do not weaken safety gate by allowing failed_jobs growth to pass"
+    - "Do not change application runtime logic for guest magic links"
+    - "Do not modify unrelated CI workflows"
+doc_allow_list:
+  - "AGENTS.md"
+  - "DEVELOPMENT_DOCS/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
+  - "DEVELOPMENT_DOCS/TESTING.md"
+  - "DEVELOPMENT_DOCS/STAGING_DEPLOYMENT_PLAN.md"
+code_targets:
+  - ".github/workflows/deploy-staging.yml"
+  - "DEVELOPMENT_DOCS/STAGING_DEPLOYMENT_PLAN.md"
+acceptance_criteria:
+  - id: AC-1
+    text: "Runtime audit still fails when failed_jobs increases, but failure message distinguishes scheduler-path vs mail-path failures"
+  - id: AC-2
+    text: "Triage summary includes enough context to identify App\\Notifications\\Guest\\GuestMagicLinkNotification bursts as mail smoke/runtime mail issues"
+  - id: AC-3
+    text: "No broad behavior regression: existing scheduler command registration checks remain enforced"
+verification:
+  commands:
+    - "git diff -- .github/workflows/deploy-staging.yml DEVELOPMENT_DOCS/STAGING_DEPLOYMENT_PLAN.md"
+    - "rg -n \"Runtime audit failed|mail smoke|failed_jobs\" .github/workflows/deploy-staging.yml"
+stop_conditions:
+  - "OpenCode API unavailable"
+  - "Missing OPENCODE_USER or OPENCODE_PASS"
+  - "Fix would require disabling failed_jobs gate entirely"

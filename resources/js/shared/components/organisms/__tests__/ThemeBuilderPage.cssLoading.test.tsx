@@ -21,6 +21,13 @@ vi.mock('@/shared/services/api/themeParts', () => ({
   },
 }));
 
+vi.mock('@/shared/services/api/themePlaceholders', () => ({
+  themePlaceholders: {
+    list: vi.fn().mockResolvedValue({ data: [] }),
+    save: vi.fn(),
+  },
+}));
+
 vi.mock('@/shared/services/api/pageTemplates', () => ({
   pageTemplates: {
     getByTheme: vi.fn().mockResolvedValue({ data: [] }),
