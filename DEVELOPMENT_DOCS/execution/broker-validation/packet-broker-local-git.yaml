@@ -1,0 +1,37 @@
+schema_version: 1
+task_ref:
+  packet_id: EP-BROKER-LOCAL-GIT
+  phase: BROKER_VALIDATION
+  attempt: 1
+  executor_model: deepseek-v4-flash
+  parent_packet_id: null
+summary: "Validate broker dispatch + run-auto local_git short-circuit without executor token usage"
+execution_policy:
+  task_class: git_plumbing
+  risk_level: low
+  finalize_git: false
+scope:
+  in:
+    - "Exercise dispatch routing and run-auto route bypass behavior"
+    - "Confirm packet-scoped lock and state ingest flow still runs"
+  out:
+    - "Do not execute any remote executor model"
+    - "Do not edit any repository files"
+doc_allow_list:
+  - "DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
+  - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+code_targets:
+  - "scripts/opencode/dispatch.php"
+  - "scripts/opencode/run-auto.mjs"
+acceptance_criteria:
+  - id: AC-1
+    text: "Dispatch route resolves to local_git"
+  - id: AC-2
+    text: "run-auto exits success after local_git route selection"
+verification:
+  commands:
+    - "npm run opencode:dispatch -- --packet DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml"
+    - "npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml --mode v1"
+stop_conditions:
+  - "SQLite state initialization fails"
+  - "dispatch parser fails to parse packet"

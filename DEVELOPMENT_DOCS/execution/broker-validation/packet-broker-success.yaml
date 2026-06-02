@@ -1,0 +1,38 @@
+schema_version: 1
+task_ref:
+  packet_id: EP-BROKER-SUCCESS
+  phase: BROKER_VALIDATION
+  attempt: 1
+  executor_model: deepseek-v4-flash
+  parent_packet_id: null
+summary: "Run one low-cost executor packet to validate end-to-end broker executor path"
+execution_policy:
+  task_class: docs
+  risk_level: low
+  finalize_git: false
+scope:
+  in:
+    - "Read broker workflow docs and return schema-compliant success response"
+    - "Keep run token footprint minimal"
+  out:
+    - "Do not edit files"
+    - "Do not run broad project test suites"
+doc_allow_list:
+  - "AGENTS.md"
+  - "DEVELOPMENT_DOCS/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
+  - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+code_targets:
+  - "DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml"
+acceptance_criteria:
+  - id: AC-1
+    text: "Broker dispatches this packet through executor route and records a run outcome"
+  - id: AC-2
+    text: "No file edits are required for this packet"
+verification:
+  commands:
+    - "npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml --mode v1"
+    - "npm run opencode:state:context -- --packet-id EP-BROKER-SUCCESS --limit 2"
+stop_conditions:
+  - "Missing OPENCODE_USER or OPENCODE_PASS"
+  - "OpenCode API health check fails"

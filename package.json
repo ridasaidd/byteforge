@@ -42,7 +42,9 @@
         "opencode:state:route-upsert": "php scripts/opencode/state.php route-upsert",
         "opencode:state:route-list": "php scripts/opencode/state.php route-list",
         "opencode:state:record-failure": "php scripts/opencode/state.php record-failure",
-        "opencode:state:verify": "bash scripts/opencode/state-verify.sh --packet DEVELOPMENT_DOCS/execution/packet.yaml"
+        "opencode:state:verify": "bash scripts/opencode/state-verify.sh --packet DEVELOPMENT_DOCS/execution/packet.yaml",
+        "opencode:broker-verify": "bash scripts/opencode/broker-verify.sh",
+        "opencode:broker-verify:full": "bash scripts/opencode/broker-verify.sh --full"
     },
     "devDependencies": {
         "@playwright/test": "^1.59.1",

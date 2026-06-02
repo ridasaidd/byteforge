@@ -329,6 +329,39 @@ Each artifact includes:
 - assistant text
 - raw API response
 
+## Broker Validation Suite (Low-Token Daily Ops)
+
+Use the packet suite in `DEVELOPMENT_DOCS/execution/broker-validation/` to validate broker health without broad token spend.
+
+Quick daily run (default, no executor token call):
+
+npm run opencode:broker-verify
+
+This checks:
+
+- OpenCode API health
+- SQLite state init + acceptance verification
+- dispatch routing for local_git and executor packets
+- Gate 0 clarify short-circuit behavior
+- local_git run-auto short-circuit behavior
+- compact state context retrieval
+
+Full run (adds one low-cost executor-path call):
+
+npm run opencode:broker-verify:full
+
+Suite packets:
+
+- `DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-clarify.yaml`
+- `DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml`
+- `DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml`
+
+Recommended cadence:
+
+- run `opencode:broker-verify` at start of day
+- run `opencode:broker-verify:full` once after broker or routing changes
+- use compact context queries (`opencode:state:context`) for retries instead of pasting full artifacts
+
 ## Behavior Notes
 
 - The script prefers /api/session/{id}/prompt and /api/session/{id}/wait.

@@ -672,7 +672,7 @@ async function main() {
 
     if (decision.route === "local_git") {
       console.log("Route selected: local git plumbing (executor skipped)");
-      process.exit(0);
+      return 0;
     }
 
     const provider = args.provider ? String(args.provider) : String(decision.provider || "");
@@ -729,7 +729,7 @@ async function main() {
         artifactAfter,
       })) {
         console.error(`state: skipping failure record for interrupted reused session ${packetID}`);
-        process.exit(loopResult.status || 1);
+        return loopResult.status || 1;
       }
 
       console.error("state: run failed with no new artifact; recording failure for packet " + packetID);
@@ -771,17 +771,17 @@ async function main() {
     }
 
     if (loopResult.status !== 0) {
-      process.exit(loopResult.status || 1);
+      return loopResult.status || 1;
     }
 
     const finalizeGit = Boolean(args["finalize-git"] || decision.finalize_git);
     if (!finalizeGit) {
-      process.exit(0);
+      return 0;
     }
 
     if (!args["commit-message"]) {
       console.error("--commit-message is required when --finalize-git is set");
-      process.exit(1);
+      return 1;
     }
 
     const finalizeArgs = [
@@ -800,17 +800,21 @@ async function main() {
       finalizeArgs.push("--files", String(args.files));
     } else {
       console.error("--all or --files is required when --finalize-git is set");
-      process.exit(1);
+      return 1;
     }
 
     const finalizeResult = runCommand("bash", finalizeArgs, { cwd: projectRoot });
-    process.exit(finalizeResult.status || 0);
+    return finalizeResult.status || 0;
   } finally {
     releasePacketLock(lockHandle);
   }
 }
 
-main().catch((error) => {
-  console.error(error.message || String(error));
-  process.exit(1);
-});
+main()
+  .then((status) => {
+    process.exit(typeof status === "number" ? status : 0);
+  })
+  .catch((error) => {
+    console.error(error.message || String(error));
+    process.exit(1);
+  });
