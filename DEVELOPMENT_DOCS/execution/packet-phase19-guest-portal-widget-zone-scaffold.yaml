@@ -1,0 +1,56 @@
+schema_version: 1
+task_ref:
+  packet_id: EP-007
+  phase: PHASE19
+  attempt: 1
+  executor_model: deepseek-v4-pro-medium
+  parent_packet_id: EP-006
+summary: "Phase 19 follow-on: implement guest-portal widget-zone scaffolding only (defer add-on gating)"
+execution_policy:
+  task_class: feature
+  risk_level: medium
+  finalize_git: false
+scope:
+  in:
+    - "Implement guest-portal widget-zone scaffolding for authenticated guest portal runtime"
+    - "Define a stable widget-zone contract for future add-on gating"
+    - "Preserve existing route-owned guest auth/session behavior"
+    - "Keep tenant staff login surface constrained as a lightweight branded utility surface"
+  out:
+    - "No add-on gating logic in this packet"
+    - "No customer-account/register/forgot/reset-password runtime work"
+    - "No cross-tenant SSO or identity architecture changes"
+    - "No broad refactor of existing booking or quotes domain logic"
+doc_allow_list:
+  - "AGENTS.md"
+  - "DEVELOPMENT_DOCS/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
+  - "DEVELOPMENT_DOCS/ROADMAP.md"
+  - "DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md"
+  - "DEVELOPMENT_DOCS/TESTING.md"
+code_targets:
+  - "resources/js/shared/puck/system-surfaces/SystemSurfaceConfig.ts"
+  - "resources/js/apps/public/components/GuestPortalPage.tsx"
+  - "resources/js/apps/public/components/guestPortal.service.ts"
+  - "resources/js/apps/tenant/components/pages/SystemSurfaceEditorPage.tsx"
+  - "resources/js/shared/services/api/types.ts"
+  - "resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx"
+  - "tests/e2e/guest-portal-shell.spec.ts"
+acceptance_criteria:
+  - id: AC-1
+    text: "Guest portal runtime exposes a dedicated widget zone contract that can host widgets without breaking route-owned auth shell behavior"
+  - id: AC-2
+    text: "Tenant login surface remains constrained (no broad freeform widgetization)"
+  - id: AC-3
+    text: "Focused unit/browser coverage verifies widget-zone rendering behavior"
+verification:
+  commands:
+    - "npm run test:run -- resources/js/apps/public/components/__tests__/guestPortal.service.test.ts resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx"
+    - "npm run test:e2e -- tests/e2e/guest-portal-shell.spec.ts"
+stop_conditions:
+  - "Any change would weaken tenant/auth/guest route security boundaries"
+  - "Implementation requires introducing customer-account flows outside current Phase 19 scope"
+  - "Required widget-zone contract cannot be represented without immediate add-on entitlement decisions"
+notes:
+  - "Explicitly deferred: add-on gating logic for guest portal widgets."
+  - "Follow-up packet should decide entitlement source for guest-auth runtime before implementing gating."
