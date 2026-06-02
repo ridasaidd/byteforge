@@ -11,6 +11,23 @@ Read `DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedence, sensiti
 - In this mode, the executor should read only `AGENTS.md`, `DEVELOPMENT_DOCS/AGENT_START.md`, and the assigned execution packet before any task-specific docs.
 - Executor responses must use the workflow's success/failure schemas, including `task_ref` and `schema_version`.
 
+### Gate 0 Clarification Policy
+
+- Before generating an execution packet, the orchestrator must run a preflight refinement check on the human prompt.
+- If target files, architectural surfaces, or acceptance criteria are still ambiguous, do not emit an execution packet.
+- Instead, emit exactly one `status: clarify` YAML packet with up to 3 direct questions and the missing gaps.
+- The local broker must treat a clarification packet as a pause condition, not as executor failure.
+- Packet IDs must be treated as unique run identifiers; avoid reusing completed IDs for new clarify packets.
+- If packet ID continuity is uncertain, resolve state first (for example from SQLite context) before emitting a new packet.
+
+### Default Handoff Policy (No Reminder Mode)
+
+- Treat executor delegation as default for non-trivial work.
+- Orchestrator should only do minimal preflight (health, status, tiny scope check), then issue a packet.
+- Delegate when task requires file edits, stash/diff triage, more than two file reads, or validation commands after edits.
+- Keep orchestration token usage low by using compact state context and packet deltas instead of long conversational context.
+- Only keep work in orchestrator when it is a tiny operational check or explicit local git plumbing.
+
 ## Current Project Truth
 
 - primary branch: `main`

@@ -70,16 +70,16 @@ if [[ -z "$packet_id" ]]; then
   exit 1
 fi
 
-echo "[1/4] state:init"
+echo "[1/5] state:init"
 php "$STATE_PHP" init >/dev/null
 
-echo "[2/4] state:ingest-packet"
+echo "[2/5] state:ingest-packet"
 php "$STATE_PHP" ingest-packet --packet "$packet_path" >/dev/null
 
-echo "[3/4] state:context"
+echo "[3/5] state:context"
 php "$STATE_PHP" context --packet-id "$packet_id" --limit "$limit" >/dev/null
 
-echo "[4/4] stale-success protection"
+echo "[4/5] stale-success protection"
 mkdir -p "$RUNS_DIR"
 orig_ptr=""
 if [[ -f "$LATEST_PTR" ]]; then
@@ -136,5 +136,47 @@ if [[ "$artifact_value" != "$fail_file" ]]; then
   echo "error: AC-2 failed; expected artifact $fail_file, got: $artifact_value" >&2
   exit 1
 fi
+
+echo "[5/5] record-failure artifact metadata preservation"
+rec_packet_id="VERIFY-AC2-META-$suffix"
+meta_json="$(php "$STATE_PHP" record-failure --packet-id "$rec_packet_id" --attempt 1 --model deepseek-v4-flash --provider opencode-go --variant cheap --failure-type environment_blocker --phase PHASE19 --task-class minor --packet-path "$packet_path" 2>&1)"
+
+meta_artifact="$(printf "%s" "$meta_json" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j["artifact_path"] ?? "";')"
+if [[ -z "$meta_artifact" || ! -f "$meta_artifact" ]]; then
+  echo "error: AC-2 metadata test failed; no artifact created" >&2
+  exit 1
+fi
+
+decoded="$(cat "$meta_artifact")"
+packet_path_in_artifact="$(printf "%s" "$decoded" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j["packetPath"] ?? "";')"
+provider_in_artifact="$(printf "%s" "$decoded" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j["provider"] ?? "";')"
+model_in_artifact="$(printf "%s" "$decoded" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j["model"] ?? "";')"
+variant_in_artifact="$(printf "%s" "$decoded" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j["variant"] ?? "";')"
+
+if [[ "$packet_path_in_artifact" != "$packet_path" ]]; then
+  echo "error: AC-2 metadata test failed; packetPath mismatch: expected $packet_path, got $packet_path_in_artifact" >&2
+  exit 1
+fi
+if [[ "$provider_in_artifact" != "opencode-go" ]]; then
+  echo "error: AC-2 metadata test failed; provider mismatch" >&2
+  exit 1
+fi
+if [[ "$model_in_artifact" != "deepseek-v4-flash" ]]; then
+  echo "error: AC-2 metadata test failed; model mismatch" >&2
+  exit 1
+fi
+if [[ "$variant_in_artifact" != "cheap" ]]; then
+  echo "error: AC-2 metadata test failed; variant mismatch" >&2
+  exit 1
+fi
+
+reingest_json="$(php "$STATE_PHP" ingest-artifact --artifact "$meta_artifact" 2>&1)"
+reingest_status="$(printf "%s" "$reingest_json" | php -r '$j=json_decode(stream_get_contents(STDIN),true); echo $j["status"] ?? "";')"
+if [[ "$reingest_status" != "failed:environment_blocker" ]]; then
+  echo "error: AC-2 metadata test failed; re-ingestion status mismatch: $reingest_status" >&2
+  exit 1
+fi
+
+rm -f "$meta_artifact"
 
 echo "state verify passed for packet_id=$packet_id"

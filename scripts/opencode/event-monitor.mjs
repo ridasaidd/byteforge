@@ -9,6 +9,7 @@ function usage() {
     "  OPENCODE_USER (required)",
     "  OPENCODE_PASS (required)",
     "  OPENCODE_BASE_URL (optional, defaults to http://100.80.45.13:4096)",
+    "  OPENCODE_EVENT_BASE_URL (optional, overrides event stream base URL)",
     "",
     "Defaults:",
     "  preset=safe",
@@ -104,7 +105,7 @@ async function main() {
     process.exit(0);
   }
 
-  const baseUrl = (process.env.OPENCODE_BASE_URL || "http://100.80.45.13:4096").replace(/\/$/, "");
+  const baseUrl = (process.env.OPENCODE_EVENT_BASE_URL || process.env.OPENCODE_BASE_URL || "http://100.80.45.13:4096").replace(/\/$/, "");
   const username = requireEnv("OPENCODE_USER");
   const password = requireEnv("OPENCODE_PASS");
   const auth = Buffer.from(`${username}:${password}`, "utf8").toString("base64");

@@ -15,6 +15,31 @@ stateful chat dependency.
 - make retries stateless through packet IDs and attempt numbers
 - avoid rereading broad docs for every executor run
 
+## Gate 0: Preflight Clarification
+
+Before generating an execution packet, the orchestrator must first decide whether the human prompt is specific enough to safely route.
+
+If the prompt does not identify target files, a clear architectural surface, or concrete acceptance criteria, the orchestrator must not emit an execution packet. It must emit exactly one clarification packet instead.
+
+### Clarification Packet Schema
+
+```yaml
+schema_version: 1
+status: clarify
+task_ref:
+  packet_id: EP-001
+  phase: PHASE19
+  attempt: 1
+gaps_identified:
+  - "Short description of what is missing or ambiguous."
+clarifying_questions:
+  - "Direct, high-impact question to resolve the gap."
+```
+
+- Clarification packets are consumed by the local broker, not by the executor.
+- Keep clarification to at most 3 questions.
+- Use clarification to resolve ambiguity, not to restate the whole prompt.
+
 ## Roles
 
 ### Orchestrator
@@ -23,6 +48,7 @@ stateful chat dependency.
 - compresses project context into a single execution packet
 - chooses next action when executor returns a failure schema
 - decides whether partial work is safe to keep or should be discarded
+- performs only minimal preflight checks before delegation
 
 ### Executor
 
@@ -30,6 +56,32 @@ stateful chat dependency.
 - does not expand scope without explicit orchestrator approval
 - returns success or failure using the required schema
 - provides test evidence tied to acceptance criteria
+
+## Default Delegation Contract (Cost Mode)
+
+Unless blocked by missing credentials, tool outage, or explicit user override,
+the orchestrator should delegate implementation and triage work to the executor
+using a packet.
+
+Default triggers for delegation:
+
+- task requires edits in one or more files
+- task requires comparing current code with historical changes or stash content
+- task requires more than two file reads to answer safely
+- task requires targeted validation commands after edits
+
+Default tasks the orchestrator may do directly:
+
+- quick health checks
+- branch and status checks
+- reading one or two small files to prepare packet scope
+- final accept/reject audit of executor output
+
+Token budget guidance for orchestrator preflight:
+
+- keep preflight to smallest context that can produce a safe packet
+- prefer SQLite compact context (`opencode:state:context`) over artifact text
+- do not perform deep code analysis in orchestrator when executor can do it
 
 ## Required Minimal Read Set
 
@@ -46,7 +98,7 @@ it.
 
 ## Execution Packet Schema
 
-Each task starts with exactly one packet.
+Each task starts with exactly one execution packet after Gate 0 passes.
 
 ```yaml
 schema_version: 1
@@ -184,6 +236,7 @@ Use this default routing table after failures.
 - no open-ended failure prose; schema only
 - orchestrator sends deltas on retries, not full context repeats
 - max two next-best actions in failure returns, smallest first
+- default to executor delegation for non-trivial work; keep orchestrator preflight minimal
 
 ## Canonical vs SQLite Policy
 

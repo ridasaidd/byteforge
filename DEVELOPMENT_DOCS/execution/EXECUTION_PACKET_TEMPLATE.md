@@ -21,6 +21,11 @@ execution_policy:
   task_class: feature # docs|minor|feature|critical|git_plumbing
   risk_level: medium # low|medium|high
   finalize_git: false
+  delegate_to_executor: true
+  orchestrator_preflight_budget:
+    max_file_reads: 2
+    max_diff_inspections: 1
+    allow_deep_analysis: false
 scope:
   in:
     - "Allowed work"
