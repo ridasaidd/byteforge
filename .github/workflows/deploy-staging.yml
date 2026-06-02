@@ -287,7 +287,18 @@ jobs:
 
             queue_bootstrap_diagnostic() {
               echo "Queue bootstrap diagnostic (artisan queue:work --once):"
-              php artisan queue:work "$queue_connection" --queue="$expected_queue_list" --once --sleep=1 --tries=1 --timeout=120 --no-interaction -v || true
+              set +e
+              php artisan queue:work "$queue_connection" --queue="$expected_queue_list" --once --sleep=1 --tries=1 --timeout=120 --no-interaction -vvv 2>&1 | tee /tmp/queue-bootstrap-diagnostic.out
+              queue_bootstrap_exit=${PIPESTATUS[0]}
+              set -e
+
+              echo "queue bootstrap exit code: $queue_bootstrap_exit"
+              if [ -f storage/logs/laravel.log ]; then
+                echo "Recent Laravel application logs (last 120 lines):"
+                tail -n 120 storage/logs/laravel.log || true
+              else
+                echo "No storage/logs/laravel.log file found"
+              fi
             }
 
             scheduler_is_configured() {
