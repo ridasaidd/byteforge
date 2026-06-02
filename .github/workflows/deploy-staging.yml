@@ -253,9 +253,14 @@ jobs:
             expected_scheduler_cron="* * * * * cd $APP_PATH && php artisan schedule:run >> /dev/null 2>&1"
             scheduler_timer_unit="${SCHEDULER_TIMER_UNIT:-laravel-scheduler.timer}"
             has_passwordless_sudo=0
+            can_manage_system_services=0
 
             if command -v sudo >/dev/null 2>&1 && sudo -n true >/dev/null 2>&1; then
               has_passwordless_sudo=1
+            fi
+
+            if [ "$(id -u)" -eq 0 ] || [ "$has_passwordless_sudo" -eq 1 ]; then
+              can_manage_system_services=1
             fi
 
             systemctl_cmd() {
@@ -278,6 +283,11 @@ jobs:
               local details="$1"
 
               printf '%s\n' "$details" | grep -Eq -- "--queue(=|[[:space:]])${expected_queue_list}([[:space:]]|$)"
+            }
+
+            queue_bootstrap_diagnostic() {
+              echo "Queue bootstrap diagnostic (artisan queue:work --once):"
+              php artisan queue:work "$queue_connection" --queue="$expected_queue_list" --once --sleep=1 --tries=1 --timeout=120 --no-interaction -v || true
             }
 
             scheduler_is_configured() {
@@ -335,6 +345,14 @@ jobs:
 
                 if command -v systemctl >/dev/null 2>&1; then
                   if [ "$queue_service_restart_attempted" -eq 0 ] && systemctl list-unit-files laravel-queue.service >/dev/null 2>&1 && systemctl_cmd is-failed --quiet laravel-queue.service; then
+                    if [ "$can_manage_system_services" -ne 1 ]; then
+                      echo "Deployment aborted: laravel-queue.service is failed after queue:restart and deploy user cannot manage systemd units."
+                      echo "Grant passwordless sudo for 'systemctl reset-failed/restart/status/show laravel-queue.service' (or run deploy as root-compatible service account)."
+                      systemctl show laravel-queue.service -p LoadState -p ActiveState -p SubState -p MainPID -p ExecStart || true
+                      queue_bootstrap_diagnostic
+                      exit 1
+                    fi
+
                     echo "laravel-queue.service is failed after queue:restart; attempting explicit service restart"
                     systemctl_cmd reset-failed laravel-queue.service || true
                     systemctl_cmd restart laravel-queue.service || true
@@ -388,6 +406,7 @@ jobs:
                   echo "Recent laravel-queue.service logs (last 40 lines):"
                   journalctl_cmd -u laravel-queue.service -n 40 --no-pager || true
                 fi
+                queue_bootstrap_diagnostic
                 echo "Deployment aborted: queue connection [$queue_connection] requires a running worker, but none was detected after queue:restart"
                 exit 1
               fi
