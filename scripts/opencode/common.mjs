@@ -329,6 +329,16 @@ export function writeJson(filePath, data) {
   fs.writeFileSync(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
 }
 
+export function getRuntimeDir(cwd = process.cwd()) {
+  const raw = process.env.OPENCODE_RUNTIME_DIR;
+  if (typeof raw === "string" && raw.trim()) {
+    const value = raw.trim();
+    return path.isAbsolute(value) ? value : path.resolve(cwd, value);
+  }
+
+  return path.resolve(cwd, ".opencode/runtime");
+}
+
 export function extractPacketId(packetText, fallback = "packet") {
   const match = packetText.match(/packet_id:\s*([A-Za-z0-9._-]+)/);
   return match ? match[1] : fallback;
@@ -386,7 +396,7 @@ export function stripCodeFence(text) {
 }
 
 export function getArtifactsDir(cwd = process.cwd()) {
-  return path.resolve(cwd, "storage/opencode-runs");
+  return path.resolve(getRuntimeDir(cwd), "runs");
 }
 
 export function getLatestArtifactPath(cwd = process.cwd()) {

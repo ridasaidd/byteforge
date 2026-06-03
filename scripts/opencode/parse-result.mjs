@@ -1,5 +1,6 @@
 import path from "node:path";
 import {
+  getArtifactsDir,
   getLatestArtifactPath,
   parseArgs,
   readUtf8,
@@ -39,7 +40,7 @@ function main() {
     : getLatestArtifactPath(process.cwd());
 
   if (!artifactPath) {
-    console.error("No artifacts found in storage/opencode-runs");
+    console.error(`No artifacts found in ${getArtifactsDir(process.cwd())}`);
     process.exit(1);
   }
 

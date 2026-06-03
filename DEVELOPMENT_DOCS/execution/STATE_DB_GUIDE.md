@@ -15,7 +15,7 @@ pasting full historical docs and artifacts.
 ## Canonical vs Cache
 
 - Canonical: markdown docs in `DEVELOPMENT_DOCS/**`
-- Cache: SQLite state at `storage/opencode-state.sqlite`
+- Cache: SQLite state at `.opencode/runtime/opencode-state.sqlite`
 
 ## Commands
 
@@ -128,8 +128,8 @@ Given this compact context output:
   },
   "stats": { "total_runs": 3, "success_runs": 1, "failed_runs": 2 },
   "recent_runs": [
-    {"packet_id": "EP-003", "attempt": 2, "model": "deepseek-v4-flash", "status": "failed:environment_blocker", "failure_type": "environment_blocker", "artifact_path": "storage/opencode-runs/...EP-003.json", "created_at": "2026-05-29T11:55:00+00:00"},
-    {"packet_id": "EP-003", "attempt": 1, "model": "deepseek-v4-flash", "status": "success", "failure_type": null, "artifact_path": "storage/opencode-runs/...EP-003.json", "created_at": "2026-05-29T11:50:00+00:00"}
+      {"packet_id": "EP-003", "attempt": 2, "model": "deepseek-v4-flash", "status": "failed:environment_blocker", "failure_type": "environment_blocker", "artifact_path": ".opencode/runtime/runs/...EP-003.json", "created_at": "2026-05-29T11:55:00+00:00"},
+      {"packet_id": "EP-003", "attempt": 1, "model": "deepseek-v4-flash", "status": "success", "failure_type": null, "artifact_path": ".opencode/runtime/runs/...EP-003.json", "created_at": "2026-05-29T11:50:00+00:00"}
   ]
 }
 ```
@@ -285,7 +285,7 @@ The hybrid approach is viable now and should be the default mode.
 Use this split:
 
 1. Canonical truth stays in markdown docs (`DEVELOPMENT_DOCS/**`) and packet YAML files.
-2. SQLite (`storage/opencode-state.sqlite`) is an operational cache for compact run history and routing context.
+2. SQLite (`.opencode/runtime/opencode-state.sqlite`) is an operational cache for compact run history and routing context.
 
 Daily flow:
 

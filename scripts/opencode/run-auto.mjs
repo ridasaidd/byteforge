@@ -14,6 +14,7 @@ import {
   summarizeEventForConsole,
   detectTerminalEvent,
   normalizeAssistantTextFromV2,
+  getArtifactsDir,
   writeJson,
   validateExecutorResponseSchema,
 } from "./common.mjs";
@@ -30,6 +31,9 @@ function usage() {
     "  --session <id>   forward to run-packet",
     "  --title <title>  forward to run-packet",
     "  --agent <name>   forward to run-packet",
+    "  --plan-sync      mark a checklist step complete in the phase markdown file after validated success",
+    "  --plan-sync-dry-run  show what checklist update would be made without writing files",
+    "  --phase-plan <path>  explicit markdown plan file path override for plan sync",
   ].join("\n"));
 }
 
@@ -58,7 +62,7 @@ function ensureDir(dirPath) {
 }
 
 function sessionStateDir(projectRoot) {
-  return path.resolve(projectRoot, "storage/opencode-runs/.sessions");
+  return path.resolve(getArtifactsDir(projectRoot), ".sessions");
 }
 
 function sessionStatePath(projectRoot, packetID) {
@@ -95,7 +99,7 @@ function writeStoredSession(projectRoot, packetID, sessionID) {
 
 function lockPathForPacket(projectRoot, packetID) {
   const safeID = String(packetID || "packet").replace(/[^A-Za-z0-9._-]/g, "_");
-  return path.resolve(projectRoot, "storage/opencode-runs/.locks", `${safeID}.lock`);
+  return path.resolve(getArtifactsDir(projectRoot), ".locks", `${safeID}.lock`);
 }
 
 function readLock(lockPath) {
@@ -185,6 +189,190 @@ function getLatestArtifactPath(projectRoot) {
   return value || null;
 }
 
+function isTruthy(value) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (value == null) {
+    return false;
+  }
+
+  const lower = String(value).trim().toLowerCase();
+  return lower === "1" || lower === "true" || lower === "yes" || lower === "on";
+}
+
+function shouldSyncPlan(args) {
+  return Boolean(args["plan-sync"] || args["plan-sync-dry-run"] || isTruthy(process.env.OPENCODE_PLAN_SYNC));
+}
+
+function isPlanSyncDryRun(args) {
+  return Boolean(args["plan-sync-dry-run"] || isTruthy(process.env.OPENCODE_PLAN_SYNC_DRY_RUN));
+}
+
+function resolvePhasePlanPath(projectRoot, packetPhase, overridePath) {
+  if (overridePath) {
+    const explicit = path.resolve(projectRoot, String(overridePath));
+    return fs.existsSync(explicit) ? explicit : null;
+  }
+
+  const envOverride = process.env.OPENCODE_PHASE_PLAN_PATH;
+  if (envOverride && envOverride.trim()) {
+    const explicit = path.resolve(projectRoot, envOverride.trim());
+    return fs.existsSync(explicit) ? explicit : null;
+  }
+
+  const phase = String(packetPhase || "").trim();
+  if (!phase) {
+    return null;
+  }
+
+  const phaseFileCandidates = [];
+
+  const phaseDir = path.resolve(getArtifactsDir(projectRoot), "phases");
+  if (fs.existsSync(phaseDir)) {
+    for (const fileName of fs.readdirSync(phaseDir)) {
+      if (!fileName.toLowerCase().endsWith(".md")) {
+        continue;
+      }
+
+      if (fileName.toLowerCase() === `${phase.toLowerCase()}.md` || fileName.toLowerCase().includes(phase.toLowerCase())) {
+        phaseFileCandidates.push(path.resolve(phaseDir, fileName));
+      }
+    }
+  }
+
+  const docsPlansDir = path.resolve(projectRoot, "DEVELOPMENT_DOCS/plans");
+  if (fs.existsSync(docsPlansDir)) {
+    for (const fileName of fs.readdirSync(docsPlansDir)) {
+      if (!fileName.toLowerCase().endsWith(".md")) {
+        continue;
+      }
+
+      if (fileName.toLowerCase().includes(phase.toLowerCase())) {
+        phaseFileCandidates.push(path.resolve(docsPlansDir, fileName));
+      }
+    }
+  }
+
+  return phaseFileCandidates[0] || null;
+}
+
+function findPlanChecklistMatch(lines, packetID, taskIndex) {
+  const packetToken = String(packetID || "").trim().toLowerCase();
+  const taskToken = taskIndex != null && String(taskIndex).trim() !== ""
+    ? `task ${String(taskIndex).trim().toLowerCase()}`
+    : null;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const unchecked = line.match(/^(\s*[-*]\s+)\[ \](\s+.*)$/);
+    if (!unchecked) {
+      continue;
+    }
+
+    const lower = line.toLowerCase();
+    const packetMatch = packetToken && lower.includes(packetToken);
+    const taskMatch = taskToken && lower.includes(taskToken);
+
+    if (packetMatch || taskMatch) {
+      return {
+        index,
+        line,
+        updatedLine: `${unchecked[1]}[x]${unchecked[2]}`,
+      };
+    }
+  }
+
+  return null;
+}
+
+function planSyncFromArtifact({ projectRoot, artifactPath, packetID, packetPhase, dryRun, phasePlanOverride }) {
+  if (!artifactPath || !fs.existsSync(artifactPath)) {
+    return { ok: false, reason: "artifact_missing" };
+  }
+
+  let artifact = null;
+  try {
+    artifact = JSON.parse(fs.readFileSync(artifactPath, "utf8"));
+  } catch {
+    return { ok: false, reason: "artifact_parse_failed" };
+  }
+
+  if (!artifact || artifact.ok !== true || typeof artifact.assistantText !== "string") {
+    return { ok: false, reason: "artifact_not_success_payload" };
+  }
+
+  const validation = validateExecutorResponseSchema(artifact.assistantText);
+  if (!validation.valid) {
+    return {
+      ok: false,
+      reason: "artifact_schema_invalid",
+      issues: validation.issues,
+    };
+  }
+
+  if (validation.status !== "success") {
+    return { ok: false, reason: "artifact_status_not_success", status: validation.status };
+  }
+
+  if (String(validation.taskRef?.packet_id || "") !== String(packetID || "")) {
+    return {
+      ok: false,
+      reason: "task_ref_packet_mismatch",
+      taskRefPacketID: validation.taskRef?.packet_id || null,
+    };
+  }
+
+  if (packetPhase && validation.taskRef?.phase && String(validation.taskRef.phase) !== String(packetPhase)) {
+    return {
+      ok: false,
+      reason: "task_ref_phase_mismatch",
+      taskRefPhase: validation.taskRef.phase,
+    };
+  }
+
+  const phasePlanPath = resolvePhasePlanPath(projectRoot, validation.taskRef?.phase || packetPhase, phasePlanOverride);
+  if (!phasePlanPath) {
+    return { ok: false, reason: "phase_plan_not_found" };
+  }
+
+  const source = fs.readFileSync(phasePlanPath, "utf8");
+  const lines = source.replace(/\r\n/g, "\n").split("\n");
+  const match = findPlanChecklistMatch(lines, validation.taskRef?.packet_id, validation.taskRef?.task_index);
+
+  if (!match) {
+    return {
+      ok: false,
+      reason: "no_matching_unchecked_step",
+      phasePlanPath,
+    };
+  }
+
+  if (dryRun) {
+    return {
+      ok: true,
+      dryRun: true,
+      phasePlanPath,
+      lineNumber: match.index + 1,
+      before: match.line,
+      after: match.updatedLine,
+    };
+  }
+
+  lines[match.index] = match.updatedLine;
+  fs.writeFileSync(phasePlanPath, `${lines.join("\n")}\n`, "utf8");
+
+  return {
+    ok: true,
+    dryRun: false,
+    phasePlanPath,
+    lineNumber: match.index + 1,
+    before: match.line,
+    after: match.updatedLine,
+  };
+}
+
 function ingestState(projectRoot, args) {
   const result = runCommand("php", args, { capture: true, cwd: projectRoot });
   if (result.status !== 0) {
@@ -246,6 +434,18 @@ function clarifyExitCode() {
 function terminalRecoveryGraceMs() {
   const raw = Number.parseInt(String(process.env.OPENCODE_TERMINAL_RECOVERY_GRACE_MS || "5000"), 10);
   return Number.isFinite(raw) && raw >= 0 ? raw : 5000;
+}
+
+function terminalEventGraceMs(reason) {
+  const fallback = terminalRecoveryGraceMs();
+  const lower = String(reason || "").toLowerCase();
+
+  if (lower.includes("idle")) {
+    const raw = Number.parseInt(String(process.env.OPENCODE_TERMINAL_IDLE_GRACE_MS || "1500"), 10);
+    return Number.isFinite(raw) && raw >= 0 ? raw : 1500;
+  }
+
+  return fallback;
 }
 
 function recoveryWaitMs() {
@@ -315,7 +515,7 @@ async function runLoopWithTelemetry(projectRoot, runLoopArgs) {
   const telemetryVariant = variantArgIndex >= 0 ? runLoopArgs[variantArgIndex + 1] : null;
 
   if (telemetryPacketID) {
-    transcriptPath = path.resolve(projectRoot, "storage/opencode-runs", `${telemetryPacketID}-transcript.md`);
+    transcriptPath = path.resolve(getArtifactsDir(projectRoot), `${telemetryPacketID}-transcript.md`);
     fs.writeFileSync(
       transcriptPath,
       [
@@ -355,7 +555,7 @@ async function runLoopWithTelemetry(projectRoot, runLoopArgs) {
     }
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const artifactPath = path.resolve(projectRoot, "storage/opencode-runs", `${timestamp}-${telemetryPacketID}.json`);
+    const artifactPath = path.resolve(getArtifactsDir(projectRoot), `${timestamp}-${telemetryPacketID}.json`);
 
     writeJson(artifactPath, {
       ok: true,
@@ -553,10 +753,11 @@ async function runLoopWithTelemetry(projectRoot, runLoopArgs) {
   }
 
   if (terminalEvent?.reason && !childExited) {
-    appendTranscript(`recovery: waiting ${terminalRecoveryGraceMs()}ms for child exit after terminal event`);
+    const graceMs = terminalEventGraceMs(terminalEvent.reason);
+    appendTranscript(`recovery: waiting ${graceMs}ms for child exit after terminal event`);
     const graceResult = await Promise.race([
       childClosePromise.then((code) => ({ type: "child_exit", code })),
-      new Promise((resolve) => setTimeout(() => resolve({ type: "timeout" }), terminalRecoveryGraceMs())),
+      new Promise((resolve) => setTimeout(() => resolve({ type: "timeout" }), graceMs)),
     ]);
 
     if (graceResult.type === "timeout") {
@@ -564,7 +765,22 @@ async function runLoopWithTelemetry(projectRoot, runLoopArgs) {
       if (recoveredArtifactPath) {
         console.error(`recovery: terminating child after artifact recovery (${recoveredArtifactPath})`);
         appendTranscript(`recovery: terminating child after artifact recovery (${recoveredArtifactPath})`);
-        child.kill("SIGTERM");
+      } else {
+        console.error("recovery: terminating child after terminal event timeout (no recovered artifact)");
+        appendTranscript("recovery: terminating child after terminal event timeout (no recovered artifact)");
+      }
+
+      child.kill("SIGTERM");
+
+      const terminateResult = await Promise.race([
+        childClosePromise.then(() => ({ type: "child_exit" })),
+        new Promise((resolve) => setTimeout(() => resolve({ type: "timeout" }), graceMs)),
+      ]);
+
+      if (terminateResult.type === "timeout" && !childExited) {
+        console.error("recovery: child still running after SIGTERM; sending SIGKILL");
+        appendTranscript("recovery: child still running after SIGTERM; sending SIGKILL");
+        child.kill("SIGKILL");
       }
     }
   }
@@ -622,6 +838,9 @@ async function main() {
   const packetID = extractPacketId(packetText, "packet");
   const packetAttempt = extractAttempt(packetText);
   const packetPhase = extractPacketField(packetText, "phase");
+  const planSyncRequested = shouldSyncPlan(args);
+  const planSyncDryRun = isPlanSyncDryRun(args);
+  const phasePlanOverride = args["phase-plan"] ? String(args["phase-plan"]) : null;
   const clarification = parseClarifyPacket(packetText);
 
   if (clarification) {
@@ -721,6 +940,32 @@ async function main() {
         "--artifact",
         artifactAfter,
       ]);
+
+      if (planSyncRequested) {
+        const syncResult = planSyncFromArtifact({
+          projectRoot,
+          artifactPath: artifactAfter,
+          packetID,
+          packetPhase,
+          dryRun: planSyncDryRun,
+          phasePlanOverride,
+        });
+
+        if (syncResult.ok) {
+          if (syncResult.dryRun) {
+            console.error(`plan-sync: dry-run ${syncResult.phasePlanPath}:${syncResult.lineNumber}`);
+            console.error(`plan-sync:   before ${syncResult.before}`);
+            console.error(`plan-sync:   after  ${syncResult.after}`);
+          } else {
+            console.error(`plan-sync: updated ${syncResult.phasePlanPath}:${syncResult.lineNumber}`);
+            console.error(`plan-sync:   ${syncResult.before}`);
+            console.error(`plan-sync: ->${syncResult.after}`);
+          }
+        } else {
+          const detail = syncResult.issues ? ` (${syncResult.issues.join("; ")})` : "";
+          console.error(`plan-sync: skipped (${syncResult.reason})${detail}`);
+        }
+      }
     } else if (loopResult.status !== 0) {
       if (shouldSuppressFailureRecord({
         loopResult,

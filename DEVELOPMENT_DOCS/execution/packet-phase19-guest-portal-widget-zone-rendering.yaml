@@ -1,0 +1,63 @@
+schema_version: 1
+status: pending
+task_ref:
+  packet_id: EP-008
+  phase: PHASE19
+  attempt: 1
+  executor_model: deepseek-v4-pro-high
+  parent_packet_id: null
+summary: "Scaffold the guest-portal widget-zone rendering contract and path without add-on gating logic, ensuring registered widgets flow through both the system-surface Puck path and the standalone fallback path."
+execution_policy:
+  task_class: feature
+  risk_level: medium
+  finalize_git: false
+  delegate_to_executor: true
+  orchestrator_preflight_budget:
+    max_file_reads: 4
+    max_diff_inspections: 1
+    allow_deep_analysis: false
+scope:
+  in:
+    - "Refine the GuestPortalExperience widgetZone prop integration so the widget-zone rendering path is explicit and testable in both standalone and embedded variants"
+    - "Ensure SystemSurfaceConfig guest_portal root renderer correctly delegates to the shared widget-zone runtime wrapper"
+    - "Keep guestPortalWidgetZone.tsx as the canonical contract module for zone identity, widget registry, and runtime rendering"
+    - "Add or update focused Vitest coverage in GuestPortalPage.test.tsx that asserts widget-zone rendering flows for both system-surface and standalone paths"
+    - "Verify that existing guest auth bootstrap, session restore, booking/quote listing, and tenancy isolation behavior passes unchanged"
+  out:
+    - "Add-on gating logic (feature-flag checks, tenant capability inspection, or widget filtering beyond the existing no-op gating default)"
+    - "Registering concrete BookingsWidget or QuotesWidget instances"
+    - "Editor-side widget filtering or CMS surface-editor block-list changes"
+    - "Changing auth, session, or tenancy middleware behavior"
+    - "Modifying the guestPortalWidgetZone registry API signature or breaking its test contract"
+doc_allow_list:
+  - "AGENTS.md"
+  - "DEVELOPMENT_DOCS/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
+  - "DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md"
+code_targets:
+  - "resources/js/apps/public/components/GuestPortalExperience.tsx"
+  - "resources/js/apps/public/components/GuestPortalWidgetZoneRuntimeWrapper.tsx"
+  - "resources/js/shared/puck/system-surfaces/SystemSurfaceConfig.tsx"
+  - "resources/js/shared/puck/system-surfaces/guestPortalWidgetZone.tsx"
+  - "resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx"
+acceptance_criteria:
+  - id: AC-1
+    text: "When a guest_portal system surface with puck_data is loaded, the widget zone renders registered widgets after guest session restore."
+  - id: AC-2
+    text: "When the system-surface API fails or returns no puck_data, the standalone GuestPortalExperience fallback still renders and optionally accepts an external widgetZone node without breaking auth or booking/quote flows."
+  - id: AC-3
+    text: "GuestPortalWidgetZoneRuntimeWrapper correctly resolves guest session state and passes guestId, guestEmail, guestName to the shared GuestPortalWidgetZoneRuntime."
+  - id: AC-4
+    text: "The guestPortalWidgetZone module contract (GUEST_PORTAL_POST_AUTH_ZONE constant, registerGuestPortalWidget, GuestPortalWidgetZoneRuntime) remains backward-compatible and is exercised by focused tests."
+  - id: AC-5
+    text: "Existing auth, session restore, booking listing, quote listing, reschedule, and cancellation behaviors continue to pass in all existing GuestPortalPage tests."
+verification:
+  commands:
+    - "npm run type-check"
+    - "npm run lint"
+    - "npx vitest run resources/js/apps/public/components/__tests__/GuestPortalPage.test.tsx"
+    - "npx vitest run resources/js/shared/puck/system-surfaces/SystemSurfaceConfig.test.tsx"
+stop_conditions:
+  - "TypeScript compilation emits errors unrelated to the edited files"
+  - "Existing GuestPortalPage test cases break and cannot be fixed without expanding scope into add-on gating"
+  - "System-surface cycle-safe lazy-config invariant is violated (importing shared config from a module consumed by shared editor controls)"

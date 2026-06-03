@@ -4,7 +4,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 STATE_PHP="$PROJECT_ROOT/scripts/opencode/state.php"
-RUNS_DIR="$PROJECT_ROOT/storage/opencode-runs"
+RUNTIME_DIR_DEFAULT="$PROJECT_ROOT/.opencode/runtime"
+RUNTIME_DIR="${OPENCODE_RUNTIME_DIR:-$RUNTIME_DIR_DEFAULT}"
+if [[ "$RUNTIME_DIR" != /* ]]; then
+  RUNTIME_DIR="$PROJECT_ROOT/$RUNTIME_DIR"
+fi
+RUNS_DIR="$RUNTIME_DIR/runs"
 LATEST_PTR="$RUNS_DIR/.latest"
 
 usage() {

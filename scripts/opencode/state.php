@@ -24,7 +24,8 @@ Usage:
   php scripts/opencode/state.php route-list [--task-class <id>]
 
 Environment:
-  OPENCODE_STATE_DB (optional, defaults to storage/opencode-state.sqlite)
+    OPENCODE_RUNTIME_DIR (optional, defaults to .opencode/runtime)
+    OPENCODE_STATE_DB (optional, defaults to <runtime>/opencode-state.sqlite)
 TXT
     );
 }
@@ -71,7 +72,22 @@ function dbPath(): string
         return $custom;
     }
 
-    return getProjectRoot() . '/storage/opencode-state.sqlite';
+    return runtimeRootPath() . '/opencode-state.sqlite';
+}
+
+function runtimeRootPath(): string
+{
+    $custom = getenv('OPENCODE_RUNTIME_DIR');
+    if (is_string($custom) && trim($custom) !== '') {
+        $trimmed = trim($custom);
+        if (str_starts_with($trimmed, '/')) {
+            return $trimmed;
+        }
+
+        return getProjectRoot() . '/' . $trimmed;
+    }
+
+    return getProjectRoot() . '/.opencode/runtime';
 }
 
 function connectDb(): PDO
@@ -199,7 +215,7 @@ function resolvePath(string $input): string
 
 function runsDirPath(): string
 {
-    return getProjectRoot() . '/storage/opencode-runs';
+    return runtimeRootPath() . '/runs';
 }
 
 function latestPointerPath(): string
@@ -471,7 +487,7 @@ function isSuccessArtifact(string $artifactPath): bool
 
 function latestArtifactPath(?string $packetID = null): ?string
 {
-    $dir = getProjectRoot() . '/storage/opencode-runs';
+    $dir = runsDirPath();
     if (!is_dir($dir)) {
         return null;
     }
@@ -644,7 +660,7 @@ function ingestLatestCommand(PDO $pdo, array $args): void
     $packetID = normalizeScalar($args['packet-id'] ?? null);
     $path = latestArtifactPath($packetID);
     if ($path === null) {
-        throw new RuntimeException('No artifacts found in storage/opencode-runs');
+        throw new RuntimeException('No artifacts found in ' . runsDirPath());
     }
 
     $result = ingestArtifact($pdo, $path);
@@ -655,7 +671,7 @@ function writeFailureArtifact(PDO $pdo, string $packetID, ?int $attempt, ?string
 {
     $now = nowIso();
     $timestamp = str_replace([':', '.'], '-', $now);
-    $dir = getProjectRoot() . '/storage/opencode-runs';
+    $dir = runsDirPath();
     if (!is_dir($dir) && !mkdir($dir, 0775, true) && !is_dir($dir)) {
         throw new RuntimeException('Unable to create artifact directory: ' . $dir);
     }

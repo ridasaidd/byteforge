@@ -1,11 +1,13 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, type ReactNode, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { guestPortalService, type GuestPortalBooking, type GuestPortalGuest, type GuestPortalQuote } from '../services/guestPortal';
 
 export function GuestPortalExperience({
   variant = 'embedded',
+  widgetZone,
 }: {
   variant?: 'standalone' | 'embedded';
+  widgetZone?: ReactNode;
 }) {
   const { bookingId, quoteId } = useParams<{ bookingId?: string; quoteId?: string }>();
   const [guest, setGuest] = useState<GuestPortalGuest | null>(null);
@@ -614,7 +616,12 @@ export function GuestPortalExperience({
   );
 
   if (variant === 'embedded') {
-    return <div style={styles.embeddedShell}>{content}</div>;
+    return (
+      <div style={styles.embeddedShell}>
+        {content}
+        {widgetZone ? <div style={{ marginTop: '2rem' }}>{widgetZone}</div> : null}
+      </div>
+    );
   }
 
   return (
@@ -629,6 +636,7 @@ export function GuestPortalExperience({
           </p>
         </div>
         {content}
+        {widgetZone ? <div style={{ marginTop: '2rem' }}>{widgetZone}</div> : null}
       </section>
     </main>
   );
