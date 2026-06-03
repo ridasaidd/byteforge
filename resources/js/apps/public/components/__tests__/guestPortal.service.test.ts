@@ -1,5 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { guestPortalService } from '../../services/guestPortal';
+import {
+  registerGuestPortalWidget,
+  getGuestPortalWidget,
+  getRegisteredGuestPortalWidgets,
+  clearGuestPortalWidgetRegistry,
+  setGuestPortalWidgetGating,
+  canRenderGuestPortalWidget,
+  type GuestPortalWidgetDefinition,
+} from '@/shared/puck/system-surfaces/guestPortalWidgetZone';
 
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -233,5 +242,76 @@ describe('guestPortalService', () => {
 
     const headers = fetchMock.mock.calls[1][1]?.headers as Headers;
     expect(headers.get('Authorization')).toBe('Bearer verified-token');
+  });
+});
+
+describe('guestPortalWidgetZone', () => {
+  const createTestWidget = (overrides: Partial<GuestPortalWidgetDefinition> = {}): GuestPortalWidgetDefinition => ({
+    id: 'test-widget',
+    type: 'test',
+    label: 'Test Widget',
+    description: 'A test widget',
+    render: () => null,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    clearGuestPortalWidgetRegistry();
+    setGuestPortalWidgetGating(() => true);
+  });
+
+  it('registers and retrieves a widget from the registry', () => {
+    const widget = createTestWidget();
+    registerGuestPortalWidget(widget);
+
+    expect(getGuestPortalWidget('test-widget')).toEqual(widget);
+    expect(getRegisteredGuestPortalWidgets()).toHaveLength(1);
+  });
+
+  it('returns undefined for unregistered widget ID', () => {
+    expect(getGuestPortalWidget('missing-widget')).toBeUndefined();
+  });
+
+  it('clears all registered widgets from the registry', () => {
+    registerGuestPortalWidget(createTestWidget({ id: 'w1' }));
+    registerGuestPortalWidget(createTestWidget({ id: 'w2' }));
+    expect(getRegisteredGuestPortalWidgets()).toHaveLength(2);
+
+    clearGuestPortalWidgetRegistry();
+    expect(getRegisteredGuestPortalWidgets()).toHaveLength(0);
+  });
+
+  it('filters widgets through the gating function', () => {
+    const eligible = createTestWidget({ id: 'eligible', featureFlag: 'addon-a' });
+    const blocked = createTestWidget({ id: 'blocked', featureFlag: 'addon-b' });
+    registerGuestPortalWidget(eligible);
+    registerGuestPortalWidget(blocked);
+
+    setGuestPortalWidgetGating((widget) => widget.featureFlag !== 'addon-b');
+
+    expect(canRenderGuestPortalWidget(eligible)).toBe(true);
+    expect(canRenderGuestPortalWidget(blocked)).toBe(false);
+  });
+
+  it('gating function receives tenantId from surface context', () => {
+    const widget = createTestWidget({ id: 'tenant-gated' });
+    registerGuestPortalWidget(widget);
+
+    const tenantGating = (w: GuestPortalWidgetDefinition, tenantId?: string | null) => {
+      return tenantId === 'tenant-one';
+    };
+
+    expect(tenantGating(widget, 'tenant-one')).toBe(true);
+    expect(tenantGating(widget, 'tenant-two')).toBe(false);
+    expect(tenantGating(widget, null)).toBe(false);
+  });
+
+  it('default gating function allows all widgets', () => {
+    const widget = createTestWidget();
+    registerGuestPortalWidget(widget);
+
+    expect(canRenderGuestPortalWidget(widget)).toBe(true);
+    expect(canRenderGuestPortalWidget(widget, 'some-tenant')).toBe(true);
+    expect(canRenderGuestPortalWidget(widget, null)).toBe(true);
   });
 });

@@ -9,6 +9,7 @@ const PageEditorPreview = lazy(() =>
   import('@/shared/components/organisms/PageEditorPreview').then((m) => ({ default: m.PageEditorPreview }))
 );
 import { GuestPortalExperience } from '@/apps/public/components/GuestPortalExperience';
+import { GuestPortalWidgetZoneRuntimeWrapper } from '@/apps/public/components/GuestPortalWidgetZoneRuntimeWrapper';
 import { usePuckEditMode } from '@/shared/hooks';
 import {
   Box,
@@ -31,6 +32,7 @@ import {
 import { buildLayoutCSS } from '@/shared/puck/fields/cssBuilder';
 import type { ColorValue, ResponsiveSpacingValue } from '@/shared/puck/fields';
 import { getSystemSurfaceAdminTitle } from './systemSurfaceLabels';
+import { GUEST_PORTAL_POST_AUTH_ZONE } from './guestPortalWidgetZone';
 
 export type SystemSurfaceKey = 'tenant_login' | 'register' | 'forgot_password' | 'reset_password' | 'guest_portal';
 
@@ -399,6 +401,37 @@ function SystemSurfaceRootRenderer({
     : null;
   const resolvedPanelSlotContent = panelSlotContent ?? panelSlotPlaceholder;
 
+  const puckWidgetZoneContent = isGuestPortal
+    ? (renderDropZone?.({
+      zone: GUEST_PORTAL_POST_AUTH_ZONE,
+      minEmptyHeight: 200,
+      className: 'system-surface-widget-zone',
+    }) ?? null)
+    : null;
+  const widgetZonePlaceholder = (isGuestPortal && isEditing && !puckWidgetZoneContent)
+    ? (
+      <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center">
+        <p className="text-sm font-medium text-slate-600">Guest portal widget zone</p>
+        <p className="mt-2 text-xs text-slate-500">
+          Drag add-on portal widgets here. Widgets will appear below the guest session shell
+          for authenticated guests.
+        </p>
+      </div>
+    )
+    : null;
+
+  const editorWidgetZoneContent = isEditing
+    ? (puckWidgetZoneContent ?? widgetZonePlaceholder)
+    : null;
+
+  const runtimeWidgetZoneContent = !isEditing && isGuestPortal
+    ? <GuestPortalWidgetZoneRuntimeWrapper />
+    : null;
+
+  const resolvedWidgetZoneContent = isEditing
+    ? editorWidgetZoneContent
+    : runtimeWidgetZoneContent;
+
   const resolveColorValue = (value: ColorValue | undefined, fallback: string) => {
     if (!value) return fallback;
     if (typeof value === 'string') return value;
@@ -518,6 +551,18 @@ function SystemSurfaceRootRenderer({
           </div>
         </section>
       </div>
+      {resolvedWidgetZoneContent ? (
+        <div
+          style={{
+            width: '100%',
+            maxWidth: '1280px',
+            margin: '3rem auto 0',
+            padding: '0',
+          }}
+        >
+          {resolvedWidgetZoneContent}
+        </div>
+      ) : null}
     </div>
   );
 }

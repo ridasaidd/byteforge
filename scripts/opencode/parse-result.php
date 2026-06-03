@@ -42,9 +42,24 @@ function outputResult(array $result, bool $asJson): void
     echo $result['status'] . PHP_EOL;
 }
 
+function runtimeRunsDir(string $root): string
+{
+    $custom = getenv('OPENCODE_RUNTIME_DIR');
+    if (is_string($custom) && trim($custom) !== '') {
+        $trimmed = trim($custom);
+        if (str_starts_with($trimmed, '/')) {
+            return $trimmed . '/runs';
+        }
+
+        return $root . '/' . $trimmed . '/runs';
+    }
+
+    return $root . '/.opencode/runtime/runs';
+}
+
 function findLatestArtifactPath(string $root): ?string
 {
-    $dir = $root . '/storage/opencode-runs';
+    $dir = runtimeRunsDir($root);
     if (!is_dir($dir)) {
         return null;
     }
@@ -199,7 +214,7 @@ if (isset($args['artifact']) && is_string($args['artifact']) && $args['artifact'
 }
 
 if ($artifactPath === null || !is_file($artifactPath)) {
-    fwrite(STDERR, "No artifacts found in storage/opencode-runs\n");
+    fwrite(STDERR, "No artifacts found in " . runtimeRunsDir($root) . "\n");
     exit(1);
 }
 

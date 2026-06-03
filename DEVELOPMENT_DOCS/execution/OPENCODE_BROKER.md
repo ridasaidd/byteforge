@@ -95,7 +95,7 @@ Safety guards:
 - `run-loop.sh` enforces a wall-clock timeout for `run-packet.mjs` via `timeout`
 	when available. This prevents stuck requests from running indefinitely.
 - `run-auto.mjs` uses a packet-scoped lock file in
-	`storage/opencode-runs/.locks/<packet_id>.lock` to prevent concurrent runs for
+   `.opencode/runtime/runs/.locks/<packet_id>.lock` to prevent concurrent runs for
 	the same packet from fanning out into duplicate model traffic.
 
 ## Auto Dispatcher (Token-Efficient Routing)
@@ -165,7 +165,7 @@ npm run opencode:state:record-failure -- --packet-id EP-003 --failure-type envir
 
 This is called automatically by `run-auto.mjs` when the run-loop exits non-zero
 without producing a new artifact. When `--artifact-path` is omitted, a minimal
-failure artifact is written to `storage/opencode-runs` and the `.latest` pointer
+failure artifact is written to `.opencode/runtime/runs` and the `.latest` pointer
 is updated. This prevents a stale success from an older run from being picked up
 by `ingest-latest` or `context`.
 
@@ -319,7 +319,7 @@ Run-packet optional flags:
 
 Artifacts are written to:
 
-storage/opencode-runs/
+.opencode/runtime/runs/
 
 Each artifact includes:
 

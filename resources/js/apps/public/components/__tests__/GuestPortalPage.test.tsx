@@ -2,6 +2,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GuestPortalPage } from '../GuestPortalPage';
+import {
+  GUEST_PORTAL_POST_AUTH_ZONE,
+  registerGuestPortalWidget,
+  clearGuestPortalWidgetRegistry,
+  setGuestPortalWidgetGating,
+} from '@/shared/puck/system-surfaces/guestPortalWidgetZone';
+import type { GuestPortalWidgetDefinition } from '@/shared/puck/system-surfaces/guestPortalWidgetZone';
+
+const createTextWidget = (overrides: Partial<GuestPortalWidgetDefinition> = {}): GuestPortalWidgetDefinition => ({
+  id: `widget-${overrides.id ?? Date.now()}`,
+  type: 'text',
+  label: 'Text Widget',
+  description: 'A text widget',
+  render: () => <div data-testid="registered-widget">Registered Widget</div>,
+  ...overrides,
+});
 
 const publicGetMock = vi.fn();
 const restoreSessionMock = vi.fn();
@@ -69,6 +85,8 @@ describe('GuestPortalPage', () => {
     rescheduleBookingMock.mockResolvedValue(null);
     acceptQuoteMock.mockResolvedValue(null);
     rejectQuoteMock.mockResolvedValue(null);
+    clearGuestPortalWidgetRegistry();
+    setGuestPortalWidgetGating(() => true);
   });
 
   it('renders the system surface runtime when guest_portal data exists', async () => {
@@ -182,5 +200,171 @@ describe('GuestPortalPage', () => {
       expect.any(String),
     ));
     await waitFor(() => expect(screen.getByText('Your booking was rescheduled.')).toBeInTheDocument());
+  });
+
+  it('exports the widget zone constant for guest portal post-auth stream', () => {
+    expect(GUEST_PORTAL_POST_AUTH_ZONE).toBe('widgetZone');
+  });
+
+  it('renders widget zone content from system surface puck data', async () => {
+    publicGetMock.mockResolvedValue({
+      data: {
+        surface_key: 'guest_portal',
+        puck_data: {
+          content: [
+            {
+              type: 'Heading',
+              props: { text: 'Portal Widget', level: 'h2' },
+              parentId: undefined,
+            },
+          ],
+          root: {
+            props: {
+              title: 'Portal from surface',
+            },
+          },
+        },
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('guest_portal'));
+  });
+
+  it('falls back to standalone portal and does not render widget zone without system surface', async () => {
+    publicGetMock.mockRejectedValue(new Error('missing surface'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'My bookings and quotes' })).toBeInTheDocument());
+    expect(screen.queryByTestId('system-surface-render')).toBeNull();
+  });
+
+  it('renders system surface with widget zone when guest_portal puck data exists', async () => {
+    registerGuestPortalWidget(createTextWidget({ id: 'test-portal-widget' }));
+
+    publicGetMock.mockResolvedValue({
+      data: {
+        surface_key: 'guest_portal',
+        puck_data: {
+          root: {
+            props: { title: 'Guest Portal with Widgets' },
+          },
+        },
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('guest_portal'));
+  });
+
+  it('preserves route-owned auth shell behavior when puck data is available', async () => {
+    publicGetMock.mockResolvedValue({
+      data: {
+        surface_key: 'guest_portal',
+        puck_data: {
+          root: { props: { title: 'Auth Shell' } },
+        },
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('guest_portal'));
+    expect(screen.queryByRole('heading', { name: 'My bookings and quotes' })).toBeNull();
+  });
+
+  it('is not affected by empty widget registry in system surface mode', async () => {
+    publicGetMock.mockResolvedValue({
+      data: {
+        surface_key: 'guest_portal',
+        puck_data: { root: { props: { title: 'Portal' } } },
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('guest_portal'));
+    expect(publicGetMock).toHaveBeenCalledWith('guest_portal');
+  });
+
+  it('renders registered widgets when system surface is active and guest session is restored', async () => {
+    const widgetRenderSpy = vi.fn().mockReturnValue(<div data-testid="runtime-widget">Hello from widget</div>);
+    registerGuestPortalWidget(createTextWidget({ id: 'active-widget', render: widgetRenderSpy }));
+
+    restoreSessionMock.mockResolvedValue({ id: 1, email: 'g@t.com', name: 'Guest' });
+
+    publicGetMock.mockResolvedValue({
+      data: {
+        surface_key: 'guest_portal',
+        puck_data: { root: { props: { title: 'Widget Zone Test' } } },
+      },
+    });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('system-surface-render')).toHaveTextContent('guest_portal'));
+    expect(publicGetMock).toHaveBeenCalledWith('guest_portal');
+  });
+
+  it('does not break fallback standalone portal when widget registry is populated', async () => {
+    registerGuestPortalWidget(createTextWidget({ id: 'orphan-widget' }));
+
+    publicGetMock.mockRejectedValue(new Error('no surface'));
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'My bookings and quotes' })).toBeInTheDocument());
+    expect(screen.queryByTestId('system-surface-render')).toBeNull();
+  });
+
+  it('renders registered widgets in standalone fallback when guest session is restored', async () => {
+    const widgetRenderSpy = vi.fn().mockReturnValue(<div data-testid="standalone-widget">Standalone Widget</div>);
+    registerGuestPortalWidget(createTextWidget({ id: 'standalone-widget-test', render: widgetRenderSpy }));
+
+    publicGetMock.mockRejectedValue(new Error('no surface'));
+    restoreSessionMock.mockResolvedValue({ id: 1, email: 'widget@test.com', name: 'Widget Guest' });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('standalone-widget')).toBeInTheDocument());
+    expect(screen.getByRole('heading', { name: 'My bookings and quotes' })).toBeInTheDocument();
+    expect(screen.queryByTestId('system-surface-render')).toBeNull();
+  });
+
+  it('passes guest identity props to registered widgets in standalone fallback', async () => {
+    const widgetRenderSpy = vi.fn().mockReturnValue(<div data-testid="propped-widget">Propped Widget</div>);
+    registerGuestPortalWidget(createTextWidget({ id: 'propped-widget-test', render: widgetRenderSpy }));
+
+    publicGetMock.mockRejectedValue(new Error('no surface'));
+    restoreSessionMock.mockResolvedValue({ id: 99, email: 'prop@example.com', name: 'Prop Guest' });
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByTestId('propped-widget')).toBeInTheDocument());
+
+    expect(widgetRenderSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        guestId: 99,
+        guestEmail: 'prop@example.com',
+        guestName: 'Prop Guest',
+      }),
+    );
+  });
+
+  it('does not expose widgets in standalone fallback when guest session is absent', async () => {
+    const widgetRenderSpy = vi.fn().mockReturnValue(<div data-testid="no-session-widget">Hidden Widget</div>);
+    registerGuestPortalWidget(createTextWidget({ id: 'no-session-widget-test', render: widgetRenderSpy }));
+
+    publicGetMock.mockRejectedValue(new Error('no surface'));
+    restoreSessionMock.mockResolvedValue(null);
+
+    renderPage();
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Get a sign-in link' })).toBeInTheDocument());
+    expect(screen.queryByTestId('no-session-widget')).toBeNull();
+    expect(widgetRenderSpy).not.toHaveBeenCalled();
   });
 });

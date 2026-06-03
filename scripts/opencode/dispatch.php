@@ -44,7 +44,17 @@ function dbPath(string $root): string
         return $custom;
     }
 
-    return $root . '/storage/opencode-state.sqlite';
+    $runtimeDir = getenv('OPENCODE_RUNTIME_DIR');
+    if (is_string($runtimeDir) && trim($runtimeDir) !== '') {
+        $trimmed = trim($runtimeDir);
+        if (str_starts_with($trimmed, '/')) {
+            return $trimmed . '/opencode-state.sqlite';
+        }
+
+        return $root . '/' . $trimmed . '/opencode-state.sqlite';
+    }
+
+    return $root . '/.opencode/runtime/opencode-state.sqlite';
 }
 
 function normalizeScalar(mixed $value, string $fallback): string
@@ -153,8 +163,8 @@ function buildDecision(array $packet, string $root): array
     $providerHigh = getenv('OPENCODE_MODEL_HIGH_PROVIDER') ?: 'opencode-go';
 
     $modelCheap = getenv('OPENCODE_MODEL_CHEAP') ?: 'deepseek-v4-flash';
-    $modelMedium = getenv('OPENCODE_MODEL_MEDIUM') ?: 'deepseek-v4-pro-medium';
-    $modelHigh = getenv('OPENCODE_MODEL_HIGH') ?: 'deepseek-v4-pro-high';
+    $modelMedium = getenv('OPENCODE_MODEL_MEDIUM') ?: 'deepseek-v4-pro';
+    $modelHigh = getenv('OPENCODE_MODEL_HIGH') ?: 'deepseek-v4-pro';
 
     $provider = $providerMedium;
     $model = $modelMedium;

@@ -263,11 +263,7 @@ async function main() {
   };
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const artifactPath = path.resolve(
-    process.cwd(),
-    "storage/opencode-runs",
-    `${timestamp}-${packetID}.json`,
-  );
+  const artifactPath = path.resolve(getArtifactsDir(process.cwd()), `${timestamp}-${packetID}.json`);
 
   writeJson(artifactPath, {
     ...output,
