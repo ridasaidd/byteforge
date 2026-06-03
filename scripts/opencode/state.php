@@ -511,8 +511,33 @@ function validateAssistantYaml(string $assistantText): array
 {
     $issues = [];
 
+    $text = trim($assistantText);
+
+    if (preg_match('/```\s*(yaml|yml)?\s*\n(.*?)\n?\s*```/si', $text, $matches)) {
+        $text = trim($matches[2]);
+    } else {
+        $text = preg_replace('/^.*?(schema_version:\s*\d+)/s', '$1', $text);
+        $text = preg_replace('/```\s*(yaml|yml)?\s*\n?/i', '', $text);
+        $text = preg_replace('/```\s*$/mi', '', $text);
+        $text = trim($text);
+    }
+
+    if ($text === '') {
+        return [
+            'valid' => false,
+            'status' => 'failed:invalid_schema',
+            'failure_type' => null,
+            'task_ref' => null,
+            'issues' => ['empty assistant text after stripping fences'],
+            'executor_model' => null,
+            'phase' => null,
+            'attempt' => null,
+            'packet_id' => null,
+        ];
+    }
+
     try {
-        $parsed = Yaml::parse($assistantText);
+        $parsed = Yaml::parse($text);
     } catch (ParseException $e) {
         return [
             'valid' => false,
