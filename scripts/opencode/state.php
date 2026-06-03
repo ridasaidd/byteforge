@@ -162,6 +162,8 @@ CREATE TABLE IF NOT EXISTS runs (
   session_id TEXT,
   transport TEXT,
   issues_json TEXT,
+  prompt_text TEXT,
+  prompt_hash TEXT,
   created_at TEXT NOT NULL,
   FOREIGN KEY (packet_id) REFERENCES packets(packet_id)
 );
@@ -195,6 +197,11 @@ CREATE TABLE IF NOT EXISTS tasks (
     verification TEXT,
     doc_allow_list TEXT,
     parent_task_id TEXT,
+    attempt INTEGER DEFAULT 1,
+    executor_model TEXT,
+    finalize_git INTEGER DEFAULT 0,
+    stop_conditions TEXT,
+    delegate_to_executor INTEGER DEFAULT 1,
     task_class TEXT,
     risk_level TEXT,
     priority INTEGER DEFAULT 0,
@@ -237,8 +244,36 @@ CREATE TABLE IF NOT EXISTS phase_history (
     content TEXT NOT NULL,
     created_at TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_type TEXT NOT NULL,
+    entity_type TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
+    run_id INTEGER,
+    actor TEXT,
+    payload_json TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_events_entity ON events(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 SQL
     );
+}
+
+function emitEvent(PDO $pdo, string $eventType, string $entityType, string $entityId, ?int $runId = null, ?string $actor = null, ?string $payloadJson = null): void
+{
+    $stmt = $pdo->prepare("INSERT INTO events (event_type, entity_type, entity_id, run_id, actor, payload_json, created_at) VALUES (:event_type, :entity_type, :entity_id, :run_id, :actor, :payload_json, :created_at)");
+    $stmt->execute([
+        ":event_type" => $eventType,
+        ":entity_type" => $entityType,
+        ":entity_id" => $entityId,
+        ":run_id" => $runId,
+        ":actor" => $actor ?? "system",
+        ":payload_json" => $payloadJson,
+        ":created_at" => nowIso(),
+    ]);
 }
 
 function ensureAllColumns(PDO $pdo): void
@@ -267,6 +302,8 @@ function ensureAllColumns(PDO $pdo): void
         'cost' => 'REAL',
         'duration_ms' => 'INTEGER',
         'artifact_json' => 'TEXT',
+        'prompt_text' => 'TEXT',
+        'prompt_hash' => 'TEXT',
     ];
 
     foreach ($runsRequired as $name => $type) {
@@ -289,6 +326,34 @@ function ensureAllColumns(PDO $pdo): void
     foreach ($packetsColumns as $column) {
         if (is_array($column) && isset($column['name'])) {
             $packetExisting[(string) $column['name']] = true;
+        }
+    }
+
+    try {
+        $stmt = $pdo->query("PRAGMA table_info(tasks);");
+        $tasksColumns = $stmt->fetchAll();
+    } catch (Throwable) {
+        $tasksColumns = [];
+    }
+
+    $tasksExisting = [];
+    foreach ($tasksColumns as $column) {
+        if (is_array($column) && isset($column["name"])) {
+            $tasksExisting[(string) $column["name"]] = true;
+        }
+    }
+
+    $tasksRequired = [
+        "attempt" => "INTEGER DEFAULT 1",
+        "executor_model" => "TEXT",
+        "finalize_git" => "INTEGER DEFAULT 0",
+        "stop_conditions" => "TEXT",
+        "delegate_to_executor" => "INTEGER DEFAULT 1",
+    ];
+
+    foreach ($tasksRequired as $name => $type) {
+        if (!isset($tasksExisting[$name])) {
+            $pdo->exec(sprintf("ALTER TABLE tasks ADD COLUMN %s %s;", $name, $type));
         }
     }
 
@@ -413,11 +478,14 @@ function parsePacketFile(string $packetPath): array
     $verification = is_array($packet['verification'] ?? null) ? $packet['verification'] : [];
     $docList = is_array($packet['doc_allow_list'] ?? null) ? $packet['doc_allow_list'] : [];
     $codeTargets = is_array($packet['code_targets'] ?? null) ? $packet['code_targets'] : [];
+    $stopConditions = is_array($packet['stop_conditions'] ?? null) ? $packet['stop_conditions'] : [];
 
     return [
         'packet_id' => normalizeScalar($taskRef['packet_id'] ?? null) ?? 'packet',
         'phase' => normalizeScalar($taskRef['phase'] ?? null),
         'last_attempt' => (int) (normalizeScalar($taskRef['attempt'] ?? null) ?? '0'),
+        'parent_task_id' => normalizeScalar($taskRef['parent_packet_id'] ?? null),
+        'executor_model' => normalizeScalar($taskRef['executor_model'] ?? null),
         'task_class' => normalizeScalar($policy['task_class'] ?? null),
         'risk_level' => normalizeScalar($policy['risk_level'] ?? null),
         'summary' => normalizeScalar($packet['summary'] ?? null),
@@ -427,6 +495,9 @@ function parsePacketFile(string $packetPath): array
         'acceptance_criteria' => json_encode($acceptance, JSON_UNESCAPED_SLASHES),
         'verification' => json_encode(isset($verification['commands']) ? $verification['commands'] : [], JSON_UNESCAPED_SLASHES),
         'doc_allow_list' => json_encode($docList, JSON_UNESCAPED_SLASHES),
+        'finalize_git' => isset($policy['finalize_git']) && $policy['finalize_git'] ? 1 : 0,
+        'delegate_to_executor' => !(isset($policy['delegate_to_executor']) && $policy['delegate_to_executor'] === false) ? 1 : 0,
+        'stop_conditions' => json_encode($stopConditions, JSON_UNESCAPED_SLASHES),
         'packet_yaml' => $rawYaml,
     ];
 }
@@ -704,12 +775,12 @@ function ingestArtifact(PDO $pdo, string $artifactPath, bool $updateLatestPointe
 INSERT OR REPLACE INTO runs (
     id, run_id, packet_id, phase, task_class, attempt, model, variant, provider, status, failure_type,
     input_tokens, output_tokens, cost, duration_ms,
-    artifact_path, session_id, transport, issues_json, created_at
+    artifact_path, session_id, transport, issues_json, prompt_text, prompt_hash, created_at
 ) VALUES (
   (SELECT id FROM runs WHERE artifact_path = :artifact_path),
     :run_id, :packet_id, :phase, :task_class, :attempt, :model, :variant, :provider, :status, :failure_type,
     :input_tokens, :output_tokens, :cost, :duration_ms,
-    :artifact_path, :session_id, :transport, :issues_json, :created_at
+    :artifact_path, :session_id, :transport, :issues_json, :prompt_text, :prompt_hash, :created_at
 );
 SQL
     );
@@ -718,6 +789,18 @@ SQL
         $provider = normalizeScalar($artifact['provider'] ?? null);
         $variant = normalizeScalar($artifact['variant'] ?? null);
         $metrics = extractRunMetrics($artifact);
+
+    $promptText = normalizeScalar($artifact['prompt'] ?? null);
+    $promptHash = null;
+    if ($promptText !== null) {
+        $promptHash = sha1($promptText);
+    } elseif ($packetPath !== null && is_file($packetPath)) {
+        $content = file_get_contents($packetPath);
+        if ($content !== false) {
+            $promptText = $content;
+            $promptHash = sha1($content);
+        }
+    }
 
     $stmt->execute([
                 ':run_id' => runIdFromArtifactPath($artifactPath),
@@ -738,6 +821,8 @@ SQL
         ':session_id' => normalizeScalar($artifact['sessionID'] ?? null),
         ':transport' => normalizeScalar($artifact['transport'] ?? null),
         ':issues_json' => json_encode($validation['issues'], JSON_UNESCAPED_SLASHES),
+                ':prompt_text' => $promptText,
+                ':prompt_hash' => $promptHash,
                 ':created_at' => $metrics['created_at'],
     ]);
 
@@ -764,6 +849,8 @@ function ingestArtifactCommand(PDO $pdo, array $args): void
 
     $artifactPath = resolvePath($artifactArg);
     $result = ingestArtifact($pdo, $artifactPath);
+    $packetID = $result['packet_id'] ?? 'packet';
+    emitEvent($pdo, 'PACKET_EXECUTED', 'task', $packetID, null, 'system', json_encode(['artifact' => $artifactPath, 'status' => $result['status']], JSON_UNESCAPED_SLASHES));
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 }
 
@@ -884,15 +971,23 @@ SQL
 INSERT INTO runs (
     run_id, packet_id, phase, task_class, attempt, model, variant, provider,
     status, failure_type, input_tokens, output_tokens, cost, duration_ms,
-    artifact_path, session_id, transport, created_at
+    artifact_path, session_id, transport, prompt_text, prompt_hash, created_at
 )
 VALUES (
     :run_id, :packet_id, :phase, :task_class, :attempt, :model, :variant, :provider,
     :status, :failure_type, :input_tokens, :output_tokens, :cost, :duration_ms,
-    :artifact_path, :session_id, :transport, :created_at
+    :artifact_path, :session_id, :transport, :prompt_text, :prompt_hash, :created_at
 );
 SQL
     );
+
+    $promptHash = null;
+    if ($packetPath !== null && is_file($packetPath)) {
+        $content = file_get_contents($packetPath);
+        if ($content !== false) {
+            $promptHash = sha1($content);
+        }
+    }
 
     $runID = 'fail_' . sha1($packetID . '|' . ($artifactPath ?? '') . '|' . nowIso());
     $stmt->execute([
@@ -913,6 +1008,8 @@ SQL
         ':artifact_path' => $artifactPath,
         ':session_id' => $sessionID,
         ':transport' => $transport,
+        ':prompt_text' => null,
+        ':prompt_hash' => $promptHash,
         ':created_at' => nowIso(),
     ]);
 
@@ -1388,8 +1485,8 @@ function taskCreateCommand(PDO $pdo, array $args): void
     }
 
     $stmt = $pdo->prepare(<<<SQL
-INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, task_class, risk_level, priority, created_at, updated_at)
-VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :task_class, :risk_level, :priority, :created_at, :updated_at)
+INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, task_class, risk_level, priority, created_at, updated_at)
+VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :task_class, :risk_level, :priority, :created_at, :updated_at)
 ON CONFLICT(task_id) DO UPDATE SET
   phase = excluded.phase,
   summary = excluded.summary,
@@ -1399,6 +1496,12 @@ ON CONFLICT(task_id) DO UPDATE SET
   acceptance_criteria = COALESCE(excluded.acceptance_criteria, tasks.acceptance_criteria),
   verification = COALESCE(excluded.verification, tasks.verification),
   doc_allow_list = COALESCE(excluded.doc_allow_list, tasks.doc_allow_list),
+  parent_task_id = COALESCE(excluded.parent_task_id, tasks.parent_task_id),
+  attempt = COALESCE(excluded.attempt, tasks.attempt),
+  executor_model = COALESCE(excluded.executor_model, tasks.executor_model),
+  finalize_git = COALESCE(excluded.finalize_git, tasks.finalize_git),
+  stop_conditions = COALESCE(excluded.stop_conditions, tasks.stop_conditions),
+  delegate_to_executor = COALESCE(excluded.delegate_to_executor, tasks.delegate_to_executor),
   task_class = COALESCE(excluded.task_class, tasks.task_class),
   risk_level = COALESCE(excluded.risk_level, tasks.risk_level),
   priority = COALESCE(excluded.priority, tasks.priority),
@@ -1418,6 +1521,12 @@ SQL
         ':acceptance_criteria' => normalizeScalar($args['acceptance-criteria'] ?? null),
         ':verification' => normalizeScalar($args['verification'] ?? null),
         ':doc_allow_list' => normalizeScalar($args['doc-allow-list'] ?? null),
+        ':parent_task_id' => normalizeScalar($args['parent-task-id'] ?? null),
+        ':attempt' => is_numeric($args['attempt'] ?? null) ? (int) $args['attempt'] : 1,
+        ':executor_model' => normalizeScalar($args['executor-model'] ?? null),
+        ':finalize_git' => in_array(strtolower((string) ($args['finalize-git'] ?? '')), ['1', 'true', 'yes', 'on']) ? 1 : 0,
+        ':stop_conditions' => normalizeScalar($args['stop-conditions'] ?? null),
+        ':delegate_to_executor' => in_array(strtolower((string) ($args['delegate-to-executor'] ?? 'true')), ['0', 'false', 'no', 'off']) ? 0 : 1,
         ':task_class' => normalizeScalar($args['task-class'] ?? null),
         ':risk_level' => normalizeScalar($args['risk-level'] ?? null),
         ':priority' => $priority,
@@ -1425,6 +1534,7 @@ SQL
         ':updated_at' => nowIso(),
     ]);
 
+    emitEvent($pdo, 'TASK_CREATED', 'task', $taskID, null, 'system', json_encode(['phase' => $phase, 'summary' => $summary], JSON_UNESCAPED_SLASHES));
     echo json_encode([
         'ok' => true,
         'task_id' => $taskID,
@@ -1511,6 +1621,7 @@ function taskCompleteCommand(PDO $pdo, array $args): void
         throw new RuntimeException('Task not found: ' . $taskID);
     }
 
+    emitEvent($pdo, 'TASK_COMPLETED', 'task', $taskID, null, 'system', null);
     echo json_encode([
         'ok' => true,
         'task_id' => $taskID,
@@ -1542,6 +1653,7 @@ function taskBlockCommand(PDO $pdo, array $args): void
         throw new RuntimeException('Task not found: ' . $taskID);
     }
 
+    emitEvent($pdo, 'TASK_BLOCKED', 'task', $taskID, null, 'system', json_encode(['reason' => $reason], JSON_UNESCAPED_SLASHES));
     echo json_encode([
         'ok' => true,
         'task_id' => $taskID,
@@ -1568,6 +1680,7 @@ function taskUnblockCommand(PDO $pdo, array $args): void
         throw new RuntimeException('Task not found: ' . $taskID);
     }
 
+    emitEvent($pdo, 'TASK_UNBLOCKED', 'task', $taskID, null, 'system', null);
     echo json_encode([
         'ok' => true,
         'task_id' => $taskID,
@@ -1593,8 +1706,8 @@ function taskIngestPacketCommand(PDO $pdo, array $args): void
     upsertPacket($pdo, $packet);
 
     $stmt = $pdo->prepare(<<<SQL
-INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, task_class, risk_level, priority, created_at, updated_at)
-VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :task_class, :risk_level, 0, :created_at, :updated_at)
+INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, task_class, risk_level, priority, created_at, updated_at)
+VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :task_class, :risk_level, 0, :created_at, :updated_at)
 ON CONFLICT(task_id) DO UPDATE SET
   phase = excluded.phase,
   summary = excluded.summary,
@@ -1604,6 +1717,12 @@ ON CONFLICT(task_id) DO UPDATE SET
   acceptance_criteria = COALESCE(excluded.acceptance_criteria, tasks.acceptance_criteria),
   verification = COALESCE(excluded.verification, tasks.verification),
   doc_allow_list = COALESCE(excluded.doc_allow_list, tasks.doc_allow_list),
+  parent_task_id = COALESCE(excluded.parent_task_id, tasks.parent_task_id),
+  attempt = COALESCE(excluded.attempt, tasks.attempt),
+  executor_model = COALESCE(excluded.executor_model, tasks.executor_model),
+  finalize_git = COALESCE(excluded.finalize_git, tasks.finalize_git),
+  stop_conditions = COALESCE(excluded.stop_conditions, tasks.stop_conditions),
+  delegate_to_executor = COALESCE(excluded.delegate_to_executor, tasks.delegate_to_executor),
   task_class = COALESCE(excluded.task_class, tasks.task_class),
   risk_level = COALESCE(excluded.risk_level, tasks.risk_level),
   updated_at = excluded.updated_at;
@@ -1620,12 +1739,19 @@ SQL
         ':acceptance_criteria' => $packet['acceptance_criteria'] ?? null,
         ':verification' => $packet['verification'] ?? null,
         ':doc_allow_list' => $packet['doc_allow_list'] ?? null,
+        ':parent_task_id' => $packet['parent_task_id'] ?? null,
+        ':attempt' => max(1, (int) ($packet['last_attempt'] ?? 1)),
+        ':executor_model' => $packet['executor_model'] ?? null,
+        ':finalize_git' => (int) ($packet['finalize_git'] ?? 0),
+        ':stop_conditions' => $packet['stop_conditions'] ?? null,
+        ':delegate_to_executor' => (int) ($packet['delegate_to_executor'] ?? 1),
         ':task_class' => $packet['task_class'],
         ':risk_level' => $packet['risk_level'],
         ':created_at' => nowIso(),
         ':updated_at' => nowIso(),
     ]);
 
+    emitEvent($pdo, 'TASK_CREATED', 'task', $packet['packet_id'], null, 'system', json_encode(['phase' => $packet['phase'], 'source' => 'ingest-packet'], JSON_UNESCAPED_SLASHES));
     echo json_encode([
         'ok' => true,
         'packet_id' => $packet['packet_id'],
@@ -1820,8 +1946,8 @@ function ingestAllCommand(PDO $pdo, array $args): void
             upsertPacket($pdo, $packet);
 
             $stmt = $pdo->prepare(<<<SQL
-INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, task_class, risk_level, priority, created_at, updated_at)
-VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :task_class, :risk_level, 0, :created_at, :updated_at)
+INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, task_class, risk_level, priority, created_at, updated_at)
+VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :task_class, :risk_level, 0, :created_at, :updated_at)
 ON CONFLICT(task_id) DO UPDATE SET
   phase = excluded.phase,
   summary = excluded.summary,
@@ -1920,6 +2046,57 @@ SQL
     ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 }
 
+function buildPacketFromTask(PDO $pdo, string $taskID): string
+{
+    $stmt = $pdo->prepare('SELECT * FROM tasks WHERE task_id = :task_id');
+    $stmt->execute([':task_id' => $taskID]);
+    $task = $stmt->fetch();
+
+    if (!$task) {
+        throw new RuntimeException('Task not found: ' . $taskID);
+    }
+
+    $scopeIn = json_decode($task['scope_in'] ?? '[]', true) ?: [];
+    $scopeOut = json_decode($task['scope_out'] ?? '[]', true) ?: [];
+    $acceptance = json_decode($task['acceptance_criteria'] ?? '[]', true) ?: [];
+    $verification = json_decode($task['verification'] ?? '[]', true) ?: [];
+    $fileTargets = json_decode($task['file_targets'] ?? '[]', true) ?: [];
+    $docList = json_decode($task['doc_allow_list'] ?? '[]', true) ?: [];
+    $stopConditions = json_decode($task['stop_conditions'] ?? '[]', true) ?: [];
+
+    $status = $task['completed'] ? 'completed' : ($task['blocked'] ? 'blocked' : 'pending');
+
+    $packet = [
+        'schema_version' => 1,
+        'status' => $status,
+        'task_ref' => array_filter([
+            'packet_id' => $taskID,
+            'phase' => $task['phase'] ?? 'UNKNOWN',
+            'attempt' => max(1, (int) ($task['attempt'] ?? 1)),
+            'executor_model' => $task['executor_model'] ?? null,
+            'parent_packet_id' => $task['parent_task_id'] ?? null,
+        ], fn ($v) => $v !== null),
+        'summary' => $task['summary'],
+        'execution_policy' => [
+            'task_class' => $task['task_class'] ?? 'feature',
+            'risk_level' => $task['risk_level'] ?? 'medium',
+            'finalize_git' => (bool) ($task['finalize_git'] ?? 0),
+            'delegate_to_executor' => (bool) ($task['delegate_to_executor'] ?? 1),
+        ],
+        'scope' => [
+            'in' => $scopeIn,
+            'out' => $scopeOut,
+        ],
+        'doc_allow_list' => $docList,
+        'code_targets' => $fileTargets,
+        'acceptance_criteria' => $acceptance,
+        'verification' => ['commands' => $verification],
+        'stop_conditions' => $stopConditions,
+    ];
+
+    return Yaml::dump($packet, 4, 2, Yaml::DUMP_EMPTY_ARRAY_AS_SEQUENCE);
+}
+
 try {
     $argv = $_SERVER['argv'] ?? [];
     $command = $argv[1] ?? null;
@@ -2006,6 +2183,12 @@ try {
             break;
 
         case 'task:ingest-packet':
+            taskIngestPacketCommand($pdo, $args);
+            break;
+
+        case 'build-packet':
+            echo buildPacketFromTask($pdo, normalizeScalar($args['task-id'] ?? null) ?? '') . PHP_EOL;
+            break;
             taskIngestPacketCommand($pdo, $args);
             break;
 
