@@ -11,6 +11,9 @@ import {
   getArtifactsDir,
   runCommand,
   validateExecutorResponseSchema,
+  extractRawTextForDetection,
+  detectNonCompliance,
+  buildRetryPrompt,
 } from "./common.mjs";
 
 function usage() {
@@ -287,9 +290,45 @@ async function main() {
     throw new Error(`No assistant payload available for session ${sessionID}`);
   }
 
+  let retryOccurred = false;
+  let retryReasons = [];
+  let retryTransport = null;
+
+  const rawText = extractRawTextForDetection(result);
+  const nonCompliance = detectNonCompliance(rawText);
+
+  if (nonCompliance.nonCompliant) {
+    console.error(`non-compliant-output: ${nonCompliance.reasons.join(", ")}`);
+    retryOccurred = true;
+    retryReasons = nonCompliance.reasons;
+
+    const retryPrompt = buildRetryPrompt(packetText, rawText);
+    console.error("retry: sending corrective prompt");
+
+    const retryResult = await runV1(client, sessionID, retryPrompt, args);
+    retryTransport = retryResult.transport;
+
+    if (!retryResult.assistantText || !retryResult.assistantText.trim()) {
+      const validation = validateExecutorResponseSchema(result.assistantText);
+      if (!validation.valid) {
+        throw new Error(`No assistant payload available and first response failed schema: ${validation.issues.join("; ")}`);
+      }
+
+      result.assistantText = validation.normalized;
+    } else {
+      result = retryResult;
+
+      const retryRawText = extractRawTextForDetection(result);
+      const retryNonCompliance = detectNonCompliance(retryRawText);
+      if (retryNonCompliance.nonCompliant) {
+        console.error(`retry-non-compliant-output: ${retryNonCompliance.reasons.join(", ")}`);
+      }
+    }
+  }
+
   const validation = validateExecutorResponseSchema(result.assistantText);
   if (!validation.valid) {
-    throw new Error(`Recovered assistant payload failed schema validation: ${validation.issues.join("; ")}`);
+    throw new Error(`Assistant payload failed schema validation: ${validation.issues.join("; ")}`);
   }
 
   const output = {
@@ -301,6 +340,9 @@ async function main() {
     model: args.model ? String(args.model) : null,
     variant: args.variant ? String(args.variant) : null,
     assistantText: result.assistantText,
+    retryOccurred,
+    retryReasons: retryOccurred ? retryReasons : undefined,
+    retryTransport: retryOccurred ? retryTransport : undefined,
   };
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");

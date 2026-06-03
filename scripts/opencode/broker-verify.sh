@@ -100,20 +100,20 @@ run_auto_with_lock_retry() {
   return 1
 }
 
-echo "[1/8] OpenCode health check"
+echo "[1/9] OpenCode health check"
 (
   cd "$PROJECT_ROOT"
   npm run -s opencode:health
 )
 
-echo "[2/8] SQLite state initialization + acceptance verification"
+echo "[2/9] SQLite state initialization + acceptance verification"
 (
   cd "$PROJECT_ROOT"
   npm run -s opencode:state:init >/dev/null
   npm run -s opencode:state:verify -- --packet "$SUCCESS_PACKET"
 )
 
-echo "[3/8] Dispatch check: local_git packet"
+echo "[3/9] Dispatch check: local_git packet"
 local_dispatch_json="$(cd "$PROJECT_ROOT" && npm run -s opencode:dispatch -- --packet "$LOCAL_GIT_PACKET")"
 local_route="$(printf '%s' "$local_dispatch_json" | json_field route)"
 [[ "$local_route" == "local_git" ]] || {
@@ -121,7 +121,7 @@ local_route="$(printf '%s' "$local_dispatch_json" | json_field route)"
   exit 1
 }
 
-echo "[4/8] Dispatch check: success packet should route to executor"
+echo "[4/9] Dispatch check: success packet should route to executor"
 success_dispatch_json="$(cd "$PROJECT_ROOT" && npm run -s opencode:dispatch -- --packet "$SUCCESS_PACKET")"
 success_route="$(printf '%s' "$success_dispatch_json" | json_field route)"
 [[ "$success_route" == "executor" ]] || {
@@ -129,7 +129,13 @@ success_route="$(printf '%s' "$success_dispatch_json" | json_field route)"
   exit 1
 }
 
-echo "[5/8] Gate 0 clarify short-circuit check"
+echo "[5/9] Executor retry-on-prose compliance check"
+(
+  cd "$PROJECT_ROOT"
+  node scripts/opencode/retry-verify.mjs
+)
+
+echo "[6/9] Gate 0 clarify short-circuit check"
 expected_clarify_exit="${OPENCODE_CLARIFY_EXIT_CODE:-2}"
 run_auto_with_lock_retry "$CLARIFY_PACKET" "$MODE" "/tmp/opencode-clarify-check.out" "$expected_clarify_exit"
 clarify_exit="$RUN_AUTO_LAST_EXIT"
@@ -139,10 +145,10 @@ if [[ "$clarify_exit" != "$expected_clarify_exit" ]]; then
   exit 1
 fi
 
-echo "[6/8] local_git run-auto short-circuit check"
+echo "[7/9] local_git run-auto short-circuit check"
 run_auto_with_lock_retry "$LOCAL_GIT_PACKET" "$MODE" "/tmp/opencode-local-git-check.out"
 
-echo "[7/8] Compact context smoke for local_git and clarify packets"
+echo "[8/9] Compact context smoke for local_git and clarify packets"
 (
   cd "$PROJECT_ROOT"
   npm run -s opencode:state:context -- --packet-id EP-BROKER-LOCAL-GIT --limit 2 >/dev/null
@@ -150,14 +156,14 @@ echo "[7/8] Compact context smoke for local_git and clarify packets"
 )
 
 if [[ "$FULL" -eq 1 ]]; then
-  echo "[8/8] Full mode: low-cost executor-path run"
+  echo "[9/9] Full mode: low-cost executor-path run"
   run_auto_with_lock_retry "$SUCCESS_PACKET" "$MODE" "/tmp/opencode-success-check.out"
   (
     cd "$PROJECT_ROOT"
     npm run -s opencode:state:context -- --packet-id EP-BROKER-SUCCESS --limit 2
   )
 else
-  echo "[8/8] Quick mode complete (no executor token call performed)"
+  echo "[9/9] Quick mode complete (no executor token call performed)"
   echo "tip: rerun with --full to validate one end-to-end executor success path"
 fi
 
