@@ -203,6 +203,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     finalize_git INTEGER DEFAULT 0,
     stop_conditions TEXT,
     delegate_to_executor INTEGER DEFAULT 1,
+    orchestrator_preflight_budget TEXT,
     task_class TEXT,
     risk_level TEXT,
     priority INTEGER DEFAULT 0,
@@ -350,6 +351,7 @@ function ensureAllColumns(PDO $pdo): void
         "finalize_git" => "INTEGER DEFAULT 0",
         "stop_conditions" => "TEXT",
         "delegate_to_executor" => "INTEGER DEFAULT 1",
+        "orchestrator_preflight_budget" => "TEXT",
     ];
 
     foreach ($tasksRequired as $name => $type) {
@@ -480,6 +482,7 @@ function parsePacketFile(string $packetPath): array
     $docList = is_array($packet['doc_allow_list'] ?? null) ? $packet['doc_allow_list'] : [];
     $codeTargets = is_array($packet['code_targets'] ?? null) ? $packet['code_targets'] : [];
     $stopConditions = is_array($packet['stop_conditions'] ?? null) ? $packet['stop_conditions'] : [];
+    $preflightBudget = is_array($policy['orchestrator_preflight_budget'] ?? null) ? $policy['orchestrator_preflight_budget'] : null;
 
     return [
         'packet_id' => normalizeScalar($taskRef['packet_id'] ?? null) ?? 'packet',
@@ -499,6 +502,7 @@ function parsePacketFile(string $packetPath): array
         'finalize_git' => isset($policy['finalize_git']) && $policy['finalize_git'] ? 1 : 0,
         'delegate_to_executor' => !(isset($policy['delegate_to_executor']) && $policy['delegate_to_executor'] === false) ? 1 : 0,
         'stop_conditions' => json_encode($stopConditions, JSON_UNESCAPED_SLASHES),
+        'orchestrator_preflight_budget' => $preflightBudget !== null ? json_encode($preflightBudget, JSON_UNESCAPED_SLASHES) : null,
         'packet_yaml' => $rawYaml,
     ];
 }
@@ -1490,8 +1494,8 @@ function taskCreateCommand(PDO $pdo, array $args): void
     }
 
     $stmt = $pdo->prepare(<<<SQL
-INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, task_class, risk_level, priority, created_at, updated_at)
-VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :task_class, :risk_level, :priority, :created_at, :updated_at)
+INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, orchestrator_preflight_budget, task_class, risk_level, priority, created_at, updated_at)
+VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :orchestrator_preflight_budget, :task_class, :risk_level, :priority, :created_at, :updated_at)
 ON CONFLICT(task_id) DO UPDATE SET
   phase = excluded.phase,
   summary = excluded.summary,
@@ -1507,6 +1511,7 @@ ON CONFLICT(task_id) DO UPDATE SET
   finalize_git = COALESCE(excluded.finalize_git, tasks.finalize_git),
   stop_conditions = COALESCE(excluded.stop_conditions, tasks.stop_conditions),
   delegate_to_executor = COALESCE(excluded.delegate_to_executor, tasks.delegate_to_executor),
+  orchestrator_preflight_budget = COALESCE(excluded.orchestrator_preflight_budget, tasks.orchestrator_preflight_budget),
   task_class = COALESCE(excluded.task_class, tasks.task_class),
   risk_level = COALESCE(excluded.risk_level, tasks.risk_level),
   priority = COALESCE(excluded.priority, tasks.priority),
@@ -1532,6 +1537,7 @@ SQL
         ':finalize_git' => in_array(strtolower((string) ($args['finalize-git'] ?? '')), ['1', 'true', 'yes', 'on']) ? 1 : 0,
         ':stop_conditions' => normalizeScalar($args['stop-conditions'] ?? null),
         ':delegate_to_executor' => in_array(strtolower((string) ($args['delegate-to-executor'] ?? 'true')), ['0', 'false', 'no', 'off']) ? 0 : 1,
+        ':orchestrator_preflight_budget' => normalizeScalar($args['orchestrator-preflight-budget'] ?? null),
         ':task_class' => normalizeScalar($args['task-class'] ?? null),
         ':risk_level' => normalizeScalar($args['risk-level'] ?? null),
         ':priority' => $priority,
@@ -1711,8 +1717,8 @@ function taskIngestPacketCommand(PDO $pdo, array $args): void
     upsertPacket($pdo, $packet);
 
     $stmt = $pdo->prepare(<<<SQL
-INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, task_class, risk_level, priority, created_at, updated_at)
-VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :task_class, :risk_level, 0, :created_at, :updated_at)
+INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, orchestrator_preflight_budget, task_class, risk_level, priority, created_at, updated_at)
+VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :orchestrator_preflight_budget, :task_class, :risk_level, 0, :created_at, :updated_at)
 ON CONFLICT(task_id) DO UPDATE SET
   phase = excluded.phase,
   summary = excluded.summary,
@@ -1728,6 +1734,7 @@ ON CONFLICT(task_id) DO UPDATE SET
   finalize_git = COALESCE(excluded.finalize_git, tasks.finalize_git),
   stop_conditions = COALESCE(excluded.stop_conditions, tasks.stop_conditions),
   delegate_to_executor = COALESCE(excluded.delegate_to_executor, tasks.delegate_to_executor),
+  orchestrator_preflight_budget = COALESCE(excluded.orchestrator_preflight_budget, tasks.orchestrator_preflight_budget),
   task_class = COALESCE(excluded.task_class, tasks.task_class),
   risk_level = COALESCE(excluded.risk_level, tasks.risk_level),
   updated_at = excluded.updated_at;
@@ -1750,6 +1757,7 @@ SQL
         ':finalize_git' => (int) ($packet['finalize_git'] ?? 0),
         ':stop_conditions' => $packet['stop_conditions'] ?? null,
         ':delegate_to_executor' => (int) ($packet['delegate_to_executor'] ?? 1),
+                ':orchestrator_preflight_budget' => $packet['orchestrator_preflight_budget'] ?? null,
         ':task_class' => $packet['task_class'],
         ':risk_level' => $packet['risk_level'],
         ':created_at' => nowIso(),
@@ -1951,8 +1959,8 @@ function ingestAllCommand(PDO $pdo, array $args): void
             upsertPacket($pdo, $packet);
 
             $stmt = $pdo->prepare(<<<SQL
-INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, task_class, risk_level, priority, created_at, updated_at)
-VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :task_class, :risk_level, 0, :created_at, :updated_at)
+INSERT INTO tasks (task_id, phase, summary, scope_in, scope_out, file_targets, acceptance_criteria, verification, doc_allow_list, parent_task_id, attempt, executor_model, finalize_git, stop_conditions, delegate_to_executor, orchestrator_preflight_budget, task_class, risk_level, priority, created_at, updated_at)
+VALUES (:task_id, :phase, :summary, :scope_in, :scope_out, :file_targets, :acceptance_criteria, :verification, :doc_allow_list, :parent_task_id, :attempt, :executor_model, :finalize_git, :stop_conditions, :delegate_to_executor, :orchestrator_preflight_budget, :task_class, :risk_level, 0, :created_at, :updated_at)
 ON CONFLICT(task_id) DO UPDATE SET
   phase = excluded.phase,
   summary = excluded.summary,
@@ -1962,6 +1970,13 @@ ON CONFLICT(task_id) DO UPDATE SET
   acceptance_criteria = COALESCE(excluded.acceptance_criteria, tasks.acceptance_criteria),
   verification = COALESCE(excluded.verification, tasks.verification),
   doc_allow_list = COALESCE(excluded.doc_allow_list, tasks.doc_allow_list),
+  parent_task_id = COALESCE(excluded.parent_task_id, tasks.parent_task_id),
+  attempt = COALESCE(excluded.attempt, tasks.attempt),
+  executor_model = COALESCE(excluded.executor_model, tasks.executor_model),
+  finalize_git = COALESCE(excluded.finalize_git, tasks.finalize_git),
+  stop_conditions = COALESCE(excluded.stop_conditions, tasks.stop_conditions),
+  delegate_to_executor = COALESCE(excluded.delegate_to_executor, tasks.delegate_to_executor),
+  orchestrator_preflight_budget = COALESCE(excluded.orchestrator_preflight_budget, tasks.orchestrator_preflight_budget),
   task_class = COALESCE(excluded.task_class, tasks.task_class),
   risk_level = COALESCE(excluded.risk_level, tasks.risk_level),
   updated_at = excluded.updated_at;
@@ -1977,6 +1992,13 @@ SQL
                 ':acceptance_criteria' => $packet['acceptance_criteria'] ?? null,
                 ':verification' => $packet['verification'] ?? null,
                 ':doc_allow_list' => $packet['doc_allow_list'] ?? null,
+                ':parent_task_id' => $packet['parent_task_id'] ?? null,
+                ':attempt' => max(1, (int) ($packet['last_attempt'] ?? 1)),
+                ':executor_model' => $packet['executor_model'] ?? null,
+                ':finalize_git' => (int) ($packet['finalize_git'] ?? 0),
+                ':stop_conditions' => $packet['stop_conditions'] ?? null,
+                ':delegate_to_executor' => (int) ($packet['delegate_to_executor'] ?? 1),
+                ':orchestrator_preflight_budget' => $packet['orchestrator_preflight_budget'] ?? null,
                 ':task_class' => $packet['task_class'],
                 ':risk_level' => $packet['risk_level'],
                 ':created_at' => nowIso(),
@@ -2071,23 +2093,32 @@ function buildPacketFromTask(PDO $pdo, string $taskID): string
 
     $status = $task['completed'] ? 'completed' : ($task['blocked'] ? 'blocked' : 'pending');
 
-    $packet = [
-        'schema_version' => 1,
-        'status' => $status,
-        'task_ref' => array_filter([
+    $task_ref = [
             'packet_id' => $taskID,
             'phase' => $task['phase'] ?? 'UNKNOWN',
             'attempt' => max(1, (int) ($task['attempt'] ?? 1)),
             'executor_model' => $task['executor_model'] ?? null,
             'parent_packet_id' => $task['parent_task_id'] ?? null,
-        ], fn ($v) => $v !== null),
-        'summary' => $task['summary'],
-        'execution_policy' => [
+        ];
+
+    $execution_policy = [
             'task_class' => $task['task_class'] ?? 'feature',
             'risk_level' => $task['risk_level'] ?? 'medium',
             'finalize_git' => (bool) ($task['finalize_git'] ?? 0),
             'delegate_to_executor' => (bool) ($task['delegate_to_executor'] ?? 1),
-        ],
+        ];
+
+    $preflightBudget = json_decode($task['orchestrator_preflight_budget'] ?? 'null', true);
+    if (is_array($preflightBudget)) {
+        $execution_policy['orchestrator_preflight_budget'] = $preflightBudget;
+    }
+
+    $packet = [
+        'schema_version' => 1,
+        'status' => $status,
+        'task_ref' => $task_ref,
+        'summary' => $task['summary'],
+        'execution_policy' => $execution_policy,
         'scope' => [
             'in' => $scopeIn,
             'out' => $scopeOut,
