@@ -1,5 +1,15 @@
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+
+export function runCommand(command, args, options = {}) {
+  return spawnSync(command, args, {
+    stdio: options.capture ? ["inherit", "pipe", "pipe"] : "inherit",
+    encoding: "utf8",
+    cwd: options.cwd || process.cwd(),
+    env: process.env,
+  });
+}
 
 export function parseArgs(argv) {
   const args = {};
