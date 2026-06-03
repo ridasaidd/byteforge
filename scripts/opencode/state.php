@@ -23,7 +23,7 @@ Usage:
   php scripts/opencode/state.php route-upsert --task-class <id|*> --risk-level <id|*> --provider <id> --model <id> [--variant <id>] [--priority <n>] [--enabled 0|1]
   php scripts/opencode/state.php route-list [--task-class <id>]
   Tasks:
-  php scripts/opencode/state.php task:create --task-id <id> --phase <id> --summary <text> [--scope-in <json>] [--scope-out <json>] [--file-targets <json>] [--acceptance-criteria <json>] [--verification <json>] [--task-class <id>] [--risk-level <id>] [--priority <n>]
+  php scripts/opencode/state.php task:create --task-id <id> --phase <id> --summary <text> [--scope-in <json>] [--scope-out <json>] [--file-targets <json>] [--acceptance-criteria <json>] [--verification <json>] [--task-class <id>] [--risk-level <id>] [--priority <n>] [--parent-task-id <id>] [--executor-model <id>] [--finalize-git 0|1] [--delegate-to-executor 0|1] [--orchestrator-preflight-budget <json>]
   php scripts/opencode/state.php task:list [--phase <id>] [--completed 0|1] [--blocked 0|1] [--limit <n>]
   php scripts/opencode/state.php task:show --task-id <id>
   php scripts/opencode/state.php task:complete --task-id <id>
