@@ -31,9 +31,9 @@ function usage() {
     "  --session <id>   forward to run-packet",
     "  --title <title>  forward to run-packet",
     "  --agent <name>   forward to run-packet",
-    "  --plan-sync      mark a checklist step complete in the phase markdown file after validated success",
-    "  --plan-sync-dry-run  show what checklist update would be made without writing files",
-    "  --phase-plan <path>  explicit markdown plan file path override for plan sync",
+    "  --plan-sync      complete task in SQLite after validated success",
+    "  --plan-sync-dry-run  show task completion without writing",
+    "  --phase-plan <path>  explicit phase plan file path override (deprecated, uses SQLite)",
   ].join("\n"));
 }
 
@@ -242,7 +242,7 @@ function resolvePhasePlanPath(projectRoot, packetPhase, overridePath) {
     }
   }
 
-  const docsPlansDir = path.resolve(projectRoot, "DEVELOPMENT_DOCS/plans");
+  const docsPlansDir = path.resolve(projectRoot, ".opencode/DEVELOPMENT_DOCS/plans");
   if (fs.existsSync(docsPlansDir)) {
     for (const fileName of fs.readdirSync(docsPlansDir)) {
       if (!fileName.toLowerCase().endsWith(".md")) {
@@ -942,28 +942,22 @@ async function main() {
       ]);
 
       if (planSyncRequested) {
-        const syncResult = planSyncFromArtifact({
-          projectRoot,
-          artifactPath: artifactAfter,
-          packetID,
-          packetPhase,
-          dryRun: planSyncDryRun,
-          phasePlanOverride,
-        });
+        const taskCompleteAction = planSyncDryRun ? "would complete" : "completed";
+        console.error(`plan-sync: ${taskCompleteAction} task ${packetID}`);
 
-        if (syncResult.ok) {
-          if (syncResult.dryRun) {
-            console.error(`plan-sync: dry-run ${syncResult.phasePlanPath}:${syncResult.lineNumber}`);
-            console.error(`plan-sync:   before ${syncResult.before}`);
-            console.error(`plan-sync:   after  ${syncResult.after}`);
+        if (!planSyncDryRun) {
+          const completeResult = runCommand("php", [
+            path.resolve(projectRoot, "scripts/opencode/state.php"),
+            "task:complete",
+            "--task-id",
+            packetID,
+          ], { capture: true, cwd: projectRoot });
+
+          if (completeResult.status === 0) {
+            console.error(`plan-sync: task ${packetID} marked completed in SQLite`);
           } else {
-            console.error(`plan-sync: updated ${syncResult.phasePlanPath}:${syncResult.lineNumber}`);
-            console.error(`plan-sync:   ${syncResult.before}`);
-            console.error(`plan-sync: ->${syncResult.after}`);
+            console.error(`plan-sync: failed to complete task ${packetID}: ${completeResult.stdout} ${completeResult.stderr}`);
           }
-        } else {
-          const detail = syncResult.issues ? ` (${syncResult.issues.join("; ")})` : "";
-          console.error(`plan-sync: skipped (${syncResult.reason})${detail}`);
         }
       }
     } else if (loopResult.status !== 0) {

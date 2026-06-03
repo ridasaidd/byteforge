@@ -367,7 +367,7 @@ resources/js/shared/puck/components/navigation/Navigation.tsx
 
 **Documentation:**
 ```
-DEVELOPMENT_DOCS/THEME_CREATION_GUIDE.md (create)
+.opencode/DEVELOPMENT_DOCS/THEME_CREATION_GUIDE.md (create)
   - How to use placeholderItems
   - Best practices for navigation in templates
 ```

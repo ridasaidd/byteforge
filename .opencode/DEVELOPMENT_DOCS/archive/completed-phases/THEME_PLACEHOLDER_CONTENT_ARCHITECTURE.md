@@ -406,7 +406,7 @@ const loadCustomization = async () => {
 8. ✅ `resources/js/shared/services/api/themeCustomization.ts` (update getCustomization response)
 
 ### Documentation
-9. ✅ Update `DEVELOPMENT_DOCS/THEME_CONTENT_SEPARATION_ARCHITECTURE.md`
+9. ✅ Update `.opencode/DEVELOPMENT_DOCS/THEME_CONTENT_SEPARATION_ARCHITECTURE.md`
 
 ---
 

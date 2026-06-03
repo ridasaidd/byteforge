@@ -93,7 +93,7 @@
    - Sets `theme_id = NULL` where `tenant_id IS NOT NULL`
 
 ### **Documentation:**
-5. `DEVELOPMENT_DOCS/THEME_CONTENT_SEPARATION_ARCHITECTURE.md`
+5. `.opencode/DEVELOPMENT_DOCS/THEME_CONTENT_SEPARATION_ARCHITECTURE.md`
    - Complete architecture documentation
    - Bug fixes explained
    - Testing checklist

@@ -1065,7 +1065,7 @@ npx lint-staged
 
 **Structure:**
 ```
-DEVELOPMENT_DOCS/
+.opencode/DEVELOPMENT_DOCS/
   ADR/
     001-use-stancl-tenancy.md
     002-puck-for-page-builder.md

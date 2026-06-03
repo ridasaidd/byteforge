@@ -33,8 +33,8 @@ scope:
     - "Explicitly disallowed work"
 doc_allow_list:
   - "AGENTS.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/path/to/domain-doc.md"
+  - ".opencode/DEVELOPMENT_DOCS/AGENT_START.md"
+  - ".opencode/DEVELOPMENT_DOCS/path/to/domain-doc.md"
 code_targets:
   - "path/to/file"
 acceptance_criteria:

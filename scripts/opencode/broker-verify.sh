@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
-PACKET_DIR="$PROJECT_ROOT/DEVELOPMENT_DOCS/execution/broker-validation"
+PACKET_DIR="$PROJECT_ROOT/.opencode/DEVELOPMENT_DOCS/execution/broker-validation"
 LOCAL_GIT_PACKET="$PACKET_DIR/packet-broker-local-git.yaml"
 CLARIFY_PACKET="$PACKET_DIR/packet-broker-clarify.yaml"
 SUCCESS_PACKET="$PACKET_DIR/packet-broker-success.yaml"
@@ -28,7 +28,7 @@ Default run (quick):
   - local_git run-auto short-circuit check (no executor run)
 
 --full adds one low-cost executor success-path run using:
-  DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml
+  .opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml
 EOF
   exit 1
 }
