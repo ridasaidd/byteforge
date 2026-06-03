@@ -9,6 +9,7 @@ import {
   normalizeAssistantTextFromV1,
   normalizeAssistantTextFromV2,
   getArtifactsDir,
+  runCommand,
   validateExecutorResponseSchema,
 } from "./common.mjs";
 
@@ -16,6 +17,7 @@ function usage() {
   console.error([
     "Usage:",
     "  node scripts/opencode/run-packet.mjs --packet <file> [--session <ses_id>] [--mode v1|auto|v2] [--agent build] [--provider <id>] [--model <id>] [--variant <id>]",
+    "  node scripts/opencode/run-packet.mjs --packet-id <id> [--session <ses_id>] [--mode v1|auto|v2] [--agent build] [--provider <id>] [--model <id>] [--variant <id>]",
     "",
     "Environment variables:",
     "  OPENCODE_USER (required)",
@@ -212,14 +214,53 @@ async function runV1(client, sessionID, promptText, args) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.packet) {
+  const hasPacketId = args["packet-id"] != null;
+  const hasPacket = args.packet != null;
+
+  if (!hasPacket && !hasPacketId) {
     usage();
     process.exit(1);
   }
 
-  const packetPath = path.resolve(process.cwd(), String(args.packet));
-  const packetText = readUtf8(packetPath);
-  const packetID = extractPacketId(packetText, "packet");
+  let packetText;
+  let packetID;
+  let packetPath;
+
+  if (hasPacketId) {
+    packetID = String(args["packet-id"]).trim();
+    packetPath = `sqlite:${packetID}`;
+
+    const stateResult = runCommand("php", [
+      path.resolve(process.cwd(), "scripts/opencode/state.php"),
+      "context",
+      "--packet-id",
+      packetID,
+    ], { capture: true, cwd: process.cwd() });
+
+    if (stateResult.status !== 0) {
+      console.error(`Failed to fetch packet ${packetID} from SQLite`);
+      process.exit(1);
+    }
+
+    let context;
+    try {
+      context = JSON.parse(stateResult.stdout);
+    } catch {
+      console.error(`Failed to parse SQLite context for ${packetID}`);
+      process.exit(1);
+    }
+
+    if (!context.packet || !context.packet.packet_yaml) {
+      console.error(`Packet ${packetID} found in SQLite but has no packet_yaml. Use a YAML file with --packet instead.`);
+      process.exit(1);
+    }
+
+    packetText = context.packet.packet_yaml;
+  } else {
+    packetPath = path.resolve(process.cwd(), String(args.packet));
+    packetText = readUtf8(packetPath);
+    packetID = extractPacketId(packetText, "packet");
+  }
   const promptText = buildPrompt(packetText);
 
   const client = buildClient();

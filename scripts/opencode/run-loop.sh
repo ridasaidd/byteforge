@@ -7,6 +7,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 usage() {
   cat >&2 <<'EOF'
 Usage: npm run opencode:run-loop -- --packet <file> [--session <ses_id>] [--title <title>] [--mode v1|auto|v2] [--agent <name>] [--provider <id>] [--model <id>] [--variant <id>]
+       npm run opencode:run-loop -- --packet-id <id> [--session <ses_id>] [--title <title>] [--mode v1|auto|v2] [--agent <name>] [--provider <id>] [--model <id>] [--variant <id>]
 
 Runs an execution packet against the OpenCode API, then parses the result and prints
 a deterministic route outcome. Exits 0 on "success" and non-zero on "failed:*".
@@ -21,17 +22,21 @@ EOF
 }
 
 has_packet=0
+has_packet_id=0
 has_mode=0
 for arg in "$@"; do
   if [[ "$arg" == "--packet" ]]; then
     has_packet=1
+  fi
+  if [[ "$arg" == "--packet-id" ]]; then
+    has_packet_id=1
   fi
   if [[ "$arg" == "--mode" ]]; then
     has_mode=1
   fi
 done
 
-if [[ $has_packet -eq 0 ]]; then
+if [[ $has_packet -eq 0 && $has_packet_id -eq 0 ]]; then
   usage
 fi
 

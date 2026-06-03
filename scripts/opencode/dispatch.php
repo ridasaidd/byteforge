@@ -34,7 +34,83 @@ function parseArgs(array $argv): array
 
 function usage(): void
 {
-    fwrite(STDERR, "Usage:\n  php scripts/opencode/dispatch.php --packet <file> [--format json|shell]\n");
+    fwrite(STDERR, "Usage:\n  php scripts/opencode/dispatch.php --packet <file>\n  php scripts/opencode/dispatch.php --packet-id <id> [--format json|shell]\n");
+}
+
+function fetchPacketFromDb(string $root, string $packetID): ?array
+{
+    $path = dbPath($root);
+    if (!is_file($path)) {
+        return null;
+    }
+
+    try {
+        $pdo = new PDO('sqlite:' . $path);
+        $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        $stmt = $pdo->prepare('SELECT packet_id, phase, task_class, risk_level, summary, packet_yaml FROM packets WHERE packet_id = :packet_id');
+        $stmt->execute([':packet_id' => $packetID]);
+        $row = $stmt->fetch();
+
+        if (!$row) {
+            return null;
+        }
+
+        if ($row['packet_yaml'] !== null && $row['packet_yaml'] !== '') {
+            try {
+                $parsed = Yaml::parse($row['packet_yaml']);
+                if (is_array($parsed)) {
+                    return $parsed;
+                }
+            } catch (ParseException) {
+            }
+        }
+
+        $scopeIn = '[]';
+        $scopeOut = '[]';
+        $acceptance = '[]';
+        $verification = '[]';
+        $codeTargets = '[]';
+        $docList = '[]';
+
+        $taskStmt = $pdo->prepare('SELECT * FROM tasks WHERE task_id = :task_id');
+        $taskStmt->execute([':task_id' => $packetID]);
+        $task = $taskStmt->fetch();
+
+        if ($task) {
+            $scopeIn = $task['scope_in'] ?? '[]';
+            $scopeOut = $task['scope_out'] ?? '[]';
+            $acceptance = $task['acceptance_criteria'] ?? '[]';
+            $verification = $task['verification'] ?? '[]';
+            $codeTargets = $task['file_targets'] ?? '[]';
+            $docList = $task['doc_allow_list'] ?? '[]';
+        }
+
+        return [
+            'summary' => $row['summary'] ?? '',
+            'task_ref' => [
+                'packet_id' => $row['packet_id'],
+                'phase' => $row['phase'] ?? 'UNKNOWN',
+                'attempt' => 1,
+            ],
+            'execution_policy' => [
+                'task_class' => $row['task_class'] ?? 'feature',
+                'risk_level' => $row['risk_level'] ?? 'medium',
+                'finalize_git' => false,
+            ],
+            'scope' => [
+                'in' => json_decode($scopeIn, true) ?? [],
+                'out' => json_decode($scopeOut, true) ?? [],
+            ],
+            'acceptance_criteria' => json_decode($acceptance, true) ?? [],
+            'verification' => ['commands' => json_decode($verification, true) ?? []],
+            'code_targets' => json_decode($codeTargets, true) ?? [],
+            'doc_allow_list' => json_decode($docList, true) ?? [],
+        ];
+    } catch (Throwable) {
+        return null;
+    }
 }
 
 function dbPath(string $root): string
@@ -205,7 +281,10 @@ function buildDecision(array $packet, string $root): array
 }
 
 $args = parseArgs($argv);
-if (!isset($args['packet']) || !is_string($args['packet']) || trim($args['packet']) === '') {
+$hasPacket = isset($args['packet']) && is_string($args['packet']) && trim($args['packet']) !== '';
+$hasPacketID = isset($args['packet-id']) && is_string($args['packet-id']) && trim($args['packet-id']) !== '';
+
+if (!$hasPacket && !$hasPacketID) {
     usage();
     exit(1);
 }
@@ -222,26 +301,38 @@ if ($root === false) {
     exit(1);
 }
 
-$packetPath = (string) $args['packet'];
-if (!str_starts_with($packetPath, '/')) {
-    $packetPath = $root . '/' . $packetPath;
-}
+$packetPath = null;
+$packet = null;
 
-if (!is_file($packetPath)) {
-    fwrite(STDERR, "Packet not found: {$packetPath}\n");
-    exit(1);
-}
+if ($hasPacketID) {
+    $packet = fetchPacketFromDb($root, trim((string) $args['packet-id']));
+    if ($packet === null) {
+        fwrite(STDERR, "Packet ID not found in SQLite: {$args['packet-id']}\n");
+        exit(1);
+    }
+    $packetPath = 'sqlite:' . trim((string) $args['packet-id']);
+} else {
+    $packetPath = (string) $args['packet'];
+    if (!str_starts_with($packetPath, '/')) {
+        $packetPath = $root . '/' . $packetPath;
+    }
 
-try {
-    $packet = Yaml::parseFile($packetPath);
-} catch (ParseException $e) {
-    fwrite(STDERR, "Packet YAML parse error: {$e->getMessage()}\n");
-    exit(1);
-}
+    if (!is_file($packetPath)) {
+        fwrite(STDERR, "Packet not found: {$packetPath}\n");
+        exit(1);
+    }
 
-if (!is_array($packet)) {
-    fwrite(STDERR, "Packet YAML root must be a map\n");
-    exit(1);
+    try {
+        $packet = Yaml::parseFile($packetPath);
+    } catch (ParseException $e) {
+        fwrite(STDERR, "Packet YAML parse error: {$e->getMessage()}\n");
+        exit(1);
+    }
+
+    if (!is_array($packet)) {
+        fwrite(STDERR, "Packet YAML root must be a map\n");
+        exit(1);
+    }
 }
 
 $decision = buildDecision($packet, $root);
