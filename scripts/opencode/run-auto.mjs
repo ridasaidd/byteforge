@@ -5,6 +5,7 @@ import {
   buildClient,
   parseArgs,
   readUtf8,
+  runCommand,
   extractPacketId,
   extractAttempt,
   parseClarifyPacket,
@@ -47,15 +48,6 @@ function extractPacketField(packetText, fieldName) {
 
   const value = String(match[1] || "").trim().replace(/^['\"]|['\"]$/g, "");
   return value || null;
-}
-
-function runCommand(command, args, options = {}) {
-  return spawnSync(command, args, {
-    stdio: options.capture ? ["inherit", "pipe", "pipe"] : "inherit",
-    encoding: "utf8",
-    cwd: options.cwd || process.cwd(),
-    env: process.env,
-  });
 }
 
 function ensureDir(dirPath) {
