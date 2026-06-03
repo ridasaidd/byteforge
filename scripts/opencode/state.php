@@ -863,6 +863,8 @@ function ingestLatestCommand(PDO $pdo, array $args): void
     }
 
     $result = ingestArtifact($pdo, $path);
+    $resolvedPacketID = $result['packet_id'] ?? $packetID ?? 'packet';
+    emitEvent($pdo, 'PACKET_EXECUTED', 'task', $resolvedPacketID, null, 'system', json_encode(['artifact' => $path, 'status' => $result['status']], JSON_UNESCAPED_SLASHES));
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL;
 }
 
@@ -2188,8 +2190,6 @@ try {
 
         case 'build-packet':
             echo buildPacketFromTask($pdo, normalizeScalar($args['task-id'] ?? null) ?? '') . PHP_EOL;
-            break;
-            taskIngestPacketCommand($pdo, $args);
             break;
 
         case 'plan:list':
