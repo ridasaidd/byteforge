@@ -50,6 +50,16 @@ If docs conflict, trust them in this order:
 5. supporting reference docs
 6. anything in [archive/](archive/)
 
+## State Architecture
+
+SQLite (`.opencode/runtime/opencode-state.sqlite`) is the authoritative runtime state for tasks, phase plans, reference docs, runs, routing, and execution state. Markdown bootstrap docs are canonical for behavioral rules, workflow contracts, and conventions.
+
+- Query state: `npm run opencode:state:context -- --packet-id <id> --limit 5`
+- Bulk ingest: `npm run opencode:state:ingest-all`
+- Generate packets: `npm run opencode:state:build-packet -- --task-id <id>`
+
+When in doubt about runtime state, query SQLite. When in doubt about how to behave, read markdown docs.
+
 ## Regular References
 
 Read these regularly while working:
@@ -68,7 +78,19 @@ When operating in orchestrator/executor mode, executors should read only:
 2. [CURRENT_STATUS.md](CURRENT_STATUS.md)
 3. the assigned execution packet based on [execution/EXECUTION_PACKET_TEMPLATE.md](execution/EXECUTION_PACKET_TEMPLATE.md)
 
+Before dispatching, orchestrators should pull SQLite compact context:
+
+```bash
+npm run opencode:state:context -- --packet-id EP-XXX --limit 5
+```
+
 Then read only the domain docs explicitly allow-listed in that packet.
+
+Executors should pull their own compact context before execution:
+
+```bash
+npm run opencode:state:context -- --packet-id <their-packet-id> --limit 3
+```
 
 ## Sensitive Areas
 

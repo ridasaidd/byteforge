@@ -4,9 +4,10 @@ Use this template for every executor handoff.
 
 Policy:
 
-- Packet YAML is canonical for one run's scope and acceptance criteria.
-- SQLite rows are derived operational records from packet + artifacts.
-- Never treat DB rows as a replacement for packet content in git.
+- SQLite `tasks` rows are the authoritative source for a task's scope, acceptance criteria, verification commands, file targets, stop conditions, and routing metadata.
+- Packet YAML files are the current executor handoff format. They should eventually be generated from SQLite task state via `buildPacketFromTask()` / `build-packet --task-id <id>`.
+- During the migration, keep manually authored packet YAML synchronized with SQLite task state. In case of divergence on scope or criteria, SQLite `tasks` rows are the ground truth.
+- Commit both SQLite state and packet YAML to git so handoff format parity is traceable.
 
 ```yaml
 schema_version: 1

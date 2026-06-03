@@ -4,18 +4,21 @@ Status: canonical
 Audience: orchestrator + executor operators
 Last verified: 2026-05-29
 
-This guide defines how to use the local SQLite cache for packet/run state while
-keeping markdown files as canonical documentation.
+This guide defines how to use the local SQLite state database for authoritative
+runtime state (tasks, plans, reference docs, runs, routing, execution state) while
+treating markdown bootstrap docs as the authority for behavioral rules, workflow
+contracts, and conventions.
 
 ## Why This Exists
 
 SQLite reduces token use only when prompts use compact query output instead of
 pasting full historical docs and artifacts.
 
-## Canonical vs Cache
+## Authority Split: Markdown vs SQLite
 
-- Canonical: markdown docs in `.opencode/DEVELOPMENT_DOCS/**`
-- Cache: SQLite state at `.opencode/runtime/opencode-state.sqlite`
+- **Markdown bootstrap docs** (`.opencode/DEVELOPMENT_DOCS/**`): Canonical for behavioral rules, workflow contracts, delegation policies, return schemas, system conventions, and architecture descriptions.
+- **SQLite state database** (`.opencode/runtime/opencode-state.sqlite`): Canonical for runtime project state — tasks, phase plans, reference docs, runs, routing, and execution state.
+- If they diverge on task/plan/ref content, SQLite wins. If they diverge on behavioral rules, markdown wins.
 
 ## Commands
 
@@ -72,6 +75,70 @@ npm run opencode:state:verify
 Override packet and packet-id when needed:
 
 bash scripts/opencode/state-verify.sh --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --packet-id EP-003 --limit 3
+
+Bulk-ingest plans, reference docs, and packets:
+
+npm run opencode:state:ingest-all
+
+### Task State Commands
+
+Create a task from the authoritative SQLite task state:
+
+npm run opencode:state:task:create -- --task-id EP-004 --phase PHASE19 --summary "Task summary"
+
+List all tasks:
+
+npm run opencode:state:task:list
+
+Show a specific task:
+
+npm run opencode:state:task:show -- --task-id EP-004
+
+Mark a task complete:
+
+npm run opencode:state:task:complete -- --task-id EP-004
+
+Block a task:
+
+npm run opencode:state:task:block -- --task-id EP-004 --reason "Blocked reason"
+
+Unblock a task:
+
+npm run opencode:state:task:unblock -- --task-id EP-004
+
+Ingest a packet YAML file into task state:
+
+npm run opencode:state:task:ingest-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
+
+Generate a packet YAML from SQLite task state (replaces manual YAML authoring):
+
+npm run opencode:state:build-packet -- --task-id EP-004
+
+### Plan and Reference Doc Commands
+
+List ingested phase plans:
+
+npm run opencode:state:plan:list
+
+Show an ingested plan:
+
+npm run opencode:state:plan:show -- --plan-key PHASE19
+
+Ingest a single plan:
+
+npm run opencode:state:plan:ingest -- --plan-key PHASE19 --title "Phase 19" --file .opencode/DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md
+
+List ingested reference docs:
+
+npm run opencode:state:ref:list
+
+Show an ingested reference doc:
+
+npm run opencode:state:ref:show -- --doc-key TESTING
+
+Ingest a single reference doc:
+
+npm run opencode:state:ref:ingest -- --doc-key TESTING --title "Testing Guide" --file .opencode/DEVELOPMENT_DOCS/TESTING.md
 
 ## Compact Context Query Flow (Token-Efficient Orchestration)
 
@@ -234,6 +301,22 @@ retries, `stats` + `recent_runs` alone is sufficient.
 
 ## What To Store In SQLite
 
+`tasks` table is the authoritative source for task definitions:
+
+1. Identity: `task_id`, `phase`, `summary`
+2. Scope: `scope_in`, `scope_out`, `file_targets`
+3. Criteria: `acceptance_criteria`, `verification`, `doc_allow_list`, `stop_conditions`
+4. Routing: `task_class`, `risk_level`, `executor_model`, `delegate_to_executor`
+5. Lifecycle: `attempt`, `completed`, `completed_at`, `blocked`, `blocked_reason`, `priority`
+
+`phase_plans` table stores ingested phase plan content:
+
+1. `plan_key`, `title`, `content`, `status`
+
+`reference_docs` table stores ingested reference documentation content:
+
+1. `doc_key`, `title`, `content`
+
 `packets` table should keep packet metadata and latest attempt counters:
 
 1. `packet_id`, `phase`, `task_class`, `risk_level`, `summary`
@@ -278,27 +361,27 @@ And focus by task class when tuning routing:
 npm run opencode:state:report -- --task-class minor
 ```
 
-## Hybrid Operating Model (Viable Now)
-
-The hybrid approach is viable now and should be the default mode.
+## Operating Model (Default Mode)
 
 Use this split:
 
-1. Canonical truth stays in markdown docs (`.opencode/DEVELOPMENT_DOCS/**`) and packet YAML files.
-2. SQLite (`.opencode/runtime/opencode-state.sqlite`) is an operational cache for compact run history and routing context.
+1. **SQLite** (`.opencode/runtime/opencode-state.sqlite`) is the authoritative runtime state for tasks, phase plans, reference docs, runs, routing, and execution state.
+2. **Markdown bootstrap docs** (`.opencode/DEVELOPMENT_DOCS/**`) are canonical for behavioral rules, workflow contracts, and conventions.
 
 Daily flow:
 
-1. Keep packet docs and execution packet updated in git.
-2. Run broker execution (`opencode:run-auto`) to ingest packet metadata and run artifacts.
-3. Before retries, pull compact context from SQLite (`opencode:state:context`) and include only summary JSON in prompts.
-4. If a run fails without a new artifact, rely on `record-failure` fallback so context reflects the failure immediately.
-5. Periodically run `opencode:state:verify` to ensure stale-success protection and command health remain intact.
+1. Keep task state and execution state in SQLite as the primary project truth.
+2. Use packet YAML files as the executor handoff format; generate them from SQLite task state via `build-packet --task-id <id>` when possible.
+3. Run broker execution (`opencode:run-auto`) to ingest packet metadata and run artifacts.
+4. Before retries, pull compact context from SQLite (`opencode:state:context`) and include only summary JSON in prompts.
+5. If a run fails without a new artifact, rely on `record-failure` fallback so context reflects the failure immediately.
+6. Bulk-ingest all plan/ref/packet content with `opencode:state:ingest-all`.
+7. Periodically run `opencode:state:verify` to ensure stale-success protection and command health remain intact.
 
-When not to rely on SQLite alone:
+When markdown docs take precedence:
 
-1. Do not treat cache rows as product/spec truth.
-2. If packet docs and DB diverge, docs and packet files win; re-ingest from packet and artifacts.
+1. Behavioral rules, workflow contracts, schemas, and conventions live in markdown; SQLite does not override these.
+2. If SQLite task content and a manually authored packet YAML diverge on scope or criteria, SQLite is authoritative for the task definition.
 
 ## Notes
 

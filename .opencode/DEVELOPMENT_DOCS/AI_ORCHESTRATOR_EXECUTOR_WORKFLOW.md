@@ -238,18 +238,38 @@ Use this default routing table after failures.
 - max two next-best actions in failure returns, smallest first
 - default to executor delegation for non-trivial work; keep orchestrator preflight minimal
 
-## Canonical vs SQLite Policy
+## State Architecture: Markdown vs SQLite
 
-- Markdown docs and execution packets in git are canonical product/process truth.
-- SQLite state is an operational cache used for compact context, run evidence, and routing calibration.
-- Do not move normative requirements, acceptance criteria text, or roadmap decisions into SQLite-only storage.
-- If SQLite rows and markdown docs diverge, markdown docs win and state should be re-ingested from packet/artifacts.
+This project splits authority between two layers:
+
+### Markdown Bootstrap Docs (Behavioral Rules)
+
+- Define orchestrator behavior, workflow contracts, delegation policies, and return schemas.
+- Define system conventions, testing standards, security policies, and comment policies.
+- Document the architectural skeleton: auth model, tenancy boundaries, frontend stack, CI pipeline.
+- **Markdown wins for behavioral rules and architecture conventions.**
+
+### SQLite Runtime State (Project Truth)
+
+- Authoritative source for tasks, phase plans, reference documentation, and execution state.
+- Authoritative source for run history, routing metadata, token/cost tracking, and stale-protection state.
+- `tasks` table holds scope, acceptance criteria, verification commands, file targets, stop conditions, and routing metadata.
+- `phase_plans` and `reference_docs` tables hold ingested plan and reference content.
+- Execution state lives in `runs` and `packets` tables.
+- **SQLite wins for task/plan/ref/run/routing/execution state.**
+
+### Interaction
+
+- Packet YAML files in git are the current executor handoff format but are transitioning toward becoming generated execution artifacts from SQLite task state via `buildPacketFromTask()` / `build-packet`.
+- Orchestrators should query SQLite compact context (`opencode:state:context`) instead of reconstructing project state from markdown documents.
+- If SQLite rows and markdown docs diverge on **task/plan/ref content**, SQLite wins. If they diverge on **behavioral rules**, markdown wins.
+- Use `opencode:state:ingest-all` to bulk-ingest phase plans, reference docs, and execution packets into SQLite.
 
 ## Operational Runbook
 
 - Local OpenCode packet broker usage is documented in
   `.opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md`.
-- SQLite state-cache usage is documented in
+- SQLite state database usage is documented in
   `.opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md`.
 - Recommended execution path:
   - `opencode:dispatch` to choose profile

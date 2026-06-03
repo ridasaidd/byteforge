@@ -2,7 +2,7 @@
 
 ## Orientation
 
-Read `.opencode/DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedence, sensitive areas, and the comments policy. When docs conflict, trust order: AGENT_START > CURRENT_STATUS > ROADMAP > phase plans > reference docs > archive/. For structured state queries (tasks, runs, routing), use the SQLite database at `.opencode/runtime/opencode-state.sqlite`.
+Read `.opencode/DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedence, sensitive areas, and the comments policy. When docs conflict, trust order: AGENT_START > CURRENT_STATUS > ROADMAP > phase plans > reference docs > archive/. For authoritative runtime state (tasks, plans, refs, runs, routing, execution state), use the SQLite database at `.opencode/runtime/opencode-state.sqlite`.
 
 ## Orchestrator Executor Mode
 
@@ -10,6 +10,7 @@ Read `.opencode/DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedenc
 - Packet template: `.opencode/DEVELOPMENT_DOCS/execution/EXECUTION_PACKET_TEMPLATE.md`
 - In this mode, the executor should read only `AGENTS.md`, `.opencode/DEVELOPMENT_DOCS/AGENT_START.md`, and the assigned execution packet before any task-specific docs.
 - Executor responses must use the workflow's success/failure schemas, including `task_ref` and `schema_version`.
+- `buildPacketFromTask()` / `build-packet --task-id <id>` generates executor packets from SQLite task state. This is the intended long-term path; manually authored packet YAML files remain the current handoff format.
 
 ### Gate 0 Clarification Policy
 
@@ -27,6 +28,20 @@ Read `.opencode/DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedenc
 - Delegate when task requires file edits, stash/diff triage, more than two file reads, or validation commands after edits.
 - Keep orchestration token usage low by using compact state context and packet deltas instead of long conversational context.
 - Only keep work in orchestrator when it is a tiny operational check or explicit local git plumbing.
+
+## State Architecture
+
+SQLite is the authoritative runtime state. Markdown bootstrap docs are canonical for behavioral rules.
+
+| Layer | What it holds | Authority on divergence |
+|---|---|---|
+| SQLite (`tasks`, `plans`, `refs`, `runs`, `packets`, `routing`) | Task definitions, phase plan content, reference doc content, run history, execution state, routing metadata | Wins for task/plan/ref/run/routing/execution state |
+| Markdown bootstrap docs | Behavioral rules, workflow contracts, orchestration policies, return schemas, system conventions, architecture descriptions | Wins for behavioral rules and conventions |
+
+- Orchestrators should query SQLite compact context (`opencode:state:context`) instead of reconstructing project state from markdown documents.
+- `buildPacketFromTask()` / `build-packet --task-id <id>` is the intended path for generating executor packets from SQLite task state.
+- Packet YAML files remain the current executor handoff format but are transitioning toward generated execution artifacts.
+- Use `opencode:state:ingest-all` to bulk-ingest plans, refs, and packets into SQLite.
 
 ## Current Project Truth
 

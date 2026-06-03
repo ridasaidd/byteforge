@@ -134,7 +134,7 @@ To keep token spend low without repeating instructions each run:
 - let executor perform deep reads, edits, and validation inside packet scope
 - only bypass executor for tiny operational checks or explicit local git plumbing
 
-## SQLite State Cache (Token Reduction)
+## SQLite State Database (Token Reduction)
 
 Initialize DB once:
 
@@ -244,11 +244,44 @@ npm run opencode:state:route-upsert -- --task-class minor --risk-level low --pro
 npm run opencode:state:route-list
 ```
 
+Bulk-ingest all plans, refs, and packets into state:
+
+```bash
+npm run opencode:state:ingest-all
+```
+
+Manage authoritative task state in SQLite:
+
+```bash
+npm run opencode:state:task:create -- --task-id EP-004 --phase PHASE19 --summary "Task summary"
+npm run opencode:state:task:list
+npm run opencode:state:task:show -- --task-id EP-004
+npm run opencode:state:task:complete -- --task-id EP-004
+npm run opencode:state:task:block -- --task-id EP-004 --reason "Blocked reason"
+npm run opencode:state:task:unblock -- --task-id EP-004
+npm run opencode:state:task:ingest-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
+```
+
+Generate a packet YAML from SQLite task state (intended long-term packet path):
+
+```bash
+npm run opencode:state:build-packet -- --task-id EP-004
+```
+
+Query ingested plans and reference docs:
+
+```bash
+npm run opencode:state:plan:list
+npm run opencode:state:plan:show -- --plan-key PHASE19
+npm run opencode:state:ref:list
+npm run opencode:state:ref:show -- --doc-key TESTING
+```
+
 Enforcement policy:
 
 - Orchestrator retries must use `opencode:state:context` (compact JSON), not pasted full artifact history.
 - Routing changes should be done through `opencode:state:route-upsert` (or `opencode:state:calibrate -- --apply`) so decisions are auditable.
-- Keep markdown docs canonical for requirements and plans; SQLite is operational memory.
+- Markdown bootstrap docs are canonical for behavioral rules and conventions; SQLite is the authoritative runtime state for tasks, plans, refs, runs, and routing.
 
 ## Gate 0 Clarification Short-Circuit
 
@@ -372,4 +405,4 @@ Recommended cadence:
 - Result parsing enforces required executor schema fields (`schema_version`, `status`, `task_ref.*`, and `failure_type` when failed).
 - Outputs that are not schema-compliant YAML are treated as `failed:invalid_schema` for deterministic rerouting.
 - Auto dispatcher keeps token cost lower by selecting the smallest profile that matches packet risk.
-- SQLite state cache keeps token cost lower by giving compact run history and status summaries.
+- SQLite state database keeps token cost lower by giving compact run history and status summaries.
