@@ -405,6 +405,120 @@ export function stripCodeFence(text) {
   return source;
 }
 
+export function extractRawTextFromV1(message) {
+  const parts = Array.isArray(message?.parts) ? message.parts : [];
+  return parts
+    .filter((part) => part && part.type === "text" && typeof part.text === "string")
+    .map((part) => part.text.trim())
+    .filter(Boolean)
+    .join("\n\n");
+}
+
+export function extractRawTextFromV2(messages) {
+  const items = Array.isArray(messages?.items) ? messages.items : [];
+  const assistant = items.filter((item) => item && item.type === "assistant");
+  if (assistant.length === 0) {
+    return "";
+  }
+
+  for (let index = assistant.length - 1; index >= 0; index -= 1) {
+    const content = Array.isArray(assistant[index].content) ? assistant[index].content : [];
+    const chunks = content
+      .filter((part) => part && part.type === "text" && typeof part.text === "string")
+      .map((part) => part.text.trim())
+      .filter(Boolean);
+
+    const raw = chunks.join("\n\n");
+    if (raw) {
+      return raw;
+    }
+  }
+
+  return "";
+}
+
+export function extractRawTextForDetection(result) {
+  if (!result || !result.raw) {
+    return "";
+  }
+
+  const raw = result.raw;
+
+  if (raw.items) {
+    return extractRawTextFromV2(raw);
+  }
+
+  if (raw.parts) {
+    return extractRawTextFromV1(raw);
+  }
+
+  const fromV2 = extractRawTextFromV2(raw);
+  if (fromV2) {
+    return fromV2;
+  }
+
+  return extractRawTextFromV1(raw);
+}
+
+export function detectNonCompliance(rawText) {
+  const text = String(rawText || "");
+  if (!text.trim()) {
+    return { nonCompliant: false, reasons: [] };
+  }
+
+  const reasons = [];
+
+  if (/```/.test(text)) {
+    reasons.push("markdown_fences");
+  }
+
+  const lines = text.split(/\r?\n/);
+  let firstNonBlankLine = null;
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed) {
+      firstNonBlankLine = trimmed;
+      break;
+    }
+  }
+
+  if (firstNonBlankLine && !firstNonBlankLine.startsWith("schema_version:")) {
+    reasons.push("leading_prose");
+  }
+
+  const yamlLines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (yamlLines.length > 0) {
+    const lastLine = yamlLines[yamlLines.length - 1];
+    const looksLikeYaml = /^[\s-]*[A-Za-z0-9_]+:\s/.test(lastLine) || /^\s*-\s/.test(lastLine);
+    if (!looksLikeYaml) {
+      reasons.push("trailing_prose");
+    }
+  }
+
+  return {
+    nonCompliant: reasons.length > 0,
+    reasons,
+  };
+}
+
+export function buildRetryPrompt(packetText, previousResponse) {
+  return [
+    "Your previous response violated the executor contract.",
+    "Return only the YAML document.",
+    "No prose.",
+    "No markdown fences.",
+    "No explanation.",
+    "",
+    "Execution packet:",
+    packetText,
+    "",
+    "Here was your invalid response that you must NOT repeat:",
+    "---BEGIN INVALID RESPONSE---",
+    previousResponse,
+    "---END INVALID RESPONSE---",
+  ].join("\n");
+}
+
 export function getArtifactsDir(cwd = process.cwd()) {
   return path.resolve(getRuntimeDir(cwd), "runs");
 }
