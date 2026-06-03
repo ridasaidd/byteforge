@@ -40,6 +40,7 @@ Usage:
   Ingestion:
   php scripts/opencode/state.php ingest-all [--dry-run]
   php scripts/opencode/state.php task:ingest-packet --packet <file>
+  php scripts/opencode/state.php build-packet --task-id <id>
 
 Environment:
     OPENCODE_RUNTIME_DIR (optional, defaults to .opencode/runtime)
@@ -1014,6 +1015,8 @@ SQL
         ':prompt_hash' => $promptHash,
         ':created_at' => nowIso(),
     ]);
+
+    emitEvent($pdo, 'PACKET_EXECUTION_FAILED', 'task', $packetID, null, 'system', json_encode(['failure_type' => $failureType, 'attempt' => $attempt], JSON_UNESCAPED_SLASHES));
 
     echo json_encode([
         'ok' => true,
@@ -2189,7 +2192,11 @@ try {
             break;
 
         case 'build-packet':
-            echo buildPacketFromTask($pdo, normalizeScalar($args['task-id'] ?? null) ?? '') . PHP_EOL;
+            $requestedTaskID = normalizeScalar($args['task-id'] ?? null);
+            if ($requestedTaskID === null) {
+                throw new RuntimeException('--task-id is required');
+            }
+            echo buildPacketFromTask($pdo, $requestedTaskID) . PHP_EOL;
             break;
 
         case 'plan:list':
