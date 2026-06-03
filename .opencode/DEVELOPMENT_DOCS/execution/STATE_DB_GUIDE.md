@@ -14,7 +14,7 @@ pasting full historical docs and artifacts.
 
 ## Canonical vs Cache
 
-- Canonical: markdown docs in `DEVELOPMENT_DOCS/**`
+- Canonical: markdown docs in `.opencode/DEVELOPMENT_DOCS/**`
 - Cache: SQLite state at `.opencode/runtime/opencode-state.sqlite`
 
 ## Commands
@@ -25,7 +25,7 @@ npm run opencode:state:init
 
 Ingest packet metadata:
 
-npm run opencode:state:ingest-packet -- --packet DEVELOPMENT_DOCS/execution/packet.yaml
+npm run opencode:state:ingest-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
 
 Ingest latest artifact:
 
@@ -71,7 +71,7 @@ npm run opencode:state:verify
 
 Override packet and packet-id when needed:
 
-bash scripts/opencode/state-verify.sh --packet DEVELOPMENT_DOCS/execution/packet.yaml --packet-id EP-003 --limit 3
+bash scripts/opencode/state-verify.sh --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --packet-id EP-003 --limit 3
 
 ## Compact Context Query Flow (Token-Efficient Orchestration)
 
@@ -284,7 +284,7 @@ The hybrid approach is viable now and should be the default mode.
 
 Use this split:
 
-1. Canonical truth stays in markdown docs (`DEVELOPMENT_DOCS/**`) and packet YAML files.
+1. Canonical truth stays in markdown docs (`.opencode/DEVELOPMENT_DOCS/**`) and packet YAML files.
 2. SQLite (`.opencode/runtime/opencode-state.sqlite`) is an operational cache for compact run history and routing context.
 
 Daily flow:

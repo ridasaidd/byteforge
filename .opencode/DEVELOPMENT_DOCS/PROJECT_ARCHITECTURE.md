@@ -194,7 +194,7 @@ byteforge/
 │   ├── Unit/                    # Unit tests (PHPUnit)
 │   └── TestCase.php
 │
-├── DEVELOPMENT_DOCS/            # Project documentation
+├── .opencode/DEVELOPMENT_DOCS/            # Project documentation
 │   ├── PROJECT_ARCHITECTURE.md  # This file
 │   ├── reference/THEME_SYSTEM_ARCHITECTURE.md
 │   ├── reference/API_DOCUMENTATION.md

@@ -23,6 +23,7 @@ function usage() {
   console.error([
     "Usage:",
     "  node scripts/opencode/run-auto.mjs --packet <file> [--mode v1|auto|v2] [--finalize-git --commit-message <msg> --all|--files <csv>] [--push]",
+    "  node scripts/opencode/run-auto.mjs --packet-id <id> [--mode v1|auto|v2] [--finalize-git --commit-message <msg> --all|--files <csv>] [--push]",
     "",
     "Optional overrides:",
     "  --provider <id>  manual provider override (bypasses auto provider)",
@@ -31,9 +32,9 @@ function usage() {
     "  --session <id>   forward to run-packet",
     "  --title <title>  forward to run-packet",
     "  --agent <name>   forward to run-packet",
-    "  --plan-sync      mark a checklist step complete in the phase markdown file after validated success",
-    "  --plan-sync-dry-run  show what checklist update would be made without writing files",
-    "  --phase-plan <path>  explicit markdown plan file path override for plan sync",
+    "  --plan-sync      complete task in SQLite after validated success",
+    "  --plan-sync-dry-run  show task completion without writing",
+    "  --phase-plan <path>  explicit phase plan file path override (deprecated, uses SQLite)",
   ].join("\n"));
 }
 
@@ -242,7 +243,7 @@ function resolvePhasePlanPath(projectRoot, packetPhase, overridePath) {
     }
   }
 
-  const docsPlansDir = path.resolve(projectRoot, "DEVELOPMENT_DOCS/plans");
+  const docsPlansDir = path.resolve(projectRoot, ".opencode/DEVELOPMENT_DOCS/plans");
   if (fs.existsSync(docsPlansDir)) {
     for (const fileName of fs.readdirSync(docsPlansDir)) {
       if (!fileName.toLowerCase().endsWith(".md")) {
@@ -387,14 +388,20 @@ function ingestState(projectRoot, args) {
   }
 }
 
-function dispatchDecision(projectRoot, packetPath) {
-  const result = runCommand("php", [
+function dispatchDecision(projectRoot, packetPath, packetID) {
+  const dispatchArgs = [
     path.resolve(projectRoot, "scripts/opencode/dispatch.php"),
-    "--packet",
-    packetPath,
     "--format",
     "json",
-  ], { capture: true, cwd: projectRoot });
+  ];
+
+  if (packetID && packetPath.startsWith("sqlite:")) {
+    dispatchArgs.push("--packet-id", packetID);
+  } else {
+    dispatchArgs.push("--packet", packetPath);
+  }
+
+  const result = runCommand("php", dispatchArgs, { capture: true, cwd: projectRoot });
 
   if (result.status !== 0) {
     const err = (result.stderr || result.stdout || "dispatch failed").trim();
@@ -827,17 +834,60 @@ async function runLoopWithTelemetry(projectRoot, runLoopArgs) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.packet) {
+  if (!args.packet && !args["packet-id"]) {
     usage();
     process.exit(1);
   }
 
   const projectRoot = path.resolve(process.cwd());
-  const packetPath = path.resolve(projectRoot, String(args.packet));
-  const packetText = readUtf8(packetPath);
-  const packetID = extractPacketId(packetText, "packet");
-  const packetAttempt = extractAttempt(packetText);
-  const packetPhase = extractPacketField(packetText, "phase");
+  const hasPacketId = args["packet-id"] != null;
+
+  let packetPath, packetText, packetID, packetAttempt, packetPhase;
+
+  if (hasPacketId) {
+    packetID = String(args["packet-id"]).trim();
+    packetPath = `sqlite:${packetID}`;
+
+    const contextResult = runCommand("php", [
+      path.resolve(projectRoot, "scripts/opencode/state.php"),
+      "context",
+      "--packet-id",
+      packetID,
+    ], { capture: true, cwd: projectRoot });
+
+    if (contextResult.status !== 0) {
+      console.error(`Packet ID not found in SQLite: ${packetID}`);
+      process.exit(1);
+    }
+
+    let context;
+    try {
+      context = JSON.parse(contextResult.stdout);
+    } catch {
+      console.error(`Failed to parse SQLite context for ${packetID}`);
+      process.exit(1);
+    }
+
+    if (!context.packet) {
+      console.error(`Packet ${packetID} not found in SQLite`);
+      process.exit(1);
+    }
+
+    if (context.packet.packet_yaml) {
+      packetText = context.packet.packet_yaml;
+      packetPhase = context.packet.phase || null;
+      packetAttempt = context.packet.last_attempt || 0;
+    } else {
+      console.error(`Packet ${packetID} found but has no packet_yaml. Use --packet with a YAML file.`);
+      process.exit(1);
+    }
+  } else {
+    packetPath = path.resolve(projectRoot, String(args.packet));
+    packetText = readUtf8(packetPath);
+    packetID = extractPacketId(packetText, "packet");
+    packetPhase = extractPacketField(packetText, "phase");
+    packetAttempt = extractAttempt(packetText);
+  }
   const planSyncRequested = shouldSyncPlan(args);
   const planSyncDryRun = isPlanSyncDryRun(args);
   const phasePlanOverride = args["phase-plan"] ? String(args["phase-plan"]) : null;
@@ -845,9 +895,7 @@ async function main() {
 
   if (clarification) {
     const alreadyExists = packetExistsInState(projectRoot, packetID);
-    if (alreadyExists) {
-      console.error(`warning: packet_id ${packetID} already exists in state; skipping clarify ingest to avoid mutating historical packet metadata`);
-    } else {
+    if (!alreadyExists && !hasPacketId) {
       ingestState(projectRoot, [
         path.resolve(projectRoot, "scripts/opencode/state.php"),
         "ingest-packet",
@@ -869,14 +917,16 @@ async function main() {
   }
 
   try {
-    ingestState(projectRoot, [
-      path.resolve(projectRoot, "scripts/opencode/state.php"),
-      "ingest-packet",
-      "--packet",
-      packetPath,
-    ]);
+    if (!hasPacketId) {
+      ingestState(projectRoot, [
+        path.resolve(projectRoot, "scripts/opencode/state.php"),
+        "ingest-packet",
+        "--packet",
+        packetPath,
+      ]);
+    }
 
-    const decision = dispatchDecision(projectRoot, packetPath);
+    const decision = dispatchDecision(projectRoot, packetPath, packetID);
 
     console.log(JSON.stringify({
       route: decision.route,
@@ -901,11 +951,15 @@ async function main() {
 
     const runLoopArgs = [
       path.resolve(projectRoot, "scripts/opencode/run-loop.sh"),
-      "--packet",
-      packetPath,
       "--mode",
       String(args.mode || "v1"),
     ];
+
+    if (hasPacketId) {
+      runLoopArgs.push("--packet-id", packetID);
+    } else {
+      runLoopArgs.push("--packet", packetPath);
+    }
 
     if (args.session) {
       runLoopArgs.push("--session", String(args.session));
@@ -942,28 +996,22 @@ async function main() {
       ]);
 
       if (planSyncRequested) {
-        const syncResult = planSyncFromArtifact({
-          projectRoot,
-          artifactPath: artifactAfter,
-          packetID,
-          packetPhase,
-          dryRun: planSyncDryRun,
-          phasePlanOverride,
-        });
+        const taskCompleteAction = planSyncDryRun ? "would complete" : "completed";
+        console.error(`plan-sync: ${taskCompleteAction} task ${packetID}`);
 
-        if (syncResult.ok) {
-          if (syncResult.dryRun) {
-            console.error(`plan-sync: dry-run ${syncResult.phasePlanPath}:${syncResult.lineNumber}`);
-            console.error(`plan-sync:   before ${syncResult.before}`);
-            console.error(`plan-sync:   after  ${syncResult.after}`);
+        if (!planSyncDryRun) {
+          const completeResult = runCommand("php", [
+            path.resolve(projectRoot, "scripts/opencode/state.php"),
+            "task:complete",
+            "--task-id",
+            packetID,
+          ], { capture: true, cwd: projectRoot });
+
+          if (completeResult.status === 0) {
+            console.error(`plan-sync: task ${packetID} marked completed in SQLite`);
           } else {
-            console.error(`plan-sync: updated ${syncResult.phasePlanPath}:${syncResult.lineNumber}`);
-            console.error(`plan-sync:   ${syncResult.before}`);
-            console.error(`plan-sync: ->${syncResult.after}`);
+            console.error(`plan-sync: failed to complete task ${packetID}: ${completeResult.stdout} ${completeResult.stderr}`);
           }
-        } else {
-          const detail = syncResult.issues ? ` (${syncResult.issues.join("; ")})` : "";
-          console.error(`plan-sync: skipped (${syncResult.reason})${detail}`);
         }
       }
     } else if (loopResult.status !== 0) {

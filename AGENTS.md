@@ -2,13 +2,13 @@
 
 ## Orientation
 
-Read `DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedence, sensitive areas, and the comments policy. When docs conflict, trust order: AGENT_START > CURRENT_STATUS > ROADMAP > phase plans > reference docs > archive/.
+Read `.opencode/DEVELOPMENT_DOCS/AGENT_START.md` first. It defines doc precedence, sensitive areas, and the comments policy. When docs conflict, trust order: AGENT_START > CURRENT_STATUS > ROADMAP > phase plans > reference docs > archive/. For structured state queries (tasks, runs, routing), use the SQLite database at `.opencode/runtime/opencode-state.sqlite`.
 
 ## Orchestrator Executor Mode
 
-- Workflow contract: `DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
-- Packet template: `DEVELOPMENT_DOCS/execution/EXECUTION_PACKET_TEMPLATE.md`
-- In this mode, the executor should read only `AGENTS.md`, `DEVELOPMENT_DOCS/AGENT_START.md`, and the assigned execution packet before any task-specific docs.
+- Workflow contract: `.opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
+- Packet template: `.opencode/DEVELOPMENT_DOCS/execution/EXECUTION_PACKET_TEMPLATE.md`
+- In this mode, the executor should read only `AGENTS.md`, `.opencode/DEVELOPMENT_DOCS/AGENT_START.md`, and the assigned execution packet before any task-specific docs.
 - Executor responses must use the workflow's success/failure schemas, including `task_ref` and `schema_version`.
 
 ### Gate 0 Clarification Policy

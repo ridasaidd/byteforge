@@ -69,7 +69,7 @@ This is enabled by default (`OPENCODE_TAIL_EVENTS=1`). Set `OPENCODE_TAIL_EVENTS
 
 Terminal A (execute packet):
 
-`npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode v1`
+`npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1`
 
 `run-packet` prints `session_id=<id> packet_id=<id>` as soon as the session is created.
 
@@ -81,7 +81,7 @@ This gives live visibility into edits/diffs and completion status without waitin
 
 ## One-Command Runner (run-packet + parse-result)
 
-npm run opencode:run-loop -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
+npm run opencode:run-loop -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
 
 Runs run-packet then parse-result in one command. Prints the deterministic route
 outcome as the last output line. Exits 0 on "success" and non-zero on any "failed:*"
@@ -100,7 +100,7 @@ Safety guards:
 
 ## Auto Dispatcher (Token-Efficient Routing)
 
-npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
+npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
 
 This command reads `execution_policy` from the packet, chooses a model profile,
 then runs `opencode:run-loop` with provider/model overrides.
@@ -123,7 +123,7 @@ Profile model env overrides (optional):
 
 Inspect dispatcher decision only:
 
-npm run opencode:dispatch -- --packet DEVELOPMENT_DOCS/execution/packet.yaml
+npm run opencode:dispatch -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
 
 ## Operator Default (No Reminder Mode)
 
@@ -145,7 +145,7 @@ npm run opencode:state:init
 Ingest packet metadata (manual, optional because `run-auto` does this automatically):
 
 ```bash
-npm run opencode:state:ingest-packet -- --packet DEVELOPMENT_DOCS/execution/packet.yaml
+npm run opencode:state:ingest-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
 ```
 
 Ingest latest artifact result (manual, optional because `run-auto` does this automatically):
@@ -173,7 +173,7 @@ by `ingest-latest` or `context`.
 
 The compact context query flow is the recommended way to give executors run-history
 awareness without burning tokens on full artifact text. See
-`DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md#compact-context-query-flow-token-efficient-orchestration`
+`.opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md#compact-context-query-flow-token-efficient-orchestration`
 for the detailed schema, prompt example, and stale-artifact protection design.
 
 ### Typical orchestrator flow
@@ -277,17 +277,17 @@ Unblocking routine:
 
 After a successful executor+audit result, run local git plumbing in one command:
 
-npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --files scripts/opencode/run-loop.sh,package.json
+npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --files scripts/opencode/run-loop.sh,package.json
 
 Or stage all:
 
-npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --all
+npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --all
 
 Add `--push` to push immediately after commit.
 
 ## Run One Execution Packet
 
-npm run opencode:run-packet -- --packet DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
+npm run opencode:run-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
 
 ## Get Latest Artifact Path
 
@@ -331,7 +331,7 @@ Each artifact includes:
 
 ## Broker Validation Suite (Low-Token Daily Ops)
 
-Use the packet suite in `DEVELOPMENT_DOCS/execution/broker-validation/` to validate broker health without broad token spend.
+Use the packet suite in `.opencode/DEVELOPMENT_DOCS/execution/broker-validation/` to validate broker health without broad token spend.
 
 Quick daily run (default, no executor token call):
 
@@ -352,9 +352,9 @@ npm run opencode:broker-verify:full
 
 Suite packets:
 
-- `DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-clarify.yaml`
-- `DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml`
-- `DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml`
+- `.opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-clarify.yaml`
+- `.opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml`
+- `.opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml`
 
 Recommended cadence:
 

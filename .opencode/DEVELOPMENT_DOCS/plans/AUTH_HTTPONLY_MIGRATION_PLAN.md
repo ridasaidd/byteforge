@@ -632,9 +632,9 @@ Frontend:
 
 Documentation:
 
-- `DEVELOPMENT_DOCS/reference/AUTH_STRATEGY.md`
-- `DEVELOPMENT_DOCS/TESTING.md`
-- `DEVELOPMENT_DOCS/CURRENT_STATUS.md`
+- `.opencode/DEVELOPMENT_DOCS/reference/AUTH_STRATEGY.md`
+- `.opencode/DEVELOPMENT_DOCS/TESTING.md`
+- `.opencode/DEVELOPMENT_DOCS/CURRENT_STATUS.md`
 
 ---
 

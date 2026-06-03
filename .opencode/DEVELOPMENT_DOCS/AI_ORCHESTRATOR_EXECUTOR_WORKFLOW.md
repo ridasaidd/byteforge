@@ -88,12 +88,12 @@ Token budget guidance for orchestrator preflight:
 Executors must read only:
 
 1. `AGENTS.md`
-2. `DEVELOPMENT_DOCS/AGENT_START.md`
+2. `.opencode/DEVELOPMENT_DOCS/AGENT_START.md`
 3. current execution packet
 
 Only after that, read the domain doc(s) listed in the packet.
 
-Do not read `DEVELOPMENT_DOCS/archive/**` unless the packet explicitly allows
+Do not read `.opencode/DEVELOPMENT_DOCS/archive/**` unless the packet explicitly allows
 it.
 
 ## Execution Packet Schema
@@ -119,7 +119,7 @@ scope:
   out:
     - "What is not allowed"
 doc_allow_list:
-  - "DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md"
+  - ".opencode/DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md"
 code_targets:
   - "path/to/file"
 acceptance_criteria:
@@ -248,9 +248,9 @@ Use this default routing table after failures.
 ## Operational Runbook
 
 - Local OpenCode packet broker usage is documented in
-  `DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md`.
+  `.opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md`.
 - SQLite state-cache usage is documented in
-  `DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md`.
+  `.opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md`.
 - Recommended execution path:
   - `opencode:dispatch` to choose profile
   - `opencode:run-auto` to execute packet with selected model
