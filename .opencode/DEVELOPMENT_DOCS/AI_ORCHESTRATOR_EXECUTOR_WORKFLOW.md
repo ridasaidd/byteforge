@@ -276,3 +276,19 @@ This project splits authority between two layers:
   - `opencode:run-auto` to execute packet with selected model
   - orchestrator audit
   - optional local `opencode:git-finalize` for git plumbing
+
+Workflow Validation Tasks
+
+When the purpose of a task is to validate:
+
+- broker behavior
+- SQLite state management
+- packet generation
+- executor dispatch
+- artifact processing
+- review flow
+- orchestration policies
+
+executor dispatch is mandatory regardless of task_class or risk_level.
+
+The orchestrator may not perform implementation directly.
