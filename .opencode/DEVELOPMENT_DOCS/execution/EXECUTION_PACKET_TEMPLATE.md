@@ -31,7 +31,7 @@ Use this template for every executor handoff.
 It does not replace the mandatory bootstrap set:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 3. assigned execution packet
 
 Only after reading those may the executor read files listed in `doc_allow_list`.

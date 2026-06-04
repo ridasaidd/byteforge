@@ -11,11 +11,11 @@ loading the canonical docs.
 
 Before substantial work, read these in order:
 
-1. [AGENT_START.md](AGENT_START.md)
-2. [CURRENT_STATUS.md](CURRENT_STATUS.md)
+1. [AGENT_START.md](../bootstrap/AGENT_START.md)
+2. [CURRENT_STATUS.md](../state/CURRENT_STATUS.md)
 3. [TESTING.md](TESTING.md)
 
-Use [README.md](README.md) as the document map and precedence reference.
+Use [README.md](../README.md) as the document map and precedence reference.
 
 ## Agent Working Style
 

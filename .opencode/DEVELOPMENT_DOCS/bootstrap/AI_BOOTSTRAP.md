@@ -42,13 +42,13 @@ so. In particular, `AGENT_START.md` is a compatibility redirect only.
 ### All agents
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 
 ### Orchestrators
 
 In addition to the all-agent set:
 
-3. `.opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
+3. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
 4. `.opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md` when querying runtime state
 5. `.opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md` when dispatching or reviewing broker runs
 
@@ -146,7 +146,7 @@ Orchestrators must query runtime state through approved commands, usually:
 
 ```bash
 npm run opencode:state:context -- --packet-id <packet-id> --limit 5
-npm run opencode:state:task:show -- --task-id <task-id>
+npm run opencode:task:show -- --task-id <task-id>
 ```
 
 ### Mandatory Delegation Rule
@@ -239,3 +239,6 @@ Do not add broad explanatory comments across the codebase for future agents.
 Add comments only where they protect a non-obvious invariant, such as security
 boundaries, tenant scoping, payment/booking rules, asymmetric normalization or
 escaping, or surprising framework interactions.
+
+Runtime artifacts belong under .opencode/runtime/.
+Documentation, schemas, examples, and validation fixtures remain under DEVELOPMENT_DOCS/.

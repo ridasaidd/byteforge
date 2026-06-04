@@ -11,7 +11,7 @@ This is the only root-level AI discovery document for ByteForge.
 Every AI agent must start here, then read exactly the canonical bootstrap document:
 
 ```text
-.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md
+.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md
 ```
 
 `AGENT_START.md` is retained only as a compatibility redirect. It is not the
@@ -34,11 +34,11 @@ When these layers conflict:
 All agents:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 
 Orchestrators additionally read:
 
-3. `.opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
+3. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
 4. `.opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md` when using runtime state
 5. `.opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md` when dispatching through OpenCode
 
@@ -90,8 +90,8 @@ Common commands:
 
 ```bash
 npm run opencode:state:context -- --packet-id <packet-id> --limit 5
-npm run opencode:state:task:list
-npm run opencode:state:task:show -- --task-id <task-id>
+npm run opencode:task:list
+npm run opencode:task:show -- --task-id <task-id>
 npm run opencode:state:build-packet -- --task-id <task-id>
 npm run opencode:state:report
 npm run opencode:state:route-list

@@ -12,35 +12,35 @@ execution_policy:
   finalize_git: false
 scope:
   in:
-    - "Move legacy top-level phase docs under DEVELOPMENT_DOCS/archive/completed-phases/"
+    - "Move legacy top-level phase docs under .opencode/DEVELOPMENT_DOCS/archive/completed-phases/"
     - "Rewrite affected links across DEVELOPMENT_DOCS so no broken references remain"
     - "Keep canonical docs pointing to CURRENT_STATUS, ROADMAP, and PHASE_STATUS_MATRIX"
-    - "Perform a lightweight duplicate-link sweep in DEVELOPMENT_DOCS/README.md"
+    - "Perform a lightweight duplicate-link sweep in .opencode/DEVELOPMENT_DOCS/README.md"
   out:
     - "No code changes outside DEVELOPMENT_DOCS"
     - "Do not alter product requirements or roadmap intent"
     - "Do not delete historical content"
 doc_allow_list:
   - "AGENTS.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
-  - "DEVELOPMENT_DOCS/ROADMAP.md"
-  - "DEVELOPMENT_DOCS/README.md"
-  - "DEVELOPMENT_DOCS/PHASE_STATUS_MATRIX.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - ".opencode/DEVELOPMENT_DOCS/state/CURRENT_STATUS.md"
+  - ".opencode/DEVELOPMENT_DOCS/state/ROADMAP.md"
+  - ".opencode/DEVELOPMENT_DOCS/README.md"
+  - ".opencode/DEVELOPMENT_DOCS/state/PHASE_STATUS_MATRIX.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/"
 code_targets:
-  - "DEVELOPMENT_DOCS/README.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/PHASE_STATUS_MATRIX.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/PHASE7_FONT_SYSTEM.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/PHASE7_FONT_SYSTEM_COMPLETE.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/PHASE8_PAGE_SYSTEM_REFACTOR.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/PHASE12_TENANT_RUNTIME_READINESS.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/PHASE13_BOOKING_SYSTEM.md"
-  - "DEVELOPMENT_DOCS/archive/completed-phases/"
+  - ".opencode/DEVELOPMENT_DOCS/README.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - ".opencode/DEVELOPMENT_DOCS/state/PHASE_STATUS_MATRIX.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/PHASE7_FONT_SYSTEM.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/PHASE7_FONT_SYSTEM_COMPLETE.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/PHASE8_PAGE_SYSTEM_REFACTOR.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/PHASE12_TENANT_RUNTIME_READINESS.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/PHASE13_BOOKING_SYSTEM.md"
+  - ".opencode/DEVELOPMENT_DOCS/archive/completed-phases/"
 acceptance_criteria:
   - id: AC-1
-    text: "Legacy top-level phase docs are moved to DEVELOPMENT_DOCS/archive/completed-phases without content loss"
+    text: "Legacy top-level phase docs are moved to .opencode/DEVELOPMENT_DOCS/archive/completed-phases without content loss"
   - id: AC-2
     text: "DEVELOPMENT_DOCS markdown links remain valid after move (no broken references in touched docs)"
   - id: AC-3

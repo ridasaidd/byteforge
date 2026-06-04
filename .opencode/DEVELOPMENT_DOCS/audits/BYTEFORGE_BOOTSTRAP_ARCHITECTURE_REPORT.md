@@ -15,7 +15,7 @@ ByteForge should use a three-layer authority model:
 The new deterministic bootstrap flow is:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 3. role-specific docs
 4. packet
 5. additive `doc_allow_list` docs
@@ -46,11 +46,11 @@ The new deterministic bootstrap flow is:
 Mandatory for all agents:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 
 Mandatory for orchestrators:
 
-3. `.opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
+3. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
 4. `STATE_DB_GUIDE.md` when querying runtime state
 5. `OPENCODE_BROKER.md` when dispatching/reviewing broker runs
 
@@ -95,9 +95,9 @@ Mandatory for executors:
 Modified/new artifacts produced:
 
 - `AGENTS.md`
-- `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
-- `.opencode/DEVELOPMENT_DOCS/AGENT_START.md`
-- `.opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
+- `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
+- `.opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md`
+- `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
 - `.opencode/DEVELOPMENT_DOCS/execution/EXECUTION_PACKET_TEMPLATE.md`
 - `.opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md`
 - `.opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md`

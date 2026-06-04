@@ -19,11 +19,11 @@ scope:
     - "Do not run broad project test suites"
 doc_allow_list:
   - "AGENTS.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
-  - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
+  - ".opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
 code_targets:
-  - "DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml"
+  - ".opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml"
 acceptance_criteria:
   - id: AC-1
     text: "Broker dispatches this packet through executor route and records a run outcome"
@@ -31,7 +31,7 @@ acceptance_criteria:
     text: "No file edits are required for this packet"
 verification:
   commands:
-    - "npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml --mode v1"
+    - "npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-success.yaml --mode v1"
     - "npm run opencode:state:context -- --packet-id EP-BROKER-SUCCESS --limit 2"
 stop_conditions:
   - "Missing OPENCODE_USER or OPENCODE_PASS"
