@@ -43,6 +43,7 @@
         "opencode:state:route-list": "php scripts/opencode/state.php route-list",
         "opencode:state:record-failure": "php scripts/opencode/state.php record-failure",
         "opencode:state:verify": "bash scripts/opencode/state-verify.sh --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml",
+        "opencode:state:build-packet": "php scripts/opencode/state.php build-packet",
         "opencode:state:ingest-all": "php scripts/opencode/state.php ingest-all",
         "opencode:task:create": "php scripts/opencode/state.php task:create",
         "opencode:task:list": "php scripts/opencode/state.php task:list",
