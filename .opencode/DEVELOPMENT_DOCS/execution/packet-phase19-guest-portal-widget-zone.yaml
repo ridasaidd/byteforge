@@ -22,11 +22,11 @@ scope:
     - "No broad refactor of existing booking or quotes domain logic"
 doc_allow_list:
   - "AGENTS.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
-  - "DEVELOPMENT_DOCS/ROADMAP.md"
+  - "DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/state/CURRENT_STATUS.md"
+  - "DEVELOPMENT_DOCS/state/ROADMAP.md"
   - "DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md"
-  - "DEVELOPMENT_DOCS/TESTING.md"
+  - "DEVELOPMENT_DOCS/policy/TESTING.md"
 code_targets:
   - "resources/js/shared/puck/system-surfaces/SystemSurfaceConfig.ts"
   - "resources/js/apps/public/components/GuestPortalPage.tsx"

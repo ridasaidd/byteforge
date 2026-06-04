@@ -18,8 +18,8 @@ scope:
     - "Do not execute any remote executor model"
     - "Do not edit any repository files"
 doc_allow_list:
-  - "DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
-  - "DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
+  - ".opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
 code_targets:
   - "scripts/opencode/dispatch.php"
   - "scripts/opencode/run-auto.mjs"
@@ -30,8 +30,8 @@ acceptance_criteria:
     text: "run-auto exits success after local_git route selection"
 verification:
   commands:
-    - "npm run opencode:dispatch -- --packet DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml"
-    - "npm run opencode:run-auto -- --packet DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml --mode v1"
+    - "npm run opencode:dispatch -- --packet .opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml"
+    - "npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/broker-validation/packet-broker-local-git.yaml --mode v1"
 stop_conditions:
   - "SQLite state initialization fails"
   - "dispatch parser fails to parse packet"

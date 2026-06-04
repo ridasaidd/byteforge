@@ -9,7 +9,7 @@ This file is no longer the canonical ByteForge AI entrypoint.
 The canonical bootstrap flow is:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 3. Role-specific documents named by `AI_BOOTSTRAP.md`
 4. The assigned execution packet, if running executor work
 5. Additive task-specific documents from `doc_allow_list`
@@ -31,7 +31,7 @@ After opening this file, read:
 
 ```text
 AGENTS.md
-.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md
+.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md
 ```
 
 Then follow the deterministic bootstrap rules in `AI_BOOTSTRAP.md`.
@@ -39,5 +39,5 @@ Then follow the deterministic bootstrap rules in `AI_BOOTSTRAP.md`.
 ## Compatibility Note
 
 Older prompts, packets, or tools may still reference
-`.opencode/DEVELOPMENT_DOCS/AGENT_START.md`. Treat that reference as a pointer to
-`.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`.
+`.opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md`. Treat that reference as a pointer to
+`.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`.

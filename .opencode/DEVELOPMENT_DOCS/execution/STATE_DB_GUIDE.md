@@ -113,13 +113,13 @@ npm run opencode:state:report -- --task-class minor
 ## Task State Commands
 
 ```bash
-npm run opencode:state:task:create -- --task-id EP-004 --phase PHASE19 --summary "Task summary"
-npm run opencode:state:task:list
-npm run opencode:state:task:show -- --task-id EP-004
-npm run opencode:state:task:complete -- --task-id EP-004
-npm run opencode:state:task:block -- --task-id EP-004 --reason "Blocked reason"
-npm run opencode:state:task:unblock -- --task-id EP-004
-npm run opencode:state:task:ingest-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
+npm run opencode:task:create -- --task-id EP-004 --phase PHASE19 --summary "Task summary"
+npm run opencode:task:list
+npm run opencode:task:show -- --task-id EP-004
+npm run opencode:task:complete -- --task-id EP-004
+npm run opencode:task:block -- --task-id EP-004 --reason "Blocked reason"
+npm run opencode:task:unblock -- --task-id EP-004
+npm run opencode:task:ingest-packet -- --packet .opencode/runtime/packets/packet.yaml
 ```
 
 Only orchestrators may mark tasks complete, and only after reviewing executor
@@ -136,7 +136,7 @@ npm run opencode:state:build-packet -- --task-id EP-004
 Ingest packet metadata:
 
 ```bash
-npm run opencode:state:ingest-packet -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
+npm run opencode:state:ingest-packet -- --packet .opencode/runtime/packets/packet.yaml
 ```
 
 During migration, packet YAML remains the OpenCode executor handoff format. If
@@ -150,7 +150,7 @@ npm run opencode:state:plan:show -- --plan-key PHASE19
 npm run opencode:state:plan:ingest -- --plan-key PHASE19 --title "Phase 19" --file .opencode/DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md
 npm run opencode:state:ref:list
 npm run opencode:state:ref:show -- --doc-key TESTING
-npm run opencode:state:ref:ingest -- --doc-key TESTING --title "Testing Guide" --file .opencode/DEVELOPMENT_DOCS/TESTING.md
+npm run opencode:state:ref:ingest -- --doc-key TESTING --title "Testing Guide" --file .opencode/DEVELOPMENT_DOCS/policy/TESTING.md
 ```
 
 Active plans may remain human-readable Markdown, but active plan state and
@@ -285,3 +285,19 @@ Stores execution evidence:
 | archive | keep in archive | do not ingest unless needed |
 | audit_report | keep or archive | ingest only if needed for search/history |
 | obsolete | redirect or archive | do not use as authority |
+
+Packet Storage
+
+Generated packet artifacts are runtime state and should be written under:
+
+.opencode/runtime/packets/
+
+Examples:
+.opencode/runtime/packets/EP-003.yaml
+.opencode/runtime/packets/EP-008.yaml
+
+Compatibility packet fixtures and broker-validation packets remain under:
+
+.opencode/DEVELOPMENT_DOCS/execution/
+
+These tracked fixtures are used for validation, testing, onboarding, and fresh-clone operation.

@@ -31,8 +31,8 @@ scope:
     - "Modifying the guestPortalWidgetZone registry API signature or breaking its test contract"
 doc_allow_list:
   - "AGENTS.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
+  - "DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - "DEVELOPMENT_DOCS/state/CURRENT_STATUS.md"
   - "DEVELOPMENT_DOCS/plans/PHASE19_SYSTEM_SURFACES.md"
 code_targets:
   - "resources/js/apps/public/components/GuestPortalExperience.tsx"

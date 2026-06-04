@@ -1970,6 +1970,8 @@ function ingestAllCommand(PDO $pdo, array $args): void
     ];
 
     $packetFiles = array_merge(
+        glob($root . '/.opencode/runtime/packets/packet*.yaml') ?: [],
+        glob($root . '/.opencode/runtime/packets/broker-validation/packet-*.yaml') ?: [],
         glob($base . '/execution/packet*.yaml') ?: [],
         glob($base . '/execution/broker-validation/packet-*.yaml') ?: [],
     );

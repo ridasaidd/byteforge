@@ -20,8 +20,8 @@ scope:
     - "Do not refactor unrelated files"
 doc_allow_list:
   - "AGENTS.md"
-  - ".opencode/DEVELOPMENT_DOCS/AGENT_START.md"
-  - ".opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md"
   - ".opencode/DEVELOPMENT_DOCS/execution/OPENCODE_BROKER.md"
   - ".opencode/DEVELOPMENT_DOCS/execution/STATE_DB_GUIDE.md"
 code_targets:

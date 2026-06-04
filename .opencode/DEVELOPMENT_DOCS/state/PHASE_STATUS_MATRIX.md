@@ -51,6 +51,6 @@ This file provides a fast, code-aware view of what is implemented versus what is
 
 ## Usage Rules
 
-- Use [AGENT_START.md](AGENT_START.md), [CURRENT_STATUS.md](CURRENT_STATUS.md), and [ROADMAP.md](ROADMAP.md) as canonical precedence.
+- Use [AGENT_START.md](../bootstrap/AGENT_START.md), [CURRENT_STATUS.md](CURRENT_STATUS.md), and [ROADMAP.md](ROADMAP.md) as canonical precedence.
 - Treat this matrix as a concise operating index that should be updated whenever phase reality changes.
 - If this file conflicts with canonical docs, canonical docs win and this file must be updated.

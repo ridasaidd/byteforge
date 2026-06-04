@@ -22,7 +22,7 @@ compatibility.
 Before using this workflow, agents must read:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 
 Orchestrators then read this document.
 
@@ -128,7 +128,7 @@ npm run opencode:state:context -- --packet-id <packet-id> --limit 5
 Use task commands for task definitions:
 
 ```bash
-npm run opencode:state:task:show -- --task-id <task-id>
+npm run opencode:task:show -- --task-id <task-id>
 npm run opencode:state:build-packet -- --task-id <task-id>
 ```
 
@@ -176,7 +176,7 @@ in the orchestrator.
 Executors must read only:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
 3. current execution packet
 4. files in `doc_allow_list`
 5. relevant files in `code_targets`

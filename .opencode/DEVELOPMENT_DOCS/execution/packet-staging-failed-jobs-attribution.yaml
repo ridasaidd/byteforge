@@ -27,13 +27,13 @@ scope:
     - "Do not modify unrelated CI workflows"
 doc_allow_list:
   - "AGENTS.md"
-  - "DEVELOPMENT_DOCS/AGENT_START.md"
-  - "DEVELOPMENT_DOCS/CURRENT_STATUS.md"
-  - "DEVELOPMENT_DOCS/TESTING.md"
-  - "DEVELOPMENT_DOCS/STAGING_DEPLOYMENT_PLAN.md"
+  - ".opencode/DEVELOPMENT_DOCS/bootstrap/AGENT_START.md"
+  - ".opencode/DEVELOPMENT_DOCS/state/CURRENT_STATUS.md"
+  - ".opencode/DEVELOPMENT_DOCS/policy/TESTING.md"
+  - ".opencode/DEVELOPMENT_DOCS/proposals/STAGING_DEPLOYMENT_PLAN.md"
 code_targets:
-  - ".github/workflows/deploy-staging.yml"
-  - "DEVELOPMENT_DOCS/STAGING_DEPLOYMENT_PLAN.md"
+  - ".github/workflows/proposals/deploy-staging.yml"
+  - ".opencode/DEVELOPMENT_DOCS/proposals/STAGING_DEPLOYMENT_PLAN.md"
 acceptance_criteria:
   - id: AC-1
     text: "Runtime audit still fails when failed_jobs increases, but failure message distinguishes scheduler-path vs mail-path failures"
@@ -43,7 +43,7 @@ acceptance_criteria:
     text: "No broad behavior regression: existing scheduler command registration checks remain enforced"
 verification:
   commands:
-    - "git diff -- .github/workflows/deploy-staging.yml DEVELOPMENT_DOCS/STAGING_DEPLOYMENT_PLAN.md"
+    - "git diff -- .github/workflows/deploy-staging.yml .opencode/DEVELOPMENT_DOCS/proposals/STAGING_DEPLOYMENT_PLAN.md"
     - "rg -n \"Runtime audit failed|mail smoke|failed_jobs\" .github/workflows/deploy-staging.yml"
 stop_conditions:
   - "OpenCode API unavailable"

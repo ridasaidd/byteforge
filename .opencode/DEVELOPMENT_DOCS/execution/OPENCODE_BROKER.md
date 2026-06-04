@@ -13,8 +13,8 @@ ByteForge moves toward SQLite-generated packets.
 Before using the broker, agents must read:
 
 1. `AGENTS.md`
-2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
-3. `.opencode/DEVELOPMENT_DOCS/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
+2. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_BOOTSTRAP.md`
+3. `.opencode/DEVELOPMENT_DOCS/bootstrap/AI_ORCHESTRATOR_EXECUTOR_WORKFLOW.md`
 
 This broker runbook is required only for orchestrators/operators dispatching or
 reviewing OpenCode runs.
@@ -60,7 +60,7 @@ npm run opencode:models
 1. Inspect task state:
 
    ```bash
-   npm run opencode:state:task:show -- --task-id <task-id>
+   npm run opencode:task:show -- --task-id <task-id>
    ```
 
 2. Generate packet from SQLite when possible:
@@ -78,7 +78,7 @@ npm run opencode:models
 4. Dispatch through `run-auto`:
 
    ```bash
-   npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
+   npm run opencode:run-auto -- --packet .opencode/runtime/packets/packet.yaml --mode v1
    ```
 
 5. Review actual artifacts, diffs, files, and verification output.
@@ -86,7 +86,7 @@ npm run opencode:models
 6. Only after review, mark the task complete through the state command:
 
    ```bash
-   npm run opencode:state:task:complete -- --task-id <task-id>
+   npm run opencode:task:complete -- --task-id <task-id>
    ```
 
 Executors must not mark tasks complete.
@@ -94,7 +94,7 @@ Executors must not mark tasks complete.
 ## One-Command Runner
 
 ```bash
-npm run opencode:run-loop -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
+npm run opencode:run-loop -- --packet .opencode/runtime/packets/packet.yaml --mode v1
 ```
 
 `run-loop` runs `run-packet` then `parse-result`. It prints the deterministic
@@ -103,7 +103,7 @@ route outcome as the last output line and exits non-zero on failed outcomes.
 ## Auto Dispatcher
 
 ```bash
-npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --mode v1
+npm run opencode:run-auto -- --packet .opencode/runtime/packets/packet.yaml --mode v1
 ```
 
 `run-auto` reads `execution_policy`, chooses a model profile, runs the packet, and
@@ -119,7 +119,7 @@ Routing defaults:
 Inspect dispatcher decision only:
 
 ```bash
-npm run opencode:dispatch -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml
+npm run opencode:dispatch -- --packet .opencode/runtime/packets/packet.yaml
 ```
 
 ## Mandatory Delegation Compatibility
@@ -208,13 +208,13 @@ OPENCODE_EVENT_BASE_URL=http://100.80.45.13:4096 npm run opencode:event -- --ses
 After successful executor output and orchestrator audit:
 
 ```bash
-npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --files path/a,path/b
+npm run opencode:run-auto -- --packet .opencode/runtime/packets/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --files path/a,path/b
 ```
 
 Or stage all:
 
 ```bash
-npm run opencode:run-auto -- --packet .opencode/DEVELOPMENT_DOCS/execution/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --all
+npm run opencode:run-auto -- --packet .opencode/runtime/packets/packet.yaml --finalize-git --commit-message "chore: apply EP-002 output" --all
 ```
 
 Add `--push` only when intentionally pushing.
@@ -252,3 +252,14 @@ The suite should verify:
 - Non-schema output is `failed:invalid_schema` for deterministic rerouting.
 - Auto dispatcher keeps token cost lower by selecting the smallest matching profile.
 - SQLite keeps token cost lower through compact run history and state summaries.
+
+Packet Source Rules
+
+Generated task packets:
+  .opencode/runtime/packets/
+
+Validation fixtures:
+  .opencode/DEVELOPMENT_DOCS/execution/
+  .opencode/DEVELOPMENT_DOCS/execution/broker-validation/
+
+Broker tooling must support both locations.

@@ -35,7 +35,7 @@ Primary branch: `main`
   queued email trigger against the staging tenant host.
 - The HttpOnly auth migration is now implemented on `main` with the hybrid
   browser model described in
-  [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
+  [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](../plans/AUTH_HTTPONLY_MIGRATION_PLAN.md):
   in-memory bearer access tokens plus a host-scoped HttpOnly refresh cookie.
 - The frontend auth cutover is now in place: dashboard bearer tokens are kept
   in memory only, and session continuity is restored through the HttpOnly
@@ -258,11 +258,11 @@ Current booking follow-ups worth tracking now are:
   write tenant-visible activity entries, and revoke tenant refresh sessions on
   removal
 - enhanced support remediation is intentionally deferred to
-  [plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md](plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md)
+  [plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md](../plans/PHASE16_ENHANCED_SUPPORT_REMEDIATION.md)
 
 ## Verification Baseline
 
-For safe focused checks, start with [TESTING.md](TESTING.md).
+For safe focused checks, start with [TESTING.md](../policy/TESTING.md).
 
 Recent booking-focused verification that is known green:
 
@@ -346,7 +346,7 @@ npx playwright test tests/e2e/guest-portal-shell.spec.ts
 ## Read Next
 
 - For exact next-work sequencing: [ROADMAP.md](ROADMAP.md)
-- For agent operating context: [AGENT_START.md](AGENT_START.md)
-- For testing and verification: [TESTING.md](TESTING.md)
-- For auth/session work: [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](plans/AUTH_HTTPONLY_MIGRATION_PLAN.md)
-- For booking and payment integration details: [plans/PHASE13_BOOKING_SYSTEM.md](plans/PHASE13_BOOKING_SYSTEM.md) and [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md)
+- For agent operating context: [AGENT_START.md](../bootstrap/AGENT_START.md)
+- For testing and verification: [TESTING.md](../policy/TESTING.md)
+- For auth/session work: [plans/AUTH_HTTPONLY_MIGRATION_PLAN.md](../plans/AUTH_HTTPONLY_MIGRATION_PLAN.md)
+- For booking and payment integration details: [plans/PHASE13_BOOKING_SYSTEM.md](../plans/PHASE13_BOOKING_SYSTEM.md) and [plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md](../plans/PHASE14_PAYMENT_BOOKING_INTEGRATION.md)
