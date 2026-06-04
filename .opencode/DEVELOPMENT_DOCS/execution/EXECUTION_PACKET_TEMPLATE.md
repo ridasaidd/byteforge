@@ -1,13 +1,56 @@
 # Execution Packet Template
 
+Status: canonical packet schema
+Audience: orchestrator + executor + broker
+Last verified: 2026-06-04
+
 Use this template for every executor handoff.
 
-Policy:
+## Policy
 
-- SQLite `tasks` rows are the authoritative source for a task's scope, acceptance criteria, verification commands, file targets, stop conditions, and routing metadata.
-- Packet YAML files are the current executor handoff format. They should eventually be generated from SQLite task state via `buildPacketFromTask()` / `build-packet --task-id <id>`.
-- During the migration, keep manually authored packet YAML synchronized with SQLite task state. In case of divergence on scope or criteria, SQLite `tasks` rows are the ground truth.
-- Commit both SQLite state and packet YAML to git so handoff format parity is traceable.
+- SQLite `tasks` rows are authoritative for task scope, acceptance criteria,
+  verification commands, file targets, stop conditions, lifecycle state, and
+  routing metadata.
+- Packet YAML files are the current OpenCode executor handoff format.
+- Packets should be generated from SQLite task state with:
+
+  ```bash
+  npm run opencode:state:build-packet -- --task-id <task-id>
+  ```
+
+- During migration, manually authored packet YAML must be synchronized with
+  SQLite task state.
+- If packet YAML and SQLite diverge on task/runtime state, SQLite wins.
+- Markdown packet schema remains the behavioral/schema authority.
+- Executors must not mark SQLite tasks complete.
+
+## doc_allow_list Semantics
+
+`doc_allow_list` is additive.
+
+It does not replace the mandatory bootstrap set:
+
+1. `AGENTS.md`
+2. `.opencode/DEVELOPMENT_DOCS/AI_BOOTSTRAP.md`
+3. assigned execution packet
+
+Only after reading those may the executor read files listed in `doc_allow_list`.
+
+Do not include mandatory bootstrap files in `doc_allow_list`; they are implicit.
+
+## Command Surface Policy
+
+Any orchestration state, packet, routing, artifact, or broker operation must use:
+
+```bash
+npm run opencode:*
+```
+
+Do not call orchestration PHP scripts directly, use `php -r` for state queries,
+open SQLite directly, or bypass package.json aliases unless the packet explicitly
+authorizes command-surface/bootstrap tooling maintenance.
+
+## Template
 
 ```yaml
 schema_version: 1
@@ -19,7 +62,7 @@ task_ref:
   parent_packet_id: null
 summary: "One-sentence task statement"
 execution_policy:
-  task_class: feature # docs|minor|feature|critical|git_plumbing
+  task_class: feature # docs|minor|feature|bugfix|refactor|critical|git_plumbing
   risk_level: medium # low|medium|high
   finalize_git: false
   delegate_to_executor: true
@@ -33,8 +76,6 @@ scope:
   out:
     - "Explicitly disallowed work"
 doc_allow_list:
-  - "AGENTS.md"
-  - ".opencode/DEVELOPMENT_DOCS/AGENT_START.md"
   - ".opencode/DEVELOPMENT_DOCS/path/to/domain-doc.md"
 code_targets:
   - "path/to/file"
@@ -48,3 +89,15 @@ stop_conditions:
   - "Missing required env var"
   - "Contradictory doc guidance"
 ```
+
+## Delegation Rule
+
+If `delegate_to_executor=true`, or if `task_class` is `feature`, `bugfix`, or
+`refactor`, the orchestrator must dispatch an executor unless an explicit
+exception exists in the workflow policy or packet scope.
+
+## Completion Rule
+
+Executor success means the packet was completed from the executor perspective.
+It does not complete the SQLite task. The orchestrator must review the output and
+then complete the task through the approved command surface.
