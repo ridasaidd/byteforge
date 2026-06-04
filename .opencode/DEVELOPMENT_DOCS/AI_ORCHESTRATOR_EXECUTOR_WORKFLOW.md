@@ -292,3 +292,20 @@ When the purpose of a task is to validate:
 executor dispatch is mandatory regardless of task_class or risk_level.
 
 The orchestrator may not perform implementation directly.
+
+Review Policy
+
+The orchestrator must review actual outputs, artifacts, diffs, and file contents.
+
+Executor summaries are not sufficient evidence.
+
+Approval must be based on resulting files and verification output, not on executor descriptions.
+
+Environment blockers are not implementation failures.
+
+The orchestrator must determine whether:
+- the task failed
+- the infrastructure failed
+- the workflow validated despite the infrastructure issue
+
+Task completion should be evaluated against acceptance criteria, not solely executor status.
